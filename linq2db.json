@@ -1,0 +1,11 @@
+{
+  "DataConnection": {
+    "Provider": "PostgreSQL",
+    "ConnectionString": "Host=localhost;Port=5432;Database=phamnhan_online;Username=postgres;Password=admin"
+  },
+
+  "CodeGeneration": {
+    "Namespace": "GameServer.Entities",
+    "Output": "GameServer/Entities"
+  }
+}

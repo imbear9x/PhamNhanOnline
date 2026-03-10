@@ -1,0 +1,361 @@
+using System.Security.Cryptography;
+using System.Text;
+using GameServer.DTO;
+using GameServer.Entities;
+using GameServer.Repositories;
+using LinqToDB;
+
+namespace GameServer.Services;
+
+public sealed class AccountService
+{
+    public const string ProviderPassword = "password";
+    public const string ProviderGoogle = "google";
+    public const string ProviderPhone = "phone";
+
+    public const int MinUsernameLength = 3;
+    public const int MaxUsernameLength = 32;
+
+    private readonly GameDb _db;
+    private readonly AccountRepository _accounts;
+    private readonly AccountCredentialRepository _credentials;
+
+    public AccountService(GameDb db, AccountRepository accounts, AccountCredentialRepository credentials)
+    {
+        _db = db;
+        _accounts = accounts;
+        _credentials = credentials;
+    }
+
+    public async Task<AccountDto> RegisterWithPasswordAsync(
+        string loginId,
+        string password,
+        CancellationToken cancellationToken = default)
+    {
+        loginId = NormalizeLoginId(loginId);
+        ValidatePassword(password);
+
+        var existing = await _credentials.GetByProviderUserIdAsync(ProviderPassword, loginId, cancellationToken);
+        if (existing is not null)
+            throw new InvalidOperationException("Login already exists.");
+
+        var account = new Account
+        {
+            Id = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            LastLogin = DateTime.UtcNow,
+            Status = 1,
+        };
+
+        var credential = new AccountCredential
+        {
+            Id = Guid.NewGuid(),
+            AccountId = account.Id,
+            Provider = ProviderPassword,
+            ProviderUserId = loginId,
+            PasswordHash = HashPassword(password),
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        await using var tx = await _db.BeginTransactionAsync(cancellationToken);
+        await _accounts.CreateAsync(account, cancellationToken);
+        await _credentials.CreateAsync(credential, cancellationToken);
+        await tx.CommitAsync(cancellationToken);
+
+        return AccountDto.FromEntity(account);
+    }
+
+    public async Task<LoginResultDto> LoginWithPasswordAsync(
+        string loginId,
+        string password,
+        CancellationToken cancellationToken = default)
+    {
+        loginId = NormalizeLoginId(loginId);
+
+        var cred = await _credentials.GetByProviderUserIdAsync(ProviderPassword, loginId, cancellationToken);
+        if (cred?.PasswordHash is null)
+            throw new InvalidOperationException("Invalid credentials.");
+
+        if (!VerifyPassword(password, cred.PasswordHash))
+            throw new InvalidOperationException("Invalid credentials.");
+
+        var account = await _accounts.GetByIdAsync(cred.AccountId, cancellationToken);
+        if (account is null)
+            throw new InvalidOperationException("Account not found.");
+
+        account.LastLogin = DateTime.UtcNow;
+        await _accounts.UpdateAsync(account, cancellationToken);
+
+        return new LoginResultDto(AccountDto.FromEntity(account), Map(cred));
+    }
+
+    public async Task<LoginResultDto> LoginWithGoogleAsync(
+        string googleUserId,
+        CancellationToken cancellationToken = default)
+    {
+        googleUserId = NormalizeProviderUserId(googleUserId);
+
+        var cred = await _credentials.GetByProviderUserIdAsync(ProviderGoogle, googleUserId, cancellationToken);
+        if (cred is not null)
+        {
+            var existingAccount = await _accounts.GetByIdAsync(cred.AccountId, cancellationToken);
+            if (existingAccount is null)
+                throw new InvalidOperationException("Account not found.");
+
+            existingAccount.LastLogin = DateTime.UtcNow;
+            await _accounts.UpdateAsync(existingAccount, cancellationToken);
+            return new LoginResultDto(AccountDto.FromEntity(existingAccount), Map(cred));
+        }
+
+        var account = new Account
+        {
+            Id = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            LastLogin = DateTime.UtcNow,
+            Status = 1,
+        };
+
+        cred = new AccountCredential
+        {
+            Id = Guid.NewGuid(),
+            AccountId = account.Id,
+            Provider = ProviderGoogle,
+            ProviderUserId = googleUserId,
+            PasswordHash = null,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        await using var tx = await _db.BeginTransactionAsync(cancellationToken);
+        await _accounts.CreateAsync(account, cancellationToken);
+        await _credentials.CreateAsync(cred, cancellationToken);
+        await tx.CommitAsync(cancellationToken);
+
+        return new LoginResultDto(AccountDto.FromEntity(account), Map(cred));
+    }
+
+    public async Task<CredentialDto> LinkGoogleAsync(
+        Guid accountId,
+        string googleUserId,
+        CancellationToken cancellationToken = default)
+    {
+        googleUserId = NormalizeProviderUserId(googleUserId);
+
+        var account = await _accounts.GetByIdAsync(accountId, cancellationToken);
+        if (account is null)
+            throw new InvalidOperationException("Account not found.");
+
+        var alreadyLinked = await _credentials.GetByAccountAndProviderAsync(accountId, ProviderGoogle, cancellationToken);
+        if (alreadyLinked is not null)
+            throw new InvalidOperationException("Google credential already linked.");
+
+        var usedByOther = await _credentials.GetByProviderUserIdAsync(ProviderGoogle, googleUserId, cancellationToken);
+        if (usedByOther is not null)
+            throw new InvalidOperationException("Google credential already linked to another account.");
+
+        var cred = new AccountCredential
+        {
+            Id = Guid.NewGuid(),
+            AccountId = accountId,
+            Provider = ProviderGoogle,
+            ProviderUserId = googleUserId,
+            PasswordHash = null,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        await _credentials.CreateAsync(cred, cancellationToken);
+        return Map(cred);
+    }
+
+    public async Task<CredentialDto> LinkPhoneAsync(
+        Guid accountId,
+        string phoneNumber,
+        CancellationToken cancellationToken = default)
+    {
+        phoneNumber = NormalizeProviderUserId(phoneNumber);
+
+        var account = await _accounts.GetByIdAsync(accountId, cancellationToken);
+        if (account is null)
+            throw new InvalidOperationException("Account not found.");
+
+        var alreadyLinked = await _credentials.GetByAccountAndProviderAsync(accountId, ProviderPhone, cancellationToken);
+        if (alreadyLinked is not null)
+            throw new InvalidOperationException("Phone credential already linked.");
+
+        var usedByOther = await _credentials.GetByProviderUserIdAsync(ProviderPhone, phoneNumber, cancellationToken);
+        if (usedByOther is not null)
+            throw new InvalidOperationException("Phone credential already linked to another account.");
+
+        var cred = new AccountCredential
+        {
+            Id = Guid.NewGuid(),
+            AccountId = accountId,
+            Provider = ProviderPhone,
+            ProviderUserId = phoneNumber,
+            PasswordHash = null,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        await _credentials.CreateAsync(cred, cancellationToken);
+        return Map(cred);
+    }
+
+    public async Task<CredentialDto> ChangePasswordAsync(
+        Guid accountId,
+        string oldPassword,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        ValidatePassword(newPassword);
+
+        var account = await _accounts.GetByIdAsync(accountId, cancellationToken);
+        if (account is null)
+            throw new InvalidOperationException("Account not found.");
+
+        var cred = await _credentials.GetByAccountAndProviderAsync(accountId, ProviderPassword, cancellationToken);
+        if (cred?.PasswordHash is null)
+            throw new InvalidOperationException("Password credential not found.");
+
+        if (!VerifyPassword(oldPassword, cred.PasswordHash))
+            throw new InvalidOperationException("Invalid credentials.");
+
+        cred.PasswordHash = HashPassword(newPassword);
+        await _credentials.UpdateAsync(cred, cancellationToken);
+        return Map(cred);
+    }
+
+    public async Task<CredentialDto> ChangeCredentialAsync(
+        Guid accountId,
+        string provider,
+        string newProviderUserId,
+        CancellationToken cancellationToken = default)
+    {
+        provider = NormalizeProvider(provider);
+        if (provider == ProviderPassword)
+            throw new InvalidOperationException("Use ChangePasswordAsync for password.");
+
+        newProviderUserId = NormalizeProviderUserId(newProviderUserId);
+
+        var account = await _accounts.GetByIdAsync(accountId, cancellationToken);
+        if (account is null)
+            throw new InvalidOperationException("Account not found.");
+
+        var cred = await _credentials.GetByAccountAndProviderAsync(accountId, provider, cancellationToken);
+        if (cred is null)
+            throw new InvalidOperationException("Credential not found.");
+
+        var usedByOther = await _credentials.GetByProviderUserIdAsync(provider, newProviderUserId, cancellationToken);
+        if (usedByOther is not null && usedByOther.AccountId != accountId)
+            throw new InvalidOperationException("Credential already linked to another account.");
+
+        cred.ProviderUserId = newProviderUserId;
+        await _credentials.UpdateAsync(cred, cancellationToken);
+        return Map(cred);
+    }
+
+    private static CredentialDto Map(AccountCredential c) =>
+        new(c.Id, c.AccountId, c.Provider, c.ProviderUserId, c.CreatedAt);
+
+    private static string NormalizeLoginId(string loginId)
+    {
+        loginId = (loginId ?? string.Empty).Trim();
+        if (loginId.Length is < MinUsernameLength or > MaxUsernameLength)
+            throw new ArgumentException($"username length must be {MinUsernameLength}-{MaxUsernameLength}.", nameof(loginId));
+        return loginId.ToLowerInvariant();
+    }
+
+    private static string NormalizeProvider(string provider)
+    {
+        provider = (provider ?? string.Empty).Trim().ToLowerInvariant();
+        if (provider.Length == 0)
+            throw new ArgumentException("provider is required.", nameof(provider));
+        if (provider is not (ProviderGoogle or ProviderPhone or ProviderPassword))
+            throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unsupported provider.");
+        return provider;
+    }
+
+    private static string NormalizeProviderUserId(string providerUserId)
+    {
+        providerUserId = (providerUserId ?? string.Empty).Trim();
+        if (providerUserId.Length == 0)
+            throw new ArgumentException("providerUserId is required.", nameof(providerUserId));
+        return providerUserId;
+    }
+
+    private static void ValidatePassword(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+            throw new ArgumentException("Password is required.", nameof(password));
+
+        if (password.Length is < 8 or > 128)
+            throw new ArgumentException("Password length must be 8-128 characters.", nameof(password));
+
+        var hasLower = false;
+        var hasUpper = false;
+        var hasDigit = false;
+        var hasSymbol = false;
+
+        foreach (var ch in password)
+        {
+            if (char.IsLower(ch)) hasLower = true;
+            else if (char.IsUpper(ch)) hasUpper = true;
+            else if (char.IsDigit(ch)) hasDigit = true;
+            else if (!char.IsWhiteSpace(ch)) hasSymbol = true;
+        }
+
+        if (!(hasLower && hasUpper && hasDigit && hasSymbol))
+            throw new ArgumentException("Password must include lower, upper, digit, and symbol.", nameof(password));
+    }
+
+    // Format: PBKDF2-SHA256$<iterations>$<salt_b64>$<hash_b64>
+    private static string HashPassword(string password)
+    {
+        const int iterations = 200_000;
+        Span<byte> salt = stackalloc byte[16];
+        RandomNumberGenerator.Fill(salt);
+
+        var hash = Rfc2898DeriveBytes.Pbkdf2(
+            Encoding.UTF8.GetBytes(password),
+            salt,
+            iterations,
+            HashAlgorithmName.SHA256,
+            32);
+
+        return $"PBKDF2-SHA256${iterations}${Convert.ToBase64String(salt)}${Convert.ToBase64String(hash)}";
+    }
+
+    private static bool VerifyPassword(string password, string stored)
+    {
+        var parts = stored.Split('$');
+        if (parts.Length != 4)
+            return false;
+        if (!string.Equals(parts[0], "PBKDF2-SHA256", StringComparison.Ordinal))
+            return false;
+        if (!int.TryParse(parts[1], out var iterations) || iterations <= 0)
+            return false;
+
+        byte[] salt, expected;
+        try
+        {
+            salt = Convert.FromBase64String(parts[2]);
+            expected = Convert.FromBase64String(parts[3]);
+        }
+        catch
+        {
+            return false;
+        }
+
+        var actual = Rfc2898DeriveBytes.Pbkdf2(
+            Encoding.UTF8.GetBytes(password),
+            salt,
+            iterations,
+            HashAlgorithmName.SHA256,
+            expected.Length);
+
+        return CryptographicOperations.FixedTimeEquals(actual, expected);
+    }
+}
+
+public sealed record CredentialDto(Guid Id, Guid AccountId, string Provider, string ProviderUserId, DateTime? CreatedAt);
+
+public sealed record LoginResultDto(AccountDto Account, CredentialDto Credential);
+
