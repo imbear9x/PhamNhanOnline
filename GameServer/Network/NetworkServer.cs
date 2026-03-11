@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
-using GameServer.Network.Packets;
+using GameServer.Network.Interface;
+using GameShared.Packets;
 using LiteNetLib;
 
 namespace GameServer.Network;
@@ -79,7 +80,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         if (packet is null)
             return;
 
-        _dispatcher.Dispatch(session, packet);
+        _ = _dispatcher.DispatchAsync(session, packet);
     }
 
     public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)

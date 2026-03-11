@@ -1,9 +1,10 @@
-using GameServer.Network.Packets;
+using GameServer.Network.Interface;
 using GameServer.Services;
+using GameShared.Packets;
 
 namespace GameServer.Network.Handlers;
 
-public sealed class RegisterHandler
+public sealed class RegisterHandler : IPacketHandler<RegisterPacket>
 {
     private readonly AccountService _accountService;
     private readonly INetworkSender _server;
@@ -18,6 +19,7 @@ public sealed class RegisterHandler
     {
         try
         {
+            var a = packet.HasEmail;
             // Email is accepted at the network layer; AccountService currently uses username/password.
             await _accountService.RegisterWithPasswordAsync(packet.Username, packet.Password);
 

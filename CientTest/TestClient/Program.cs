@@ -1,23 +1,10 @@
-using System;
-using System.Threading;
+using GameShared.Packets;
 using LiteNetLib;
-using LiteNetLib.Utils;
-
-enum PacketType : byte
-{
-    Register = 1,
-    RegisterResult = 2,
-    Login = 3,
-    LoginResult = 4
-}
 
 class AuthClientListener : INetEventListener
 {
-    private NetPeer? _serverPeer;
-
     private readonly object _sync = new();
-    private bool _registerResultReceived;
-    private bool _loginResultReceived;
+    private bool _loginFinished;
 
     public bool LoginFinished
     {
@@ -25,80 +12,78 @@ class AuthClientListener : INetEventListener
         {
             lock (_sync)
             {
-                return _loginResultReceived;
+                return _loginFinished;
             }
         }
-    }
-
-    public AuthClientListener()
-    {
     }
 
     public void OnPeerConnected(NetPeer peer)
     {
         Console.WriteLine("Connected to server");
-        _serverPeer = peer;
 
-        // Send RegisterPacket
-        var writer = new NetDataWriter();
-        writer.Put((byte)PacketType.Register);
-        writer.Put("testuser");          // Username
-        writer.Put("123456");           // Password
-        writer.Put("test@test.com");    // Email
+        var packet = new RegisterPacket
+        {
+            Username = "testuser",
+            Password = "123456"
+        };
 
-        peer.Send(writer, DeliveryMethod.ReliableOrdered);
+        SendPacket(peer, packet);
     }
 
     public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
     {
-        var packetType = (PacketType)reader.GetByte();
+        var bytes = reader.GetRemainingBytes();
+        reader.Recycle();
 
-        switch (packetType)
+        var packet = PacketSerializer.Deserialize(bytes);
+        if (packet is null)
         {
-            case PacketType.RegisterResult:
+            Console.WriteLine($"Deserialize failed. ByteLength={bytes.Length}");
+            return;
+        }
+
+        switch (packet)
+        {
+            case RegisterResultPacket registerResult:
             {
-                bool success = reader.GetBool();
                 Console.WriteLine("Register result:");
-                Console.WriteLine($"Success = {success}");
+                Console.WriteLine($"Success = {registerResult.Success}");
+                Console.WriteLine($"Error = {registerResult.Error}");
 
-                lock (_sync)
+                var loginPacket = new LoginPacket
                 {
-                    _registerResultReceived = true;
-                }
-
-                // After register result, send LoginPacket
-                var writer = new NetDataWriter();
-                writer.Put((byte)PacketType.Login);
-                writer.Put("testuser");  // Username
-                writer.Put("123456");    // Password
-                peer.Send(writer, DeliveryMethod.ReliableOrdered);
-
+                    Username = "testuser",
+                    Password = "123456"
+                };
+                SendPacket(peer, loginPacket);
                 break;
             }
-            case PacketType.LoginResult:
+            case LoginResultPacket loginResult:
             {
-                bool success = reader.GetBool();
-                long accountId = reader.GetLong();
-
                 Console.WriteLine("Login result:");
-                Console.WriteLine($"Success = {success}");
-                Console.WriteLine($"AccountId = {accountId}");
+                Console.WriteLine($"Success = {loginResult.Success}");
+                Console.WriteLine($"Error = {loginResult.Error}");
+                Console.WriteLine($"AccountId = {loginResult.AccountId}");
 
                 lock (_sync)
                 {
-                    _loginResultReceived = true;
+                    _loginFinished = true;
                 }
-
                 break;
             }
             default:
             {
-                // Unknown or unhandled packet type; just ignore remaining data
+                Console.WriteLine($"Unhandled packet type: {packet.GetType().Name}");
                 break;
             }
         }
+    }
 
-        reader.Recycle();
+    private static void SendPacket(NetPeer peer, IPacket packet)
+    {
+        var data = PacketSerializer.Serialize(packet);
+        peer.Send(data, DeliveryMethod.ReliableOrdered);
+        Console.WriteLine($"Sent {packet.GetType().Name} (bytes={data.Length})");
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
@@ -113,18 +98,15 @@ class AuthClientListener : INetEventListener
 
     public void OnNetworkLatencyUpdate(NetPeer peer, int latency)
     {
-        // Not needed for this simple test client
     }
 
     public void OnNetworkReceiveUnconnected(System.Net.IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
     {
-        // Not used in this simple client
         reader.Recycle();
     }
 
     public void OnConnectionRequest(ConnectionRequest request)
     {
-        // This is a client; we do not accept incoming connections
         request.Reject();
     }
 }
@@ -135,7 +117,6 @@ class Program
     {
         const string serverAddress = "127.0.0.1";
         const int serverPort = 7777;
-        const string connectionKey = "game";
 
         var authListener = new AuthClientListener();
         var netManager = new NetManager(authListener)
@@ -150,16 +131,14 @@ class Program
         }
 
         Console.WriteLine("Connecting to server...");
-        netManager.Connect(serverAddress, serverPort, connectionKey);
+        netManager.Connect(serverAddress, serverPort, string.Empty);
 
-        // Main loop
         while (!authListener.LoginFinished)
         {
             netManager.PollEvents();
             Thread.Sleep(15);
         }
 
-        // Give some time for any final packets, then stop
         Thread.Sleep(200);
         netManager.Stop();
 

@@ -2,8 +2,11 @@ using System.Text.Json;
 using GameServer.Database;
 using GameServer.Network;
 using GameServer.Network.Handlers;
+using GameServer.Network.Interface;
+using GameServer.Network.Middleware;
 using GameServer.Repositories;
 using GameServer.Services;
+using GameShared.Packets;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GameServer.Extensions;
@@ -35,14 +38,23 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<INetworkSender>(p => p.GetRequiredService<NetworkServer>());
 
         services.AddSingleton<PacketDispatcher>();
-        services.AddSingleton<LoginHandler>();
-        services.AddSingleton<RegisterHandler>();
-
+        services.AddScoped<IPacketMiddleware, AuthMiddleware>();
+        services.AddScoped<IPacketMiddleware, RateLimitMiddleware>();
         return services;
     }
     public static IServiceCollection AddWorldSystems(this IServiceCollection services)
     {
         
+
+
+        return services;
+    }
+    
+    public static IServiceCollection AddDomainHandler(this IServiceCollection services)
+    {
+        services.AddScoped<IPacketHandler<LoginPacket>, LoginHandler>();
+        services.AddScoped<IPacketHandler<RegisterPacket>, RegisterHandler>();
+
 
 
         return services;

@@ -14,6 +14,7 @@ class Program
             .AddNetworking()
             .AddWorldSystems()
             .AddGameServices()
+            .AddDomainHandler()
             .AddRepositories();
 
         var provider = services.BuildServiceProvider();

@@ -1,9 +1,10 @@
-using GameServer.Network.Packets;
+using GameServer.Network.Interface;
 using GameServer.Services;
+using GameShared.Packets;
 
 namespace GameServer.Network.Handlers;
 
-public sealed class LoginHandler
+public sealed class LoginHandler : IPacketHandler<LoginPacket>
 {
     private readonly AccountService _accountService;
     private readonly INetworkSender _server;

@@ -10,6 +10,8 @@ public sealed class ConnectionSession
 
     public Guid PlayerId { get; set; }
     public PlayerSession? Player { get; set; }
+    public bool IsAuthenticated { get; set; }
+
 
     public ConnectionSession(NetPeer peer)
     {

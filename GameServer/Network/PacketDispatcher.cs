@@ -1,34 +1,49 @@
-using GameServer.Network.Packets;
+﻿using GameServer.Network.Handlers;
+using GameServer.Network.Interface;
+using GameShared.Packets;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GameServer.Network;
 
 public sealed class PacketDispatcher
 {
-    private readonly Handlers.RegisterHandler _registerHandler;
-    private readonly Handlers.LoginHandler _loginHandler;
-
-    public PacketDispatcher(Handlers.RegisterHandler registerHandler, Handlers.LoginHandler loginHandler)
+    private readonly IServiceProvider _provider;
+    private readonly IEnumerable<IPacketMiddleware> _middlewares;
+    public PacketDispatcher(IServiceProvider provider, IEnumerable<IPacketMiddleware> middlewares)
     {
-        _registerHandler = registerHandler;
-        _loginHandler = loginHandler;
+        _provider = provider;
+        _middlewares= middlewares;
     }
 
-    public void Dispatch(ConnectionSession session, IPacket packet)
+    public async Task DispatchAsync(ConnectionSession session, IPacket packet)
     {
-        switch (packet.PacketType)
+        var enumerator = _middlewares.GetEnumerator();
+
+        Task Next()
         {
-            case PacketType.Register:
-                _ = _registerHandler.HandleAsync(session, (RegisterPacket)packet);
-                break;
+            if (!enumerator.MoveNext())
+                return ExecuteHandler(session, packet);
 
-            case PacketType.Login:
-                _ = _loginHandler.HandleAsync(session, (LoginPacket)packet);
-                break;
-
-            default:
-                // Ignore unsupported packets for now.
-                break;
+            return enumerator.Current.InvokeAsync(session, packet, Next);
         }
+
+        await Next();
     }
+    private Task ExecuteHandler(ConnectionSession session, IPacket packet)
+    {
+        // ham next() ben tren se goi vao day
+        return DispatchDynamic(session, (dynamic)packet);
+    }
+    private Task DispatchDynamic<TPacket>(ConnectionSession session, TPacket packet)
+    {
+        return DispatchAsyncInternal(session, packet);
+    }
+
+    private async Task DispatchAsyncInternal<TPacket>(ConnectionSession session, TPacket packet)
+    {
+        var handler = _provider.GetRequiredService<IPacketHandler<TPacket>>();
+        await handler.HandleAsync(session, packet);
+    }
+
 }
 

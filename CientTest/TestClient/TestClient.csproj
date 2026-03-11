@@ -11,4 +11,8 @@
     <PackageReference Include="LiteNetLib" Version="2.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\GameShared\GameShared.csproj" />
+  </ItemGroup>
+
 </Project>
