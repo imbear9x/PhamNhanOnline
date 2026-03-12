@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using GameServer.Network.Interface;
 using GameShared.Attributes;
+using GameShared.Logging;
 using GameShared.Packets;
 
 namespace GameServer.Network.Middleware
@@ -26,7 +27,7 @@ namespace GameServer.Network.Middleware
         {
             if (_authPackets.Contains(packet.GetType()) && !session.IsAuthenticated)
             {
-                Console.WriteLine($"Unauthorized packet: {packet.GetType().Name}");
+                Logger.Error($"Unauthorized packet: {packet.GetType().Name} (ConnectionId={session.ConnectionId})");
                 return;
             }
 

@@ -1,8 +1,11 @@
 using System.Collections.Concurrent;
 using System.Net;
 using GameServer.Network.Interface;
+using GameShared.Diagnostics;
+using GameShared.Logging;
 using GameShared.Packets;
 using LiteNetLib;
+using System.Text.Json;
 
 namespace GameServer.Network;
 
@@ -80,7 +83,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         if (packet is null)
             return;
 
-        _ = _dispatcher.DispatchAsync(session, packet);
+        _ = DispatchWithIncidentCaptureAsync(session, packet, bytes, channelNumber, deliveryMethod);
     }
 
     public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
@@ -99,5 +102,52 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         // Accept all for now; in production you may want to check keys or limits.
         request.AcceptIfKey(string.Empty);
     }
-}
 
+    private async Task DispatchWithIncidentCaptureAsync(
+        ConnectionSession session,
+        IPacket packet,
+        byte[] rawPayload,
+        byte channelNumber,
+        DeliveryMethod deliveryMethod)
+    {
+        try
+        {
+            await _dispatcher.DispatchAsync(session, packet);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, $"Unhandled packet exception: {packet.GetType().Name} (ConnectionId={session.ConnectionId})");
+
+            PacketIncidentCapture.Log(new PacketIncidentRecord
+            {
+                CapturedAtUtc = DateTime.UtcNow,
+                Source = "Server",
+                IncidentType = "ServerInboundPacketException",
+                ConnectionId = session.ConnectionId,
+                RemoteEndPoint = $"{session.Peer.Address}:{session.Peer.Port}",
+                IsAuthenticated = session.IsAuthenticated,
+                PlayerId = session.PlayerId == Guid.Empty ? null : session.PlayerId,
+                ChannelNumber = channelNumber,
+                DeliveryMethod = deliveryMethod.ToString(),
+                PacketType = packet.GetType().FullName ?? packet.GetType().Name,
+                PacketJson = TrySerializePacket(packet),
+                PacketPayloadBase64 = Convert.ToBase64String(rawPayload),
+                ExceptionType = ex.GetType().FullName ?? ex.GetType().Name,
+                ExceptionMessage = ex.Message,
+                ExceptionStackTrace = ex.StackTrace
+            });
+        }
+    }
+
+    private static string TrySerializePacket(IPacket packet)
+    {
+        try
+        {
+            return JsonSerializer.Serialize(packet, packet.GetType());
+        }
+        catch (Exception ex)
+        {
+            return $"<serialize_failed:{ex.GetType().Name}>";
+        }
+    }
+}

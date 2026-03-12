@@ -1,5 +1,7 @@
+using GameServer.Exceptions;
 using GameServer.Network.Interface;
 using GameServer.Services;
+using GameShared.Messages;
 using GameShared.Packets;
 
 namespace GameServer.Network.Handlers;
@@ -19,27 +21,37 @@ public sealed class RegisterHandler : IPacketHandler<RegisterPacket>
     {
         try
         {
-            var a = packet.HasEmail;
             // Email is accepted at the network layer; AccountService currently uses username/password.
-            await _accountService.RegisterWithPasswordAsync(packet.Username, packet.Password);
+            await _accountService.RegisterWithPasswordAsync(packet.Username!, packet.Password!);
 
             var response = new RegisterResultPacket
             {
                 Success = true,
-                Error   = string.Empty
+                Code = MessageCode.None
             };
 
             _server.Send(session.ConnectionId, response);
         }
-        catch (Exception ex)
+        catch (GameException ex)
         {
             var response = new RegisterResultPacket
             {
                 Success = false,
-                Error   = ex.Message
+                Code = ex.Code
             };
 
             _server.Send(session.ConnectionId, response);
+        }
+        catch (Exception)
+        {
+            var response = new RegisterResultPacket
+            {
+                Success = false,
+                Code = MessageCode.UnknownError
+            };
+
+            _server.Send(session.ConnectionId, response);
+            throw;
         }
     }
 }

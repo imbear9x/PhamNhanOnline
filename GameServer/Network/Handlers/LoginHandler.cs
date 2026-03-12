@@ -1,5 +1,7 @@
+using GameServer.Exceptions;
 using GameServer.Network.Interface;
 using GameServer.Services;
+using GameShared.Messages;
 using GameShared.Packets;
 
 namespace GameServer.Network.Handlers;
@@ -19,29 +21,42 @@ public sealed class LoginHandler : IPacketHandler<LoginPacket>
     {
         try
         {
-            var result = await _accountService.LoginWithPasswordAsync(packet.Username, packet.Password);
+            var result = await _accountService.LoginWithPasswordAsync(packet.Username!, packet.Password!);
 
             session.PlayerId = result.Account.AccountId;
+            session.IsAuthenticated = true;
 
             var response = new LoginResultPacket
             {
                 Success = true,
-                Error = string.Empty,
+                Code = MessageCode.None,
                 AccountId = result.Account.AccountId
             };
 
             _server.Send(session.ConnectionId, response);
         }
-        catch (Exception ex)
+        catch (GameException ex)
         {
             var response = new LoginResultPacket
             {
                 Success = false,
-                Error = ex.Message,
+                Code = ex.Code,
                 AccountId = Guid.Empty
             };
 
             _server.Send(session.ConnectionId, response);
+        }
+        catch (Exception)
+        {
+            var response = new LoginResultPacket
+            {
+                Success = false,
+                Code = MessageCode.UnknownError,
+                AccountId = Guid.Empty
+            };
+
+            _server.Send(session.ConnectionId, response);
+            throw;
         }
     }
 }

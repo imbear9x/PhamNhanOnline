@@ -260,6 +260,19 @@ public sealed class PacketGenerator : IIncrementalGenerator
 
         readExpression = string.Empty;
 
+        if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
+        {
+            var underlyingType = enumType.EnumUnderlyingType;
+            if (underlyingType is null || !TryGetReadExpression(underlyingType, out var underlyingRead))
+            {
+                return false;
+            }
+
+            var enumTypeName = type.ToDisplayString(MemberTypeDisplayFormat);
+            readExpression = $"({enumTypeName})({underlyingRead})";
+            return true;
+        }
+
         if (type.SpecialType == SpecialType.System_String)
         {
             readExpression = "global::GameShared.Packets.PacketReader.ReadString(reader)";
@@ -356,6 +369,18 @@ public sealed class PacketGenerator : IIncrementalGenerator
         }
 
         writeStatement = string.Empty;
+
+        if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
+        {
+            var underlyingType = enumType.EnumUnderlyingType;
+            if (underlyingType is null)
+            {
+                return false;
+            }
+
+            var castValue = $"({underlyingType.ToDisplayString(MemberTypeDisplayFormat)}){memberName}";
+            return TryGetWriteStatement(underlyingType, castValue, out writeStatement);
+        }
 
         if (type.SpecialType == SpecialType.System_String)
         {

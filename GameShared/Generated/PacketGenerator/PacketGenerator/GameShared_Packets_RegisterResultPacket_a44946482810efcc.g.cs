@@ -16,12 +16,12 @@ public partial class RegisterResultPacket
         return HasSuccess;
     }
 
-    public bool HasError => (_mask & (1UL << 1)) != 0;
+    public bool HasCode => (_mask & (1UL << 1)) != 0;
 
-    public bool TryGetError(out string? value)
+    public bool TryGetCode(out global::GameShared.Messages.MessageCode? value)
     {
-        value = Error;
-        return HasError;
+        value = Code;
+        return HasCode;
     }
 
     public void Serialize(BinaryWriter writer)
@@ -29,14 +29,14 @@ public partial class RegisterResultPacket
         ulong mask = 0;
 
         if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
-        if (!global::System.Collections.Generic.EqualityComparer<string?>.Default.Equals(Error, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
 
         writer.Write(mask);
 
         if ((mask & (1UL << 0)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, Success.Value);
         if ((mask & (1UL << 1)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, Error ?? string.Empty);
+            global::GameShared.Packets.PacketWriter.Write(writer, (int)Code.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -46,6 +46,6 @@ public partial class RegisterResultPacket
         if ((_mask & (1UL << 0)) != 0)
             Success = (bool?)(global::GameShared.Packets.PacketReader.ReadBool(reader));
         if ((_mask & (1UL << 1)) != 0)
-            Error = global::GameShared.Packets.PacketReader.ReadString(reader);
+            Code = (global::GameShared.Messages.MessageCode?)((global::GameShared.Messages.MessageCode)(global::GameShared.Packets.PacketReader.ReadInt(reader)));
     }
 }

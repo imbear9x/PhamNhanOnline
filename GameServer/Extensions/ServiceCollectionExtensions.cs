@@ -4,6 +4,7 @@ using GameServer.Network;
 using GameServer.Network.Handlers;
 using GameServer.Network.Interface;
 using GameServer.Network.Middleware;
+using GameServer.Network.Validations;
 using GameServer.Repositories;
 using GameServer.Services;
 using GameShared.Packets;
@@ -36,12 +37,19 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<NetworkServer>();
         services.AddSingleton<INetworkSender>(p => p.GetRequiredService<NetworkServer>());
-
         services.AddSingleton<PacketDispatcher>();
-        services.AddScoped<IPacketMiddleware, AuthMiddleware>();
-        services.AddScoped<IPacketMiddleware, RateLimitMiddleware>();
+        
         return services;
     }
+    public static IServiceCollection AddMiddleWare(this IServiceCollection services)
+    {
+        services.AddSingleton<IPacketMiddleware, RateLimitMiddleware>();
+        services.AddSingleton<IPacketMiddleware, AuthMiddleware>();
+        services.AddSingleton<IPacketMiddleware, PacketValidationMiddleware>();
+        
+        return services;
+    }
+
     public static IServiceCollection AddWorldSystems(this IServiceCollection services)
     {
         
@@ -55,6 +63,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<LoginPacket>, LoginHandler>();
         services.AddScoped<IPacketHandler<RegisterPacket>, RegisterHandler>();
 
+        services.AddSingleton<IPacketValidator, LoginPacketValidator>();
+        services.AddSingleton<IPacketValidator, RegisterPacketValidator>();
 
 
         return services;
@@ -78,4 +88,3 @@ public static class ServiceCollectionExtensions
         return services;
     }
 }
-

@@ -2,7 +2,9 @@ using System.Security.Cryptography;
 using System.Text;
 using GameServer.DTO;
 using GameServer.Entities;
+using GameServer.Exceptions;
 using GameServer.Repositories;
+using GameShared.Messages;
 using LinqToDB;
 
 namespace GameServer.Services;
@@ -37,7 +39,7 @@ public sealed class AccountService
 
         var existing = await _credentials.GetByProviderUserIdAsync(ProviderPassword, loginId, cancellationToken);
         if (existing is not null)
-            throw new InvalidOperationException("Login already exists.");
+            throw new GameException(MessageCode.LoginAlreadyExists);
 
         var account = new Account
         {
@@ -74,14 +76,14 @@ public sealed class AccountService
 
         var cred = await _credentials.GetByProviderUserIdAsync(ProviderPassword, loginId, cancellationToken);
         if (cred?.PasswordHash is null)
-            throw new InvalidOperationException("Invalid credentials.");
+            throw new GameException(MessageCode.InvalidCredentials);
 
         if (!VerifyPassword(password, cred.PasswordHash))
-            throw new InvalidOperationException("Invalid credentials.");
+            throw new GameException(MessageCode.InvalidCredentials);
 
         var account = await _accounts.GetByIdAsync(cred.AccountId, cancellationToken);
         if (account is null)
-            throw new InvalidOperationException("Account not found.");
+            throw new GameException(MessageCode.AccountNotFound);
 
         account.LastLogin = DateTime.UtcNow;
         await _accounts.UpdateAsync(account, cancellationToken);
@@ -100,7 +102,7 @@ public sealed class AccountService
         {
             var existingAccount = await _accounts.GetByIdAsync(cred.AccountId, cancellationToken);
             if (existingAccount is null)
-                throw new InvalidOperationException("Account not found.");
+                throw new GameException(MessageCode.AccountNotFound);
 
             existingAccount.LastLogin = DateTime.UtcNow;
             await _accounts.UpdateAsync(existingAccount, cancellationToken);
@@ -142,15 +144,15 @@ public sealed class AccountService
 
         var account = await _accounts.GetByIdAsync(accountId, cancellationToken);
         if (account is null)
-            throw new InvalidOperationException("Account not found.");
+            throw new GameException(MessageCode.AccountNotFound);
 
         var alreadyLinked = await _credentials.GetByAccountAndProviderAsync(accountId, ProviderGoogle, cancellationToken);
         if (alreadyLinked is not null)
-            throw new InvalidOperationException("Google credential already linked.");
+            throw new GameException(MessageCode.GoogleCredentialAlreadyLinked);
 
         var usedByOther = await _credentials.GetByProviderUserIdAsync(ProviderGoogle, googleUserId, cancellationToken);
         if (usedByOther is not null)
-            throw new InvalidOperationException("Google credential already linked to another account.");
+            throw new GameException(MessageCode.GoogleCredentialLinkedToOtherAccount);
 
         var cred = new AccountCredential
         {
@@ -175,15 +177,15 @@ public sealed class AccountService
 
         var account = await _accounts.GetByIdAsync(accountId, cancellationToken);
         if (account is null)
-            throw new InvalidOperationException("Account not found.");
+            throw new GameException(MessageCode.AccountNotFound);
 
         var alreadyLinked = await _credentials.GetByAccountAndProviderAsync(accountId, ProviderPhone, cancellationToken);
         if (alreadyLinked is not null)
-            throw new InvalidOperationException("Phone credential already linked.");
+            throw new GameException(MessageCode.PhoneCredentialAlreadyLinked);
 
         var usedByOther = await _credentials.GetByProviderUserIdAsync(ProviderPhone, phoneNumber, cancellationToken);
         if (usedByOther is not null)
-            throw new InvalidOperationException("Phone credential already linked to another account.");
+            throw new GameException(MessageCode.PhoneCredentialLinkedToOtherAccount);
 
         var cred = new AccountCredential
         {
@@ -209,14 +211,14 @@ public sealed class AccountService
 
         var account = await _accounts.GetByIdAsync(accountId, cancellationToken);
         if (account is null)
-            throw new InvalidOperationException("Account not found.");
+            throw new GameException(MessageCode.AccountNotFound);
 
         var cred = await _credentials.GetByAccountAndProviderAsync(accountId, ProviderPassword, cancellationToken);
         if (cred?.PasswordHash is null)
-            throw new InvalidOperationException("Password credential not found.");
+            throw new GameException(MessageCode.PasswordCredentialNotFound);
 
         if (!VerifyPassword(oldPassword, cred.PasswordHash))
-            throw new InvalidOperationException("Invalid credentials.");
+            throw new GameException(MessageCode.InvalidCredentials);
 
         cred.PasswordHash = HashPassword(newPassword);
         await _credentials.UpdateAsync(cred, cancellationToken);
@@ -231,21 +233,21 @@ public sealed class AccountService
     {
         provider = NormalizeProvider(provider);
         if (provider == ProviderPassword)
-            throw new InvalidOperationException("Use ChangePasswordAsync for password.");
+            throw new GameException(MessageCode.UseChangePasswordForPasswordProvider);
 
         newProviderUserId = NormalizeProviderUserId(newProviderUserId);
 
         var account = await _accounts.GetByIdAsync(accountId, cancellationToken);
         if (account is null)
-            throw new InvalidOperationException("Account not found.");
+            throw new GameException(MessageCode.AccountNotFound);
 
         var cred = await _credentials.GetByAccountAndProviderAsync(accountId, provider, cancellationToken);
         if (cred is null)
-            throw new InvalidOperationException("Credential not found.");
+            throw new GameException(MessageCode.CredentialNotFound);
 
         var usedByOther = await _credentials.GetByProviderUserIdAsync(provider, newProviderUserId, cancellationToken);
         if (usedByOther is not null && usedByOther.AccountId != accountId)
-            throw new InvalidOperationException("Credential already linked to another account.");
+            throw new GameException(MessageCode.CredentialAlreadyLinkedToOtherAccount);
 
         cred.ProviderUserId = newProviderUserId;
         await _credentials.UpdateAsync(cred, cancellationToken);
@@ -259,7 +261,7 @@ public sealed class AccountService
     {
         loginId = (loginId ?? string.Empty).Trim();
         if (loginId.Length is < MinUsernameLength or > MaxUsernameLength)
-            throw new ArgumentException($"username length must be {MinUsernameLength}-{MaxUsernameLength}.", nameof(loginId));
+            throw new GameException(MessageCode.UsernameLengthInvalid);
         return loginId.ToLowerInvariant();
     }
 
@@ -267,9 +269,9 @@ public sealed class AccountService
     {
         provider = (provider ?? string.Empty).Trim().ToLowerInvariant();
         if (provider.Length == 0)
-            throw new ArgumentException("provider is required.", nameof(provider));
+            throw new GameException(MessageCode.ProviderRequired);
         if (provider is not (ProviderGoogle or ProviderPhone or ProviderPassword))
-            throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unsupported provider.");
+            throw new GameException(MessageCode.UnsupportedProvider);
         return provider;
     }
 
@@ -277,17 +279,17 @@ public sealed class AccountService
     {
         providerUserId = (providerUserId ?? string.Empty).Trim();
         if (providerUserId.Length == 0)
-            throw new ArgumentException("providerUserId is required.", nameof(providerUserId));
+            throw new GameException(MessageCode.ProviderUserIdRequired);
         return providerUserId;
     }
 
     private static void ValidatePassword(string password)
     {
         if (string.IsNullOrWhiteSpace(password))
-            throw new ArgumentException("Password is required.", nameof(password));
+            throw new GameException(MessageCode.PasswordRequired);
 
         if (password.Length is < 8 or > 128)
-            throw new ArgumentException("Password length must be 8-128 characters.", nameof(password));
+            throw new GameException(MessageCode.PasswordLengthInvalid);
 
         var hasLower = false;
         var hasUpper = false;
@@ -303,7 +305,7 @@ public sealed class AccountService
         }
 
         if (!(hasLower && hasUpper && hasDigit && hasSymbol))
-            throw new ArgumentException("Password must include lower, upper, digit, and symbol.", nameof(password));
+            throw new GameException(MessageCode.PasswordComplexityInvalid);
     }
 
     // Format: PBKDF2-SHA256$<iterations>$<salt_b64>$<hash_b64>
@@ -358,4 +360,3 @@ public sealed class AccountService
 public sealed record CredentialDto(Guid Id, Guid AccountId, string Provider, string ProviderUserId, DateTime? CreatedAt);
 
 public sealed record LoginResultDto(AccountDto Account, CredentialDto Credential);
-

@@ -16,12 +16,12 @@ public partial class LoginResultPacket
         return HasSuccess;
     }
 
-    public bool HasError => (_mask & (1UL << 1)) != 0;
+    public bool HasCode => (_mask & (1UL << 1)) != 0;
 
-    public bool TryGetError(out string? value)
+    public bool TryGetCode(out global::GameShared.Messages.MessageCode? value)
     {
-        value = Error;
-        return HasError;
+        value = Code;
+        return HasCode;
     }
 
     public bool HasAccountId => (_mask & (1UL << 2)) != 0;
@@ -37,7 +37,7 @@ public partial class LoginResultPacket
         ulong mask = 0;
 
         if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
-        if (!global::System.Collections.Generic.EqualityComparer<string?>.Default.Equals(Error, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
         if (!global::System.Collections.Generic.EqualityComparer<global::System.Guid?>.Default.Equals(AccountId, default!)) mask |= 1UL << 2;
 
         writer.Write(mask);
@@ -45,7 +45,7 @@ public partial class LoginResultPacket
         if ((mask & (1UL << 0)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, Success.Value);
         if ((mask & (1UL << 1)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, Error ?? string.Empty);
+            global::GameShared.Packets.PacketWriter.Write(writer, (int)Code.Value);
         if ((mask & (1UL << 2)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, AccountId.Value);
     }
@@ -57,7 +57,7 @@ public partial class LoginResultPacket
         if ((_mask & (1UL << 0)) != 0)
             Success = (bool?)(global::GameShared.Packets.PacketReader.ReadBool(reader));
         if ((_mask & (1UL << 1)) != 0)
-            Error = global::GameShared.Packets.PacketReader.ReadString(reader);
+            Code = (global::GameShared.Messages.MessageCode?)((global::GameShared.Messages.MessageCode)(global::GameShared.Packets.PacketReader.ReadInt(reader)));
         if ((_mask & (1UL << 2)) != 0)
             AccountId = (global::System.Guid?)(global::GameShared.Packets.PacketReader.ReadGuid(reader));
     }

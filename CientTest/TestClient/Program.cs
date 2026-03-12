@@ -1,5 +1,9 @@
+using GameShared.Diagnostics;
+using GameShared.Logging;
+using GameShared.Messages;
 using GameShared.Packets;
 using LiteNetLib;
+using System.Text.Json;
 
 class AuthClientListener : INetEventListener
 {
@@ -19,12 +23,13 @@ class AuthClientListener : INetEventListener
 
     public void OnPeerConnected(NetPeer peer)
     {
-        Console.WriteLine("Connected to server");
+        Logger.Info("Connected to server.");
 
         var packet = new RegisterPacket
         {
             Username = "testuser",
-            Password = "123456"
+            Password = "Test@1234",
+            Email = "testuser@example.com"
         };
 
         SendPacket(peer, packet);
@@ -38,43 +43,77 @@ class AuthClientListener : INetEventListener
         var packet = PacketSerializer.Deserialize(bytes);
         if (packet is null)
         {
-            Console.WriteLine($"Deserialize failed. ByteLength={bytes.Length}");
+            Logger.Error($"Deserialize failed. ByteLength={bytes.Length}");
             return;
         }
 
-        switch (packet)
+        try
         {
-            case RegisterResultPacket registerResult:
+            switch (packet)
             {
-                Console.WriteLine("Register result:");
-                Console.WriteLine($"Success = {registerResult.Success}");
-                Console.WriteLine($"Error = {registerResult.Error}");
-
-                var loginPacket = new LoginPacket
+                case RegisterResultPacket registerResult:
                 {
-                    Username = "testuser",
-                    Password = "123456"
-                };
-                SendPacket(peer, loginPacket);
-                break;
-            }
-            case LoginResultPacket loginResult:
-            {
-                Console.WriteLine("Login result:");
-                Console.WriteLine($"Success = {loginResult.Success}");
-                Console.WriteLine($"Error = {loginResult.Error}");
-                Console.WriteLine($"AccountId = {loginResult.AccountId}");
+                    Logger.Info($"Register result: Success={registerResult.Success}, Code={registerResult.Code}");
 
-                lock (_sync)
-                {
-                    _loginFinished = true;
+                    // If account already exists, continue to login to complete auth flow test.
+                    if (registerResult.Success is true || registerResult.Code == MessageCode.LoginAlreadyExists)
+                    {
+                        var loginPacket = new LoginPacket
+                        {
+                            Username = "testuser",
+                            Password = "Test@1234"
+                        };
+                        SendPacket(peer, loginPacket);
+                    }
+                    else
+                    {
+                        lock (_sync)
+                        {
+                            _loginFinished = true;
+                        }
+                    }
+                    break;
                 }
-                break;
+                case LoginResultPacket loginResult:
+                {
+                    Logger.Info($"Login result: Success={loginResult.Success}, Code={loginResult.Code}, AccountId={loginResult.AccountId}");
+
+                    lock (_sync)
+                    {
+                        _loginFinished = true;
+                    }
+                    break;
+                }
+                default:
+                {
+                    Logger.Info($"Unhandled packet type: {packet.GetType().Name}");
+                    break;
+                }
             }
-            default:
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, $"Client packet handler error: {packet.GetType().Name}");
+            PacketIncidentCapture.Log(new PacketIncidentRecord
             {
-                Console.WriteLine($"Unhandled packet type: {packet.GetType().Name}");
-                break;
+                CapturedAtUtc = DateTime.UtcNow,
+                Source = "Client",
+                IncidentType = "ClientPacketHandleException",
+                ConnectionId = peer.Id,
+                RemoteEndPoint = $"{peer.Address}:{peer.Port}",
+                ChannelNumber = channelNumber,
+                DeliveryMethod = deliveryMethod.ToString(),
+                PacketType = packet.GetType().FullName ?? packet.GetType().Name,
+                PacketJson = TrySerializePacket(packet),
+                PacketPayloadBase64 = Convert.ToBase64String(bytes),
+                ExceptionType = ex.GetType().FullName ?? ex.GetType().Name,
+                ExceptionMessage = ex.Message,
+                ExceptionStackTrace = ex.StackTrace
+            });
+
+            lock (_sync)
+            {
+                _loginFinished = true;
             }
         }
     }
@@ -83,17 +122,17 @@ class AuthClientListener : INetEventListener
     {
         var data = PacketSerializer.Serialize(packet);
         peer.Send(data, DeliveryMethod.ReliableOrdered);
-        Console.WriteLine($"Sent {packet.GetType().Name} (bytes={data.Length})");
+        Logger.Info($"Sent {packet.GetType().Name} (bytes={data.Length})");
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
-        Console.WriteLine($"Disconnected from server. Reason: {disconnectInfo.Reason}");
+        Logger.Info($"Disconnected from server. Reason: {disconnectInfo.Reason}");
     }
 
     public void OnNetworkError(System.Net.IPEndPoint endPoint, System.Net.Sockets.SocketError socketError)
     {
-        Console.WriteLine($"Network error: {socketError}");
+        Logger.Error($"Network error: {socketError}");
     }
 
     public void OnNetworkLatencyUpdate(NetPeer peer, int latency)
@@ -109,12 +148,31 @@ class AuthClientListener : INetEventListener
     {
         request.Reject();
     }
+
+    private static string TrySerializePacket(IPacket packet)
+    {
+        try
+        {
+            return JsonSerializer.Serialize(packet, packet.GetType());
+        }
+        catch (Exception ex)
+        {
+            return $"<serialize_failed:{ex.GetType().Name}>";
+        }
+    }
 }
 
 class Program
 {
     static void Main(string[] args)
     {
+        Logger.Configure(GetLogRootPath(args));
+        PacketIncidentCapture.Configure(GetBoolArg(args, "--packetIncidentCapture=", true));
+        Logger.Info($"Packet incident capture enabled: {PacketIncidentCapture.Enabled}");
+
+        if (PacketReplayTool.TryRun(args))
+            return;
+
         const string serverAddress = "127.0.0.1";
         const int serverPort = 7777;
 
@@ -126,11 +184,11 @@ class Program
 
         if (!netManager.Start())
         {
-            Console.WriteLine("Failed to start LiteNetLib client.");
+            Logger.Error("Failed to start LiteNetLib client.");
             return;
         }
 
-        Console.WriteLine("Connecting to server...");
+        Logger.Info("Connecting to server...");
         netManager.Connect(serverAddress, serverPort, string.Empty);
 
         while (!authListener.LoginFinished)
@@ -142,7 +200,33 @@ class Program
         Thread.Sleep(200);
         netManager.Stop();
 
-        Console.WriteLine("Finished. Press any key to exit.");
-        Console.ReadKey();
+        Logger.Info("Finished client run.");
+    }
+
+    private static string? GetLogRootPath(string[] args)
+    {
+        const string prefix = "--logRoot=";
+        foreach (var arg in args)
+        {
+            if (arg.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return arg[prefix.Length..];
+        }
+
+        return null;
+    }
+
+    private static bool GetBoolArg(string[] args, string prefix, bool defaultValue)
+    {
+        foreach (var arg in args)
+        {
+            if (!arg.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var raw = arg[prefix.Length..];
+            if (bool.TryParse(raw, out var parsed))
+                return parsed;
+        }
+
+        return defaultValue;
     }
 }
