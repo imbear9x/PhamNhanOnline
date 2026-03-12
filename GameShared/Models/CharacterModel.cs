@@ -1,5 +1,8 @@
+using GameShared.Attributes;
+
 namespace GameShared.Models;
 
+[PacketModel]
 public struct CharacterAppearanceModel
 {
     public int ModelId;
@@ -9,6 +12,7 @@ public struct CharacterAppearanceModel
     public int FaceId;
 }
 
+[PacketModel]
 public struct CharacterModel
 {
     public Guid CharacterId;
@@ -18,4 +22,3 @@ public struct CharacterModel
     public CharacterAppearanceModel Appearance;
     public long? CreatedUnixMs;
 }
-

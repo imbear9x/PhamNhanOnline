@@ -1,5 +1,8 @@
+using GameShared.Attributes;
+
 namespace GameShared.Models;
 
+[PacketModel]
 public struct CharacterStatsModel
 {
     public Guid CharacterId;
@@ -15,4 +18,3 @@ public struct CharacterStatsModel
     public double Fortune;
     public int Potential;
 }
-

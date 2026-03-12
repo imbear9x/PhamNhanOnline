@@ -26,4 +26,9 @@ namespace GameShared.Attributes
     public class RequireAuthAttribute : Attribute
     {
     }
+
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
+    public class PacketModelAttribute : Attribute
+    {
+    }
 }

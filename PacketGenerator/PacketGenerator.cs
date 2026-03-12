@@ -17,6 +17,7 @@ public sealed class PacketGenerator : IIncrementalGenerator
         SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
             SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions |
             SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+    private const string PacketModelAttributeTypeName = "GameShared.Attributes.PacketModelAttribute";
 
     private static readonly DiagnosticDescriptor DuplicatePacketIdDescriptor = new(
         id: "PG1001",
@@ -357,6 +358,28 @@ public sealed class PacketGenerator : IIncrementalGenerator
             return true;
         }
 
+        if (type is IArrayTypeSymbol arrayType &&
+            TryGetTypeArgumentDisplay(arrayType.ElementType, out var arrayElementTypeName))
+        {
+            readExpression = $"global::GameShared.Packets.PacketModelSerializer.ReadArray<{arrayElementTypeName}>(reader)";
+            return true;
+        }
+
+        if (TryGetListElementType(type, out var listElementType) &&
+            TryGetTypeArgumentDisplay(listElementType!, out var listElementTypeName))
+        {
+            var typeName = type.ToDisplayString(MemberTypeDisplayFormat);
+            readExpression = $"({typeName})global::GameShared.Packets.PacketModelSerializer.ReadList<{listElementTypeName}>(reader)!";
+            return true;
+        }
+
+        if (IsPacketModelType(type))
+        {
+            var typeName = type.ToDisplayString(MemberTypeDisplayFormat);
+            readExpression = $"global::GameShared.Packets.PacketModelSerializer.Read<{typeName}>(reader)";
+            return true;
+        }
+
         return false;
     }
 
@@ -416,7 +439,64 @@ public sealed class PacketGenerator : IIncrementalGenerator
             return true;
         }
 
+        if (type is IArrayTypeSymbol)
+        {
+            writeStatement = $"global::GameShared.Packets.PacketModelSerializer.WriteArray(writer, {memberName});";
+            return true;
+        }
+
+        if (TryGetListElementType(type, out _))
+        {
+            writeStatement = $"global::GameShared.Packets.PacketModelSerializer.WriteList(writer, {memberName});";
+            return true;
+        }
+
+        if (IsPacketModelType(type))
+        {
+            writeStatement = $"global::GameShared.Packets.PacketModelSerializer.Write(writer, {memberName});";
+            return true;
+        }
+
         return false;
+    }
+
+    private static bool TryGetTypeArgumentDisplay(ITypeSymbol type, out string typeName)
+    {
+        typeName = type.ToDisplayString(MemberTypeDisplayFormat);
+        return !string.IsNullOrWhiteSpace(typeName);
+    }
+
+    private static bool TryGetListElementType(ITypeSymbol type, out ITypeSymbol? elementType)
+    {
+        elementType = null;
+        if (type is not INamedTypeSymbol namedType || !namedType.IsGenericType)
+            return false;
+
+        var genericType = namedType.ConstructedFrom.ToDisplayString();
+        if (genericType is not (
+            "System.Collections.Generic.List<T>" or
+            "System.Collections.Generic.IList<T>" or
+            "System.Collections.Generic.IReadOnlyList<T>" or
+            "System.Collections.Generic.ICollection<T>" or
+            "System.Collections.Generic.IEnumerable<T>"))
+        {
+            return false;
+        }
+
+        if (namedType.TypeArguments.Length != 1)
+            return false;
+
+        elementType = namedType.TypeArguments[0];
+        return true;
+    }
+
+    private static bool IsPacketModelType(ITypeSymbol type)
+    {
+        return type.GetAttributes().Any(attr =>
+            string.Equals(
+                attr.AttributeClass?.ToDisplayString(),
+                PacketModelAttributeTypeName,
+                StringComparison.Ordinal));
     }
 
     private static List<PacketAssignment> BuildPacketAssignments(
