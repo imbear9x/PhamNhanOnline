@@ -97,9 +97,8 @@ internal static class PacketReplayTool
                 return "dataPacket.json";
         }
 
-        // Convenience mode: if dataPacket.json exists, auto-run replay.
-        const string defaultPath = "dataPacket.json";
-        return File.Exists(defaultPath) ? defaultPath : null;
+        // Replay mode must be explicit to avoid hijacking normal auth flow.
+        return null;
     }
 
     private static string? GetStringArg(string[] args, string prefix)

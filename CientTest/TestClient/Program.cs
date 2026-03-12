@@ -29,7 +29,7 @@ class AuthClientListener : INetEventListener
         {
             Username = "testuser",
             Password = "Test@1234",
-            // Email = "testuser@example.com"
+            Email = "testuser@example.com"
         };
 
         SendPacket(peer, packet);
@@ -67,10 +67,7 @@ class AuthClientListener : INetEventListener
                     }
                     else
                     {
-                        lock (_sync)
-                        {
-                            _loginFinished = true;
-                        }
+                        MarkLoginFinished();
                     }
                     break;
                 }
@@ -78,10 +75,7 @@ class AuthClientListener : INetEventListener
                 {
                     Logger.Info($"Login result: Success={loginResult.Success}, Code={loginResult.Code}, AccountId={loginResult.AccountId}");
 
-                    lock (_sync)
-                    {
-                        _loginFinished = true;
-                    }
+                    MarkLoginFinished();
                     break;
                 }
                 default:
@@ -111,10 +105,7 @@ class AuthClientListener : INetEventListener
                 ExceptionStackTrace = ex.StackTrace
             });
 
-            lock (_sync)
-            {
-                _loginFinished = true;
-            }
+            MarkLoginFinished();
         }
     }
 
@@ -128,11 +119,13 @@ class AuthClientListener : INetEventListener
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
         Logger.Info($"Disconnected from server. Reason: {disconnectInfo.Reason}");
+        MarkLoginFinished();
     }
 
     public void OnNetworkError(System.Net.IPEndPoint endPoint, System.Net.Sockets.SocketError socketError)
     {
         Logger.Error($"Network error: {socketError}");
+        MarkLoginFinished();
     }
 
     public void OnNetworkLatencyUpdate(NetPeer peer, int latency)
@@ -160,6 +153,14 @@ class AuthClientListener : INetEventListener
             return $"<serialize_failed:{ex.GetType().Name}>";
         }
     }
+
+    private void MarkLoginFinished()
+    {
+        lock (_sync)
+        {
+            _loginFinished = true;
+        }
+    }
 }
 
 class Program
@@ -175,6 +176,8 @@ class Program
 
         const string serverAddress = "127.0.0.1";
         const int serverPort = 7777;
+        var timeoutSeconds = Math.Max(5, GetIntArg(args, "--timeoutSec=", 20));
+        var waitForInput = GetBoolArg(args, "--waitForInput=", false);
 
         var authListener = new AuthClientListener();
         var netManager = new NetManager(authListener)
@@ -190,17 +193,26 @@ class Program
 
         Logger.Info("Connecting to server...");
         netManager.Connect(serverAddress, serverPort, string.Empty);
+        var startedAt = DateTime.UtcNow;
 
-        while (!authListener.LoginFinished)
+        while (!authListener.LoginFinished &&
+               (DateTime.UtcNow - startedAt).TotalSeconds < timeoutSeconds)
         {
             netManager.PollEvents();
             Thread.Sleep(15);
         }
 
-        Thread.Sleep(200);
+        if (!authListener.LoginFinished)
+        {
+            Logger.Error($"Client flow timed out after {timeoutSeconds}s without finishing login/register.");
+        }
+
         netManager.Stop();
 
         Logger.Info("Finished client run.");
+
+        if (waitForInput)
+            Console.ReadLine();
     }
 
     private static string? GetLogRootPath(string[] args)
@@ -224,6 +236,20 @@ class Program
 
             var raw = arg[prefix.Length..];
             if (bool.TryParse(raw, out var parsed))
+                return parsed;
+        }
+
+        return defaultValue;
+    }
+
+    private static int GetIntArg(string[] args, string prefix, int defaultValue)
+    {
+        foreach (var arg in args)
+        {
+            if (!arg.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (int.TryParse(arg[prefix.Length..], out var parsed))
                 return parsed;
         }
 

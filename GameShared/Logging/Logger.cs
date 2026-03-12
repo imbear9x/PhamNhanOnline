@@ -1,8 +1,11 @@
+using System.Text;
+
 namespace GameShared.Logging;
 
 public static class Logger
 {
     private static readonly object Sync = new();
+    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
     private static string? _logDirectory;
 
     public static void Configure(string? logRootPath = null)
@@ -49,11 +52,13 @@ public static class Logger
                 var filePath = Path.Combine(_logDirectory!, fileName);
                 var line = $"[{now:yyyy-MM-dd HH:mm:ss.fff}] [{level}] {message}";
 
-                File.AppendAllText(filePath, line + Environment.NewLine);
+                using var stream = new FileStream(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                using var writer = new StreamWriter(stream, Utf8NoBom);
+                writer.WriteLine(line);
             }
-            catch
+            catch (Exception ex)
             {
-                // Intentionally ignore logging failures to avoid breaking runtime flow.
+                Console.Error.WriteLine($"Logger write failed: {ex.Message}");
             }
         }
     }
