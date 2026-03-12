@@ -1,0 +1,10 @@
+{
+    "dotnet.defaultSolution": "PhamNhanOnline.sln",
+    "window.openFoldersInNewWindow": "on",
+    "window.openFilesInNewWindow": "on",
+    "files.exclude": {
+        "**/.vs": true,
+        "**/bin": true,
+        "**/obj": true
+    }
+}

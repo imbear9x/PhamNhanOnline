@@ -1,0 +1,67 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "GameServer: Launch",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build: GameServer",
+            "program": "${workspaceFolder}/GameServer/bin/Debug/net8.0/GameServer.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/GameServer",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "justMyCode": true
+        },
+        {
+            "name": "TestClient: Launch",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build: TestClient",
+            "program": "${workspaceFolder}/CientTest/TestClient/bin/Debug/net8.0/TestClient.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/CientTest/TestClient",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "justMyCode": true
+        },
+        {
+            "name": "GameServer: Launch (no build)",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/GameServer/bin/Debug/net8.0/GameServer.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/GameServer",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "justMyCode": true
+        },
+        {
+            "name": "TestClient: Launch (no build)",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/CientTest/TestClient/bin/Debug/net8.0/TestClient.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/CientTest/TestClient",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "justMyCode": true
+        },
+        {
+            "name": ".NET: Attach",
+            "type": "coreclr",
+            "request": "attach"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "GameServer + TestClient",
+            "preLaunchTask": "build: Server + Client",
+            "configurations": [
+                "GameServer: Launch (no build)",
+                "TestClient: Launch (no build)"
+            ],
+            "stopAll": true
+        }
+    ]
+}

@@ -1,0 +1,60 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build: GameServer",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/GameServer/GameServer.csproj",
+                "/property:GenerateFullPaths=true"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "build: TestClient",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/CientTest/TestClient/TestClient.csproj",
+                "/property:GenerateFullPaths=true"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build: Server + Client",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "build: GameServer",
+                "build: TestClient"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "clean: GameServer",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "clean",
+                "${workspaceFolder}/GameServer/GameServer.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "clean: TestClient",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "clean",
+                "${workspaceFolder}/CientTest/TestClient/TestClient.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}

@@ -29,7 +29,7 @@ class AuthClientListener : INetEventListener
         {
             Username = "testuser",
             Password = "Test@1234",
-            Email = "testuser@example.com"
+            // Email = "testuser@example.com"
         };
 
         SendPacket(peer, packet);

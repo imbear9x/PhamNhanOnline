@@ -2,7 +2,15 @@ bin/
 obj/
 
 .vs/
-.vscode/
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/extensions.json
+
+CientTest/TestClient/.vscode/*
+!CientTest/TestClient/.vscode/launch.json
+!CientTest/TestClient/.vscode/tasks.json
 
 *.user
 *.suo
