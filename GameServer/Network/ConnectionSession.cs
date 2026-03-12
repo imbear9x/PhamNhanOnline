@@ -9,6 +9,7 @@ public sealed class ConnectionSession
     public int ConnectionId => Peer.Id;
 
     public Guid PlayerId { get; set; }
+    public Guid SelectedCharacterId { get; set; }
     public string? ResumeToken { get; set; }
     public PlayerSession? Player { get; set; }
     public bool IsAuthenticated { get; set; }
@@ -18,5 +19,6 @@ public sealed class ConnectionSession
     {
         Peer = peer;
         PlayerId = Guid.Empty;
+        SelectedCharacterId = Guid.Empty;
     }
 }

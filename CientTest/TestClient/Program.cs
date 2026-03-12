@@ -1,6 +1,7 @@
 using GameShared.Diagnostics;
 using GameShared.Logging;
 using GameShared.Messages;
+using GameShared.Models;
 using GameShared.Packets;
 using LiteNetLib;
 using System.Text.Json;
@@ -8,14 +9,19 @@ using System.Text.Json;
 class AuthClientListener : INetEventListener
 {
     private const string TestUsername = "khoivu";
-    private const string InitialPassword = "t##AAAAadmin";
-    private const string TargetPassword = "hihi@admin";
+    private const string PreferredPassword = "hihi@admin";
+    private const string FallbackPassword = "t##AAAAadmin";
+    private const string RegisterEmail = "khoivu@example.com";
+    private const int DefaultServerId = 1;
+    private const int DefaultModelId = 1;
 
     private readonly object _sync = new();
-    private bool _loginFinished;
-    private string _currentKnownPassword = InitialPassword;
-    private string? _pendingChangeNewPassword;
-    private bool _needsSecondChangeToTarget;
+    private bool _flowFinished;
+    private string _currentPassword = PreferredPassword;
+    private bool _fallbackTried;
+    private bool _registerTried;
+    private int _createAttempts;
+    private Guid _targetCharacterId;
 
     public bool LoginFinished
     {
@@ -23,7 +29,7 @@ class AuthClientListener : INetEventListener
         {
             lock (_sync)
             {
-                return _loginFinished;
+                return _flowFinished;
             }
         }
     }
@@ -31,15 +37,7 @@ class AuthClientListener : INetEventListener
     public void OnPeerConnected(NetPeer peer)
     {
         Logger.Info("Connected to server.");
-
-        var packet = new RegisterPacket
-        {
-            Username = TestUsername,
-            Password = InitialPassword,
-            Email = "khoivu@example.com"
-        };
-
-        SendPacket(peer, packet);
+        SendLogin(peer, _currentPassword);
     }
 
     public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
@@ -61,16 +59,15 @@ class AuthClientListener : INetEventListener
                 case RegisterResultPacket registerResult:
                 {
                     Logger.Info($"Register result: Success={registerResult.Success}, Code={registerResult.Code}");
-
-                    // If account already exists, continue login to run password-change flow.
                     if (registerResult.Success is true || registerResult.Code == MessageCode.LoginAlreadyExists)
                     {
-                        SendLogin(peer, _currentKnownPassword);
+                        SendLogin(peer, _currentPassword);
                     }
                     else
                     {
-                        MarkLoginFinished();
+                        MarkFlowFinished();
                     }
+
                     break;
                 }
                 case LoginResultPacket loginResult:
@@ -79,49 +76,98 @@ class AuthClientListener : INetEventListener
 
                     if (loginResult.Success is true)
                     {
-                        if (string.Equals(_currentKnownPassword, InitialPassword, StringComparison.Ordinal))
-                        {
-                            SendChangePassword(peer, InitialPassword, TargetPassword);
-                        }
-                        else
-                        {
-                            // Account may already be on target password from previous run. Change back once,
-                            // then apply requested final target password so the full flow still executes.
-                            _needsSecondChangeToTarget = true;
-                            SendChangePassword(peer, TargetPassword, InitialPassword);
-                        }
+                        SendGetCharacterList(peer);
                     }
-                    else if (loginResult.Code == MessageCode.InvalidCredentials &&
-                             string.Equals(_currentKnownPassword, InitialPassword, StringComparison.Ordinal))
+                    else if (loginResult.Code == MessageCode.InvalidCredentials && !_fallbackTried)
                     {
-                        Logger.Info("Initial password login failed. Retrying with target password.");
-                        _currentKnownPassword = TargetPassword;
-                        SendLogin(peer, _currentKnownPassword);
+                        _fallbackTried = true;
+                        _currentPassword = FallbackPassword;
+                        Logger.Info("Preferred password login failed. Retrying fallback password.");
+                        SendLogin(peer, _currentPassword);
+                    }
+                    else if (loginResult.Code == MessageCode.InvalidCredentials && !_registerTried)
+                    {
+                        _registerTried = true;
+                        _currentPassword = PreferredPassword;
+                        Logger.Info("Login failed on both passwords. Trying register then login.");
+                        SendRegister(peer, _currentPassword);
                     }
                     else
                     {
-                        MarkLoginFinished();
+                        MarkFlowFinished();
                     }
+
                     break;
                 }
-                case ChangePasswordResultPacket changeResult:
+                case GetCharacterListResultPacket listResult:
                 {
-                    Logger.Info($"Change password result: Success={changeResult.Success}, Code={changeResult.Code}");
+                    Logger.Info($"GetCharacterList result: Success={listResult.Success}, Code={listResult.Code}");
 
-                    if (changeResult.Success is true)
+                    if (listResult.Success is not true)
                     {
-                        if (!string.IsNullOrWhiteSpace(_pendingChangeNewPassword))
-                            _currentKnownPassword = _pendingChangeNewPassword;
-
-                        if (_needsSecondChangeToTarget)
-                        {
-                            _needsSecondChangeToTarget = false;
-                            SendChangePassword(peer, InitialPassword, TargetPassword);
-                            break;
-                        }
+                        MarkFlowFinished();
+                        break;
                     }
 
-                    MarkLoginFinished();
+                    var characters = listResult.Characters ?? new List<CharacterModel>();
+                    Logger.Info($"Character list count: {characters.Count}");
+
+                    for (var i = 0; i < characters.Count; i++)
+                    {
+                        var c = characters[i];
+                        Logger.Info(
+                            $"Character[{i}]: Id={c.CharacterId}, Name={c.Name}, Server={c.WorldServerId}, Model={c.Appearance.ModelId}, CreatedUnixMs={c.CreatedUnixMs}");
+                    }
+
+                    if (characters.Count == 0)
+                    {
+                        SendCreateCharacter(peer, BuildNextCharacterName());
+                    }
+                    else
+                    {
+                        _targetCharacterId = characters[0].CharacterId;
+                        SendGetCharacterData(peer, _targetCharacterId);
+                    }
+
+                    break;
+                }
+                case CreateCharacterResultPacket createResult:
+                {
+                    Logger.Info($"CreateCharacter result: Success={createResult.Success}, Code={createResult.Code}");
+
+                    if (createResult.Success is true && createResult.Character.HasValue)
+                    {
+                        _targetCharacterId = createResult.Character.Value.CharacterId;
+                        Logger.Info($"Created character id: {_targetCharacterId}");
+                        SendGetCharacterData(peer, _targetCharacterId);
+                        break;
+                    }
+
+                    if (createResult.Code == MessageCode.CharacterNameAlreadyExists && _createAttempts < 5)
+                    {
+                        Logger.Info("Character name already exists, retrying with another name.");
+                        SendCreateCharacter(peer, BuildNextCharacterName());
+                        break;
+                    }
+
+                    MarkFlowFinished();
+                    break;
+                }
+                case GetCharacterDataResultPacket dataResult:
+                {
+                    Logger.Info($"GetCharacterData result: Success={dataResult.Success}, Code={dataResult.Code}");
+
+                    if (dataResult.Success is true && dataResult.Character.HasValue)
+                    {
+                        LogCharacterData(dataResult.Character.Value, dataResult.Stats);
+                        Logger.Info("Character data loaded successfully.");
+                    }
+                    else
+                    {
+                        Logger.Error("Failed to load character data.");
+                    }
+
+                    MarkFlowFinished();
                     break;
                 }
                 default:
@@ -151,7 +197,7 @@ class AuthClientListener : INetEventListener
                 ExceptionStackTrace = ex.StackTrace
             });
 
-            MarkLoginFinished();
+            MarkFlowFinished();
         }
     }
 
@@ -172,29 +218,83 @@ class AuthClientListener : INetEventListener
         SendPacket(peer, loginPacket);
     }
 
-    private void SendChangePassword(NetPeer peer, string oldPassword, string newPassword)
+    private void SendRegister(NetPeer peer, string password)
     {
-        _pendingChangeNewPassword = newPassword;
-
-        var changePacket = new ChangePasswordPacket
+        var registerPacket = new RegisterPacket
         {
             Username = TestUsername,
-            Password = oldPassword,
-            NewPassword = newPassword
+            Password = password,
+            Email = RegisterEmail
         };
-        SendPacket(peer, changePacket);
+
+        SendPacket(peer, registerPacket);
+    }
+
+    private void SendGetCharacterList(NetPeer peer)
+    {
+        SendPacket(peer, new GetCharacterListPacket());
+    }
+
+    private void SendCreateCharacter(NetPeer peer, string name)
+    {
+        var packet = new CreateCharacterPacket
+        {
+            Name = name,
+            ServerId = DefaultServerId,
+            ModelId = DefaultModelId
+        };
+
+        Logger.Info($"Creating character with name: {name}");
+        SendPacket(peer, packet);
+    }
+
+    private void SendGetCharacterData(NetPeer peer, Guid characterId)
+    {
+        SendPacket(peer, new GetCharacterDataPacket
+        {
+            CharacterId = characterId
+        });
+    }
+
+    private string BuildNextCharacterName()
+    {
+        _createAttempts++;
+        return $"khoivu_{Random.Shared.Next(1000, 9999)}";
+    }
+
+    private static void LogCharacterData(CharacterModel character, CharacterStatsModel? stats)
+    {
+        Logger.Info(
+            "Character data: " +
+            $"Id={character.CharacterId}, Owner={character.OwnerAccountId}, Name={character.Name}, " +
+            $"Server={character.WorldServerId}, Model={character.Appearance.ModelId}, Gender={character.Appearance.Gender}, " +
+            $"Hair={character.Appearance.HairColor}, Eye={character.Appearance.EyeColor}, Face={character.Appearance.FaceId}, " +
+            $"CreatedUnixMs={character.CreatedUnixMs}");
+
+        if (stats.HasValue)
+        {
+            var s = stats.Value;
+            Logger.Info(
+                "Character stats: " +
+                $"CharacterId={s.CharacterId}, Realm={s.RealmTemplateId}, Cultivation={s.Cultivation}, " +
+                $"HP={s.Health}, MP={s.Mana}, Physique={s.Physique}, Attack={s.Attack}, Speed={s.Speed}, " +
+                $"SpiritualSense={s.SpiritualSense}, Fortune={s.Fortune}, Potential={s.Potential}");
+            return;
+        }
+
+        Logger.Info("Character stats: <null>");
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
         Logger.Info($"Disconnected from server. Reason: {disconnectInfo.Reason}");
-        MarkLoginFinished();
+        MarkFlowFinished();
     }
 
     public void OnNetworkError(System.Net.IPEndPoint endPoint, System.Net.Sockets.SocketError socketError)
     {
         Logger.Error($"Network error: {socketError}");
-        MarkLoginFinished();
+        MarkFlowFinished();
     }
 
     public void OnNetworkLatencyUpdate(NetPeer peer, int latency)
@@ -223,11 +323,11 @@ class AuthClientListener : INetEventListener
         }
     }
 
-    private void MarkLoginFinished()
+    private void MarkFlowFinished()
     {
         lock (_sync)
         {
-            _loginFinished = true;
+            _flowFinished = true;
         }
     }
 }
@@ -279,7 +379,7 @@ class Program
 
         if (!authListener.LoginFinished)
         {
-            Logger.Error($"Client flow timed out after {timeoutSeconds}s without finishing login/register.");
+            Logger.Error($"Client flow timed out after {timeoutSeconds}s.");
         }
 
         netManager.Stop();

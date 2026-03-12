@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
         // add game AddRepositories DB
         services.AddScoped<AccountRepository>();
         services.AddScoped<CharacterRepository>();
+        services.AddScoped<CharacterStatRepository>();
         services.AddScoped<AccountCredentialRepository>();
         
 
@@ -64,11 +65,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<RegisterPacket>, RegisterHandler>();
         services.AddScoped<IPacketHandler<ReconnectPacket>, ReconnectHandler>();
         services.AddScoped<IPacketHandler<ChangePasswordPacket>, ChangePasswordHandler>();
+        services.AddScoped<IPacketHandler<CreateCharacterPacket>, CreateCharacterHandler>();
+        services.AddScoped<IPacketHandler<GetCharacterListPacket>, GetCharacterListHandler>();
+        services.AddScoped<IPacketHandler<GetCharacterDataPacket>, GetCharacterDataHandler>();
 
         services.AddSingleton<IPacketValidator, LoginPacketValidator>();
         services.AddSingleton<IPacketValidator, RegisterPacketValidator>();
         services.AddSingleton<IPacketValidator, ReconnectPacketValidator>();
         services.AddSingleton<IPacketValidator, ChangePasswordPacketValidator>();
+        services.AddSingleton<IPacketValidator, CreateCharacterPacketValidator>();
+        services.AddSingleton<IPacketValidator, GetCharacterDataPacketValidator>();
 
 
         return services;

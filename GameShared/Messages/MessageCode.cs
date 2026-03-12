@@ -33,5 +33,13 @@ public enum MessageCode : int
     UseChangePasswordForPasswordProvider = 2012,
     CredentialAlreadyLinkedToOtherAccount = 2013,
     ReconnectTokenInvalid = 2014,
-    ReconnectSessionExpired = 2015
+    ReconnectSessionExpired = 2015,
+
+    CharacterNameInvalid = 3000,
+    CharacterAlreadyExists = 3001,
+    CharacterNameAlreadyExists = 3002,
+    CharacterNotFound = 3003,
+    CharacterIdInvalid = 3004,
+    CharacterModelInvalid = 3005,
+    CharacterServerInvalid = 3006
 }

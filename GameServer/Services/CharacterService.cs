@@ -1,6 +1,8 @@
 using GameServer.DTO;
 using GameServer.Entities;
+using GameServer.Exceptions;
 using GameServer.Repositories;
+using GameShared.Messages;
 using LinqToDB;
 using LinqToDB.Async;
 
@@ -39,10 +41,10 @@ public sealed class CharacterService
 
         var existing = await _characters.ListByAccountAsync(accountId, cancellationToken);
         if (existing.Count != 0)
-            throw new InvalidOperationException("Account already has a character.");
+            throw new GameException(MessageCode.CharacterAlreadyExists);
 
         if (!await IsCharacterNameUniqueInternalAsync(name, cancellationToken))
-            throw new InvalidOperationException("Character name already exists.");
+            throw new GameException(MessageCode.CharacterNameAlreadyExists);
 
         var character = new Character
         {
@@ -67,6 +69,26 @@ public sealed class CharacterService
         await tx.CommitAsync(cancellationToken);
 
         return new CharacterWithStatsDto(CharacterDto.FromEntity(character), CharacterStatsDto.FromEntity(stat));
+    }
+
+    public async Task<CharacterWithStatsDto?> LoadCharacterWithStatsByAccountAsync(
+        Guid accountId,
+        Guid characterId,
+        CancellationToken cancellationToken = default)
+    {
+        var query =
+            from c in _db.GetTable<Character>()
+            where c.Id == characterId && c.AccountId == accountId
+            from s in _db.GetTable<CharacterStat>().LeftJoin(st => st.CharacterId == c.Id)
+            select new { Character = c, Stats = s };
+
+        var row = await query.FirstOrDefaultAsync(cancellationToken);
+        if (row is null)
+            return null;
+
+        var characterDto = CharacterDto.FromEntity(row.Character);
+        var statsDto = row.Stats is null ? null : CharacterStatsDto.FromEntity(row.Stats);
+        return new CharacterWithStatsDto(characterDto, statsDto);
     }
 
     public async Task<CharacterWithStatsDto?> LoadCharacterWithStatsAsync(Guid characterId, CancellationToken cancellationToken = default)
@@ -101,12 +123,12 @@ public sealed class CharacterService
 
         var entity = await _characters.GetByIdAsync(characterId, cancellationToken);
         if (entity is null)
-            throw new InvalidOperationException("Character not found.");
+            throw new GameException(MessageCode.CharacterNotFound);
 
         if (!string.Equals(entity.Name, name, StringComparison.Ordinal))
         {
             if (!await IsCharacterNameUniqueInternalAsync(name, cancellationToken))
-                throw new InvalidOperationException("Character name already exists.");
+                throw new GameException(MessageCode.CharacterNameAlreadyExists);
             entity.Name = name;
         }
 
@@ -126,7 +148,7 @@ public sealed class CharacterService
     {
         var character = await _characters.GetByIdAsync(characterId, cancellationToken);
         if (character is null)
-            throw new InvalidOperationException("Character not found.");
+            throw new GameException(MessageCode.CharacterNotFound);
 
         var existing = await _stats.GetByIdAsync(characterId, cancellationToken);
         if (existing is not null)
@@ -153,23 +175,22 @@ public sealed class CharacterService
     {
         name = (name ?? string.Empty).Trim();
         if (name.Length is < 3 or > 20)
-            throw new ArgumentException("Character name must be 3-20 characters.", nameof(name));
+            throw new GameException(MessageCode.CharacterNameInvalid);
 
         for (var i = 0; i < name.Length; i++)
         {
             var ch = name[i];
             var ok = char.IsLetterOrDigit(ch) || ch == ' ' || ch == '_';
             if (!ok)
-                throw new ArgumentException("Character name cannot contain special characters.", nameof(name));
+                throw new GameException(MessageCode.CharacterNameInvalid);
         }
 
         // Avoid names that are only spaces/underscores.
         if (!name.Any(char.IsLetterOrDigit))
-            throw new ArgumentException("Character name must contain letters or digits.", nameof(name));
+            throw new GameException(MessageCode.CharacterNameInvalid);
 
         return name;
     }
 }
 
 public sealed record CharacterWithStatsDto(CharacterDto Character, CharacterStatsDto? Stats);
-
