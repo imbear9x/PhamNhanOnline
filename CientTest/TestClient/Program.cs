@@ -7,8 +7,15 @@ using System.Text.Json;
 
 class AuthClientListener : INetEventListener
 {
+    private const string TestUsername = "khoivu";
+    private const string InitialPassword = "t##AAAAadmin";
+    private const string TargetPassword = "hihi@admin";
+
     private readonly object _sync = new();
     private bool _loginFinished;
+    private string _currentKnownPassword = InitialPassword;
+    private string? _pendingChangeNewPassword;
+    private bool _needsSecondChangeToTarget;
 
     public bool LoginFinished
     {
@@ -27,9 +34,9 @@ class AuthClientListener : INetEventListener
 
         var packet = new RegisterPacket
         {
-            Username = "testuser",
-            Password = "TestPass",
-            Email = "testuser@example.com"
+            Username = TestUsername,
+            Password = InitialPassword,
+            Email = "khoivu@example.com"
         };
 
         SendPacket(peer, packet);
@@ -55,15 +62,10 @@ class AuthClientListener : INetEventListener
                 {
                     Logger.Info($"Register result: Success={registerResult.Success}, Code={registerResult.Code}");
 
-                    // If account already exists, continue to login to complete auth flow test.
+                    // If account already exists, continue login to run password-change flow.
                     if (registerResult.Success is true || registerResult.Code == MessageCode.LoginAlreadyExists)
                     {
-                        var loginPacket = new LoginPacket
-                        {
-                            Username = "testuser",
-                            Password = "TestPass"
-                        };
-                        SendPacket(peer, loginPacket);
+                        SendLogin(peer, _currentKnownPassword);
                     }
                     else
                     {
@@ -74,6 +76,50 @@ class AuthClientListener : INetEventListener
                 case LoginResultPacket loginResult:
                 {
                     Logger.Info($"Login result: Success={loginResult.Success}, Code={loginResult.Code}, AccountId={loginResult.AccountId}");
+
+                    if (loginResult.Success is true)
+                    {
+                        if (string.Equals(_currentKnownPassword, InitialPassword, StringComparison.Ordinal))
+                        {
+                            SendChangePassword(peer, InitialPassword, TargetPassword);
+                        }
+                        else
+                        {
+                            // Account may already be on target password from previous run. Change back once,
+                            // then apply requested final target password so the full flow still executes.
+                            _needsSecondChangeToTarget = true;
+                            SendChangePassword(peer, TargetPassword, InitialPassword);
+                        }
+                    }
+                    else if (loginResult.Code == MessageCode.InvalidCredentials &&
+                             string.Equals(_currentKnownPassword, InitialPassword, StringComparison.Ordinal))
+                    {
+                        Logger.Info("Initial password login failed. Retrying with target password.");
+                        _currentKnownPassword = TargetPassword;
+                        SendLogin(peer, _currentKnownPassword);
+                    }
+                    else
+                    {
+                        MarkLoginFinished();
+                    }
+                    break;
+                }
+                case ChangePasswordResultPacket changeResult:
+                {
+                    Logger.Info($"Change password result: Success={changeResult.Success}, Code={changeResult.Code}");
+
+                    if (changeResult.Success is true)
+                    {
+                        if (!string.IsNullOrWhiteSpace(_pendingChangeNewPassword))
+                            _currentKnownPassword = _pendingChangeNewPassword;
+
+                        if (_needsSecondChangeToTarget)
+                        {
+                            _needsSecondChangeToTarget = false;
+                            SendChangePassword(peer, InitialPassword, TargetPassword);
+                            break;
+                        }
+                    }
 
                     MarkLoginFinished();
                     break;
@@ -114,6 +160,29 @@ class AuthClientListener : INetEventListener
         var data = PacketSerializer.Serialize(packet);
         peer.Send(data, DeliveryMethod.ReliableOrdered);
         Logger.Info($"Sent {packet.GetType().Name} (bytes={data.Length})");
+    }
+
+    private void SendLogin(NetPeer peer, string password)
+    {
+        var loginPacket = new LoginPacket
+        {
+            Username = TestUsername,
+            Password = password
+        };
+        SendPacket(peer, loginPacket);
+    }
+
+    private void SendChangePassword(NetPeer peer, string oldPassword, string newPassword)
+    {
+        _pendingChangeNewPassword = newPassword;
+
+        var changePacket = new ChangePasswordPacket
+        {
+            Username = TestUsername,
+            Password = oldPassword,
+            NewPassword = newPassword
+        };
+        SendPacket(peer, changePacket);
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)

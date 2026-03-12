@@ -8,23 +8,29 @@ internal static class PacketGeneratedRegistry
     {
         switch (packet)
         {
-            case global::GameShared.Packets.LoginPacket:
+            case global::GameShared.Packets.ChangePasswordPacket:
                 id = 1;
                 return true;
-            case global::GameShared.Packets.LoginResultPacket:
+            case global::GameShared.Packets.ChangePasswordResultPacket:
                 id = 2;
                 return true;
-            case global::GameShared.Packets.ReconnectPacket:
+            case global::GameShared.Packets.LoginPacket:
                 id = 3;
                 return true;
-            case global::GameShared.Packets.ReconnectResultPacket:
+            case global::GameShared.Packets.LoginResultPacket:
                 id = 4;
                 return true;
-            case global::GameShared.Packets.RegisterPacket:
+            case global::GameShared.Packets.ReconnectPacket:
                 id = 5;
                 return true;
-            case global::GameShared.Packets.RegisterResultPacket:
+            case global::GameShared.Packets.ReconnectResultPacket:
                 id = 6;
+                return true;
+            case global::GameShared.Packets.RegisterPacket:
+                id = 7;
+                return true;
+            case global::GameShared.Packets.RegisterResultPacket:
+                id = 8;
                 return true;
             default:
                 id = default;
@@ -36,12 +42,14 @@ internal static class PacketGeneratedRegistry
     {
         return id switch
         {
-            1 => new global::GameShared.Packets.LoginPacket(),
-            2 => new global::GameShared.Packets.LoginResultPacket(),
-            3 => new global::GameShared.Packets.ReconnectPacket(),
-            4 => new global::GameShared.Packets.ReconnectResultPacket(),
-            5 => new global::GameShared.Packets.RegisterPacket(),
-            6 => new global::GameShared.Packets.RegisterResultPacket(),
+            1 => new global::GameShared.Packets.ChangePasswordPacket(),
+            2 => new global::GameShared.Packets.ChangePasswordResultPacket(),
+            3 => new global::GameShared.Packets.LoginPacket(),
+            4 => new global::GameShared.Packets.LoginResultPacket(),
+            5 => new global::GameShared.Packets.ReconnectPacket(),
+            6 => new global::GameShared.Packets.ReconnectResultPacket(),
+            7 => new global::GameShared.Packets.RegisterPacket(),
+            8 => new global::GameShared.Packets.RegisterResultPacket(),
             _ => null
         };
     }

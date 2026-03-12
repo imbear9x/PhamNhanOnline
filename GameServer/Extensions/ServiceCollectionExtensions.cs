@@ -63,10 +63,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<LoginPacket>, LoginHandler>();
         services.AddScoped<IPacketHandler<RegisterPacket>, RegisterHandler>();
         services.AddScoped<IPacketHandler<ReconnectPacket>, ReconnectHandler>();
+        services.AddScoped<IPacketHandler<ChangePasswordPacket>, ChangePasswordHandler>();
 
         services.AddSingleton<IPacketValidator, LoginPacketValidator>();
         services.AddSingleton<IPacketValidator, RegisterPacketValidator>();
         services.AddSingleton<IPacketValidator, ReconnectPacketValidator>();
+        services.AddSingleton<IPacketValidator, ChangePasswordPacketValidator>();
 
 
         return services;
