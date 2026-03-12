@@ -15,9 +15,6 @@ public sealed class AccountService
     public const string ProviderGoogle = "google";
     public const string ProviderPhone = "phone";
 
-    public const int MinUsernameLength = 3;
-    public const int MaxUsernameLength = 32;
-
     private readonly GameDb _db;
     private readonly AccountRepository _accounts;
     private readonly AccountCredentialRepository _credentials;
@@ -35,7 +32,7 @@ public sealed class AccountService
         CancellationToken cancellationToken = default)
     {
         loginId = NormalizeLoginId(loginId);
-        ValidatePassword(password);
+        password = password ?? string.Empty;
 
         var existing = await _credentials.GetByProviderUserIdAsync(ProviderPassword, loginId, cancellationToken);
         if (existing is not null)
@@ -73,6 +70,7 @@ public sealed class AccountService
         CancellationToken cancellationToken = default)
     {
         loginId = NormalizeLoginId(loginId);
+        password = password ?? string.Empty;
 
         var cred = await _credentials.GetByProviderUserIdAsync(ProviderPassword, loginId, cancellationToken);
         if (cred?.PasswordHash is null)
@@ -207,7 +205,8 @@ public sealed class AccountService
         string newPassword,
         CancellationToken cancellationToken = default)
     {
-        ValidatePassword(newPassword);
+        oldPassword = oldPassword ?? string.Empty;
+        newPassword = newPassword ?? string.Empty;
 
         var account = await _accounts.GetByIdAsync(accountId, cancellationToken);
         if (account is null)
@@ -259,10 +258,7 @@ public sealed class AccountService
 
     private static string NormalizeLoginId(string loginId)
     {
-        loginId = (loginId ?? string.Empty).Trim();
-        if (loginId.Length is < MinUsernameLength or > MaxUsernameLength)
-            throw new GameException(MessageCode.UsernameLengthInvalid);
-        return loginId.ToLowerInvariant();
+        return (loginId ?? string.Empty).Trim().ToLowerInvariant();
     }
 
     private static string NormalizeProvider(string provider)
@@ -281,31 +277,6 @@ public sealed class AccountService
         if (providerUserId.Length == 0)
             throw new GameException(MessageCode.ProviderUserIdRequired);
         return providerUserId;
-    }
-
-    private static void ValidatePassword(string password)
-    {
-        if (string.IsNullOrWhiteSpace(password))
-            throw new GameException(MessageCode.PasswordRequired);
-
-        if (password.Length is < 8 or > 128)
-            throw new GameException(MessageCode.PasswordLengthInvalid);
-
-        var hasLower = false;
-        var hasUpper = false;
-        var hasDigit = false;
-        var hasSymbol = false;
-
-        foreach (var ch in password)
-        {
-            if (char.IsLower(ch)) hasLower = true;
-            else if (char.IsUpper(ch)) hasUpper = true;
-            else if (char.IsDigit(ch)) hasDigit = true;
-            else if (!char.IsWhiteSpace(ch)) hasSymbol = true;
-        }
-
-        if (!(hasLower && hasUpper && hasDigit && hasSymbol))
-            throw new GameException(MessageCode.PasswordComplexityInvalid);
     }
 
     // Format: PBKDF2-SHA256$<iterations>$<salt_b64>$<hash_b64>

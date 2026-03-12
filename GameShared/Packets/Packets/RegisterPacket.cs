@@ -8,7 +8,7 @@ public partial class RegisterPacket : IPacket
 {
     [ValidationCode(MessageCode.UsernameWrong)]
     [Required]
-    [StringLength(32, MinimumLength = 3)]
+    [StringLength(24, MinimumLength = 6)]
     public string? Username { get; set; }
 
     [ValidationCode(MessageCode.PasswordWrong)]
@@ -24,4 +24,17 @@ public partial class RegisterPacket : IPacket
 
 
     
+}
+
+
+
+[Packet]
+public partial class RegisterResultPacket : IPacket
+{
+   
+
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+
+
 }

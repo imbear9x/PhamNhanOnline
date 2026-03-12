@@ -27,8 +27,8 @@ class AuthClientListener : INetEventListener
 
         var packet = new RegisterPacket
         {
-            Username = "testuser",
-            Password = "Test@1234",
+            Username = "testuser2!",
+            Password = "1a",
             Email = "testuser@example.com"
         };
 
