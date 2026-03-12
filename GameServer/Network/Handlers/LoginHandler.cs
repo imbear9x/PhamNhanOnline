@@ -25,12 +25,14 @@ public sealed class LoginHandler : IPacketHandler<LoginPacket>
 
             session.PlayerId = result.Account.AccountId;
             session.IsAuthenticated = true;
+            var resumeToken = _server.IssueResumeToken(session, result.Account.AccountId);
 
             var response = new LoginResultPacket
             {
                 Success = true,
                 Code = MessageCode.None,
-                AccountId = result.Account.AccountId
+                AccountId = result.Account.AccountId,
+                ResumeToken = resumeToken
             };
 
             _server.Send(session.ConnectionId, response);

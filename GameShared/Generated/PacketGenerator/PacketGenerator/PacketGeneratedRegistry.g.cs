@@ -14,11 +14,17 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.LoginResultPacket:
                 id = 2;
                 return true;
-            case global::GameShared.Packets.RegisterPacket:
+            case global::GameShared.Packets.ReconnectPacket:
                 id = 3;
                 return true;
-            case global::GameShared.Packets.RegisterResultPacket:
+            case global::GameShared.Packets.ReconnectResultPacket:
                 id = 4;
+                return true;
+            case global::GameShared.Packets.RegisterPacket:
+                id = 5;
+                return true;
+            case global::GameShared.Packets.RegisterResultPacket:
+                id = 6;
                 return true;
             default:
                 id = default;
@@ -32,8 +38,10 @@ internal static class PacketGeneratedRegistry
         {
             1 => new global::GameShared.Packets.LoginPacket(),
             2 => new global::GameShared.Packets.LoginResultPacket(),
-            3 => new global::GameShared.Packets.RegisterPacket(),
-            4 => new global::GameShared.Packets.RegisterResultPacket(),
+            3 => new global::GameShared.Packets.ReconnectPacket(),
+            4 => new global::GameShared.Packets.ReconnectResultPacket(),
+            5 => new global::GameShared.Packets.RegisterPacket(),
+            6 => new global::GameShared.Packets.RegisterResultPacket(),
             _ => null
         };
     }

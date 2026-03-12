@@ -27,8 +27,8 @@ class AuthClientListener : INetEventListener
 
         var packet = new RegisterPacket
         {
-            Username = "testuser2!",
-            Password = "1a",
+            Username = "testuser",
+            Password = "TestPass",
             Email = "testuser@example.com"
         };
 
@@ -61,7 +61,7 @@ class AuthClientListener : INetEventListener
                         var loginPacket = new LoginPacket
                         {
                             Username = "testuser",
-                            Password = "Test@1234"
+                            Password = "TestPass"
                         };
                         SendPacket(peer, loginPacket);
                     }
@@ -173,6 +173,12 @@ class Program
 
         if (PacketReplayTool.TryRun(args))
             return;
+
+        if (GetBoolArg(args, "--reconnectMode=", false))
+        {
+            ReconnectServer.Run(args);
+            return;
+        }
 
         const string serverAddress = "127.0.0.1";
         const int serverPort = 7777;

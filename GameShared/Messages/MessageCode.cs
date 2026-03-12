@@ -31,5 +31,7 @@ public enum MessageCode : int
     PhoneCredentialAlreadyLinked = 2010,
     PhoneCredentialLinkedToOtherAccount = 2011,
     UseChangePasswordForPasswordProvider = 2012,
-    CredentialAlreadyLinkedToOtherAccount = 2013
+    CredentialAlreadyLinkedToOtherAccount = 2013,
+    ReconnectTokenInvalid = 2014,
+    ReconnectSessionExpired = 2015
 }

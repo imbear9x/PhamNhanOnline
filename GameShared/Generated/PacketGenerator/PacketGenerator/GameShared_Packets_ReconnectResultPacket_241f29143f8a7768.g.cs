@@ -4,7 +4,7 @@ using System.IO;
 
 namespace GameShared.Packets;
 
-public partial class LoginResultPacket
+public partial class ReconnectResultPacket
 {
     private ulong _mask;
 

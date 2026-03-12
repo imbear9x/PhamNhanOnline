@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using System.Net;
+using System.Security.Cryptography;
 using GameServer.Network.Interface;
 using GameShared.Diagnostics;
 using GameShared.Logging;
+using GameShared.Messages;
 using GameShared.Packets;
 using LiteNetLib;
 using System.Text.Json;
@@ -14,6 +16,9 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     private readonly NetManager _netManager;
     private readonly PacketDispatcher _dispatcher;
     private readonly ConcurrentDictionary<int, ConnectionSession> _sessions = new();
+    private readonly ConcurrentDictionary<string, ResumeTicket> _resumeTickets = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<Guid, string> _accountTokens = new();
+    private static readonly TimeSpan ResumeWindow = TimeSpan.FromMinutes(2);
 
     public NetworkServer(PacketDispatcher dispatcher)
     {
@@ -34,10 +39,13 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     {
         _netManager.Stop();
         _sessions.Clear();
+        _resumeTickets.Clear();
+        _accountTokens.Clear();
     }
 
     public void PollEvents()
     {
+        PurgeExpiredResumeTickets();
         _netManager.PollEvents();
     }
 
@@ -50,6 +58,73 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         session.Peer.Send(data, DeliveryMethod.ReliableOrdered);
     }
 
+    public string IssueResumeToken(ConnectionSession session, Guid accountId)
+    {
+        var token = CreateResumeToken();
+        var ticket = new ResumeTicket(accountId, IsConnected: true, ExpiresAtUtc: DateTime.MaxValue);
+        _resumeTickets[token] = ticket;
+
+        _accountTokens.AddOrUpdate(
+            accountId,
+            addValueFactory: _ => token,
+            updateValueFactory: (accountKey, oldToken) =>
+            {
+                if (!string.Equals(oldToken, token, StringComparison.Ordinal))
+                    _resumeTickets.TryRemove(oldToken, out _);
+                return token;
+            });
+
+        if (!string.IsNullOrWhiteSpace(session.ResumeToken) &&
+            !string.Equals(session.ResumeToken, token, StringComparison.Ordinal))
+        {
+            _resumeTickets.TryRemove(session.ResumeToken, out _);
+        }
+
+        session.ResumeToken = token;
+        return token;
+    }
+
+    public bool TryResumeSession(
+        ConnectionSession session,
+        string resumeToken,
+        out Guid accountId,
+        out MessageCode errorCode)
+    {
+        accountId = Guid.Empty;
+        errorCode = MessageCode.ReconnectTokenInvalid;
+
+        if (string.IsNullOrWhiteSpace(resumeToken))
+            return false;
+
+        PurgeExpiredResumeTickets();
+
+        if (!_resumeTickets.TryGetValue(resumeToken, out var ticket))
+            return false;
+
+        if (ticket.IsConnected)
+            return false;
+
+        if (ticket.ExpiresAtUtc < DateTime.UtcNow)
+        {
+            _resumeTickets.TryRemove(resumeToken, out _);
+            _accountTokens.TryRemove(ticket.AccountId, out _);
+            errorCode = MessageCode.ReconnectSessionExpired;
+            return false;
+        }
+
+        _resumeTickets[resumeToken] = ticket with
+        {
+            IsConnected = true,
+            ExpiresAtUtc = DateTime.MaxValue
+        };
+
+        accountId = ticket.AccountId;
+        session.PlayerId = ticket.AccountId;
+        session.IsAuthenticated = true;
+        session.ResumeToken = resumeToken;
+        return true;
+    }
+
     // INetEventListener
 
     public void OnPeerConnected(NetPeer peer)
@@ -60,7 +135,20 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
-        _sessions.TryRemove(peer.Id, out _);
+        if (!_sessions.TryRemove(peer.Id, out var session))
+            return;
+
+        if (!session.IsAuthenticated || string.IsNullOrWhiteSpace(session.ResumeToken))
+            return;
+
+        if (_resumeTickets.TryGetValue(session.ResumeToken, out var ticket))
+        {
+            _resumeTickets[session.ResumeToken] = ticket with
+            {
+                IsConnected = false,
+                ExpiresAtUtc = DateTime.UtcNow + ResumeWindow
+            };
+        }
     }
 
     public void OnNetworkError(IPEndPoint endPoint, System.Net.Sockets.SocketError socketError)
@@ -150,4 +238,26 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
             return $"<serialize_failed:{ex.GetType().Name}>";
         }
     }
+
+    private static string CreateResumeToken()
+    {
+        Span<byte> bytes = stackalloc byte[16];
+        RandomNumberGenerator.Fill(bytes);
+        return Convert.ToHexString(bytes);
+    }
+
+    private void PurgeExpiredResumeTickets()
+    {
+        var now = DateTime.UtcNow;
+        foreach (var kv in _resumeTickets)
+        {
+            if (kv.Value.IsConnected || kv.Value.ExpiresAtUtc > now)
+                continue;
+
+            _resumeTickets.TryRemove(kv.Key, out _);
+            _accountTokens.TryRemove(kv.Value.AccountId, out _);
+        }
+    }
+
+    private sealed record ResumeTicket(Guid AccountId, bool IsConnected, DateTime ExpiresAtUtc);
 }

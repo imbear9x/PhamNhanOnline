@@ -29,7 +29,7 @@ public sealed class LoginPacketValidator : PacketValidator<LoginPacket>
             return false;
         }
 
-        if (!IsEnglishAlphabetPassword(loginPacket.Password!))
+        if (!IsAsciiPrintablePassword(loginPacket.Password!))
         {
             errorPacket = new LoginResultPacket
             {
@@ -64,19 +64,15 @@ public sealed class LoginPacketValidator : PacketValidator<LoginPacket>
         return true;
     }
 
-    private static bool IsEnglishAlphabetPassword(string password)
+    private static bool IsAsciiPrintablePassword(string password)
     {
         if (string.IsNullOrEmpty(password))
             return false;
 
         foreach (var c in password)
         {
-            var isLower = c >= 'a' && c <= 'z';
-            var isUpper = c >= 'A' && c <= 'Z';
-            if (isLower || isUpper)
-                continue;
-
-            return false;
+            if (c < '!' || c > '~')
+                return false;
         }
 
         return true;

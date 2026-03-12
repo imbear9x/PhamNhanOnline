@@ -12,6 +12,8 @@ namespace GameShared.Packets
         Register = 1,
         RegisterResult = 2,
         Login = 3,
-        LoginResult = 4
+        LoginResult = 4,
+        Reconnect = 5,
+        ReconnectResult = 6
     }
 }

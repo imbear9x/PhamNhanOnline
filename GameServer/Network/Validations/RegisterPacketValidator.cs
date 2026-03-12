@@ -27,7 +27,7 @@ public sealed class RegisterPacketValidator : PacketValidator<RegisterPacket>
             return false;
         }
 
-        if (!IsEnglishAlphabetPassword(registerPacket.Password!))
+        if (!IsAsciiPrintablePassword(registerPacket.Password!))
         {
             errorPacket = new RegisterResultPacket
             {
@@ -60,19 +60,15 @@ public sealed class RegisterPacketValidator : PacketValidator<RegisterPacket>
         return true;
     }
 
-    private static bool IsEnglishAlphabetPassword(string password)
+    private static bool IsAsciiPrintablePassword(string password)
     {
         if (string.IsNullOrEmpty(password))
             return false;
 
         foreach (var ch in password)
         {
-            var isLower = ch >= 'a' && ch <= 'z';
-            var isUpper = ch >= 'A' && ch <= 'Z';
-            if (isLower || isUpper)
-                continue;
-
-            return false;
+            if (ch < '!' || ch > '~')
+                return false;
         }
 
         return true;
