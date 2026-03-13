@@ -29,3 +29,7 @@ node_modules/
 *.backup
 
 Config/dbConfig.json
+
+# Local temporary tooling
+tmp_tools/
+tmp_codex/
