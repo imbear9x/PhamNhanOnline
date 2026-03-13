@@ -12,10 +12,13 @@ sealed class FlowOptions
     public string Username { get; init; } = "test00122";
     public string Password { get; init; } = "test@12333333";
     public string Email { get; init; } = "test00122@test.com";
-    public string CharacterName { get; init; } = "Lệ Phi Vũ";
+    public string CharacterName { get; init; } = "HanLi";
     public int ServerId { get; init; } = 1;
     public int ModelId { get; init; } = 1;
     public string JsonOutputPath { get; init; } = Path.Combine("tmp_codex", "vertical_slice_test1_hanli_flow.json");
+    public int HoldConnectionSeconds { get; init; } = 0;
+    public bool SendCreateCharacterAfterLifespanExpired { get; init; }
+    public string ProbeCharacterName { get; init; } = "AfterExpireProbe";
 }
 
 sealed class FlowJsonRecord
@@ -31,15 +34,17 @@ sealed class FlowJsonRecord
 
 class AuthClientListener : INetEventListener
 {
+    private const int LifespanExpiredReason = 1;
     private readonly object _sync = new();
     private readonly FlowOptions _options;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly FlowJsonRecord _record;
 
     private bool _flowFinished;
-    private bool _registerAttempted;
-    private bool _createAttempted;
+    private bool _createProbeSent;
     private Guid _targetCharacterId;
+    private DateTime? _holdUntilUtc;
+    private NetPeer? _peer;
 
     public AuthClientListener(FlowOptions options)
     {
@@ -70,6 +75,7 @@ class AuthClientListener : INetEventListener
 
     public void OnPeerConnected(NetPeer peer)
     {
+        _peer = peer;
         AppendEvent("ConnectedToServer");
         SendLogin(peer);
     }
@@ -115,6 +121,9 @@ class AuthClientListener : INetEventListener
                     Logger.Info($"CharacterCurrentStateChanged received: HasCurrentState={currentStateChanged.CurrentState.HasValue}");
                     AppendEvent("CharacterCurrentStateChanged");
                     break;
+                case CharacterStateTransitionPacket stateTransition:
+                    HandleCharacterStateTransition(stateTransition);
+                    break;
                 default:
                     Logger.Info($"Unhandled packet type: {packet.GetType().Name}");
                     AppendEvent($"Unhandled:{packet.GetType().Name}");
@@ -151,8 +160,6 @@ class AuthClientListener : INetEventListener
     {
         Logger.Info($"Register result: Success={registerResult.Success}, Code={registerResult.Code}");
         AppendEvent($"Register:{registerResult.Code}");
-        _registerAttempted = true;
-
         if (registerResult.Success is true || registerResult.Code == MessageCode.LoginAlreadyExists)
         {
             SendLogin(peer);
@@ -251,7 +258,34 @@ class AuthClientListener : INetEventListener
             PersistFlowJson();
         }
 
+        if (_options.HoldConnectionSeconds > 0)
+        {
+            _holdUntilUtc = DateTime.UtcNow.AddSeconds(_options.HoldConnectionSeconds);
+            AppendEvent($"HoldConnection:{_options.HoldConnectionSeconds}s");
+            PersistFlowJson();
+            Logger.Info($"Holding connection open for {_options.HoldConnectionSeconds}s.");
+            return;
+        }
+
         MarkFlowFinished();
+    }
+
+    private void HandleCharacterStateTransition(CharacterStateTransitionPacket stateTransition)
+    {
+        Logger.Info($"CharacterStateTransition received: CharacterId={stateTransition.CharacterId}, Reason={stateTransition.Reason}");
+        AppendEvent($"CharacterStateTransition:{stateTransition.Reason}");
+        PersistFlowJson();
+
+        if (_options.SendCreateCharacterAfterLifespanExpired &&
+            !_createProbeSent &&
+            stateTransition.Reason == LifespanExpiredReason &&
+            _peer is not null)
+        {
+            _createProbeSent = true;
+            AppendEvent("CreateCharacterProbe:SentAfterLifespanExpired");
+            PersistFlowJson();
+            SendCreateCharacter(_peer, _options.ProbeCharacterName);
+        }
     }
 
     private static void SendPacket(NetPeer peer, IPacket packet)
@@ -289,13 +323,12 @@ class AuthClientListener : INetEventListener
         SendPacket(peer, new GetCharacterListPacket());
     }
 
-    private void SendCreateCharacter(NetPeer peer)
+    private void SendCreateCharacter(NetPeer peer, string characterName)
     {
-        _createAttempted = true;
-        Logger.Info($"Creating character with name: {_options.CharacterName}");
+        Logger.Info($"Creating character with name: {characterName}");
         SendPacket(peer, new CreateCharacterPacket
         {
-            Name = _options.CharacterName,
+            Name = characterName,
             ServerId = _options.ServerId,
             ModelId = _options.ModelId
         });
@@ -381,6 +414,17 @@ class AuthClientListener : INetEventListener
             _flowFinished = true;
         }
     }
+
+    public void Tick()
+    {
+        if (_holdUntilUtc.HasValue && DateTime.UtcNow >= _holdUntilUtc.Value)
+        {
+            AppendEvent("HoldConnectionCompleted");
+            PersistFlowJson();
+            _holdUntilUtc = null;
+            MarkFlowFinished();
+        }
+    }
 }
 
 class Program
@@ -428,6 +472,7 @@ class Program
                (DateTime.UtcNow - startedAt).TotalSeconds < timeoutSeconds)
         {
             netManager.PollEvents();
+            authListener.Tick();
             Thread.Sleep(15);
         }
 
@@ -454,7 +499,10 @@ class Program
             CharacterName = GetStringArg(args, "--characterName=", "HanLi"),
             ServerId = GetIntArg(args, "--serverId=", 1),
             ModelId = GetIntArg(args, "--modelId=", 1),
-            JsonOutputPath = GetStringArg(args, "--jsonOutput=", Path.Combine("tmp_codex", "vertical_slice_test1_hanli_flow.json"))
+            JsonOutputPath = GetStringArg(args, "--jsonOutput=", Path.Combine("tmp_codex", "vertical_slice_test1_hanli_flow.json")),
+            HoldConnectionSeconds = GetIntArg(args, "--holdSec=", 0),
+            SendCreateCharacterAfterLifespanExpired = GetBoolArg(args, "--sendCreateAfterExpire=", false),
+            ProbeCharacterName = GetStringArg(args, "--probeCharacterName=", "AfterExpireProbe")
         };
     }
 

@@ -79,3 +79,10 @@ public partial class CharacterCurrentStateChangedPacket : IPacket
 {
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
+
+[Packet]
+public partial class CharacterStateTransitionPacket : IPacket
+{
+    public Guid? CharacterId { get; set; }
+    public int? Reason { get; set; }
+}

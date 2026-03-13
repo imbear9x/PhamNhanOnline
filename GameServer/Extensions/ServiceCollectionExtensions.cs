@@ -52,6 +52,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IPacketMiddleware, RateLimitMiddleware>();
         services.AddSingleton<IPacketMiddleware, AuthMiddleware>();
+        services.AddSingleton<IPacketMiddleware, CharacterActionRestrictionMiddleware>();
         services.AddSingleton<IPacketMiddleware, PacketValidationMiddleware>();
         
         return services;
@@ -67,6 +68,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CharacterRuntimeNotifier>();
         services.AddSingleton<CharacterRuntimeService>();
         services.AddSingleton<CharacterRuntimeSaveService>();
+        services.AddSingleton<CharacterLifecycleService>();
         services.AddSingleton<GameLoop>();
 
 

@@ -13,6 +13,7 @@ public sealed class ConnectionSession
     public string? ResumeToken { get; set; }
     public PlayerSession? Player { get; set; }
     public bool IsAuthenticated { get; set; }
+    public bool AreCharacterActionsRestricted { get; set; }
 
 
     public ConnectionSession(NetPeer peer)
@@ -20,5 +21,6 @@ public sealed class ConnectionSession
         Peer = peer;
         PlayerId = Guid.Empty;
         SelectedCharacterId = Guid.Empty;
+        AreCharacterActionsRestricted = false;
     }
 }

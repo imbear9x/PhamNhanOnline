@@ -41,5 +41,7 @@ public enum MessageCode : int
     CharacterNotFound = 3003,
     CharacterIdInvalid = 3004,
     CharacterModelInvalid = 3005,
-    CharacterServerInvalid = 3006
+    CharacterServerInvalid = 3006,
+    CharacterLifespanExpired = 3007,
+    CharacterActionsRestricted = 3008
 }

@@ -20,41 +20,44 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.CharacterCurrentStateChangedPacket:
                 id = 4;
                 return true;
-            case global::GameShared.Packets.CreateCharacterPacket:
+            case global::GameShared.Packets.CharacterStateTransitionPacket:
                 id = 5;
                 return true;
-            case global::GameShared.Packets.CreateCharacterResultPacket:
+            case global::GameShared.Packets.CreateCharacterPacket:
                 id = 6;
                 return true;
-            case global::GameShared.Packets.GetCharacterDataPacket:
+            case global::GameShared.Packets.CreateCharacterResultPacket:
                 id = 7;
                 return true;
-            case global::GameShared.Packets.GetCharacterDataResultPacket:
+            case global::GameShared.Packets.GetCharacterDataPacket:
                 id = 8;
                 return true;
-            case global::GameShared.Packets.GetCharacterListPacket:
+            case global::GameShared.Packets.GetCharacterDataResultPacket:
                 id = 9;
                 return true;
-            case global::GameShared.Packets.GetCharacterListResultPacket:
+            case global::GameShared.Packets.GetCharacterListPacket:
                 id = 10;
                 return true;
-            case global::GameShared.Packets.LoginPacket:
+            case global::GameShared.Packets.GetCharacterListResultPacket:
                 id = 11;
                 return true;
-            case global::GameShared.Packets.LoginResultPacket:
+            case global::GameShared.Packets.LoginPacket:
                 id = 12;
                 return true;
-            case global::GameShared.Packets.ReconnectPacket:
+            case global::GameShared.Packets.LoginResultPacket:
                 id = 13;
                 return true;
-            case global::GameShared.Packets.ReconnectResultPacket:
+            case global::GameShared.Packets.ReconnectPacket:
                 id = 14;
                 return true;
-            case global::GameShared.Packets.RegisterPacket:
+            case global::GameShared.Packets.ReconnectResultPacket:
                 id = 15;
                 return true;
-            case global::GameShared.Packets.RegisterResultPacket:
+            case global::GameShared.Packets.RegisterPacket:
                 id = 16;
+                return true;
+            case global::GameShared.Packets.RegisterResultPacket:
+                id = 17;
                 return true;
             default:
                 id = default;
@@ -70,18 +73,19 @@ internal static class PacketGeneratedRegistry
             2 => new global::GameShared.Packets.ChangePasswordResultPacket(),
             3 => new global::GameShared.Packets.CharacterBaseStatsChangedPacket(),
             4 => new global::GameShared.Packets.CharacterCurrentStateChangedPacket(),
-            5 => new global::GameShared.Packets.CreateCharacterPacket(),
-            6 => new global::GameShared.Packets.CreateCharacterResultPacket(),
-            7 => new global::GameShared.Packets.GetCharacterDataPacket(),
-            8 => new global::GameShared.Packets.GetCharacterDataResultPacket(),
-            9 => new global::GameShared.Packets.GetCharacterListPacket(),
-            10 => new global::GameShared.Packets.GetCharacterListResultPacket(),
-            11 => new global::GameShared.Packets.LoginPacket(),
-            12 => new global::GameShared.Packets.LoginResultPacket(),
-            13 => new global::GameShared.Packets.ReconnectPacket(),
-            14 => new global::GameShared.Packets.ReconnectResultPacket(),
-            15 => new global::GameShared.Packets.RegisterPacket(),
-            16 => new global::GameShared.Packets.RegisterResultPacket(),
+            5 => new global::GameShared.Packets.CharacterStateTransitionPacket(),
+            6 => new global::GameShared.Packets.CreateCharacterPacket(),
+            7 => new global::GameShared.Packets.CreateCharacterResultPacket(),
+            8 => new global::GameShared.Packets.GetCharacterDataPacket(),
+            9 => new global::GameShared.Packets.GetCharacterDataResultPacket(),
+            10 => new global::GameShared.Packets.GetCharacterListPacket(),
+            11 => new global::GameShared.Packets.GetCharacterListResultPacket(),
+            12 => new global::GameShared.Packets.LoginPacket(),
+            13 => new global::GameShared.Packets.LoginResultPacket(),
+            14 => new global::GameShared.Packets.ReconnectPacket(),
+            15 => new global::GameShared.Packets.ReconnectResultPacket(),
+            16 => new global::GameShared.Packets.RegisterPacket(),
+            17 => new global::GameShared.Packets.RegisterResultPacket(),
             _ => null
         };
     }

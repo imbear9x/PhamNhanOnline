@@ -75,7 +75,7 @@ public sealed class GameLoop
 
         if (DateTime.UtcNow >= _nextDerivedStateRefreshUtc)
         {
-            _runtimeService.RefreshTimeDerivedStateForOnlinePlayers();
+            _runtimeService.RefreshTimeDerivedStateForOnlinePlayersAsync(_cts.Token).GetAwaiter().GetResult();
             _nextDerivedStateRefreshUtc = DateTime.UtcNow.AddSeconds(_gameTimeService.Config.DerivedStateRefreshIntervalSeconds);
         }
     }

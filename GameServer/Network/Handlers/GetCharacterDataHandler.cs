@@ -12,17 +12,20 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
 {
     private readonly CharacterService _characterService;
     private readonly CharacterRuntimeService _runtimeService;
+    private readonly CharacterLifecycleService _lifecycleService;
     private readonly INetworkSender _server;
     private readonly GameTimeService _gameTimeService;
 
     public GetCharacterDataHandler(
         CharacterService characterService,
         CharacterRuntimeService runtimeService,
+        CharacterLifecycleService lifecycleService,
         INetworkSender server,
         GameTimeService gameTimeService)
     {
         _characterService = characterService;
         _runtimeService = runtimeService;
+        _lifecycleService = lifecycleService;
         _server = server;
         _gameTimeService = gameTimeService;
     }
@@ -45,17 +48,28 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
                 return;
             }
 
+            data = await _lifecycleService.PrepareSnapshotForWorldEntryAsync(data);
+            var isLifespanExpired = _lifecycleService.IsLifespanExpired(data.CurrentState);
+
             session.SelectedCharacterId = data.Character.CharacterId;
-            _runtimeService.AttachPlayerSession(session, data);
+            var player = _runtimeService.AttachPlayerSession(session, data);
+            if (isLifespanExpired)
+            {
+                player.SetCharacterActionsRestricted(true);
+                session.AreCharacterActionsRestricted = true;
+            }
 
             _server.Send(session.ConnectionId, new GetCharacterDataResultPacket
             {
                 Success = true,
-                Code = MessageCode.None,
+                Code = isLifespanExpired ? MessageCode.CharacterLifespanExpired : MessageCode.None,
                 Character = data.Character.ToModel(),
                 BaseStats = data.BaseStats?.ToModel(),
                 CurrentState = data.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot())
             });
+
+            if (isLifespanExpired)
+                _lifecycleService.NotifyLifespanExpired(session.ConnectionId, data.Character.CharacterId);
         }
         catch (Exception)
         {

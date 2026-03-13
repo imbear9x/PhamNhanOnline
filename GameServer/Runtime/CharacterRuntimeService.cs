@@ -13,17 +13,20 @@ public sealed class CharacterRuntimeService
     private readonly CharacterRuntimeCalculator _calculator;
     private readonly CharacterRuntimeNotifier _notifier;
     private readonly GameTimeService _gameTimeService;
+    private readonly CharacterLifecycleService _lifecycleService;
 
     public CharacterRuntimeService(
         WorldManager worldManager,
         CharacterRuntimeCalculator calculator,
         CharacterRuntimeNotifier notifier,
-        GameTimeService gameTimeService)
+        GameTimeService gameTimeService,
+        CharacterLifecycleService lifecycleService)
     {
         _worldManager = worldManager;
         _calculator = calculator;
         _notifier = notifier;
         _gameTimeService = gameTimeService;
+        _lifecycleService = lifecycleService;
     }
 
     public PlayerSession AttachPlayerSession(ConnectionSession session, CharacterSnapshotDto snapshot)
@@ -46,6 +49,9 @@ public sealed class CharacterRuntimeService
             currentState.LifespanEndGameMinute,
             _gameTimeService.GetCurrentSnapshot());
         player.TryUpdateReportedRemainingLifespan(currentRemaining);
+        var isRestricted = currentRemaining <= 0 || currentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired;
+        player.SetCharacterActionsRestricted(isRestricted);
+        session.AreCharacterActionsRestricted = isRestricted;
         return player;
     }
 
@@ -105,11 +111,17 @@ public sealed class CharacterRuntimeService
         return snapshot;
     }
 
-    public void RefreshTimeDerivedStateForOnlinePlayers()
+    public async Task RefreshTimeDerivedStateForOnlinePlayersAsync(CancellationToken cancellationToken = default)
     {
         foreach (var player in _worldManager.GetOnlinePlayersSnapshot())
         {
             var snapshot = player.RuntimeState.CaptureSnapshot();
+            if (_lifecycleService.IsLifespanExpired(snapshot.CurrentState))
+            {
+                await _lifecycleService.HandleLifespanExpiredAsync(player, cancellationToken);
+                continue;
+            }
+
             _notifier.TryNotifyTimeDerivedCurrentStateChanged(player, snapshot.CurrentState);
         }
     }

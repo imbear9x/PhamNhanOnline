@@ -8,6 +8,8 @@ public sealed class PlayerSession
 {
     private readonly object _sync = new();
     private int _lastReportedRemainingLifespan = int.MinValue;
+    private bool _lifespanExpiredProcessed;
+    private bool _characterActionsRestricted;
 
     public Guid PlayerId { get; }
     public int ConnectionId { get; private set; }
@@ -19,6 +21,26 @@ public sealed class PlayerSession
 
     public Vector2 Position { get; private set; }
     public bool IsConnected { get; internal set; }
+    public bool IsLifespanExpiredProcessed
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _lifespanExpiredProcessed;
+            }
+        }
+    }
+    public bool AreCharacterActionsRestricted
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _characterActionsRestricted;
+            }
+        }
+    }
 
     public PlayerSession(
         Guid playerId,
@@ -86,6 +108,22 @@ public sealed class PlayerSession
 
             _lastReportedRemainingLifespan = remainingLifespan;
             return true;
+        }
+    }
+
+    public void MarkLifespanExpiredProcessed()
+    {
+        lock (_sync)
+        {
+            _lifespanExpiredProcessed = true;
+        }
+    }
+
+    public void SetCharacterActionsRestricted(bool restricted)
+    {
+        lock (_sync)
+        {
+            _characterActionsRestricted = restricted;
         }
     }
 }
