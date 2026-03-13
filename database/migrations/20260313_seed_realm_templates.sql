@@ -1,11 +1,7 @@
 BEGIN;
 
-INSERT INTO public.servers (id, name, status)
-VALUES (1, 'Server01', 1)
-ON CONFLICT (id) DO UPDATE
-SET
-    name = EXCLUDED.name,
-    status = EXCLUDED.status;
+ALTER TABLE public.realm_templates
+    ADD COLUMN IF NOT EXISTS lifespan integer NOT NULL DEFAULT 0;
 
 INSERT INTO public.realm_templates (
     id,

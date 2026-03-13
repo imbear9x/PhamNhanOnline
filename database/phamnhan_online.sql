@@ -163,6 +163,8 @@ CREATE TABLE public.character_base_stats (
     base_attack integer DEFAULT 10,
     base_speed integer DEFAULT 10,
     base_spiritual_sense integer DEFAULT 10,
+    base_stamina integer DEFAULT 100,
+    lifespan_bonus integer DEFAULT 0,
     base_fortune double precision DEFAULT 0.01,
     base_potential integer DEFAULT 0
 );
@@ -179,6 +181,8 @@ CREATE TABLE public.character_current_state (
     character_id uuid NOT NULL,
     current_hp integer DEFAULT 100 NOT NULL,
     current_mp integer DEFAULT 100 NOT NULL,
+    current_stamina integer DEFAULT 100 NOT NULL,
+    remaining_lifespan integer DEFAULT 100 NOT NULL,
     current_map_id integer,
     current_pos_x real DEFAULT 0 NOT NULL,
     current_pos_y real DEFAULT 0 NOT NULL,
@@ -221,6 +225,7 @@ CREATE TABLE public.realm_templates (
     name character varying(50),
     stage_name character varying(50),
     max_cultivation bigint,
+    lifespan integer DEFAULT 0 NOT NULL,
     base_breakthrough_rate double precision,
     failure_penalty double precision DEFAULT 0,
     created_at timestamp without time zone DEFAULT now()
@@ -307,7 +312,7 @@ COPY public.breakthrough_conditions (id, realm_id, condition_type, target_id, su
 -- Data for Name: character_base_stats; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.character_base_stats (character_id, realm_id, cultivation, base_hp, base_mp, base_physique, base_attack, base_speed, base_spiritual_sense, base_fortune, base_potential) FROM stdin;
+COPY public.character_base_stats (character_id, realm_id, cultivation, base_hp, base_mp, base_physique, base_attack, base_speed, base_spiritual_sense, base_stamina, lifespan_bonus, base_fortune, base_potential) FROM stdin;
 \.
 
 
@@ -317,7 +322,7 @@ COPY public.character_base_stats (character_id, realm_id, cultivation, base_hp, 
 -- Data for Name: character_current_state; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.character_current_state (character_id, current_hp, current_mp, current_map_id, current_pos_x, current_pos_y, is_dead, current_state, last_saved_at) FROM stdin;
+COPY public.character_current_state (character_id, current_hp, current_mp, current_stamina, remaining_lifespan, current_map_id, current_pos_x, current_pos_y, is_dead, current_state, last_saved_at) FROM stdin;
 \.
 
 
@@ -337,7 +342,7 @@ COPY public.characters (id, account_id, server_id, name, model_id, gender, hair_
 -- Data for Name: realm_templates; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.realm_templates (id, name, stage_name, max_cultivation, base_breakthrough_rate, failure_penalty, created_at) FROM stdin;
+COPY public.realm_templates (id, name, stage_name, max_cultivation, lifespan, base_breakthrough_rate, failure_penalty, created_at) FROM stdin;
 \.
 
 

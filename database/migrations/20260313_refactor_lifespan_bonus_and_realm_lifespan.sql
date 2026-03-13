@@ -1,11 +1,7 @@
 BEGIN;
 
-INSERT INTO public.servers (id, name, status)
-VALUES (1, 'Server01', 1)
-ON CONFLICT (id) DO UPDATE
-SET
-    name = EXCLUDED.name,
-    status = EXCLUDED.status;
+ALTER TABLE public.realm_templates
+    ADD COLUMN IF NOT EXISTS lifespan integer NOT NULL DEFAULT 0;
 
 INSERT INTO public.realm_templates (
     id,
@@ -56,5 +52,44 @@ SET
     lifespan = EXCLUDED.lifespan,
     base_breakthrough_rate = EXCLUDED.base_breakthrough_rate,
     failure_penalty = EXCLUDED.failure_penalty;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'character_base_stats'
+          AND column_name = 'base_lifespan'
+    ) AND NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'character_base_stats'
+          AND column_name = 'lifespan_bonus'
+    ) THEN
+        EXECUTE 'ALTER TABLE public.character_base_stats RENAME COLUMN base_lifespan TO lifespan_bonus';
+    END IF;
+END $$;
+
+ALTER TABLE public.character_base_stats
+    ADD COLUMN IF NOT EXISTS lifespan_bonus integer DEFAULT 0;
+
+ALTER TABLE public.character_base_stats
+    ALTER COLUMN lifespan_bonus SET DEFAULT 0;
+
+UPDATE public.character_base_stats
+SET lifespan_bonus = 0
+WHERE lifespan_bonus IS NULL
+   OR lifespan_bonus <> 0;
+
+UPDATE public.character_current_state ccs
+SET remaining_lifespan = CASE
+    WHEN rt.lifespan = -1 THEN -1
+    ELSE rt.lifespan + COALESCE(cbs.lifespan_bonus, 0)
+END
+FROM public.character_base_stats cbs
+JOIN public.realm_templates rt ON rt.id = cbs.realm_id
+WHERE cbs.character_id = ccs.character_id;
 
 COMMIT;
