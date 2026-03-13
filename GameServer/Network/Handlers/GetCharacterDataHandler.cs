@@ -2,6 +2,7 @@ using GameServer.DTO;
 using GameServer.Network.Interface;
 using GameServer.Runtime;
 using GameServer.Services;
+using GameServer.Time;
 using GameShared.Messages;
 using GameShared.Packets;
 
@@ -12,15 +13,18 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
     private readonly CharacterService _characterService;
     private readonly CharacterRuntimeService _runtimeService;
     private readonly INetworkSender _server;
+    private readonly GameTimeService _gameTimeService;
 
     public GetCharacterDataHandler(
         CharacterService characterService,
         CharacterRuntimeService runtimeService,
-        INetworkSender server)
+        INetworkSender server,
+        GameTimeService gameTimeService)
     {
         _characterService = characterService;
         _runtimeService = runtimeService;
         _server = server;
+        _gameTimeService = gameTimeService;
     }
 
     public async Task HandleAsync(ConnectionSession session, GetCharacterDataPacket packet)
@@ -50,7 +54,7 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
                 Code = MessageCode.None,
                 Character = data.Character.ToModel(),
                 BaseStats = data.BaseStats?.ToModel(),
-                CurrentState = data.CurrentState?.ToModel()
+                CurrentState = data.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot())
             });
         }
         catch (Exception)

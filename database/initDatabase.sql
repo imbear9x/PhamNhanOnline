@@ -7,6 +7,33 @@ SET
     name = EXCLUDED.name,
     status = EXCLUDED.status;
 
+INSERT INTO public.game_time_state (
+    id,
+    anchor_utc,
+    anchor_game_minute,
+    game_minutes_per_real_minute,
+    days_per_game_year,
+    runtime_save_interval_seconds,
+    derived_state_refresh_interval_seconds
+)
+VALUES (
+    1,
+    TIMESTAMPTZ '2026-01-01 00:00:00+00',
+    0,
+    518400,
+    360,
+    2,
+    5
+)
+ON CONFLICT (id) DO UPDATE
+SET
+    anchor_utc = EXCLUDED.anchor_utc,
+    anchor_game_minute = EXCLUDED.anchor_game_minute,
+    game_minutes_per_real_minute = EXCLUDED.game_minutes_per_real_minute,
+    days_per_game_year = EXCLUDED.days_per_game_year,
+    runtime_save_interval_seconds = EXCLUDED.runtime_save_interval_seconds,
+    derived_state_refresh_interval_seconds = EXCLUDED.derived_state_refresh_interval_seconds;
+
 INSERT INTO public.realm_templates (
     id,
     name,

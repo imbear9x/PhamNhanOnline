@@ -3,6 +3,7 @@ using GameServer.Entities;
 using GameServer.Exceptions;
 using GameServer.Repositories;
 using GameServer.Runtime;
+using GameServer.Time;
 using GameShared.Messages;
 using LinqToDB;
 using LinqToDB.Async;
@@ -24,25 +25,29 @@ public sealed class CharacterService
     private const int DefaultLifespanBonus = 0;
     private const double DefaultBaseFortune = 0.01;
     private const int DefaultBasePotential = 0;
+    private const int DefaultAppearanceValue = 1;
 
     private readonly GameDb _db;
     private readonly CharacterRepository _characters;
     private readonly CharacterBaseStatRepository _baseStats;
     private readonly CharacterCurrentStateRepository _currentStates;
     private readonly RealmTemplateRepository _realmTemplates;
+    private readonly GameTimeService _gameTimeService;
 
     public CharacterService(
         GameDb db,
         CharacterRepository characters,
         CharacterBaseStatRepository baseStats,
         CharacterCurrentStateRepository currentStates,
-        RealmTemplateRepository realmTemplates)
+        RealmTemplateRepository realmTemplates,
+        GameTimeService gameTimeService)
     {
         _db = db;
         _characters = characters;
         _baseStats = baseStats;
         _currentStates = currentStates;
         _realmTemplates = realmTemplates;
+        _gameTimeService = gameTimeService;
     }
 
     public async Task<List<CharacterDto>> GetCharactersByAccountAsync(Guid accountId, CancellationToken cancellationToken = default)
@@ -77,12 +82,20 @@ public sealed class CharacterService
             ServerId = serverId,
             Name = name,
             ModelId = modelId,
+            Gender = DefaultAppearanceValue,
+            HairColor = DefaultAppearanceValue,
+            EyeColor = DefaultAppearanceValue,
+            FaceId = DefaultAppearanceValue,
             CreatedAt = DateTime.UtcNow,
         };
 
         var baseStat = BuildDefaultCharacterBaseStats(character.Id);
         var realmLifespan = await GetRealmLifespanAsync(baseStat.RealmId, cancellationToken);
-        var currentState = BuildDefaultCharacterCurrentState(character.Id, baseStat, realmLifespan);
+        var currentState = BuildDefaultCharacterCurrentState(
+            character.Id,
+            baseStat,
+            realmLifespan,
+            _gameTimeService.GetCurrentSnapshot());
 
         await using var tx = await _db.BeginTransactionAsync(cancellationToken);
         await _characters.CreateAsync(character, cancellationToken);
@@ -247,7 +260,11 @@ public sealed class CharacterService
 
         var baseStats = await _baseStats.GetByIdAsync(characterId, cancellationToken);
         var realmLifespan = await GetRealmLifespanAsync(baseStats?.RealmId, cancellationToken);
-        var entity = BuildDefaultCharacterCurrentState(characterId, baseStats, realmLifespan);
+        var entity = BuildDefaultCharacterCurrentState(
+            characterId,
+            baseStats,
+            realmLifespan,
+            _gameTimeService.GetCurrentSnapshot());
         await _currentStates.CreateAsync(entity, cancellationToken);
         return CharacterCurrentStateDto.FromEntity(entity);
     }
@@ -263,7 +280,7 @@ public sealed class CharacterService
         existing.CurrentHp = state.CurrentHp;
         existing.CurrentMp = state.CurrentMp;
         existing.CurrentStamina = state.CurrentStamina;
-        existing.RemainingLifespan = state.RemainingLifespan;
+        existing.LifespanEndGameMinute = state.LifespanEndGameMinute;
         existing.CurrentMapId = state.CurrentMapId;
         existing.CurrentPosX = state.CurrentPosX;
         existing.CurrentPosY = state.CurrentPosY;
@@ -281,12 +298,18 @@ public sealed class CharacterService
         return !await _characters.NameExistsAsync(name, cancellationToken);
     }
 
-    private static CharacterCurrentState BuildDefaultCharacterCurrentState(Guid characterId, CharacterBaseStat? baseStat, int? realmLifespan)
+    private static CharacterCurrentState BuildDefaultCharacterCurrentState(
+        Guid characterId,
+        CharacterBaseStat? baseStat,
+        int? realmLifespan,
+        GameTimeSnapshot gameTime)
     {
-        var maxLifespan = CharacterLifespanRules.ResolveMaxLifespan(
-            CharacterBaseStatsDto.FromEntity(
-                baseStat ?? BuildDefaultCharacterBaseStats(characterId),
-                realmLifespan ?? DefaultRealmLifespan),
+        var effectiveBaseStats = CharacterBaseStatsDto.FromEntity(
+            baseStat ?? BuildDefaultCharacterBaseStats(characterId),
+            realmLifespan ?? DefaultRealmLifespan);
+        var lifespanEndGameMinute = CharacterLifespanRules.CreateLifespanEndGameMinute(
+            effectiveBaseStats,
+            gameTime,
             DefaultRealmLifespan);
 
         return new CharacterCurrentState
@@ -295,7 +318,7 @@ public sealed class CharacterService
             CurrentHp = baseStat?.BaseHp ?? DefaultBaseHp,
             CurrentMp = baseStat?.BaseMp ?? DefaultBaseMp,
             CurrentStamina = baseStat?.BaseStamina ?? DefaultBaseStamina,
-            RemainingLifespan = CharacterLifespanRules.NormalizeRemainingLifespan(maxLifespan, maxLifespan),
+            LifespanEndGameMinute = lifespanEndGameMinute,
             CurrentMapId = null,
             CurrentPosX = 0,
             CurrentPosY = 0,

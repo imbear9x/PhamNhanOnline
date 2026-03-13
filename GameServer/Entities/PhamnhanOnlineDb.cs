@@ -47,6 +47,7 @@ namespace GameServer.Entities
 		public ITable<CharacterBaseStat>     CharacterBaseStats     => this.GetTable<CharacterBaseStat>();
 		public ITable<CharacterCurrentState> CharacterCurrentStates => this.GetTable<CharacterCurrentState>();
 		public ITable<Character>             Characters             => this.GetTable<Character>();
+		public ITable<GameTimeState>         GameTimeStates         => this.GetTable<GameTimeState>();
 		public ITable<RealmTemplate>         RealmTemplates         => this.GetTable<RealmTemplate>();
 		public ITable<Server>                Servers                => this.GetTable<Server>();
 	}
@@ -130,6 +131,16 @@ namespace GameServer.Entities
 		}
 
 		public static Task<Character?> FindAsync(this ITable<Character> table, Guid id, CancellationToken cancellationToken = default)
+		{
+			return table.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+		}
+
+		public static GameTimeState? Find(this ITable<GameTimeState> table, int id)
+		{
+			return table.FirstOrDefault(e => e.Id == id);
+		}
+
+		public static Task<GameTimeState?> FindAsync(this ITable<GameTimeState> table, int id, CancellationToken cancellationToken = default)
 		{
 			return table.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 		}

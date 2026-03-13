@@ -8,6 +8,7 @@ using GameServer.Network.Validations;
 using GameServer.Repositories;
 using GameServer.Runtime;
 using GameServer.Services;
+using GameServer.Time;
 using GameServer.World;
 using GameShared.Packets;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +33,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CharacterRepository>();
         services.AddScoped<CharacterBaseStatRepository>();
         services.AddScoped<CharacterCurrentStateRepository>();
+        services.AddScoped<GameTimeStateRepository>();
         services.AddScoped<RealmTemplateRepository>();
         services.AddScoped<AccountCredentialRepository>();
         
@@ -57,6 +59,8 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddWorldSystems(this IServiceCollection services)
     {
+        services.AddSingleton(BuildGameTimeBootstrapConfig());
+        services.AddSingleton<GameTimeService>();
         services.AddSingleton<MapManager>();
         services.AddSingleton<WorldManager>();
         services.AddSingleton<CharacterRuntimeCalculator>();
@@ -99,12 +103,27 @@ public static class ServiceCollectionExtensions
         var json = File.ReadAllText(path);
 
 
-        var dbConfig = JsonSerializer.Deserialize<DbConfig>(json);
+        var dbConfig = JsonSerializer.Deserialize<DbConfig>(json)
+            ?? throw new Exception($"Failed to deserialize DB config: {path}");
         services.AddScoped<GameDb>(sp =>
         {
+            if (string.IsNullOrWhiteSpace(dbConfig.ConnectionString))
+                throw new Exception($"ConnectionString is missing in: {path}");
+
             return new GameDb(dbConfig.ConnectionString);
         });
 
         return services;
+    }
+
+    private static GameTimeConfig BuildGameTimeBootstrapConfig()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Config", "gameTimeConfig.json");
+        if (!File.Exists(path))
+            throw new Exception($"Config file not found: {path}");
+
+        var json = File.ReadAllText(path);
+        return JsonSerializer.Deserialize<GameTimeConfig>(json)
+               ?? throw new Exception($"Failed to deserialize game time config: {path}");
     }
 }

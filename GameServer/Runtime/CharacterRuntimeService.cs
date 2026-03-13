@@ -2,6 +2,7 @@ using System.Numerics;
 using GameServer.DTO;
 using GameServer.Network;
 using GameServer.Services;
+using GameServer.Time;
 using GameServer.World;
 
 namespace GameServer.Runtime;
@@ -11,15 +12,18 @@ public sealed class CharacterRuntimeService
     private readonly WorldManager _worldManager;
     private readonly CharacterRuntimeCalculator _calculator;
     private readonly CharacterRuntimeNotifier _notifier;
+    private readonly GameTimeService _gameTimeService;
 
     public CharacterRuntimeService(
         WorldManager worldManager,
         CharacterRuntimeCalculator calculator,
-        CharacterRuntimeNotifier notifier)
+        CharacterRuntimeNotifier notifier,
+        GameTimeService gameTimeService)
     {
         _worldManager = worldManager;
         _calculator = calculator;
         _notifier = notifier;
+        _gameTimeService = gameTimeService;
     }
 
     public PlayerSession AttachPlayerSession(ConnectionSession session, CharacterSnapshotDto snapshot)
@@ -38,6 +42,10 @@ public sealed class CharacterRuntimeService
 
         session.Player = player;
         session.SelectedCharacterId = snapshot.Character.CharacterId;
+        var currentRemaining = CharacterLifespanRules.CalculateRemainingLifespanYears(
+            currentState.LifespanEndGameMinute,
+            _gameTimeService.GetCurrentSnapshot());
+        player.TryUpdateReportedRemainingLifespan(currentRemaining);
         return player;
     }
 
@@ -67,9 +75,19 @@ public sealed class CharacterRuntimeService
         PlayerSession player,
         Func<CharacterBaseStatsDto, CharacterBaseStatsDto> mutation)
     {
+        var previousSnapshot = player.RuntimeState.CaptureSnapshot();
         var baseStatsSnapshot = player.RuntimeState.UpdateBaseStats(mutation);
         var currentStateSnapshot = player.RuntimeState.UpdateCurrentState(
-            current => _calculator.ClampCurrentStateToBaseStats(baseStatsSnapshot.BaseStats, current));
+            current =>
+            {
+                var clamped = _calculator.ClampCurrentStateToBaseStats(baseStatsSnapshot.BaseStats, current);
+                var lifespanAdjusted = CharacterLifespanRules.AdjustLifespanEndGameMinute(
+                    previousSnapshot.BaseStats,
+                    baseStatsSnapshot.BaseStats,
+                    clamped.LifespanEndGameMinute,
+                    _gameTimeService.GetCurrentSnapshot());
+                return clamped with { LifespanEndGameMinute = lifespanAdjusted };
+            });
 
         player.SynchronizeFromCurrentState(currentStateSnapshot.CurrentState);
         _notifier.NotifyBaseStatsChanged(player, baseStatsSnapshot.BaseStats);
@@ -85,5 +103,14 @@ public sealed class CharacterRuntimeService
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
         _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);
         return snapshot;
+    }
+
+    public void RefreshTimeDerivedStateForOnlinePlayers()
+    {
+        foreach (var player in _worldManager.GetOnlinePlayersSnapshot())
+        {
+            var snapshot = player.RuntimeState.CaptureSnapshot();
+            _notifier.TryNotifyTimeDerivedCurrentStateChanged(player, snapshot.CurrentState);
+        }
     }
 }

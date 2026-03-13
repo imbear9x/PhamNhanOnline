@@ -20,7 +20,7 @@ namespace GameServer.Entities
 		[Column("current_hp"                        )] public int      CurrentHp     { get; set; } // integer
 		[Column("current_mp"                        )] public int      CurrentMp     { get; set; } // integer
 		[Column("current_stamina"                   )] public int      CurrentStamina { get; set; } // integer
-		[Column("remaining_lifespan"                )] public int      RemainingLifespan { get; set; } // integer
+		[Column("lifespan_end_game_minute"          )] public long     LifespanEndGameMinute { get; set; } // bigint
 		[Column("current_map_id"                    )] public int?     CurrentMapId  { get; set; } // integer
 		[Column("current_pos_x"                     )] public float    CurrentPosX   { get; set; } // real
 		[Column("current_pos_y"                     )] public float    CurrentPosY   { get; set; } // real

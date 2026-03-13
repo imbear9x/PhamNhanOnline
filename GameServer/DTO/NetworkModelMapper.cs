@@ -1,4 +1,6 @@
 using GameShared.Models;
+using GameServer.Runtime;
+using GameServer.Time;
 
 namespace GameServer.DTO;
 
@@ -44,7 +46,7 @@ public static class NetworkModelMapper
         };
     }
 
-    public static CharacterCurrentStateModel ToModel(this CharacterCurrentStateDto dto)
+    public static CharacterCurrentStateModel ToModel(this CharacterCurrentStateDto dto, GameTimeSnapshot gameTime)
     {
         return new CharacterCurrentStateModel
         {
@@ -52,7 +54,7 @@ public static class NetworkModelMapper
             CurrentHp = dto.CurrentHp,
             CurrentMp = dto.CurrentMp,
             CurrentStamina = dto.CurrentStamina,
-            RemainingLifespan = dto.RemainingLifespan,
+            RemainingLifespan = CharacterLifespanRules.CalculateRemainingLifespanYears(dto.LifespanEndGameMinute, gameTime),
             CurrentMapId = dto.CurrentMapId,
             CurrentPosX = dto.CurrentPosX,
             CurrentPosY = dto.CurrentPosY,

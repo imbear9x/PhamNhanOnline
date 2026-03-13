@@ -14,8 +14,6 @@ public sealed class CharacterRuntimeCalculator
         var hpAfter = Math.Max(0, currentState.CurrentHp - appliedDamage);
         var isDead = hpAfter <= 0;
 
-        var maxLifespan = CharacterLifespanRules.ResolveMaxLifespan(baseStats, currentState.RemainingLifespan);
-
         return currentState with
         {
             CurrentHp = hpAfter,
@@ -23,7 +21,6 @@ public sealed class CharacterRuntimeCalculator
             CurrentState = isDead ? CharacterRuntimeStateCodes.Dead : currentState.CurrentState,
             CurrentMp = Clamp(currentState.CurrentMp, 0, baseStats.BaseMp ?? currentState.CurrentMp),
             CurrentStamina = Clamp(currentState.CurrentStamina, 0, baseStats.BaseStamina ?? currentState.CurrentStamina),
-            RemainingLifespan = CharacterLifespanRules.NormalizeRemainingLifespan(currentState.RemainingLifespan, maxLifespan),
         };
     }
 
@@ -36,11 +33,9 @@ public sealed class CharacterRuntimeCalculator
         var maxHp = baseStats.BaseHp ?? currentState.CurrentHp;
         var maxMp = baseStats.BaseMp ?? currentState.CurrentMp;
         var maxStamina = baseStats.BaseStamina ?? currentState.CurrentStamina;
-        var maxLifespan = CharacterLifespanRules.ResolveMaxLifespan(baseStats, currentState.RemainingLifespan);
         var hp = Clamp(currentState.CurrentHp + hpDelta, 0, maxHp);
         var mp = Clamp(currentState.CurrentMp + mpDelta, 0, maxMp);
         var stamina = Clamp(currentState.CurrentStamina, 0, maxStamina);
-        var remainingLifespan = CharacterLifespanRules.NormalizeRemainingLifespan(currentState.RemainingLifespan, maxLifespan);
         var isDead = hp <= 0;
 
         return currentState with
@@ -48,7 +43,6 @@ public sealed class CharacterRuntimeCalculator
             CurrentHp = hp,
             CurrentMp = mp,
             CurrentStamina = stamina,
-            RemainingLifespan = remainingLifespan,
             IsDead = isDead,
             CurrentState = isDead ? CharacterRuntimeStateCodes.Dead : CharacterRuntimeStateCodes.Idle,
         };
@@ -61,11 +55,9 @@ public sealed class CharacterRuntimeCalculator
         var maxHp = baseStats.BaseHp ?? currentState.CurrentHp;
         var maxMp = baseStats.BaseMp ?? currentState.CurrentMp;
         var maxStamina = baseStats.BaseStamina ?? currentState.CurrentStamina;
-        var maxLifespan = CharacterLifespanRules.ResolveMaxLifespan(baseStats, currentState.RemainingLifespan);
         var hp = Clamp(currentState.CurrentHp, 0, maxHp);
         var mp = Clamp(currentState.CurrentMp, 0, maxMp);
         var stamina = Clamp(currentState.CurrentStamina, 0, maxStamina);
-        var remainingLifespan = CharacterLifespanRules.NormalizeRemainingLifespan(currentState.RemainingLifespan, maxLifespan);
         var isDead = hp <= 0;
 
         return currentState with
@@ -73,7 +65,6 @@ public sealed class CharacterRuntimeCalculator
             CurrentHp = hp,
             CurrentMp = mp,
             CurrentStamina = stamina,
-            RemainingLifespan = remainingLifespan,
             IsDead = isDead,
             CurrentState = isDead ? CharacterRuntimeStateCodes.Dead : currentState.CurrentState,
         };

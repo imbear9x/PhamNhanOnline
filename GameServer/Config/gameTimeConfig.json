@@ -1,0 +1,8 @@
+{
+  "AnchorUtc": "2026-01-01T00:00:00Z",
+  "AnchorGameMinute": 0,
+  "GameMinutesPerRealMinute": 518400,
+  "DaysPerGameYear": 360,
+  "RuntimeSaveIntervalSeconds": 2,
+  "DerivedStateRefreshIntervalSeconds": 5
+}

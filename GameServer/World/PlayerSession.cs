@@ -7,6 +7,7 @@ namespace GameServer.World;
 public sealed class PlayerSession
 {
     private readonly object _sync = new();
+    private int _lastReportedRemainingLifespan = int.MinValue;
 
     public Guid PlayerId { get; }
     public int ConnectionId { get; private set; }
@@ -73,6 +74,18 @@ public sealed class PlayerSession
         {
             MapId = currentState.CurrentMapId ?? 0;
             Position = new Vector2(currentState.CurrentPosX, currentState.CurrentPosY);
+        }
+    }
+
+    public bool TryUpdateReportedRemainingLifespan(int remainingLifespan)
+    {
+        lock (_sync)
+        {
+            if (_lastReportedRemainingLifespan == remainingLifespan)
+                return false;
+
+            _lastReportedRemainingLifespan = remainingLifespan;
+            return true;
         }
     }
 }

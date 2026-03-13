@@ -1,27 +1,61 @@
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using GameShared.Diagnostics;
 using GameShared.Logging;
 using GameShared.Messages;
 using GameShared.Models;
 using GameShared.Packets;
 using LiteNetLib;
-using System.Text.Json;
+
+sealed class FlowOptions
+{
+    public string Username { get; init; } = "test00122";
+    public string Password { get; init; } = "test@12333333";
+    public string Email { get; init; } = "test00122@test.com";
+    public string CharacterName { get; init; } = "Lệ Phi Vũ";
+    public int ServerId { get; init; } = 1;
+    public int ModelId { get; init; } = 1;
+    public string JsonOutputPath { get; init; } = Path.Combine("tmp_codex", "vertical_slice_test1_hanli_flow.json");
+}
+
+sealed class FlowJsonRecord
+{
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public CharacterModel[] CharacterList { get; set; } = Array.Empty<CharacterModel>();
+    public CharacterModel? Character { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
+    public List<string> Events { get; set; } = new();
+}
 
 class AuthClientListener : INetEventListener
 {
-    private const string TestUsername = "khoivu";
-    private const string PreferredPassword = "hihi@admin";
-    private const string FallbackPassword = "t##AAAAadmin";
-    private const string RegisterEmail = "khoivu@example.com";
-    private const int DefaultServerId = 1;
-    private const int DefaultModelId = 1;
-
     private readonly object _sync = new();
+    private readonly FlowOptions _options;
+    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly FlowJsonRecord _record;
+
     private bool _flowFinished;
-    private string _currentPassword = PreferredPassword;
-    private bool _fallbackTried;
-    private bool _registerTried;
-    private int _createAttempts;
+    private bool _registerAttempted;
+    private bool _createAttempted;
     private Guid _targetCharacterId;
+
+    public AuthClientListener(FlowOptions options)
+    {
+        _options = options;
+        _jsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            IncludeFields = true,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+        _record = new FlowJsonRecord
+        {
+            Username = options.Username,
+            Email = options.Email
+        };
+    }
 
     public bool LoginFinished
     {
@@ -36,8 +70,8 @@ class AuthClientListener : INetEventListener
 
     public void OnPeerConnected(NetPeer peer)
     {
-        Logger.Info("Connected to server.");
-        SendLogin(peer, _currentPassword);
+        AppendEvent("ConnectedToServer");
+        SendLogin(peer);
     }
 
     public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
@@ -49,6 +83,8 @@ class AuthClientListener : INetEventListener
         if (packet is null)
         {
             Logger.Error($"Deserialize failed. ByteLength={bytes.Length}");
+            AppendEvent("DeserializeFailed");
+            MarkFlowFinished();
             return;
         }
 
@@ -57,134 +93,32 @@ class AuthClientListener : INetEventListener
             switch (packet)
             {
                 case RegisterResultPacket registerResult:
-                {
-                    Logger.Info($"Register result: Success={registerResult.Success}, Code={registerResult.Code}");
-                    if (registerResult.Success is true || registerResult.Code == MessageCode.LoginAlreadyExists)
-                    {
-                        SendLogin(peer, _currentPassword);
-                    }
-                    else
-                    {
-                        MarkFlowFinished();
-                    }
-
+                    HandleRegisterResult(peer, registerResult);
                     break;
-                }
                 case LoginResultPacket loginResult:
-                {
-                    Logger.Info($"Login result: Success={loginResult.Success}, Code={loginResult.Code}, AccountId={loginResult.AccountId}");
-
-                    if (loginResult.Success is true)
-                    {
-                        SendGetCharacterList(peer);
-                    }
-                    else if (loginResult.Code == MessageCode.InvalidCredentials && !_fallbackTried)
-                    {
-                        _fallbackTried = true;
-                        _currentPassword = FallbackPassword;
-                        Logger.Info("Preferred password login failed. Retrying fallback password.");
-                        SendLogin(peer, _currentPassword);
-                    }
-                    else if (loginResult.Code == MessageCode.InvalidCredentials && !_registerTried)
-                    {
-                        _registerTried = true;
-                        _currentPassword = PreferredPassword;
-                        Logger.Info("Login failed on both passwords. Trying register then login.");
-                        SendRegister(peer, _currentPassword);
-                    }
-                    else
-                    {
-                        MarkFlowFinished();
-                    }
-
+                    HandleLoginResult(peer, loginResult);
                     break;
-                }
                 case GetCharacterListResultPacket listResult:
-                {
-                    Logger.Info($"GetCharacterList result: Success={listResult.Success}, Code={listResult.Code}");
-
-                    if (listResult.Success is not true)
-                    {
-                        MarkFlowFinished();
-                        break;
-                    }
-
-                    var characters = listResult.Characters ?? new List<CharacterModel>();
-                    Logger.Info($"Character list count: {characters.Count}");
-
-                    for (var i = 0; i < characters.Count; i++)
-                    {
-                        var c = characters[i];
-                        Logger.Info(
-                            $"Character[{i}]: Id={c.CharacterId}, Name={c.Name}, Server={c.WorldServerId}, Model={c.Appearance.ModelId}, CreatedUnixMs={c.CreatedUnixMs}");
-                    }
-
-                    if (characters.Count == 0)
-                    {
-                        SendCreateCharacter(peer, BuildNextCharacterName());
-                    }
-                    else
-                    {
-                        _targetCharacterId = characters[0].CharacterId;
-                        SendGetCharacterData(peer, _targetCharacterId);
-                    }
-
+                    HandleCharacterListResult(peer, listResult);
                     break;
-                }
                 case CreateCharacterResultPacket createResult:
-                {
-                    Logger.Info($"CreateCharacter result: Success={createResult.Success}, Code={createResult.Code}");
-
-                    if (createResult.Success is true && createResult.Character.HasValue)
-                    {
-                        _targetCharacterId = createResult.Character.Value.CharacterId;
-                        Logger.Info($"Created character id: {_targetCharacterId}");
-                        SendGetCharacterData(peer, _targetCharacterId);
-                        break;
-                    }
-
-                    if (createResult.Code == MessageCode.CharacterNameAlreadyExists && _createAttempts < 5)
-                    {
-                        Logger.Info("Character name already exists, retrying with another name.");
-                        SendCreateCharacter(peer, BuildNextCharacterName());
-                        break;
-                    }
-
-                    MarkFlowFinished();
+                    HandleCreateCharacterResult(peer, createResult);
                     break;
-                }
                 case GetCharacterDataResultPacket dataResult:
-                {
-                    Logger.Info($"GetCharacterData result: Success={dataResult.Success}, Code={dataResult.Code}");
-
-                    if (dataResult.Success is true && dataResult.Character.HasValue)
-                    {
-                        LogCharacterData(dataResult.Character.Value, dataResult.BaseStats, dataResult.CurrentState);
-                        Logger.Info("Character data loaded successfully.");
-                    }
-                    else
-                    {
-                        Logger.Error("Failed to load character data.");
-                    }
-
-                    MarkFlowFinished();
+                    HandleCharacterDataResult(dataResult);
                     break;
-                }
                 case CharacterBaseStatsChangedPacket baseStatsChanged:
-                {
                     Logger.Info($"CharacterBaseStatsChanged received: HasBaseStats={baseStatsChanged.BaseStats.HasValue}");
+                    AppendEvent("CharacterBaseStatsChanged");
                     break;
-                }
                 case CharacterCurrentStateChangedPacket currentStateChanged:
-                {
                     Logger.Info($"CharacterCurrentStateChanged received: HasCurrentState={currentStateChanged.CurrentState.HasValue}");
+                    AppendEvent("CharacterCurrentStateChanged");
                     break;
-                }
                 default:
-                {
                     Logger.Info($"Unhandled packet type: {packet.GetType().Name}");
+                    AppendEvent($"Unhandled:{packet.GetType().Name}");
                     break;
-                }
             }
         }
         catch (Exception ex)
@@ -207,8 +141,117 @@ class AuthClientListener : INetEventListener
                 ExceptionStackTrace = ex.StackTrace
             });
 
+            AppendEvent($"Error:{packet.GetType().Name}");
+            PersistFlowJson();
             MarkFlowFinished();
         }
+    }
+
+    private void HandleRegisterResult(NetPeer peer, RegisterResultPacket registerResult)
+    {
+        Logger.Info($"Register result: Success={registerResult.Success}, Code={registerResult.Code}");
+        AppendEvent($"Register:{registerResult.Code}");
+        _registerAttempted = true;
+
+        if (registerResult.Success is true || registerResult.Code == MessageCode.LoginAlreadyExists)
+        {
+            SendLogin(peer);
+            return;
+        }
+
+        PersistFlowJson();
+        MarkFlowFinished();
+    }
+
+    private void HandleLoginResult(NetPeer peer, LoginResultPacket loginResult)
+    {
+        Logger.Info($"Login result: Success={loginResult.Success}, Code={loginResult.Code}, AccountId={loginResult.AccountId}");
+        AppendEvent($"Login:{loginResult.Code}");
+
+        if (loginResult.Success is true)
+        {
+            SendGetCharacterList(peer);
+            return;
+        }
+
+        PersistFlowJson();
+        MarkFlowFinished();
+    }
+
+    private void HandleCharacterListResult(NetPeer peer, GetCharacterListResultPacket listResult)
+    {
+        Logger.Info($"GetCharacterList result: Success={listResult.Success}, Code={listResult.Code}");
+        AppendEvent($"GetCharacterList:{listResult.Code}");
+
+        if (listResult.Success is not true)
+        {
+            PersistFlowJson();
+            MarkFlowFinished();
+            return;
+        }
+
+        var characters = listResult.Characters?.ToArray() ?? Array.Empty<CharacterModel>();
+        _record.CharacterList = characters;
+        PersistFlowJson();
+
+        Logger.Info($"Character list count: {characters.Length}");
+        foreach (var character in characters)
+        {
+            Logger.Info($"CharacterList item: Id={character.CharacterId}, Name={character.Name}, Server={character.WorldServerId}, Model={character.Appearance.ModelId}");
+        }
+
+        if (characters.Length == 0)
+        {
+            Logger.Info("Character list is empty.");
+            PersistFlowJson();
+            MarkFlowFinished();
+            return;
+        }
+
+        _targetCharacterId = FindTargetCharacterId(characters);
+        SendGetCharacterData(peer, _targetCharacterId);
+    }
+
+    private void HandleCreateCharacterResult(NetPeer peer, CreateCharacterResultPacket createResult)
+    {
+        Logger.Info($"CreateCharacter result: Success={createResult.Success}, Code={createResult.Code}");
+        AppendEvent($"CreateCharacter:{createResult.Code}");
+
+        if (createResult.Success is true && createResult.Character.HasValue)
+        {
+            _targetCharacterId = createResult.Character.Value.CharacterId;
+            _record.Character = createResult.Character.Value;
+            _record.BaseStats = createResult.BaseStats;
+            _record.CurrentState = createResult.CurrentState;
+            PersistFlowJson();
+            SendGetCharacterList(peer);
+            return;
+        }
+
+        PersistFlowJson();
+        MarkFlowFinished();
+    }
+
+    private void HandleCharacterDataResult(GetCharacterDataResultPacket dataResult)
+    {
+        Logger.Info($"GetCharacterData result: Success={dataResult.Success}, Code={dataResult.Code}");
+        AppendEvent($"GetCharacterData:{dataResult.Code}");
+
+        if (dataResult.Success is true && dataResult.Character.HasValue)
+        {
+            _record.Character = dataResult.Character.Value;
+            _record.BaseStats = dataResult.BaseStats;
+            _record.CurrentState = dataResult.CurrentState;
+            PersistFlowJson();
+            Logger.Info($"Character data written to JSON: {_options.JsonOutputPath}");
+        }
+        else
+        {
+            Logger.Error("Failed to load character data.");
+            PersistFlowJson();
+        }
+
+        MarkFlowFinished();
     }
 
     private static void SendPacket(NetPeer peer, IPacket packet)
@@ -218,26 +261,27 @@ class AuthClientListener : INetEventListener
         Logger.Info($"Sent {packet.GetType().Name} (bytes={data.Length})");
     }
 
-    private void SendLogin(NetPeer peer, string password)
-    {
-        var loginPacket = new LoginPacket
-        {
-            Username = TestUsername,
-            Password = password
-        };
-        SendPacket(peer, loginPacket);
-    }
-
-    private void SendRegister(NetPeer peer, string password)
+    private void SendRegister(NetPeer peer)
     {
         var registerPacket = new RegisterPacket
         {
-            Username = TestUsername,
-            Password = password,
-            Email = RegisterEmail
+            Username = _options.Username,
+            Password = _options.Password,
+            Email = _options.Email
         };
 
         SendPacket(peer, registerPacket);
+    }
+
+    private void SendLogin(NetPeer peer)
+    {
+        var loginPacket = new LoginPacket
+        {
+            Username = _options.Username,
+            Password = _options.Password
+        };
+
+        SendPacket(peer, loginPacket);
     }
 
     private void SendGetCharacterList(NetPeer peer)
@@ -245,17 +289,16 @@ class AuthClientListener : INetEventListener
         SendPacket(peer, new GetCharacterListPacket());
     }
 
-    private void SendCreateCharacter(NetPeer peer, string name)
+    private void SendCreateCharacter(NetPeer peer)
     {
-        var packet = new CreateCharacterPacket
+        _createAttempted = true;
+        Logger.Info($"Creating character with name: {_options.CharacterName}");
+        SendPacket(peer, new CreateCharacterPacket
         {
-            Name = name,
-            ServerId = DefaultServerId,
-            ModelId = DefaultModelId
-        };
-
-        Logger.Info($"Creating character with name: {name}");
-        SendPacket(peer, packet);
+            Name = _options.CharacterName,
+            ServerId = _options.ServerId,
+            ModelId = _options.ModelId
+        });
     }
 
     private void SendGetCharacterData(NetPeer peer, Guid characterId)
@@ -266,63 +309,42 @@ class AuthClientListener : INetEventListener
         });
     }
 
-    private string BuildNextCharacterName()
+    private Guid FindTargetCharacterId(IReadOnlyList<CharacterModel> characters)
     {
-        _createAttempts++;
-        return $"khoivu_{Random.Shared.Next(1000, 9999)}";
+        foreach (var character in characters)
+        {
+            if (string.Equals(character.Name, _options.CharacterName, StringComparison.Ordinal))
+                return character.CharacterId;
+        }
+
+        return characters[0].CharacterId;
     }
 
-    private static void LogCharacterData(
-        CharacterModel character,
-        CharacterBaseStatsModel? baseStats,
-        CharacterCurrentStateModel? currentState)
+    private void PersistFlowJson()
     {
-        Logger.Info(
-            "Character data: " +
-            $"Id={character.CharacterId}, Owner={character.OwnerAccountId}, Name={character.Name}, " +
-            $"Server={character.WorldServerId}, Model={character.Appearance.ModelId}, Gender={character.Appearance.Gender}, " +
-            $"Hair={character.Appearance.HairColor}, Eye={character.Appearance.EyeColor}, Face={character.Appearance.FaceId}, " +
-            $"CreatedUnixMs={character.CreatedUnixMs}");
+        var fullPath = Path.GetFullPath(_options.JsonOutputPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        File.WriteAllText(fullPath, JsonSerializer.Serialize(_record, _jsonOptions));
+    }
 
-        if (baseStats.HasValue)
-        {
-            var s = baseStats.Value;
-            Logger.Info(
-                "Character base stats: " +
-                $"CharacterId={s.CharacterId}, Realm={s.RealmTemplateId}, Cultivation={s.Cultivation}, " +
-                $"BaseHp={s.BaseHp}, BaseMp={s.BaseMp}, BasePhysique={s.BasePhysique}, BaseAttack={s.BaseAttack}, BaseSpeed={s.BaseSpeed}, " +
-                $"BaseSpiritualSense={s.BaseSpiritualSense}, BaseStamina={s.BaseStamina}, LifespanBonus={s.LifespanBonus}, " +
-                $"BaseFortune={s.BaseFortune}, BasePotential={s.BasePotential}");
-        }
-        else
-        {
-            Logger.Info("Character base stats: <null>");
-        }
-
-        if (currentState.HasValue)
-        {
-            var s = currentState.Value;
-            Logger.Info(
-                "Character current state: " +
-                $"CharacterId={s.CharacterId}, CurrentHp={s.CurrentHp}, CurrentMp={s.CurrentMp}, CurrentStamina={s.CurrentStamina}, RemainingLifespan={s.RemainingLifespan}, CurrentMapId={s.CurrentMapId}, " +
-                $"CurrentPosX={s.CurrentPosX}, CurrentPosY={s.CurrentPosY}, IsDead={s.IsDead}, CurrentState={s.CurrentState}, " +
-                $"LastSavedUnixMs={s.LastSavedUnixMs}");
-        }
-        else
-        {
-            Logger.Info("Character current state: <null>");
-        }
+    private void AppendEvent(string evt)
+    {
+        _record.Events.Add($"{DateTime.UtcNow:O} {evt}");
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
         Logger.Info($"Disconnected from server. Reason: {disconnectInfo.Reason}");
+        AppendEvent($"Disconnected:{disconnectInfo.Reason}");
+        PersistFlowJson();
         MarkFlowFinished();
     }
 
     public void OnNetworkError(System.Net.IPEndPoint endPoint, System.Net.Sockets.SocketError socketError)
     {
         Logger.Error($"Network error: {socketError}");
+        AppendEvent($"NetworkError:{socketError}");
+        PersistFlowJson();
         MarkFlowFinished();
     }
 
@@ -378,12 +400,15 @@ class Program
             return;
         }
 
+        var options = BuildFlowOptions(args);
+        Logger.Info($"Vertical slice account={options.Username}, email={options.Email}, character={options.CharacterName}, json={options.JsonOutputPath}");
+
         const string serverAddress = "127.0.0.1";
         const int serverPort = 7777;
-        var timeoutSeconds = Math.Max(5, GetIntArg(args, "--timeoutSec=", 20));
+        var timeoutSeconds = Math.Max(5, GetIntArg(args, "--timeoutSec=", 30));
         var waitForInput = GetBoolArg(args, "--waitForInput=", false);
 
-        var authListener = new AuthClientListener();
+        var authListener = new AuthClientListener(options);
         var netManager = new NetManager(authListener)
         {
             AutoRecycle = true
@@ -417,6 +442,20 @@ class Program
 
         if (waitForInput)
             Console.ReadLine();
+    }
+
+    private static FlowOptions BuildFlowOptions(string[] args)
+    {
+        return new FlowOptions
+        {
+            Username = GetStringArg(args, "--username=", "test00122"),
+            Password = GetStringArg(args, "--password=", "test@12333333"),
+            Email = GetStringArg(args, "--email=", "test00122@test.com"),
+            CharacterName = GetStringArg(args, "--characterName=", "HanLi"),
+            ServerId = GetIntArg(args, "--serverId=", 1),
+            ModelId = GetIntArg(args, "--modelId=", 1),
+            JsonOutputPath = GetStringArg(args, "--jsonOutput=", Path.Combine("tmp_codex", "vertical_slice_test1_hanli_flow.json"))
+        };
     }
 
     private static string? GetLogRootPath(string[] args)
@@ -455,6 +494,17 @@ class Program
 
             if (int.TryParse(arg[prefix.Length..], out var parsed))
                 return parsed;
+        }
+
+        return defaultValue;
+    }
+
+    private static string GetStringArg(string[] args, string prefix, string defaultValue)
+    {
+        foreach (var arg in args)
+        {
+            if (arg.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return arg[prefix.Length..];
         }
 
         return defaultValue;
