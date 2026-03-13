@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Concurrent;
 using GameServer.Network.Interface;
 using GameShared.Packets;
 
@@ -10,7 +6,7 @@ namespace GameServer.Network.Middleware
 {
     public class RateLimitMiddleware : IPacketMiddleware
     {
-        private readonly Dictionary<int, DateTime> _lastPacketTime = new();
+        private readonly ConcurrentDictionary<int, DateTime> _lastPacketTime = new();
 
         public async Task InvokeAsync(ConnectionSession session, IPacket packet, Func<Task> next)
         {

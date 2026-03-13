@@ -17,16 +17,6 @@ public sealed class ChangePasswordPacketValidator : PacketValidator<ChangePasswo
             return false;
         }
 
-        if (!IsValidUsername(packet.Username!))
-        {
-            errorPacket = new ChangePasswordResultPacket
-            {
-                Success = false,
-                Code = MessageCode.UsernameWrong
-            };
-            return false;
-        }
-
         if (!IsAsciiPrintablePassword(packet.Password!) || !IsAsciiPrintablePassword(packet.NewPassword!))
         {
             errorPacket = new ChangePasswordResultPacket
@@ -38,25 +28,6 @@ public sealed class ChangePasswordPacketValidator : PacketValidator<ChangePasswo
         }
 
         errorPacket = null;
-        return true;
-    }
-
-    private static bool IsValidUsername(string username)
-    {
-        if (string.IsNullOrEmpty(username))
-            return false;
-
-        if (!IsAsciiLowerLetter(username[0]))
-            return false;
-
-        foreach (var c in username)
-        {
-            if (IsAsciiLowerLetter(c) || char.IsDigit(c) || c == '_')
-                continue;
-
-            return false;
-        }
-
         return true;
     }
 
@@ -73,6 +44,4 @@ public sealed class ChangePasswordPacketValidator : PacketValidator<ChangePasswo
 
         return true;
     }
-
-    private static bool IsAsciiLowerLetter(char c) => c >= 'a' && c <= 'z';
 }

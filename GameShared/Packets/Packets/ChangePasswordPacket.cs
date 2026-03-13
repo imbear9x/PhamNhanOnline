@@ -7,11 +7,6 @@ namespace GameShared.Packets;
 [RequireAuth]
 public partial class ChangePasswordPacket : IPacket
 {
-    [ValidationCode(MessageCode.UsernameWrong)]
-    [Required]
-    [StringLength(24, MinimumLength = 6)]
-    public string? Username { get; set; }
-
     [ValidationCode(MessageCode.PasswordWrong)]
     [Required]
     [StringLength(128, MinimumLength = 8)]

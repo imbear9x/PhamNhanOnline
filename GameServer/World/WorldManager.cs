@@ -44,6 +44,12 @@ public sealed class WorldManager
         }
     }
 
+    public bool IsOwnedByConnection(Guid playerId, int connectionId)
+    {
+        return _onlinePlayers.TryGetValue(playerId, out var session) &&
+               session.ConnectionId == connectionId;
+    }
+
     public PlayerSession GetPlayer(Guid playerId)
     {
         if (_onlinePlayers.TryGetValue(playerId, out var session))

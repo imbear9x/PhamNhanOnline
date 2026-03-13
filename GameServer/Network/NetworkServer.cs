@@ -148,7 +148,8 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         if (!_sessions.TryRemove(peer.Id, out var session))
             return;
 
-        if (session.IsAuthenticated)
+        if (session.IsAuthenticated &&
+            _worldManager.IsOwnedByConnection(session.PlayerId, session.ConnectionId))
         {
             _runtimeSaveService.FlushPlayerAsync(session.PlayerId).GetAwaiter().GetResult();
             _worldManager.RemovePlayer(session.PlayerId);
@@ -187,7 +188,9 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         if (packet is null)
             return;
 
-        _ = DispatchWithIncidentCaptureAsync(session, packet, bytes, channelNumber, deliveryMethod);
+        DispatchWithIncidentCaptureAsync(session, packet, bytes, channelNumber, deliveryMethod)
+            .GetAwaiter()
+            .GetResult();
     }
 
     public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)

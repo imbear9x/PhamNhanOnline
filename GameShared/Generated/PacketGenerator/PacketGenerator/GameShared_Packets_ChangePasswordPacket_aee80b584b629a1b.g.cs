@@ -8,15 +8,7 @@ public partial class ChangePasswordPacket
 {
     private ulong _mask;
 
-    public bool HasUsername => (_mask & (1UL << 0)) != 0;
-
-    public bool TryGetUsername(out string? value)
-    {
-        value = Username;
-        return HasUsername;
-    }
-
-    public bool HasPassword => (_mask & (1UL << 1)) != 0;
+    public bool HasPassword => (_mask & (1UL << 0)) != 0;
 
     public bool TryGetPassword(out string? value)
     {
@@ -24,7 +16,7 @@ public partial class ChangePasswordPacket
         return HasPassword;
     }
 
-    public bool HasNewPassword => (_mask & (1UL << 2)) != 0;
+    public bool HasNewPassword => (_mask & (1UL << 1)) != 0;
 
     public bool TryGetNewPassword(out string? value)
     {
@@ -36,17 +28,14 @@ public partial class ChangePasswordPacket
     {
         ulong mask = 0;
 
-        if (!global::System.Collections.Generic.EqualityComparer<string?>.Default.Equals(Username, default!)) mask |= 1UL << 0;
-        if (!global::System.Collections.Generic.EqualityComparer<string?>.Default.Equals(Password, default!)) mask |= 1UL << 1;
-        if (!global::System.Collections.Generic.EqualityComparer<string?>.Default.Equals(NewPassword, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<string?>.Default.Equals(Password, default!)) mask |= 1UL << 0;
+        if (!global::System.Collections.Generic.EqualityComparer<string?>.Default.Equals(NewPassword, default!)) mask |= 1UL << 1;
 
         writer.Write(mask);
 
         if ((mask & (1UL << 0)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, Username ?? string.Empty);
-        if ((mask & (1UL << 1)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, Password ?? string.Empty);
-        if ((mask & (1UL << 2)) != 0)
+        if ((mask & (1UL << 1)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, NewPassword ?? string.Empty);
     }
 
@@ -55,10 +44,8 @@ public partial class ChangePasswordPacket
         _mask = reader.ReadUInt64();
 
         if ((_mask & (1UL << 0)) != 0)
-            Username = global::GameShared.Packets.PacketReader.ReadString(reader);
-        if ((_mask & (1UL << 1)) != 0)
             Password = global::GameShared.Packets.PacketReader.ReadString(reader);
-        if ((_mask & (1UL << 2)) != 0)
+        if ((_mask & (1UL << 1)) != 0)
             NewPassword = global::GameShared.Packets.PacketReader.ReadString(reader);
     }
 }
