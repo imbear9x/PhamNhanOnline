@@ -21,7 +21,7 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
     {
         try
         {
-            var data = await _characterService.LoadCharacterWithStatsByAccountAsync(
+            var data = await _characterService.LoadCharacterSnapshotByAccountAsync(
                 session.PlayerId,
                 packet.CharacterId!.Value);
 
@@ -42,7 +42,8 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
                 Success = true,
                 Code = MessageCode.None,
                 Character = data.Character.ToModel(),
-                Stats = data.Stats?.ToModel()
+                BaseStats = data.BaseStats?.ToModel(),
+                CurrentState = data.CurrentState?.ToModel()
             });
         }
         catch (Exception)

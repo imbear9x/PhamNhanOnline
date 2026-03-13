@@ -48,10 +48,16 @@ namespace GameServer.Entities
 		public Server Server { get; set; } = null!;
 
 		/// <summary>
-		/// fk_stats_character backreference
+		/// fk_character_base_stats_character backreference
 		/// </summary>
-		[Association(ThisKey = nameof(Id), OtherKey = nameof(CharacterStat.CharacterId))]
-		public CharacterStat? CharacterStats { get; set; }
+		[Association(ThisKey = nameof(Id), OtherKey = nameof(CharacterBaseStat.CharacterId))]
+		public CharacterBaseStat? CharacterBaseStats { get; set; }
+
+		/// <summary>
+		/// fk_character_current_state_character backreference
+		/// </summary>
+		[Association(ThisKey = nameof(Id), OtherKey = nameof(CharacterCurrentState.CharacterId))]
+		public CharacterCurrentState? CharacterCurrentState { get; set; }
 		#endregion
 	}
 }

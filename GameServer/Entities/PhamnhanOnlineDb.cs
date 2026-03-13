@@ -44,7 +44,8 @@ namespace GameServer.Entities
 		public ITable<Account>               Accounts               => this.GetTable<Account>();
 		public ITable<BreakthroughAttempt>   BreakthroughAttempts   => this.GetTable<BreakthroughAttempt>();
 		public ITable<BreakthroughCondition> BreakthroughConditions => this.GetTable<BreakthroughCondition>();
-		public ITable<CharacterStat>         CharacterStats         => this.GetTable<CharacterStat>();
+		public ITable<CharacterBaseStat>     CharacterBaseStats     => this.GetTable<CharacterBaseStat>();
+		public ITable<CharacterCurrentState> CharacterCurrentStates => this.GetTable<CharacterCurrentState>();
 		public ITable<Character>             Characters             => this.GetTable<Character>();
 		public ITable<RealmTemplate>         RealmTemplates         => this.GetTable<RealmTemplate>();
 		public ITable<Server>                Servers                => this.GetTable<Server>();
@@ -103,12 +104,22 @@ namespace GameServer.Entities
 			return table.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 		}
 
-		public static CharacterStat? Find(this ITable<CharacterStat> table, Guid characterId)
+		public static CharacterBaseStat? Find(this ITable<CharacterBaseStat> table, Guid characterId)
 		{
 			return table.FirstOrDefault(e => e.CharacterId == characterId);
 		}
 
-		public static Task<CharacterStat?> FindAsync(this ITable<CharacterStat> table, Guid characterId, CancellationToken cancellationToken = default)
+		public static Task<CharacterBaseStat?> FindAsync(this ITable<CharacterBaseStat> table, Guid characterId, CancellationToken cancellationToken = default)
+		{
+			return table.FirstOrDefaultAsync(e => e.CharacterId == characterId, cancellationToken);
+		}
+
+		public static CharacterCurrentState? Find(this ITable<CharacterCurrentState> table, Guid characterId)
+		{
+			return table.FirstOrDefault(e => e.CharacterId == characterId);
+		}
+
+		public static Task<CharacterCurrentState?> FindAsync(this ITable<CharacterCurrentState> table, Guid characterId, CancellationToken cancellationToken = default)
 		{
 			return table.FirstOrDefaultAsync(e => e.CharacterId == characterId, cancellationToken);
 		}

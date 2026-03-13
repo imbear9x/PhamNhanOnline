@@ -28,7 +28,8 @@ public static class ServiceCollectionExtensions
         // add game AddRepositories DB
         services.AddScoped<AccountRepository>();
         services.AddScoped<CharacterRepository>();
-        services.AddScoped<CharacterStatRepository>();
+        services.AddScoped<CharacterBaseStatRepository>();
+        services.AddScoped<CharacterCurrentStateRepository>();
         services.AddScoped<AccountCredentialRepository>();
         
 

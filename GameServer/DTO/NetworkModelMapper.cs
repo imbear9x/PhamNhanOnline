@@ -24,21 +24,37 @@ public static class NetworkModelMapper
         };
     }
 
-    public static CharacterStatsModel ToModel(this CharacterStatsDto dto)
+    public static CharacterBaseStatsModel ToModel(this CharacterBaseStatsDto dto)
     {
-        return new CharacterStatsModel
+        return new CharacterBaseStatsModel
         {
             CharacterId = dto.CharacterId,
             RealmTemplateId = dto.RealmTemplateId ?? 0,
             Cultivation = dto.Cultivation ?? 0,
-            Health = dto.Health ?? 0,
-            Mana = dto.Mana ?? 0,
-            Physique = dto.Physique ?? 0,
-            Attack = dto.Attack ?? 0,
-            Speed = dto.Speed ?? 0,
-            SpiritualSense = dto.SpiritualSense ?? 0,
-            Fortune = dto.Fortune ?? 0,
-            Potential = dto.Potential ?? 0
+            BaseHp = dto.BaseHp ?? 0,
+            BaseMp = dto.BaseMp ?? 0,
+            BasePhysique = dto.BasePhysique ?? 0,
+            BaseAttack = dto.BaseAttack ?? 0,
+            BaseSpeed = dto.BaseSpeed ?? 0,
+            BaseSpiritualSense = dto.BaseSpiritualSense ?? 0,
+            BaseFortune = dto.BaseFortune ?? 0,
+            BasePotential = dto.BasePotential ?? 0
+        };
+    }
+
+    public static CharacterCurrentStateModel ToModel(this CharacterCurrentStateDto dto)
+    {
+        return new CharacterCurrentStateModel
+        {
+            CharacterId = dto.CharacterId,
+            CurrentHp = dto.CurrentHp,
+            CurrentMp = dto.CurrentMp,
+            CurrentMapId = dto.CurrentMapId,
+            CurrentPosX = dto.CurrentPosX,
+            CurrentPosY = dto.CurrentPosY,
+            IsDead = dto.IsDead,
+            CurrentState = dto.CurrentState,
+            LastSavedUnixMs = ToUnixMs(dto.LastSavedAt) ?? 0
         };
     }
 

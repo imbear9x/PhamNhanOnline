@@ -159,7 +159,7 @@ class AuthClientListener : INetEventListener
 
                     if (dataResult.Success is true && dataResult.Character.HasValue)
                     {
-                        LogCharacterData(dataResult.Character.Value, dataResult.Stats);
+                        LogCharacterData(dataResult.Character.Value, dataResult.BaseStats, dataResult.CurrentState);
                         Logger.Info("Character data loaded successfully.");
                     }
                     else
@@ -262,7 +262,10 @@ class AuthClientListener : INetEventListener
         return $"khoivu_{Random.Shared.Next(1000, 9999)}";
     }
 
-    private static void LogCharacterData(CharacterModel character, CharacterStatsModel? stats)
+    private static void LogCharacterData(
+        CharacterModel character,
+        CharacterBaseStatsModel? baseStats,
+        CharacterCurrentStateModel? currentState)
     {
         Logger.Info(
             "Character data: " +
@@ -271,18 +274,33 @@ class AuthClientListener : INetEventListener
             $"Hair={character.Appearance.HairColor}, Eye={character.Appearance.EyeColor}, Face={character.Appearance.FaceId}, " +
             $"CreatedUnixMs={character.CreatedUnixMs}");
 
-        if (stats.HasValue)
+        if (baseStats.HasValue)
         {
-            var s = stats.Value;
+            var s = baseStats.Value;
             Logger.Info(
-                "Character stats: " +
+                "Character base stats: " +
                 $"CharacterId={s.CharacterId}, Realm={s.RealmTemplateId}, Cultivation={s.Cultivation}, " +
-                $"HP={s.Health}, MP={s.Mana}, Physique={s.Physique}, Attack={s.Attack}, Speed={s.Speed}, " +
-                $"SpiritualSense={s.SpiritualSense}, Fortune={s.Fortune}, Potential={s.Potential}");
-            return;
+                $"BaseHp={s.BaseHp}, BaseMp={s.BaseMp}, BasePhysique={s.BasePhysique}, BaseAttack={s.BaseAttack}, BaseSpeed={s.BaseSpeed}, " +
+                $"BaseSpiritualSense={s.BaseSpiritualSense}, BaseFortune={s.BaseFortune}, BasePotential={s.BasePotential}");
+        }
+        else
+        {
+            Logger.Info("Character base stats: <null>");
         }
 
-        Logger.Info("Character stats: <null>");
+        if (currentState.HasValue)
+        {
+            var s = currentState.Value;
+            Logger.Info(
+                "Character current state: " +
+                $"CharacterId={s.CharacterId}, CurrentHp={s.CurrentHp}, CurrentMp={s.CurrentMp}, CurrentMapId={s.CurrentMapId}, " +
+                $"CurrentPosX={s.CurrentPosX}, CurrentPosY={s.CurrentPosY}, IsDead={s.IsDead}, CurrentState={s.CurrentState}, " +
+                $"LastSavedUnixMs={s.LastSavedUnixMs}");
+        }
+        else
+        {
+            Logger.Info("Character current state: <null>");
+        }
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)

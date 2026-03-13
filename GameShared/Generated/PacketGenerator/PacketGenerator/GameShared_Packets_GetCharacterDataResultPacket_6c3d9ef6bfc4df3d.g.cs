@@ -32,12 +32,20 @@ public partial class GetCharacterDataResultPacket
         return HasCharacter;
     }
 
-    public bool HasStats => (_mask & (1UL << 3)) != 0;
+    public bool HasBaseStats => (_mask & (1UL << 3)) != 0;
 
-    public bool TryGetStats(out global::GameShared.Models.CharacterStatsModel? value)
+    public bool TryGetBaseStats(out global::GameShared.Models.CharacterBaseStatsModel? value)
     {
-        value = Stats;
-        return HasStats;
+        value = BaseStats;
+        return HasBaseStats;
+    }
+
+    public bool HasCurrentState => (_mask & (1UL << 4)) != 0;
+
+    public bool TryGetCurrentState(out global::GameShared.Models.CharacterCurrentStateModel? value)
+    {
+        value = CurrentState;
+        return HasCurrentState;
     }
 
     public void Serialize(BinaryWriter writer)
@@ -47,7 +55,8 @@ public partial class GetCharacterDataResultPacket
         if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterModel?>.Default.Equals(Character, default!)) mask |= 1UL << 2;
-        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterStatsModel?>.Default.Equals(Stats, default!)) mask |= 1UL << 3;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterBaseStatsModel?>.Default.Equals(BaseStats, default!)) mask |= 1UL << 3;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterCurrentStateModel?>.Default.Equals(CurrentState, default!)) mask |= 1UL << 4;
 
         writer.Write(mask);
 
@@ -58,7 +67,9 @@ public partial class GetCharacterDataResultPacket
         if ((mask & (1UL << 2)) != 0)
             global::GameShared.Packets.PacketModelSerializer.Write(writer, Character.Value);
         if ((mask & (1UL << 3)) != 0)
-            global::GameShared.Packets.PacketModelSerializer.Write(writer, Stats.Value);
+            global::GameShared.Packets.PacketModelSerializer.Write(writer, BaseStats.Value);
+        if ((mask & (1UL << 4)) != 0)
+            global::GameShared.Packets.PacketModelSerializer.Write(writer, CurrentState.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -72,6 +83,8 @@ public partial class GetCharacterDataResultPacket
         if ((_mask & (1UL << 2)) != 0)
             Character = (global::GameShared.Models.CharacterModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterModel>(reader));
         if ((_mask & (1UL << 3)) != 0)
-            Stats = (global::GameShared.Models.CharacterStatsModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterStatsModel>(reader));
+            BaseStats = (global::GameShared.Models.CharacterBaseStatsModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterBaseStatsModel>(reader));
+        if ((_mask & (1UL << 4)) != 0)
+            CurrentState = (global::GameShared.Models.CharacterCurrentStateModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterCurrentStateModel>(reader));
     }
 }

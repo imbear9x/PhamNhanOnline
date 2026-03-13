@@ -150,25 +150,45 @@ ALTER SEQUENCE public.breakthrough_conditions_id_seq OWNED BY public.breakthroug
 
 --
 -- TOC entry 225 (class 1259 OID 16479)
--- Name: character_stats; Type: TABLE; Schema: public; Owner: postgres
+-- Name: character_base_stats; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.character_stats (
+CREATE TABLE public.character_base_stats (
     character_id uuid NOT NULL,
     realm_id integer,
     cultivation bigint DEFAULT 0,
-    hp integer DEFAULT 100,
-    mp integer DEFAULT 100,
-    physique integer DEFAULT 10,
-    attack integer DEFAULT 10,
-    speed integer DEFAULT 10,
-    spiritual_sense integer DEFAULT 10,
-    fortune double precision DEFAULT 0.01,
-    potential integer DEFAULT 0
+    base_hp integer DEFAULT 100,
+    base_mp integer DEFAULT 100,
+    base_physique integer DEFAULT 10,
+    base_attack integer DEFAULT 10,
+    base_speed integer DEFAULT 10,
+    base_spiritual_sense integer DEFAULT 10,
+    base_fortune double precision DEFAULT 0.01,
+    base_potential integer DEFAULT 0
 );
 
 
-ALTER TABLE public.character_stats OWNER TO postgres;
+ALTER TABLE public.character_base_stats OWNER TO postgres;
+
+--
+-- TOC entry 230 (class 1259 OID 16540)
+-- Name: character_current_state; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.character_current_state (
+    character_id uuid NOT NULL,
+    current_hp integer DEFAULT 100 NOT NULL,
+    current_mp integer DEFAULT 100 NOT NULL,
+    current_map_id integer,
+    current_pos_x real DEFAULT 0 NOT NULL,
+    current_pos_y real DEFAULT 0 NOT NULL,
+    is_dead boolean DEFAULT false NOT NULL,
+    current_state integer DEFAULT 0 NOT NULL,
+    last_saved_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.character_current_state OWNER TO postgres;
 
 --
 -- TOC entry 224 (class 1259 OID 16450)
@@ -284,10 +304,20 @@ COPY public.breakthrough_conditions (id, realm_id, condition_type, target_id, su
 --
 -- TOC entry 5011 (class 0 OID 16479)
 -- Dependencies: 225
--- Data for Name: character_stats; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: character_base_stats; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.character_stats (character_id, realm_id, cultivation, hp, mp, physique, attack, speed, spiritual_sense, fortune, potential) FROM stdin;
+COPY public.character_base_stats (character_id, realm_id, cultivation, base_hp, base_mp, base_physique, base_attack, base_speed, base_spiritual_sense, base_fortune, base_potential) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5016 (class 0 OID 16540)
+-- Dependencies: 230
+-- Data for Name: character_current_state; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.character_current_state (character_id, current_hp, current_mp, current_map_id, current_pos_x, current_pos_y, is_dead, current_state, last_saved_at) FROM stdin;
 \.
 
 
@@ -377,11 +407,20 @@ ALTER TABLE ONLY public.breakthrough_conditions
 
 --
 -- TOC entry 4845 (class 2606 OID 16493)
--- Name: character_stats character_stats_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: character_base_stats character_base_stats_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.character_stats
-    ADD CONSTRAINT character_stats_pkey PRIMARY KEY (character_id);
+ALTER TABLE ONLY public.character_base_stats
+    ADD CONSTRAINT character_base_stats_pkey PRIMARY KEY (character_id);
+
+
+--
+-- TOC entry 4852 (class 2606 OID 16549)
+-- Name: character_current_state character_current_state_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.character_current_state
+    ADD CONSTRAINT character_current_state_pkey PRIMARY KEY (character_id);
 
 
 --
@@ -435,6 +474,14 @@ ALTER TABLE ONLY public.account_credentials
 --
 
 CREATE INDEX idx_character_account ON public.characters USING btree (account_id);
+
+
+--
+-- TOC entry 4844 (class 1259 OID 16550)
+-- Name: idx_character_current_state_map_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_character_current_state_map_id ON public.character_current_state USING btree (current_map_id);
 
 
 --
@@ -493,11 +540,20 @@ ALTER TABLE ONLY public.account_security
 
 --
 -- TOC entry 4856 (class 2606 OID 16494)
--- Name: character_stats fk_stats_character; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: character_base_stats fk_character_base_stats_character; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.character_stats
-    ADD CONSTRAINT fk_stats_character FOREIGN KEY (character_id) REFERENCES public.characters(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.character_base_stats
+    ADD CONSTRAINT fk_character_base_stats_character FOREIGN KEY (character_id) REFERENCES public.characters(id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4859 (class 2606 OID 16551)
+-- Name: character_current_state fk_character_current_state_character; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.character_current_state
+    ADD CONSTRAINT fk_character_current_state_character FOREIGN KEY (character_id) REFERENCES public.characters(id) ON DELETE CASCADE;
 
 
 -- Completed on 2026-03-10 23:41:13
@@ -507,4 +563,3 @@ ALTER TABLE ONLY public.character_stats
 --
 
 \unrestrict 43tp9h5QWazg0xgGLOJe7zSb57wtGGA5onibRb0J1gS4OvQv0l2gndYuZk7wpcH
-

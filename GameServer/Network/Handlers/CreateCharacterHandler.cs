@@ -33,7 +33,8 @@ public sealed class CreateCharacterHandler : IPacketHandler<CreateCharacterPacke
                 Success = true,
                 Code = MessageCode.None,
                 Character = created.Character.ToModel(),
-                Stats = created.Stats?.ToModel()
+                BaseStats = created.BaseStats?.ToModel(),
+                CurrentState = created.CurrentState?.ToModel()
             });
         }
         catch (GameException ex)

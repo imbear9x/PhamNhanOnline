@@ -31,7 +31,8 @@ public partial class CreateCharacterResultPacket : IPacket
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
     public CharacterModel? Character { get; set; }
-    public CharacterStatsModel? Stats { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
 }
 
 [Packet]
@@ -63,5 +64,6 @@ public partial class GetCharacterDataResultPacket : IPacket
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
     public CharacterModel? Character { get; set; }
-    public CharacterStatsModel? Stats { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
 }
