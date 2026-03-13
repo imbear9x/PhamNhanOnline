@@ -2,6 +2,7 @@ using GameServer.DTO;
 using GameServer.Entities;
 using GameServer.Exceptions;
 using GameServer.Repositories;
+using GameServer.Runtime;
 using GameShared.Messages;
 using LinqToDB;
 using LinqToDB.Async;
@@ -10,23 +11,38 @@ namespace GameServer.Services;
 
 public sealed class CharacterService
 {
+    private const int DefaultRealmTemplateId = 1;
     private const int DefaultCurrentStateCode = 0;
+    private const int DefaultRealmLifespan = 120;
+    private const int DefaultBaseHp = 100;
+    private const int DefaultBaseMp = 100;
+    private const int DefaultBasePhysique = 10;
+    private const int DefaultBaseAttack = 10;
+    private const int DefaultBaseSpeed = 10;
+    private const int DefaultBaseSpiritualSense = 10;
+    private const int DefaultBaseStamina = 100;
+    private const int DefaultLifespanBonus = 0;
+    private const double DefaultBaseFortune = 0.01;
+    private const int DefaultBasePotential = 0;
 
     private readonly GameDb _db;
     private readonly CharacterRepository _characters;
     private readonly CharacterBaseStatRepository _baseStats;
     private readonly CharacterCurrentStateRepository _currentStates;
+    private readonly RealmTemplateRepository _realmTemplates;
 
     public CharacterService(
         GameDb db,
         CharacterRepository characters,
         CharacterBaseStatRepository baseStats,
-        CharacterCurrentStateRepository currentStates)
+        CharacterCurrentStateRepository currentStates,
+        RealmTemplateRepository realmTemplates)
     {
         _db = db;
         _characters = characters;
         _baseStats = baseStats;
         _currentStates = currentStates;
+        _realmTemplates = realmTemplates;
     }
 
     public async Task<List<CharacterDto>> GetCharactersByAccountAsync(Guid accountId, CancellationToken cancellationToken = default)
@@ -64,13 +80,9 @@ public sealed class CharacterService
             CreatedAt = DateTime.UtcNow,
         };
 
-        var baseStat = new CharacterBaseStat
-        {
-            CharacterId = character.Id,
-            RealmId = 1,
-            Cultivation = 0,
-        };
-        var currentState = BuildDefaultCharacterCurrentState(character.Id, baseStat);
+        var baseStat = BuildDefaultCharacterBaseStats(character.Id);
+        var realmLifespan = await GetRealmLifespanAsync(baseStat.RealmId, cancellationToken);
+        var currentState = BuildDefaultCharacterCurrentState(character.Id, baseStat, realmLifespan);
 
         await using var tx = await _db.BeginTransactionAsync(cancellationToken);
         await _characters.CreateAsync(character, cancellationToken);
@@ -80,7 +92,7 @@ public sealed class CharacterService
 
         return new CharacterSnapshotDto(
             CharacterDto.FromEntity(character),
-            CharacterBaseStatsDto.FromEntity(baseStat),
+            CharacterBaseStatsDto.FromEntity(baseStat, realmLifespan),
             CharacterCurrentStateDto.FromEntity(currentState));
     }
 
@@ -100,8 +112,11 @@ public sealed class CharacterService
         if (row is null)
             return null;
 
+        var realmLifespan = row.BaseStats is null
+            ? null
+            : await GetRealmLifespanAsync(row.BaseStats.RealmId, cancellationToken);
         var characterDto = CharacterDto.FromEntity(row.Character);
-        var baseStatsDto = row.BaseStats is null ? null : CharacterBaseStatsDto.FromEntity(row.BaseStats);
+        var baseStatsDto = row.BaseStats is null ? null : CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan);
         var currentStateDto = row.CurrentState is null ? null : CharacterCurrentStateDto.FromEntity(row.CurrentState);
         return new CharacterSnapshotDto(characterDto, baseStatsDto, currentStateDto);
     }
@@ -120,8 +135,11 @@ public sealed class CharacterService
         if (row is null)
             return null;
 
+        var realmLifespan = row.BaseStats is null
+            ? null
+            : await GetRealmLifespanAsync(row.BaseStats.RealmId, cancellationToken);
         var characterDto = CharacterDto.FromEntity(row.Character);
-        var baseStatsDto = row.BaseStats is null ? null : CharacterBaseStatsDto.FromEntity(row.BaseStats);
+        var baseStatsDto = row.BaseStats is null ? null : CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan);
         var currentStateDto = row.CurrentState is null ? null : CharacterCurrentStateDto.FromEntity(row.CurrentState);
         return new CharacterSnapshotDto(characterDto, baseStatsDto, currentStateDto);
     }
@@ -169,17 +187,42 @@ public sealed class CharacterService
 
         var existing = await _baseStats.GetByIdAsync(characterId, cancellationToken);
         if (existing is not null)
-            return CharacterBaseStatsDto.FromEntity(existing);
-
-        var entity = new CharacterBaseStat
         {
-            CharacterId = characterId,
-            RealmId = 1,
-            Cultivation = 0,
-        };
+            var existingRealmLifespan = await GetRealmLifespanAsync(existing.RealmId, cancellationToken);
+            return CharacterBaseStatsDto.FromEntity(existing, existingRealmLifespan);
+        }
+
+        var entity = BuildDefaultCharacterBaseStats(characterId);
 
         await _baseStats.CreateAsync(entity, cancellationToken);
-        return CharacterBaseStatsDto.FromEntity(entity);
+        var realmLifespan = await GetRealmLifespanAsync(entity.RealmId, cancellationToken);
+        return CharacterBaseStatsDto.FromEntity(entity, realmLifespan);
+    }
+
+    public async Task<CharacterBaseStatsDto> UpdateCharacterBaseStatsAsync(
+        CharacterBaseStatsDto stats,
+        CancellationToken cancellationToken = default)
+    {
+        var existing = await _baseStats.GetByIdAsync(stats.CharacterId, cancellationToken);
+        if (existing is null)
+            throw new GameException(MessageCode.CharacterNotFound);
+
+        existing.RealmId = stats.RealmTemplateId;
+        existing.Cultivation = stats.Cultivation;
+        existing.BaseHp = stats.BaseHp;
+        existing.BaseMp = stats.BaseMp;
+        existing.BasePhysique = stats.BasePhysique;
+        existing.BaseAttack = stats.BaseAttack;
+        existing.BaseSpeed = stats.BaseSpeed;
+        existing.BaseSpiritualSense = stats.BaseSpiritualSense;
+        existing.BaseStamina = stats.BaseStamina;
+        existing.LifespanBonus = stats.LifespanBonus;
+        existing.BaseFortune = stats.BaseFortune;
+        existing.BasePotential = stats.BasePotential;
+
+        await _baseStats.UpdateAsync(existing, cancellationToken);
+        var realmLifespan = await GetRealmLifespanAsync(existing.RealmId, cancellationToken);
+        return CharacterBaseStatsDto.FromEntity(existing, realmLifespan);
     }
 
     public async Task<CharacterCurrentStateDto?> GetCharacterCurrentStateAsync(
@@ -203,7 +246,8 @@ public sealed class CharacterService
             return CharacterCurrentStateDto.FromEntity(existing);
 
         var baseStats = await _baseStats.GetByIdAsync(characterId, cancellationToken);
-        var entity = BuildDefaultCharacterCurrentState(characterId, baseStats);
+        var realmLifespan = await GetRealmLifespanAsync(baseStats?.RealmId, cancellationToken);
+        var entity = BuildDefaultCharacterCurrentState(characterId, baseStats, realmLifespan);
         await _currentStates.CreateAsync(entity, cancellationToken);
         return CharacterCurrentStateDto.FromEntity(entity);
     }
@@ -218,6 +262,8 @@ public sealed class CharacterService
 
         existing.CurrentHp = state.CurrentHp;
         existing.CurrentMp = state.CurrentMp;
+        existing.CurrentStamina = state.CurrentStamina;
+        existing.RemainingLifespan = state.RemainingLifespan;
         existing.CurrentMapId = state.CurrentMapId;
         existing.CurrentPosX = state.CurrentPosX;
         existing.CurrentPosY = state.CurrentPosY;
@@ -235,13 +281,21 @@ public sealed class CharacterService
         return !await _characters.NameExistsAsync(name, cancellationToken);
     }
 
-    private static CharacterCurrentState BuildDefaultCharacterCurrentState(Guid characterId, CharacterBaseStat? baseStat)
+    private static CharacterCurrentState BuildDefaultCharacterCurrentState(Guid characterId, CharacterBaseStat? baseStat, int? realmLifespan)
     {
+        var maxLifespan = CharacterLifespanRules.ResolveMaxLifespan(
+            CharacterBaseStatsDto.FromEntity(
+                baseStat ?? BuildDefaultCharacterBaseStats(characterId),
+                realmLifespan ?? DefaultRealmLifespan),
+            DefaultRealmLifespan);
+
         return new CharacterCurrentState
         {
             CharacterId = characterId,
-            CurrentHp = baseStat?.BaseHp ?? 100,
-            CurrentMp = baseStat?.BaseMp ?? 100,
+            CurrentHp = baseStat?.BaseHp ?? DefaultBaseHp,
+            CurrentMp = baseStat?.BaseMp ?? DefaultBaseMp,
+            CurrentStamina = baseStat?.BaseStamina ?? DefaultBaseStamina,
+            RemainingLifespan = CharacterLifespanRules.NormalizeRemainingLifespan(maxLifespan, maxLifespan),
             CurrentMapId = null,
             CurrentPosX = 0,
             CurrentPosY = 0,
@@ -249,6 +303,35 @@ public sealed class CharacterService
             CurrentState = DefaultCurrentStateCode,
             LastSavedAt = DateTime.UtcNow
         };
+    }
+
+    private static CharacterBaseStat BuildDefaultCharacterBaseStats(Guid characterId)
+    {
+        return new CharacterBaseStat
+        {
+            CharacterId = characterId,
+            RealmId = DefaultRealmTemplateId,
+            Cultivation = 0,
+            BaseHp = DefaultBaseHp,
+            BaseMp = DefaultBaseMp,
+            BasePhysique = DefaultBasePhysique,
+            BaseAttack = DefaultBaseAttack,
+            BaseSpeed = DefaultBaseSpeed,
+            BaseSpiritualSense = DefaultBaseSpiritualSense,
+            BaseStamina = DefaultBaseStamina,
+            LifespanBonus = DefaultLifespanBonus,
+            BaseFortune = DefaultBaseFortune,
+            BasePotential = DefaultBasePotential
+        };
+    }
+
+    private async Task<int?> GetRealmLifespanAsync(int? realmTemplateId, CancellationToken cancellationToken)
+    {
+        if (!realmTemplateId.HasValue)
+            return null;
+
+        var realm = await _realmTemplates.GetByIdAsync(realmTemplateId.Value, cancellationToken);
+        return realm?.Lifespan;
     }
 
     private static DateTime NormalizeUtc(DateTime value)

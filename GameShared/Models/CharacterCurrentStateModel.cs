@@ -8,6 +8,8 @@ public struct CharacterCurrentStateModel
     public Guid CharacterId;
     public int CurrentHp;
     public int CurrentMp;
+    public int CurrentStamina;
+    public int RemainingLifespan;
     public int? CurrentMapId;
     public float CurrentPosX;
     public float CurrentPosY;

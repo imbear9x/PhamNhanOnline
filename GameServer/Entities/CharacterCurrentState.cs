@@ -19,6 +19,8 @@ namespace GameServer.Entities
 		[Column("character_id"  , IsPrimaryKey = true)] public Guid     CharacterId   { get; set; } // uuid
 		[Column("current_hp"                        )] public int      CurrentHp     { get; set; } // integer
 		[Column("current_mp"                        )] public int      CurrentMp     { get; set; } // integer
+		[Column("current_stamina"                   )] public int      CurrentStamina { get; set; } // integer
+		[Column("remaining_lifespan"                )] public int      RemainingLifespan { get; set; } // integer
 		[Column("current_map_id"                    )] public int?     CurrentMapId  { get; set; } // integer
 		[Column("current_pos_x"                     )] public float    CurrentPosX   { get; set; } // real
 		[Column("current_pos_y"                     )] public float    CurrentPosY   { get; set; } // real

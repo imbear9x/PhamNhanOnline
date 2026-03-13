@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using GameServer.DTO;
+using GameServer.Runtime;
 
 namespace GameServer.World;
 
@@ -15,9 +16,23 @@ public sealed class WorldManager
         MapManager = mapManager;
     }
 
-    public PlayerSession AddPlayer(Guid playerId, CharacterDto character)
+    public PlayerSession AddOrUpdatePlayer(
+        Guid playerId,
+        int connectionId,
+        CharacterDto character,
+        CharacterBaseStatsDto baseStats,
+        CharacterCurrentStateDto currentState)
     {
-        return _onlinePlayers.GetOrAdd(playerId, id => new PlayerSession(id, character));
+        return _onlinePlayers.AddOrUpdate(
+            playerId,
+            id => new PlayerSession(id, connectionId, character, new CharacterRuntimeState(baseStats, currentState)),
+            (_, existing) =>
+            {
+                existing.UpdateConnection(connectionId);
+                existing.UpdateCharacter(character);
+                existing.SynchronizeFromCurrentState(existing.RuntimeState.CaptureSnapshot().CurrentState);
+                return existing;
+            });
     }
 
     public void RemovePlayer(Guid playerId)
@@ -36,5 +51,14 @@ public sealed class WorldManager
 
         throw new KeyNotFoundException($"Player not online: {playerId}");
     }
-}
 
+    public bool TryGetPlayer(Guid playerId, out PlayerSession session)
+    {
+        return _onlinePlayers.TryGetValue(playerId, out session!);
+    }
+
+    public IReadOnlyCollection<PlayerSession> GetOnlinePlayersSnapshot()
+    {
+        return _onlinePlayers.Values.ToList();
+    }
+}

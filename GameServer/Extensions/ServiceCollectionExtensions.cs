@@ -6,7 +6,9 @@ using GameServer.Network.Interface;
 using GameServer.Network.Middleware;
 using GameServer.Network.Validations;
 using GameServer.Repositories;
+using GameServer.Runtime;
 using GameServer.Services;
+using GameServer.World;
 using GameShared.Packets;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -30,6 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CharacterRepository>();
         services.AddScoped<CharacterBaseStatRepository>();
         services.AddScoped<CharacterCurrentStateRepository>();
+        services.AddScoped<RealmTemplateRepository>();
         services.AddScoped<AccountCredentialRepository>();
         
 
@@ -54,7 +57,13 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddWorldSystems(this IServiceCollection services)
     {
-        
+        services.AddSingleton<MapManager>();
+        services.AddSingleton<WorldManager>();
+        services.AddSingleton<CharacterRuntimeCalculator>();
+        services.AddSingleton<CharacterRuntimeNotifier>();
+        services.AddSingleton<CharacterRuntimeService>();
+        services.AddSingleton<CharacterRuntimeSaveService>();
+        services.AddSingleton<GameLoop>();
 
 
         return services;

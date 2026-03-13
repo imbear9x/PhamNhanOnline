@@ -1,5 +1,6 @@
 using GameServer.Extensions;
 using GameServer.Network;
+using GameServer.Runtime;
 using GameShared.Diagnostics;
 using GameShared.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +33,7 @@ class Program
 
         Logger.Info("NetworkServer resolved.");
         server.Start();
+        provider.GetRequiredService<GameLoop>().Start();
 
         Logger.Info("Game server started on port 7777.");
         Console.WriteLine("Game server started on port 7777");

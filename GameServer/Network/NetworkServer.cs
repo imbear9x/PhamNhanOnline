@@ -6,6 +6,8 @@ using GameShared.Diagnostics;
 using GameShared.Logging;
 using GameShared.Messages;
 using GameShared.Packets;
+using GameServer.Runtime;
+using GameServer.World;
 using LiteNetLib;
 using System.Text.Json;
 
@@ -15,14 +17,21 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 {
     private readonly NetManager _netManager;
     private readonly PacketDispatcher _dispatcher;
+    private readonly WorldManager _worldManager;
+    private readonly CharacterRuntimeSaveService _runtimeSaveService;
     private readonly ConcurrentDictionary<int, ConnectionSession> _sessions = new();
     private readonly ConcurrentDictionary<string, ResumeTicket> _resumeTickets = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Guid, string> _accountTokens = new();
     private static readonly TimeSpan ResumeWindow = TimeSpan.FromMinutes(2);
 
-    public NetworkServer(PacketDispatcher dispatcher)
+    public NetworkServer(
+        PacketDispatcher dispatcher,
+        WorldManager worldManager,
+        CharacterRuntimeSaveService runtimeSaveService)
     {
         _dispatcher = dispatcher;
+        _worldManager = worldManager;
+        _runtimeSaveService = runtimeSaveService;
         _netManager = new NetManager(this)
         {
             AutoRecycle = true
@@ -37,6 +46,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
     public void Stop()
     {
+        _runtimeSaveService.SaveDirtyPlayersAsync().GetAwaiter().GetResult();
         _netManager.Stop();
         _sessions.Clear();
         _resumeTickets.Clear();
@@ -137,6 +147,12 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     {
         if (!_sessions.TryRemove(peer.Id, out var session))
             return;
+
+        if (session.IsAuthenticated)
+        {
+            _runtimeSaveService.FlushPlayerAsync(session.PlayerId).GetAwaiter().GetResult();
+            _worldManager.RemovePlayer(session.PlayerId);
+        }
 
         if (!session.IsAuthenticated || string.IsNullOrWhiteSpace(session.ResumeToken))
             return;

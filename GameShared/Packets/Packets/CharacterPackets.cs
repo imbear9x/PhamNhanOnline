@@ -67,3 +67,15 @@ public partial class GetCharacterDataResultPacket : IPacket
     public CharacterBaseStatsModel? BaseStats { get; set; }
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
+
+[Packet]
+public partial class CharacterBaseStatsChangedPacket : IPacket
+{
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+}
+
+[Packet]
+public partial class CharacterCurrentStateChangedPacket : IPacket
+{
+    public CharacterCurrentStateModel? CurrentState { get; set; }
+}

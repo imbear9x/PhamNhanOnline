@@ -15,6 +15,8 @@ public struct CharacterBaseStatsModel
     public int BaseAttack;
     public int BaseSpeed;
     public int BaseSpiritualSense;
+    public int BaseStamina;
+    public int LifespanBonus;
     public double BaseFortune;
     public int BasePotential;
 }

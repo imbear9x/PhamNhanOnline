@@ -25,6 +25,8 @@ namespace GameServer.Entities
 		[Column("base_attack"                              )] public int?    BaseAttack           { get; set; } // integer
 		[Column("base_speed"                               )] public int?    BaseSpeed            { get; set; } // integer
 		[Column("base_spiritual_sense"                     )] public int?    BaseSpiritualSense   { get; set; } // integer
+		[Column("base_stamina"                             )] public int?    BaseStamina          { get; set; } // integer
+		[Column("lifespan_bonus"                           )] public int?    LifespanBonus       { get; set; } // integer
 		[Column("base_fortune"                             )] public double? BaseFortune          { get; set; } // double precision
 		[Column("base_potential"                           )] public int?    BasePotential        { get; set; } // integer
 

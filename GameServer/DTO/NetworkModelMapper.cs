@@ -37,6 +37,8 @@ public static class NetworkModelMapper
             BaseAttack = dto.BaseAttack ?? 0,
             BaseSpeed = dto.BaseSpeed ?? 0,
             BaseSpiritualSense = dto.BaseSpiritualSense ?? 0,
+            BaseStamina = dto.BaseStamina ?? 0,
+            LifespanBonus = dto.LifespanBonus ?? 0,
             BaseFortune = dto.BaseFortune ?? 0,
             BasePotential = dto.BasePotential ?? 0
         };
@@ -49,6 +51,8 @@ public static class NetworkModelMapper
             CharacterId = dto.CharacterId,
             CurrentHp = dto.CurrentHp,
             CurrentMp = dto.CurrentMp,
+            CurrentStamina = dto.CurrentStamina,
+            RemainingLifespan = dto.RemainingLifespan,
             CurrentMapId = dto.CurrentMapId,
             CurrentPosX = dto.CurrentPosX,
             CurrentPosY = dto.CurrentPosY,

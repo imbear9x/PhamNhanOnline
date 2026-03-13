@@ -5,13 +5,16 @@ namespace GameServer.Runtime;
 public sealed class GameLoop
 {
     private readonly WorldManager _worldManager;
+    private readonly CharacterRuntimeSaveService _runtimeSaveService;
 
     private readonly CancellationTokenSource _cts = new();
     private Thread? _thread;
+    private DateTime _nextRuntimeSaveUtc = DateTime.UtcNow;
 
-    public GameLoop(WorldManager worldManager)
+    public GameLoop(WorldManager worldManager, CharacterRuntimeSaveService runtimeSaveService)
     {
         _worldManager = worldManager;
+        _runtimeSaveService = runtimeSaveService;
     }
 
     public void Start()
@@ -54,6 +57,10 @@ public sealed class GameLoop
             instance.Update();
         }
 
+        if (DateTime.UtcNow >= _nextRuntimeSaveUtc)
+        {
+            _runtimeSaveService.SaveDirtyPlayersAsync(_cts.Token).GetAwaiter().GetResult();
+            _nextRuntimeSaveUtc = DateTime.UtcNow.AddSeconds(2);
+        }
     }
 }
-

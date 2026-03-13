@@ -170,6 +170,16 @@ class AuthClientListener : INetEventListener
                     MarkFlowFinished();
                     break;
                 }
+                case CharacterBaseStatsChangedPacket baseStatsChanged:
+                {
+                    Logger.Info($"CharacterBaseStatsChanged received: HasBaseStats={baseStatsChanged.BaseStats.HasValue}");
+                    break;
+                }
+                case CharacterCurrentStateChangedPacket currentStateChanged:
+                {
+                    Logger.Info($"CharacterCurrentStateChanged received: HasCurrentState={currentStateChanged.CurrentState.HasValue}");
+                    break;
+                }
                 default:
                 {
                     Logger.Info($"Unhandled packet type: {packet.GetType().Name}");
@@ -281,7 +291,8 @@ class AuthClientListener : INetEventListener
                 "Character base stats: " +
                 $"CharacterId={s.CharacterId}, Realm={s.RealmTemplateId}, Cultivation={s.Cultivation}, " +
                 $"BaseHp={s.BaseHp}, BaseMp={s.BaseMp}, BasePhysique={s.BasePhysique}, BaseAttack={s.BaseAttack}, BaseSpeed={s.BaseSpeed}, " +
-                $"BaseSpiritualSense={s.BaseSpiritualSense}, BaseFortune={s.BaseFortune}, BasePotential={s.BasePotential}");
+                $"BaseSpiritualSense={s.BaseSpiritualSense}, BaseStamina={s.BaseStamina}, LifespanBonus={s.LifespanBonus}, " +
+                $"BaseFortune={s.BaseFortune}, BasePotential={s.BasePotential}");
         }
         else
         {
@@ -293,7 +304,7 @@ class AuthClientListener : INetEventListener
             var s = currentState.Value;
             Logger.Info(
                 "Character current state: " +
-                $"CharacterId={s.CharacterId}, CurrentHp={s.CurrentHp}, CurrentMp={s.CurrentMp}, CurrentMapId={s.CurrentMapId}, " +
+                $"CharacterId={s.CharacterId}, CurrentHp={s.CurrentHp}, CurrentMp={s.CurrentMp}, CurrentStamina={s.CurrentStamina}, RemainingLifespan={s.RemainingLifespan}, CurrentMapId={s.CurrentMapId}, " +
                 $"CurrentPosX={s.CurrentPosX}, CurrentPosY={s.CurrentPosY}, IsDead={s.IsDead}, CurrentState={s.CurrentState}, " +
                 $"LastSavedUnixMs={s.LastSavedUnixMs}");
         }

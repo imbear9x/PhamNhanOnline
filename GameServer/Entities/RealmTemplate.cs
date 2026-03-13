@@ -21,6 +21,7 @@ namespace GameServer.Entities
 		[Column("name"                                       )] public string?   Name                 { get; set; } // character varying(50)
 		[Column("stage_name"                                 )] public string?   StageName            { get; set; } // character varying(50)
 		[Column("max_cultivation"                            )] public long?     MaxCultivation       { get; set; } // bigint
+		[Column("lifespan"                                   )] public int       Lifespan             { get; set; } // integer
 		[Column("base_breakthrough_rate"                     )] public double?   BaseBreakthroughRate { get; set; } // double precision
 		[Column("failure_penalty"                            )] public double?   FailurePenalty       { get; set; } // double precision
 		[Column("created_at"                                 )] public DateTime? CreatedAt            { get; set; } // timestamp (6) without time zone
