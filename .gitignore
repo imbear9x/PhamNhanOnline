@@ -33,3 +33,28 @@ Config/dbConfig.json
 # Local temporary tooling
 tmp_tools/
 tmp_codex/
+
+# Unity project generated files and local caches
+ClientUnity/**/[Ll]ibrary/
+ClientUnity/**/[Tt]emp/
+ClientUnity/**/[Oo]bj/
+ClientUnity/**/[Bb]uild/
+ClientUnity/**/[Bb]uilds/
+ClientUnity/**/[Ll]ogs/
+ClientUnity/**/[Uu]ser[Ss]ettings/
+ClientUnity/**/[Mm]emoryCaptures/
+ClientUnity/**/Recordings/
+ClientUnity/**/*.csproj
+ClientUnity/**/*.sln
+ClientUnity/**/*.user
+ClientUnity/**/*.pidb
+ClientUnity/**/*.booproj
+ClientUnity/**/*.svd
+ClientUnity/**/*.pdb
+ClientUnity/**/*.mdb
+ClientUnity/**/*.opendb
+ClientUnity/**/*.VC.db
+ClientUnity/**/.vs/
+ClientUnity/**/.vscode/
+ClientUnity/**/.vsconfig
+ClientUnity/**/sysinfo.txt
