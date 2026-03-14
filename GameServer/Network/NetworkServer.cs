@@ -1,15 +1,16 @@
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Sockets;
 using System.Security.Cryptography;
+using System.Text.Json;
 using GameServer.Network.Interface;
+using GameServer.Runtime;
+using GameServer.World;
 using GameShared.Diagnostics;
 using GameShared.Logging;
 using GameShared.Messages;
 using GameShared.Packets;
-using GameServer.Runtime;
-using GameServer.World;
 using LiteNetLib;
-using System.Text.Json;
 
 namespace GameServer.Network;
 
@@ -22,6 +23,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     private readonly ConcurrentDictionary<int, ConnectionSession> _sessions = new();
     private readonly ConcurrentDictionary<string, ResumeTicket> _resumeTickets = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Guid, string> _accountTokens = new();
+    private readonly CancellationTokenSource _shutdownCts = new();
     private static readonly TimeSpan ResumeWindow = TimeSpan.FromMinutes(2);
 
     public NetworkServer(
@@ -46,6 +48,16 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
     public void Stop()
     {
+        _shutdownCts.Cancel();
+
+        var sessions = _sessions.Values.ToList();
+        foreach (var session in sessions)
+        {
+            session.StopInboundProcessing();
+        }
+
+        WaitForInboundProcessors(sessions);
+
         _runtimeSaveService.SaveDirtyPlayersAsync().GetAwaiter().GetResult();
         _netManager.Stop();
         _sessions.Clear();
@@ -55,6 +67,9 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
     public void PollEvents()
     {
+        if (_shutdownCts.IsCancellationRequested)
+            return;
+
         PurgeExpiredResumeTickets();
         _netManager.PollEvents();
     }
@@ -77,17 +92,20 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         _accountTokens.AddOrUpdate(
             accountId,
             addValueFactory: _ => token,
-            updateValueFactory: (accountKey, oldToken) =>
+            updateValueFactory: (_, oldToken) =>
             {
                 if (!string.Equals(oldToken, token, StringComparison.Ordinal))
-                    _resumeTickets.TryRemove(oldToken, out _);
+                {
+                    _resumeTickets.TryRemove(oldToken, out ResumeTicket? _);
+                }
+
                 return token;
             });
 
         if (!string.IsNullOrWhiteSpace(session.ResumeToken) &&
             !string.Equals(session.ResumeToken, token, StringComparison.Ordinal))
         {
-            _resumeTickets.TryRemove(session.ResumeToken, out _);
+            _resumeTickets.TryRemove(session.ResumeToken, out ResumeTicket? _);
         }
 
         session.ResumeToken = token;
@@ -116,8 +134,8 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
         if (ticket.ExpiresAtUtc < DateTime.UtcNow)
         {
-            _resumeTickets.TryRemove(resumeToken, out _);
-            _accountTokens.TryRemove(ticket.AccountId, out _);
+            _resumeTickets.TryRemove(resumeToken, out ResumeTicket? _);
+            _accountTokens.TryRemove(ticket.AccountId, out var _);
             errorCode = MessageCode.ReconnectSessionExpired;
             return false;
         }
@@ -135,17 +153,28 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         return true;
     }
 
-    // INetEventListener
-
     public void OnPeerConnected(NetPeer peer)
     {
+        if (_shutdownCts.IsCancellationRequested)
+        {
+            peer.Disconnect();
+            return;
+        }
+
         var session = new ConnectionSession(peer);
+        session.InboundProcessorTask = Task.Run(() => ProcessInboundPacketsAsync(session, _shutdownCts.Token));
         _sessions[peer.Id] = session;
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
         if (!_sessions.TryRemove(peer.Id, out var session))
+            return;
+
+        session.StopInboundProcessing();
+        WaitForInboundProcessor(session);
+
+        if (_shutdownCts.IsCancellationRequested)
             return;
 
         if (session.IsAuthenticated &&
@@ -158,9 +187,9 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         if (!session.IsAuthenticated || string.IsNullOrWhiteSpace(session.ResumeToken))
             return;
 
-        if (_resumeTickets.TryGetValue(session.ResumeToken, out var ticket))
+        if (_resumeTickets.TryGetValue(session.ResumeToken, out var resumeTicket))
         {
-            _resumeTickets[session.ResumeToken] = ticket with
+            _resumeTickets[session.ResumeToken] = resumeTicket with
             {
                 IsConnected = false,
                 ExpiresAtUtc = DateTime.UtcNow + ResumeWindow
@@ -168,13 +197,19 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         }
     }
 
-    public void OnNetworkError(IPEndPoint endPoint, System.Net.Sockets.SocketError socketError)
+    public void OnNetworkError(IPEndPoint endPoint, SocketError socketError)
     {
         // Log if needed.
     }
 
     public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
     {
+        if (_shutdownCts.IsCancellationRequested)
+        {
+            reader.Recycle();
+            return;
+        }
+
         if (!_sessions.TryGetValue(peer.Id, out var session))
         {
             reader.Recycle();
@@ -188,9 +223,10 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         if (packet is null)
             return;
 
-        DispatchWithIncidentCaptureAsync(session, packet, bytes, channelNumber, deliveryMethod)
-            .GetAwaiter()
-            .GetResult();
+        if (!session.TryEnqueueInboundPacket(new InboundPacketEnvelope(packet, bytes, channelNumber, deliveryMethod)))
+        {
+            Logger.Error($"Inbound packet dropped: {packet.GetType().Name} (ConnectionId={session.ConnectionId})");
+        }
     }
 
     public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
@@ -206,8 +242,33 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
     public void OnConnectionRequest(ConnectionRequest request)
     {
-        // Accept all for now; in production you may want to check keys or limits.
         request.AcceptIfKey(string.Empty);
+    }
+
+    private async Task ProcessInboundPacketsAsync(ConnectionSession session, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await foreach (var envelope in session.ReadInboundPacketsAsync(cancellationToken))
+            {
+                await DispatchWithIncidentCaptureAsync(
+                    session,
+                    envelope.Packet,
+                    envelope.RawPayload,
+                    envelope.ChannelNumber,
+                    envelope.DeliveryMethod);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, $"Inbound processor crashed: ConnectionId={session.ConnectionId}");
+        }
     }
 
     private async Task DispatchWithIncidentCaptureAsync(
@@ -273,8 +334,34 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
             if (kv.Value.IsConnected || kv.Value.ExpiresAtUtc > now)
                 continue;
 
-            _resumeTickets.TryRemove(kv.Key, out _);
-            _accountTokens.TryRemove(kv.Value.AccountId, out _);
+            _resumeTickets.TryRemove(kv.Key, out ResumeTicket? _);
+            _accountTokens.TryRemove(kv.Value.AccountId, out var _);
+        }
+    }
+
+    private static void WaitForInboundProcessors(IEnumerable<ConnectionSession> sessions)
+    {
+        foreach (var session in sessions)
+        {
+            WaitForInboundProcessor(session);
+        }
+    }
+
+    private static void WaitForInboundProcessor(ConnectionSession session)
+    {
+        if (session.InboundProcessorTask is null)
+            return;
+
+        try
+        {
+            session.InboundProcessorTask.GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception)
+        {
+            // The processor already logged its own failure.
         }
     }
 

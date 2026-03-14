@@ -1,30 +1,17 @@
 using GameServer.World;
-using GameServer.Time;
 
 namespace GameServer.Runtime;
 
 public sealed class GameLoop
 {
     private readonly WorldManager _worldManager;
-    private readonly CharacterRuntimeService _runtimeService;
-    private readonly CharacterRuntimeSaveService _runtimeSaveService;
-    private readonly GameTimeService _gameTimeService;
 
     private readonly CancellationTokenSource _cts = new();
     private Thread? _thread;
-    private DateTime _nextRuntimeSaveUtc = DateTime.UtcNow;
-    private DateTime _nextDerivedStateRefreshUtc = DateTime.UtcNow;
 
-    public GameLoop(
-        WorldManager worldManager,
-        CharacterRuntimeService runtimeService,
-        CharacterRuntimeSaveService runtimeSaveService,
-        GameTimeService gameTimeService)
+    public GameLoop(WorldManager worldManager)
     {
         _worldManager = worldManager;
-        _runtimeService = runtimeService;
-        _runtimeSaveService = runtimeSaveService;
-        _gameTimeService = gameTimeService;
     }
 
     public void Start()
@@ -65,18 +52,6 @@ public sealed class GameLoop
         foreach (var instance in instances)
         {
             instance.Update();
-        }
-
-        if (DateTime.UtcNow >= _nextRuntimeSaveUtc)
-        {
-            _runtimeSaveService.SaveDirtyPlayersAsync(_cts.Token).GetAwaiter().GetResult();
-            _nextRuntimeSaveUtc = DateTime.UtcNow.AddSeconds(_gameTimeService.Config.RuntimeSaveIntervalSeconds);
-        }
-
-        if (DateTime.UtcNow >= _nextDerivedStateRefreshUtc)
-        {
-            _runtimeService.RefreshTimeDerivedStateForOnlinePlayersAsync(_cts.Token).GetAwaiter().GetResult();
-            _nextDerivedStateRefreshUtc = DateTime.UtcNow.AddSeconds(_gameTimeService.Config.DerivedStateRefreshIntervalSeconds);
         }
     }
 }

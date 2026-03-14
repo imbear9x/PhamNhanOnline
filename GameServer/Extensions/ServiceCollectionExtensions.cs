@@ -22,10 +22,10 @@ public static class ServiceCollectionExtensions
         // add game services
         services.AddScoped<AccountService>();
         services.AddScoped<CharacterService>();
-        
 
         return services;
     }
+
     public static IServiceCollection AddRepositories(this IServiceCollection services)
     {
         // add game AddRepositories DB
@@ -36,25 +36,26 @@ public static class ServiceCollectionExtensions
         services.AddScoped<GameTimeStateRepository>();
         services.AddScoped<RealmTemplateRepository>();
         services.AddScoped<AccountCredentialRepository>();
-        
 
         return services;
     }
+
     public static IServiceCollection AddNetworking(this IServiceCollection services)
     {
         services.AddSingleton<NetworkServer>();
         services.AddSingleton<INetworkSender>(p => p.GetRequiredService<NetworkServer>());
         services.AddSingleton<PacketDispatcher>();
-        
+
         return services;
     }
+
     public static IServiceCollection AddMiddleWare(this IServiceCollection services)
     {
         services.AddSingleton<IPacketMiddleware, RateLimitMiddleware>();
         services.AddSingleton<IPacketMiddleware, AuthMiddleware>();
         services.AddSingleton<IPacketMiddleware, CharacterActionRestrictionMiddleware>();
         services.AddSingleton<IPacketMiddleware, PacketValidationMiddleware>();
-        
+
         return services;
     }
 
@@ -70,11 +71,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CharacterRuntimeSaveService>();
         services.AddSingleton<CharacterLifecycleService>();
         services.AddSingleton<GameLoop>();
-
+        services.AddSingleton<RuntimeMaintenanceService>();
 
         return services;
     }
-    
+
     public static IServiceCollection AddDomainHandler(this IServiceCollection services)
     {
         services.AddScoped<IPacketHandler<LoginPacket>, LoginHandler>();
@@ -92,9 +93,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPacketValidator, CreateCharacterPacketValidator>();
         services.AddSingleton<IPacketValidator, GetCharacterDataPacketValidator>();
 
-
         return services;
     }
+
     public static IServiceCollection AddDatabase(this IServiceCollection services)
     {
         var path = Path.Combine(AppContext.BaseDirectory, "Config", "dbConfig.json");
@@ -103,7 +104,6 @@ public static class ServiceCollectionExtensions
             throw new Exception($"Config file not found: {path}");
 
         var json = File.ReadAllText(path);
-
 
         var dbConfig = JsonSerializer.Deserialize<DbConfig>(json)
             ?? throw new Exception($"Failed to deserialize DB config: {path}");

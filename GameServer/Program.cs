@@ -1,3 +1,4 @@
+using System.Threading;
 using GameServer.Extensions;
 using GameServer.Network;
 using GameServer.Runtime;
@@ -26,22 +27,48 @@ class Program
             .AddRepositories();
 
         Logger.Info("Service registration completed.");
-        var provider = services.BuildServiceProvider();
+        using var provider = services.BuildServiceProvider();
 
         Logger.Info("ServiceProvider built.");
         var server = provider.GetRequiredService<NetworkServer>();
+        var gameLoop = provider.GetRequiredService<GameLoop>();
+        var maintenance = provider.GetRequiredService<RuntimeMaintenanceService>();
+        using var shutdownCts = new CancellationTokenSource();
 
-        Logger.Info("NetworkServer resolved.");
-        server.Start();
-        provider.GetRequiredService<GameLoop>().Start();
-
-        Logger.Info("Game server started on port 7777.");
-        Console.WriteLine("Game server started on port 7777");
-
-        while (true)
+        ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
         {
-            server.PollEvents();
-            Thread.Sleep(15);
+            eventArgs.Cancel = true;
+            shutdownCts.Cancel();
+        };
+        Console.CancelKeyPress += cancelHandler;
+
+        try
+        {
+            Logger.Info("NetworkServer resolved.");
+            server.Start();
+            gameLoop.Start();
+            maintenance.Start();
+
+            Logger.Info("Game server started on port 7777.");
+            Console.WriteLine("Game server started on port 7777");
+            Console.WriteLine("Press Ctrl+C to stop the server.");
+
+            while (!shutdownCts.IsCancellationRequested)
+            {
+                server.PollEvents();
+                Thread.Sleep(15);
+            }
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancelHandler;
+            Logger.Info("Game server shutdown started.");
+
+            maintenance.Stop();
+            gameLoop.Stop();
+            server.Stop();
+
+            Logger.Info("Game server shutdown completed.");
         }
     }
 

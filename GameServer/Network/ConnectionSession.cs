@@ -1,10 +1,21 @@
+using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using GameServer.World;
+using GameShared.Packets;
 using LiteNetLib;
 
 namespace GameServer.Network;
 
 public sealed class ConnectionSession
 {
+    private readonly Channel<InboundPacketEnvelope> _inboundPackets = Channel.CreateUnbounded<InboundPacketEnvelope>(
+        new UnboundedChannelOptions
+        {
+            SingleReader = true,
+            SingleWriter = false
+        });
+    private readonly CancellationTokenSource _inboundProcessingCts = new();
+
     public NetPeer Peer { get; }
     public int ConnectionId => Peer.Id;
 
@@ -14,7 +25,7 @@ public sealed class ConnectionSession
     public PlayerSession? Player { get; set; }
     public bool IsAuthenticated { get; set; }
     public bool AreCharacterActionsRestricted { get; set; }
-
+    public Task? InboundProcessorTask { get; set; }
 
     public ConnectionSession(NetPeer peer)
     {
@@ -23,4 +34,32 @@ public sealed class ConnectionSession
         SelectedCharacterId = Guid.Empty;
         AreCharacterActionsRestricted = false;
     }
+
+    internal bool TryEnqueueInboundPacket(InboundPacketEnvelope envelope) =>
+        _inboundPackets.Writer.TryWrite(envelope);
+
+    internal async IAsyncEnumerable<InboundPacketEnvelope> ReadInboundPacketsAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            _inboundProcessingCts.Token,
+            cancellationToken);
+
+        await foreach (var envelope in _inboundPackets.Reader.ReadAllAsync(linkedCts.Token))
+        {
+            yield return envelope;
+        }
+    }
+
+    internal void StopInboundProcessing()
+    {
+        _inboundProcessingCts.Cancel();
+        _inboundPackets.Writer.TryComplete();
+    }
 }
+
+internal sealed record InboundPacketEnvelope(
+    IPacket Packet,
+    byte[] RawPayload,
+    byte ChannelNumber,
+    DeliveryMethod DeliveryMethod);
