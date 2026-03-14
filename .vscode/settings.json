@@ -2,9 +2,11 @@
     "dotnet.defaultSolution": "PhamNhanOnline.sln",
     "window.openFoldersInNewWindow": "on",
     "window.openFilesInNewWindow": "on",
+    "explorer.autoReveal": true,
     "files.exclude": {
         "**/.vs": true,
         "**/bin": true,
-        "**/obj": true
+        "**/obj": true,
+        "**/*.meta": true
     }
 }

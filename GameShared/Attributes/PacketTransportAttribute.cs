@@ -30,5 +30,5 @@ public sealed class PacketTransportAttribute : Attribute
 
     public PacketTransportMode Mode { get; }
     public PacketTrafficClass TrafficClass { get; }
-    public int MinIntervalMs { get; init; }
+    public int MinIntervalMs { get; set; }
 }

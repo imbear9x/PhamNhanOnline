@@ -58,3 +58,9 @@ ClientUnity/**/.vs/
 ClientUnity/**/.vscode/
 ClientUnity/**/.vsconfig
 ClientUnity/**/sysinfo.txt
+ClientUnity/**/Assets/Plugins/GameShared/*.dll
+ClientUnity/**/Assets/Plugins/GameShared/*.pdb
+ClientUnity/**/Assets/Plugins/GameShared/*.xml
+ClientUnity/**/Assets/Plugins/LiteNetLib/*.dll
+ClientUnity/**/Assets/Plugins/LiteNetLib/*.pdb
+ClientUnity/**/Assets/Plugins/LiteNetLib/*.xml

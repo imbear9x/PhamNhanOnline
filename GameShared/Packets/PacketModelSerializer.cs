@@ -487,11 +487,35 @@ public static class PacketModelSerializer
         return true;
     }
 
-    private sealed record MemberMetadata(
-        string Name,
-        Type MemberType,
-        Func<object, object?> GetValue,
-        Action<object, object?> SetValue);
+    private sealed class MemberMetadata
+    {
+        public MemberMetadata(
+            string name,
+            Type memberType,
+            Func<object, object?> getValue,
+            Action<object, object?> setValue)
+        {
+            Name = name;
+            MemberType = memberType;
+            GetValue = getValue;
+            SetValue = setValue;
+        }
 
-    private sealed record TypeMetadata(Type Type, IReadOnlyList<MemberMetadata> Members);
+        public string Name { get; }
+        public Type MemberType { get; }
+        public Func<object, object?> GetValue { get; }
+        public Action<object, object?> SetValue { get; }
+    }
+
+    private sealed class TypeMetadata
+    {
+        public TypeMetadata(Type type, IReadOnlyList<MemberMetadata> members)
+        {
+            Type = type;
+            Members = members;
+        }
+
+        public Type Type { get; }
+        public IReadOnlyList<MemberMetadata> Members { get; }
+    }
 }
