@@ -7,6 +7,7 @@ namespace GameServer.World;
 public sealed class PlayerSession
 {
     private readonly object _sync = new();
+    private readonly HashSet<Guid> _visibleCharacterIds = new();
     private int _lastReportedRemainingLifespan = int.MinValue;
     private bool _lifespanExpiredProcessed;
     private bool _characterActionsRestricted;
@@ -108,6 +109,38 @@ public sealed class PlayerSession
 
             _lastReportedRemainingLifespan = remainingLifespan;
             return true;
+        }
+    }
+
+    public IReadOnlyCollection<Guid> GetVisibleCharacterIdsSnapshot()
+    {
+        lock (_sync)
+        {
+            return _visibleCharacterIds.ToArray();
+        }
+    }
+
+    public bool AddVisibleCharacter(Guid characterId)
+    {
+        lock (_sync)
+        {
+            return _visibleCharacterIds.Add(characterId);
+        }
+    }
+
+    public bool RemoveVisibleCharacter(Guid characterId)
+    {
+        lock (_sync)
+        {
+            return _visibleCharacterIds.Remove(characterId);
+        }
+    }
+
+    public void ClearVisibleCharacters()
+    {
+        lock (_sync)
+        {
+            _visibleCharacterIds.Clear();
         }
     }
 

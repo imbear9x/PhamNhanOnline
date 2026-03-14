@@ -14,17 +14,20 @@ public sealed class CharacterLifecycleService
     private readonly CharacterRuntimeSaveService _runtimeSaveService;
     private readonly INetworkSender _network;
     private readonly GameTimeService _gameTimeService;
+    private readonly WorldInterestService _interestService;
 
     public CharacterLifecycleService(
         IServiceScopeFactory scopeFactory,
         CharacterRuntimeSaveService runtimeSaveService,
         INetworkSender network,
-        GameTimeService gameTimeService)
+        GameTimeService gameTimeService,
+        WorldInterestService interestService)
     {
         _scopeFactory = scopeFactory;
         _runtimeSaveService = runtimeSaveService;
         _network = network;
         _gameTimeService = gameTimeService;
+        _interestService = interestService;
     }
 
     public bool IsLifespanExpired(CharacterCurrentStateDto? currentState)
@@ -62,6 +65,7 @@ public sealed class CharacterLifecycleService
         {
             CurrentState = snapshot.CurrentState.ToModel(_gameTimeService.GetCurrentSnapshot())
         });
+        _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
         _network.Send(player.ConnectionId, new CharacterStateTransitionPacket
         {
             CharacterId = player.CharacterData.CharacterId,

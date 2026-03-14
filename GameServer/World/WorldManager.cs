@@ -7,6 +7,7 @@ namespace GameServer.World;
 public sealed class WorldManager
 {
     private readonly ConcurrentDictionary<Guid, PlayerSession> _onlinePlayers = new();
+    public event Action<PlayerSession>? PlayerRemoving;
 
     public IReadOnlyDictionary<Guid, PlayerSession> OnlinePlayers => _onlinePlayers;
     public MapManager MapManager { get; }
@@ -39,6 +40,7 @@ public sealed class WorldManager
     {
         if (_onlinePlayers.TryRemove(playerId, out var session))
         {
+            PlayerRemoving?.Invoke(session);
             session.IsConnected = false;
             MapManager.RemovePlayer(session);
         }

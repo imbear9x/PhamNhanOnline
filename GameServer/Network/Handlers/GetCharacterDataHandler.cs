@@ -3,6 +3,7 @@ using GameServer.Network.Interface;
 using GameServer.Runtime;
 using GameServer.Services;
 using GameServer.Time;
+using GameServer.World;
 using GameShared.Messages;
 using GameShared.Packets;
 
@@ -13,6 +14,7 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
     private readonly CharacterService _characterService;
     private readonly CharacterRuntimeService _runtimeService;
     private readonly CharacterLifecycleService _lifecycleService;
+    private readonly WorldInterestService _interestService;
     private readonly INetworkSender _server;
     private readonly GameTimeService _gameTimeService;
 
@@ -20,12 +22,14 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
         CharacterService characterService,
         CharacterRuntimeService runtimeService,
         CharacterLifecycleService lifecycleService,
+        WorldInterestService interestService,
         INetworkSender server,
         GameTimeService gameTimeService)
     {
         _characterService = characterService;
         _runtimeService = runtimeService;
         _lifecycleService = lifecycleService;
+        _interestService = interestService;
         _server = server;
         _gameTimeService = gameTimeService;
     }
@@ -53,20 +57,25 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
 
             session.SelectedCharacterId = data.Character.CharacterId;
             var player = _runtimeService.AttachPlayerSession(session, data);
+            _interestService.EnsurePlayerInWorld(player);
             if (isLifespanExpired)
             {
                 player.SetCharacterActionsRestricted(true);
                 session.AreCharacterActionsRestricted = true;
             }
 
+            var runtimeSnapshot = player.RuntimeState.CaptureSnapshot();
+
             _server.Send(session.ConnectionId, new GetCharacterDataResultPacket
             {
                 Success = true,
                 Code = isLifespanExpired ? MessageCode.CharacterLifespanExpired : MessageCode.None,
-                Character = data.Character.ToModel(),
-                BaseStats = data.BaseStats?.ToModel(),
-                CurrentState = data.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot())
+                Character = player.CharacterData.ToModel(),
+                BaseStats = runtimeSnapshot.BaseStats.ToModel(),
+                CurrentState = runtimeSnapshot.CurrentState.ToModel(_gameTimeService.GetCurrentSnapshot())
             });
+
+            _interestService.PublishWorldSnapshot(player);
 
             if (isLifespanExpired)
                 _lifecycleService.NotifyLifespanExpired(session.ConnectionId, data.Character.CharacterId);

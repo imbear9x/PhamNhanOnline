@@ -11,6 +11,24 @@ public sealed class GameTimeService
 
     private GameTimeState _state;
 
+    public GameTimeService(GameTimeConfig bootstrapConfig)
+    {
+        _scopeFactory = new NoopServiceScopeFactory();
+        Validate(bootstrapConfig);
+
+        _state = Normalize(new GameTimeState
+        {
+            Id = GameTimeStateRepository.PrimaryId,
+            AnchorUtc = NormalizeUtc(bootstrapConfig.AnchorUtc),
+            AnchorGameMinute = bootstrapConfig.AnchorGameMinute,
+            GameMinutesPerRealMinute = bootstrapConfig.GameMinutesPerRealMinute,
+            DaysPerGameYear = bootstrapConfig.DaysPerGameYear,
+            RuntimeSaveIntervalSeconds = bootstrapConfig.RuntimeSaveIntervalSeconds,
+            DerivedStateRefreshIntervalSeconds = bootstrapConfig.DerivedStateRefreshIntervalSeconds,
+            UpdatedAt = DateTime.UtcNow
+        });
+    }
+
     public GameTimeService(IServiceScopeFactory scopeFactory, GameTimeConfig bootstrapConfig)
     {
         _scopeFactory = scopeFactory;
@@ -186,5 +204,13 @@ public sealed class GameTimeService
             throw new ArgumentOutOfRangeException(nameof(state.RuntimeSaveIntervalSeconds), "RuntimeSaveIntervalSeconds must be positive.");
         if (state.DerivedStateRefreshIntervalSeconds <= 0)
             throw new ArgumentOutOfRangeException(nameof(state.DerivedStateRefreshIntervalSeconds), "DerivedStateRefreshIntervalSeconds must be positive.");
+    }
+
+    private sealed class NoopServiceScopeFactory : IServiceScopeFactory
+    {
+        public IServiceScope CreateScope()
+        {
+            throw new InvalidOperationException("This GameTimeService instance does not support persistence operations.");
+        }
     }
 }

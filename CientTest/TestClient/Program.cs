@@ -124,6 +124,21 @@ class AuthClientListener : INetEventListener
                 case CharacterStateTransitionPacket stateTransition:
                     HandleCharacterStateTransition(stateTransition);
                     break;
+                case MapJoinedPacket mapJoined:
+                    HandleMapJoined(mapJoined);
+                    break;
+                case ObservedCharacterSpawnedPacket observedSpawned:
+                    HandleObservedCharacterSpawned(observedSpawned);
+                    break;
+                case ObservedCharacterDespawnedPacket observedDespawned:
+                    HandleObservedCharacterDespawned(observedDespawned);
+                    break;
+                case ObservedCharacterMovedPacket observedMoved:
+                    HandleObservedCharacterMoved(observedMoved);
+                    break;
+                case ObservedCharacterCurrentStateChangedPacket observedStateChanged:
+                    HandleObservedCharacterCurrentStateChanged(observedStateChanged);
+                    break;
                 default:
                     Logger.Info($"Unhandled packet type: {packet.GetType().Name}");
                     AppendEvent($"Unhandled:{packet.GetType().Name}");
@@ -286,6 +301,58 @@ class AuthClientListener : INetEventListener
             PersistFlowJson();
             SendCreateCharacter(_peer, _options.ProbeCharacterName);
         }
+    }
+
+    private void HandleMapJoined(MapJoinedPacket mapJoined)
+    {
+        if (mapJoined.Map.HasValue)
+        {
+            var map = mapJoined.Map.Value;
+            Logger.Info($"MapJoined received: MapId={map.MapId}, Name={map.Name}, InstanceId={mapJoined.InstanceId}");
+            AppendEvent($"MapJoined:{map.MapId}:{mapJoined.InstanceId}");
+            PersistFlowJson();
+            return;
+        }
+
+        Logger.Info("MapJoined received without map payload.");
+        AppendEvent("MapJoined:MissingPayload");
+        PersistFlowJson();
+    }
+
+    private void HandleObservedCharacterSpawned(ObservedCharacterSpawnedPacket observedSpawned)
+    {
+        if (!observedSpawned.Character.HasValue)
+        {
+            Logger.Info("ObservedCharacterSpawned received without character payload.");
+            AppendEvent("ObservedSpawned:MissingPayload");
+            return;
+        }
+
+        var observed = observedSpawned.Character.Value;
+        Logger.Info(
+            $"ObservedCharacterSpawned received: CharacterId={observed.Character.CharacterId}, Name={observed.Character.Name}, MapId={observed.MapId}, InstanceId={observed.InstanceId}");
+        AppendEvent($"ObservedSpawned:{observed.Character.CharacterId}");
+    }
+
+    private void HandleObservedCharacterDespawned(ObservedCharacterDespawnedPacket observedDespawned)
+    {
+        Logger.Info(
+            $"ObservedCharacterDespawned received: CharacterId={observedDespawned.CharacterId}, MapId={observedDespawned.MapId}, InstanceId={observedDespawned.InstanceId}");
+        AppendEvent($"ObservedDespawned:{observedDespawned.CharacterId}");
+    }
+
+    private void HandleObservedCharacterMoved(ObservedCharacterMovedPacket observedMoved)
+    {
+        Logger.Info(
+            $"ObservedCharacterMoved received: CharacterId={observedMoved.CharacterId}, Pos=({observedMoved.CurrentPosX},{observedMoved.CurrentPosY}), MapId={observedMoved.MapId}, InstanceId={observedMoved.InstanceId}");
+        AppendEvent($"ObservedMoved:{observedMoved.CharacterId}");
+    }
+
+    private void HandleObservedCharacterCurrentStateChanged(ObservedCharacterCurrentStateChangedPacket observedStateChanged)
+    {
+        Logger.Info(
+            $"ObservedCharacterCurrentStateChanged received: HasCurrentState={observedStateChanged.CurrentState.HasValue}, InstanceId={observedStateChanged.InstanceId}");
+        AppendEvent("ObservedCharacterCurrentStateChanged");
     }
 
     private static void SendPacket(NetPeer peer, IPacket packet)

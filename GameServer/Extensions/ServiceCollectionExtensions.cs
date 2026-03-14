@@ -66,8 +66,10 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton(BuildGameTimeBootstrapConfig());
         services.AddSingleton<GameTimeService>();
+        services.AddSingleton<MapCatalog>();
         services.AddSingleton<MapManager>();
         services.AddSingleton<WorldManager>();
+        services.AddSingleton<WorldInterestService>();
         services.AddSingleton<CharacterRuntimeCalculator>();
         services.AddSingleton<CharacterRuntimeNotifier>();
         services.AddSingleton<CharacterRuntimeService>();

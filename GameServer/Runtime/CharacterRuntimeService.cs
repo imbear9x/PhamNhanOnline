@@ -12,6 +12,7 @@ public sealed class CharacterRuntimeService
     private readonly WorldManager _worldManager;
     private readonly CharacterRuntimeCalculator _calculator;
     private readonly CharacterRuntimeNotifier _notifier;
+    private readonly WorldInterestService _interestService;
     private readonly GameTimeService _gameTimeService;
     private readonly CharacterLifecycleService _lifecycleService;
 
@@ -19,12 +20,14 @@ public sealed class CharacterRuntimeService
         WorldManager worldManager,
         CharacterRuntimeCalculator calculator,
         CharacterRuntimeNotifier notifier,
+        WorldInterestService interestService,
         GameTimeService gameTimeService,
         CharacterLifecycleService lifecycleService)
     {
         _worldManager = worldManager;
         _calculator = calculator;
         _notifier = notifier;
+        _interestService = interestService;
         _gameTimeService = gameTimeService;
         _lifecycleService = lifecycleService;
     }
@@ -63,6 +66,7 @@ public sealed class CharacterRuntimeService
 
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
         _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);
+        _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
         return snapshot;
     }
 
@@ -74,6 +78,7 @@ public sealed class CharacterRuntimeService
 
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
         _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);
+        _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
         return snapshot;
     }
 
@@ -98,16 +103,19 @@ public sealed class CharacterRuntimeService
         player.SynchronizeFromCurrentState(currentStateSnapshot.CurrentState);
         _notifier.NotifyBaseStatsChanged(player, baseStatsSnapshot.BaseStats);
         _notifier.NotifyCurrentStateChanged(player, currentStateSnapshot.CurrentState);
+        _interestService.NotifyCurrentStateChanged(player, currentStateSnapshot.CurrentState);
         return currentStateSnapshot;
     }
 
     public CharacterRuntimeSnapshot UpdatePosition(PlayerSession player, int? mapId, Vector2 position)
     {
+        var previousSnapshot = player.RuntimeState.CaptureSnapshot();
         var snapshot = player.RuntimeState.UpdateCurrentState(
             current => _calculator.UpdatePosition(current, mapId, position));
 
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
         _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);
+        _interestService.HandlePositionUpdated(player, previousSnapshot.CurrentState, snapshot.CurrentState);
         return snapshot;
     }
 
@@ -122,7 +130,10 @@ public sealed class CharacterRuntimeService
                 continue;
             }
 
-            _notifier.TryNotifyTimeDerivedCurrentStateChanged(player, snapshot.CurrentState);
+            if (_notifier.TryNotifyTimeDerivedCurrentStateChanged(player, snapshot.CurrentState))
+            {
+                _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
+            }
         }
     }
 }

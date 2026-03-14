@@ -14,6 +14,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestClient", "CientTest\Tes
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PacketGenerator", "PacketGenerator\PacketGenerator.csproj", "{A7A95EA4-A06B-4E90-822F-BE03615B6261}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InterestManagementVerifier", "CientTest\InterestManagementVerifier\InterestManagementVerifier.csproj", "{C15A6C07-39AF-465C-934D-8F82A8F0B5A7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,6 +38,10 @@ Global
 		{A7A95EA4-A06B-4E90-822F-BE03615B6261}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A7A95EA4-A06B-4E90-822F-BE03615B6261}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A7A95EA4-A06B-4E90-822F-BE03615B6261}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C15A6C07-39AF-465C-934D-8F82A8F0B5A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C15A6C07-39AF-465C-934D-8F82A8F0B5A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C15A6C07-39AF-465C-934D-8F82A8F0B5A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C15A6C07-39AF-465C-934D-8F82A8F0B5A7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

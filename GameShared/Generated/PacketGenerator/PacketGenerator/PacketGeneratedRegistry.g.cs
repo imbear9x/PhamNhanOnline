@@ -47,17 +47,32 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.LoginResultPacket:
                 id = 13;
                 return true;
-            case global::GameShared.Packets.ReconnectPacket:
+            case global::GameShared.Packets.MapJoinedPacket:
                 id = 14;
                 return true;
-            case global::GameShared.Packets.ReconnectResultPacket:
+            case global::GameShared.Packets.ObservedCharacterCurrentStateChangedPacket:
                 id = 15;
                 return true;
-            case global::GameShared.Packets.RegisterPacket:
+            case global::GameShared.Packets.ObservedCharacterDespawnedPacket:
                 id = 16;
                 return true;
-            case global::GameShared.Packets.RegisterResultPacket:
+            case global::GameShared.Packets.ObservedCharacterMovedPacket:
                 id = 17;
+                return true;
+            case global::GameShared.Packets.ObservedCharacterSpawnedPacket:
+                id = 18;
+                return true;
+            case global::GameShared.Packets.ReconnectPacket:
+                id = 19;
+                return true;
+            case global::GameShared.Packets.ReconnectResultPacket:
+                id = 20;
+                return true;
+            case global::GameShared.Packets.RegisterPacket:
+                id = 21;
+                return true;
+            case global::GameShared.Packets.RegisterResultPacket:
+                id = 22;
                 return true;
             default:
                 id = default;
@@ -82,10 +97,15 @@ internal static class PacketGeneratedRegistry
             11 => new global::GameShared.Packets.GetCharacterListResultPacket(),
             12 => new global::GameShared.Packets.LoginPacket(),
             13 => new global::GameShared.Packets.LoginResultPacket(),
-            14 => new global::GameShared.Packets.ReconnectPacket(),
-            15 => new global::GameShared.Packets.ReconnectResultPacket(),
-            16 => new global::GameShared.Packets.RegisterPacket(),
-            17 => new global::GameShared.Packets.RegisterResultPacket(),
+            14 => new global::GameShared.Packets.MapJoinedPacket(),
+            15 => new global::GameShared.Packets.ObservedCharacterCurrentStateChangedPacket(),
+            16 => new global::GameShared.Packets.ObservedCharacterDespawnedPacket(),
+            17 => new global::GameShared.Packets.ObservedCharacterMovedPacket(),
+            18 => new global::GameShared.Packets.ObservedCharacterSpawnedPacket(),
+            19 => new global::GameShared.Packets.ReconnectPacket(),
+            20 => new global::GameShared.Packets.ReconnectResultPacket(),
+            21 => new global::GameShared.Packets.RegisterPacket(),
+            22 => new global::GameShared.Packets.RegisterResultPacket(),
             _ => null
         };
     }

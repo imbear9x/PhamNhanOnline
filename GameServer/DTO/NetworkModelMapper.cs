@@ -1,6 +1,7 @@
 using GameShared.Models;
 using GameServer.Runtime;
 using GameServer.Time;
+using GameServer.World;
 
 namespace GameServer.DTO;
 
@@ -61,6 +62,34 @@ public static class NetworkModelMapper
             IsDead = dto.IsDead,
             CurrentState = dto.CurrentState,
             LastSavedUnixMs = ToUnixMs(dto.LastSavedAt) ?? 0
+        };
+    }
+
+    public static MapDefinitionModel ToModel(this MapDefinition definition)
+    {
+        return new MapDefinitionModel
+        {
+            MapId = definition.MapId,
+            Name = definition.Name,
+            Width = definition.Width,
+            Height = definition.Height,
+            CellSize = definition.CellSize,
+            InterestRadius = definition.InterestRadius,
+            DefaultSpawnX = definition.DefaultSpawnPosition.X,
+            DefaultSpawnY = definition.DefaultSpawnPosition.Y,
+            MaxPlayersPerInstance = definition.MaxPlayersPerInstance
+        };
+    }
+
+    public static ObservedCharacterModel ToObservedCharacterModel(this PlayerSession player, GameTimeSnapshot gameTime)
+    {
+        var snapshot = player.RuntimeState.CaptureSnapshot();
+        return new ObservedCharacterModel
+        {
+            Character = player.CharacterData.ToModel(),
+            CurrentState = snapshot.CurrentState.ToModel(gameTime),
+            MapId = player.MapId,
+            InstanceId = player.InstanceId
         };
     }
 
