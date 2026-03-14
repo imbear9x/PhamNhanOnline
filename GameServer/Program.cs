@@ -1,4 +1,5 @@
 using System.Threading;
+using GameServer.Diagnostics;
 using GameServer.Extensions;
 using GameServer.Network;
 using GameServer.Runtime;
@@ -33,6 +34,7 @@ class Program
         var server = provider.GetRequiredService<NetworkServer>();
         var gameLoop = provider.GetRequiredService<GameLoop>();
         var maintenance = provider.GetRequiredService<RuntimeMaintenanceService>();
+        var metricsLogger = provider.GetRequiredService<ServerMetricsLoggerService>();
         using var shutdownCts = new CancellationTokenSource();
 
         ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
@@ -48,6 +50,7 @@ class Program
             server.Start();
             gameLoop.Start();
             maintenance.Start();
+            metricsLogger.Start();
 
             Logger.Info("Game server started on port 7777.");
             Console.WriteLine("Game server started on port 7777");
@@ -64,6 +67,7 @@ class Program
             Console.CancelKeyPress -= cancelHandler;
             Logger.Info("Game server shutdown started.");
 
+            metricsLogger.Stop();
             maintenance.Stop();
             gameLoop.Stop();
             server.Stop();

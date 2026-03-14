@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text.Json;
+using GameServer.Diagnostics;
 using GameServer.Network.Interface;
 using GameServer.Runtime;
 using GameServer.World;
@@ -20,6 +22,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     private readonly PacketDispatcher _dispatcher;
     private readonly WorldManager _worldManager;
     private readonly CharacterRuntimeSaveService _runtimeSaveService;
+    private readonly ServerMetricsService _metrics;
     private readonly ConcurrentDictionary<int, ConnectionSession> _sessions = new();
     private readonly ConcurrentDictionary<string, ResumeTicket> _resumeTickets = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Guid, string> _accountTokens = new();
@@ -29,11 +32,13 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     public NetworkServer(
         PacketDispatcher dispatcher,
         WorldManager worldManager,
-        CharacterRuntimeSaveService runtimeSaveService)
+        CharacterRuntimeSaveService runtimeSaveService,
+        ServerMetricsService metrics)
     {
         _dispatcher = dispatcher;
         _worldManager = worldManager;
         _runtimeSaveService = runtimeSaveService;
+        _metrics = metrics;
         _netManager = new NetManager(this)
         {
             AutoRecycle = true
@@ -164,6 +169,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         var session = new ConnectionSession(peer);
         session.InboundProcessorTask = Task.Run(() => ProcessInboundPacketsAsync(session, _shutdownCts.Token));
         _sessions[peer.Id] = session;
+        _metrics.RemoveSession(session.ConnectionId);
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
@@ -173,6 +179,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
         session.StopInboundProcessing();
         WaitForInboundProcessor(session);
+        _metrics.RemoveSession(session.ConnectionId);
 
         if (_shutdownCts.IsCancellationRequested)
             return;
@@ -225,8 +232,12 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
         if (!session.TryEnqueueInboundPacket(new InboundPacketEnvelope(packet, bytes, channelNumber, deliveryMethod)))
         {
+            _metrics.RecordInboundPacketDropped(session.ConnectionId, session.PendingInboundPacketCount);
             Logger.Error($"Inbound packet dropped: {packet.GetType().Name} (ConnectionId={session.ConnectionId})");
+            return;
         }
+
+        _metrics.RecordInboundPacketEnqueued(session.ConnectionId, session.PendingInboundPacketCount);
     }
 
     public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
@@ -251,12 +262,15 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         {
             await foreach (var envelope in session.ReadInboundPacketsAsync(cancellationToken))
             {
+                var startedAt = Stopwatch.GetTimestamp();
                 await DispatchWithIncidentCaptureAsync(
                     session,
                     envelope.Packet,
                     envelope.RawPayload,
                     envelope.ChannelNumber,
                     envelope.DeliveryMethod);
+                var duration = Stopwatch.GetElapsedTime(startedAt);
+                _metrics.RecordInboundPacketProcessed(session.ConnectionId, duration, session.PendingInboundPacketCount);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -267,6 +281,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         }
         catch (Exception ex)
         {
+            _metrics.RecordInboundPacketProcessingException();
             Logger.Error(ex, $"Inbound processor crashed: ConnectionId={session.ConnectionId}");
         }
     }
@@ -284,6 +299,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         }
         catch (Exception ex)
         {
+            _metrics.RecordInboundPacketProcessingException();
             Logger.Error(ex, $"Unhandled packet exception: {packet.GetType().Name} (ConnectionId={session.ConnectionId})");
 
             PacketIncidentCapture.Log(new PacketIncidentRecord

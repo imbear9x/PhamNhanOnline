@@ -1,5 +1,6 @@
 using System.Text.Json;
 using GameServer.Database;
+using GameServer.Diagnostics;
 using GameServer.Network;
 using GameServer.Network.Handlers;
 using GameServer.Network.Interface;
@@ -42,6 +43,8 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddNetworking(this IServiceCollection services)
     {
+        services.AddSingleton<ServerMetricsService>();
+        services.AddSingleton<ServerMetricsLoggerService>();
         services.AddSingleton<NetworkServer>();
         services.AddSingleton<INetworkSender>(p => p.GetRequiredService<NetworkServer>());
         services.AddSingleton<PacketDispatcher>();

@@ -15,6 +15,7 @@ public sealed class ConnectionSession
             SingleWriter = false
         });
     private readonly CancellationTokenSource _inboundProcessingCts = new();
+    private int _pendingInboundPacketCount;
 
     public NetPeer Peer { get; }
     public int ConnectionId => Peer.Id;
@@ -26,6 +27,7 @@ public sealed class ConnectionSession
     public bool IsAuthenticated { get; set; }
     public bool AreCharacterActionsRestricted { get; set; }
     public Task? InboundProcessorTask { get; set; }
+    public int PendingInboundPacketCount => Volatile.Read(ref _pendingInboundPacketCount);
 
     public ConnectionSession(NetPeer peer)
     {
@@ -35,8 +37,14 @@ public sealed class ConnectionSession
         AreCharacterActionsRestricted = false;
     }
 
-    internal bool TryEnqueueInboundPacket(InboundPacketEnvelope envelope) =>
-        _inboundPackets.Writer.TryWrite(envelope);
+    internal bool TryEnqueueInboundPacket(InboundPacketEnvelope envelope)
+    {
+        if (!_inboundPackets.Writer.TryWrite(envelope))
+            return false;
+
+        Interlocked.Increment(ref _pendingInboundPacketCount);
+        return true;
+    }
 
     internal async IAsyncEnumerable<InboundPacketEnvelope> ReadInboundPacketsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -47,6 +55,7 @@ public sealed class ConnectionSession
 
         await foreach (var envelope in _inboundPackets.Reader.ReadAllAsync(linkedCts.Token))
         {
+            Interlocked.Decrement(ref _pendingInboundPacketCount);
             yield return envelope;
         }
     }
