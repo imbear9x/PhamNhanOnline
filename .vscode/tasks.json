@@ -2,6 +2,48 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "restore: solution",
+            "command": "powershell",
+            "type": "process",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/scripts/solution.ps1",
+                "restore"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build: solution",
+            "command": "powershell",
+            "type": "process",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/scripts/solution.ps1",
+                "build"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "clean: solution",
+            "command": "powershell",
+            "type": "process",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/scripts/solution.ps1",
+                "clean"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "build: GameServer",
             "command": "dotnet",
             "type": "process",
