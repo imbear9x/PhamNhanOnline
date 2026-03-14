@@ -20,7 +20,8 @@ public sealed class CharacterActionRestrictionMiddleware : IPacketMiddleware
     private static readonly HashSet<Type> AllowedWhenRestricted =
     [
         typeof(GetCharacterListPacket),
-        typeof(GetCharacterDataPacket)
+        typeof(GetCharacterDataPacket),
+        typeof(EnterWorldPacket)
     ];
 
     private readonly IServiceProvider _serviceProvider;
@@ -49,6 +50,14 @@ public sealed class CharacterActionRestrictionMiddleware : IPacketMiddleware
         if (packet is CreateCharacterPacket)
         {
             networkSender.Send(session.ConnectionId, new CreateCharacterResultPacket
+            {
+                Success = false,
+                Code = MessageCode.CharacterActionsRestricted
+            });
+        }
+        else if (packet is EnterWorldPacket)
+        {
+            networkSender.Send(session.ConnectionId, new EnterWorldResultPacket
             {
                 Success = false,
                 Code = MessageCode.CharacterActionsRestricted

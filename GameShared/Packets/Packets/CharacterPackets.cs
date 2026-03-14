@@ -75,6 +75,27 @@ public partial class GetCharacterDataResultPacket : IPacket
 }
 
 [Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
+public partial class EnterWorldPacket : IPacket
+{
+    [ValidationCode(MessageCode.CharacterIdInvalid)]
+    [Required]
+    public Guid? CharacterId { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class EnterWorldResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public CharacterModel? Character { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
+}
+
+[Packet]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class CharacterBaseStatsChangedPacket : IPacket
 {

@@ -92,6 +92,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<CreateCharacterPacket>, CreateCharacterHandler>();
         services.AddScoped<IPacketHandler<GetCharacterListPacket>, GetCharacterListHandler>();
         services.AddScoped<IPacketHandler<GetCharacterDataPacket>, GetCharacterDataHandler>();
+        services.AddScoped<IPacketHandler<EnterWorldPacket>, EnterWorldHandler>();
 
         services.AddSingleton<IPacketValidator, LoginPacketValidator>();
         services.AddSingleton<IPacketValidator, RegisterPacketValidator>();
@@ -99,6 +100,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPacketValidator, ChangePasswordPacketValidator>();
         services.AddSingleton<IPacketValidator, CreateCharacterPacketValidator>();
         services.AddSingleton<IPacketValidator, GetCharacterDataPacketValidator>();
+        services.AddSingleton<IPacketValidator, EnterWorldPacketValidator>();
 
         return services;
     }

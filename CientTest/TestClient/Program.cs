@@ -77,7 +77,7 @@ class AuthClientListener : INetEventListener
     {
         _peer = peer;
         AppendEvent("ConnectedToServer");
-        SendLogin(peer);
+        SendRegister(peer);
     }
 
     public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
@@ -109,6 +109,9 @@ class AuthClientListener : INetEventListener
                     break;
                 case CreateCharacterResultPacket createResult:
                     HandleCreateCharacterResult(peer, createResult);
+                    break;
+                case EnterWorldResultPacket enterWorldResult:
+                    HandleEnterWorldResult(enterWorldResult);
                     break;
                 case GetCharacterDataResultPacket dataResult:
                     HandleCharacterDataResult(dataResult);
@@ -224,14 +227,14 @@ class AuthClientListener : INetEventListener
 
         if (characters.Length == 0)
         {
-            Logger.Info("Character list is empty.");
+            Logger.Info($"Character list is empty. Creating character '{_options.CharacterName}'.");
             PersistFlowJson();
-            MarkFlowFinished();
+            SendCreateCharacter(peer, _options.CharacterName);
             return;
         }
 
         _targetCharacterId = FindTargetCharacterId(characters);
-        SendGetCharacterData(peer, _targetCharacterId);
+        SendEnterWorld(peer, _targetCharacterId);
     }
 
     private void HandleCreateCharacterResult(NetPeer peer, CreateCharacterResultPacket createResult)
@@ -246,11 +249,42 @@ class AuthClientListener : INetEventListener
             _record.BaseStats = createResult.BaseStats;
             _record.CurrentState = createResult.CurrentState;
             PersistFlowJson();
-            SendGetCharacterList(peer);
+            SendEnterWorld(peer, _targetCharacterId);
             return;
         }
 
         PersistFlowJson();
+        MarkFlowFinished();
+    }
+
+    private void HandleEnterWorldResult(EnterWorldResultPacket enterWorldResult)
+    {
+        Logger.Info($"EnterWorld result: Success={enterWorldResult.Success}, Code={enterWorldResult.Code}");
+        AppendEvent($"EnterWorld:{enterWorldResult.Code}");
+
+        if (enterWorldResult.Success is true && enterWorldResult.Character.HasValue)
+        {
+            _record.Character = enterWorldResult.Character.Value;
+            _record.BaseStats = enterWorldResult.BaseStats;
+            _record.CurrentState = enterWorldResult.CurrentState;
+            PersistFlowJson();
+            Logger.Info($"EnterWorld data written to JSON: {_options.JsonOutputPath}");
+        }
+        else
+        {
+            Logger.Error("Failed to enter world.");
+            PersistFlowJson();
+        }
+
+        if (_options.HoldConnectionSeconds > 0)
+        {
+            _holdUntilUtc = DateTime.UtcNow.AddSeconds(_options.HoldConnectionSeconds);
+            AppendEvent($"HoldConnection:{_options.HoldConnectionSeconds}s");
+            PersistFlowJson();
+            Logger.Info($"Holding connection open for {_options.HoldConnectionSeconds}s.");
+            return;
+        }
+
         MarkFlowFinished();
     }
 
@@ -404,6 +438,14 @@ class AuthClientListener : INetEventListener
     private void SendGetCharacterData(NetPeer peer, Guid characterId)
     {
         SendPacket(peer, new GetCharacterDataPacket
+        {
+            CharacterId = characterId
+        });
+    }
+
+    private void SendEnterWorld(NetPeer peer, Guid characterId)
+    {
+        SendPacket(peer, new EnterWorldPacket
         {
             CharacterId = characterId
         });
