@@ -35,6 +35,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CharacterBaseStatRepository>();
         services.AddScoped<CharacterCurrentStateRepository>();
         services.AddScoped<GameTimeStateRepository>();
+        services.AddScoped<MapTemplateRepository>();
+        services.AddScoped<MapTemplateAdjacentMapRepository>();
         services.AddScoped<RealmTemplateRepository>();
         services.AddScoped<AccountCredentialRepository>();
 
@@ -134,3 +136,4 @@ public static class ServiceCollectionExtensions
                ?? throw new Exception($"Failed to deserialize game time config: {path}");
     }
 }
+

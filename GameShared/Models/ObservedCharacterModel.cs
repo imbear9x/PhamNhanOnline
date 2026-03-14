@@ -8,5 +8,5 @@ public struct ObservedCharacterModel
     public CharacterModel Character;
     public CharacterCurrentStateModel CurrentState;
     public int MapId;
-    public int InstanceId;
+    public int ZoneIndex;
 }

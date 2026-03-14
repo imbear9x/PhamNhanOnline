@@ -11,16 +11,21 @@ public sealed class MapInstance
     private int _nextMonsterId = 1;
 
     public int InstanceId { get; }
+    public int ZoneIndex { get; }
+    public Guid? OwnerPlayerId { get; }
+    public bool IsPrivate => OwnerPlayerId.HasValue;
     public MapDefinition Definition { get; }
     public int MapId => Definition.MapId;
 
     public List<PlayerSession> Players { get; } = new();
     public List<MonsterEntity> Monsters { get; } = new();
 
-    public MapInstance(int instanceId, MapDefinition definition)
+    public MapInstance(int instanceId, int zoneIndex, MapDefinition definition, Guid? ownerPlayerId = null)
     {
         InstanceId = instanceId;
+        ZoneIndex = zoneIndex;
         Definition = definition;
+        OwnerPlayerId = ownerPlayerId;
     }
 
     public int PlayerCount
@@ -38,7 +43,11 @@ public sealed class MapInstance
     {
         lock (_sync)
         {
-            if (Players.Count >= Definition.MaxPlayersPerInstance && !_playersById.ContainsKey(player.PlayerId))
+            if (IsPrivate && OwnerPlayerId != player.PlayerId)
+                return false;
+
+            var maxPlayers = IsPrivate ? 1 : Definition.MaxPlayersPerZone;
+            if (Players.Count >= maxPlayers && !_playersById.ContainsKey(player.PlayerId))
                 return false;
 
             if (!_playersById.ContainsKey(player.PlayerId))
@@ -47,6 +56,7 @@ public sealed class MapInstance
                 _playersById[player.PlayerId] = player;
                 player.MapId = MapId;
                 player.InstanceId = InstanceId;
+                player.ZoneIndex = ZoneIndex;
             }
 
             UpdatePlayerCellUnsafe(player);
@@ -137,10 +147,8 @@ public sealed class MapInstance
 
     public void Update()
     {
-        // Keep minimal for now. Systems (AI/combat/spawn) can be plugged in later.
         lock (_sync)
         {
-            // Example: you might later clean up or respawn monsters here.
         }
     }
 
@@ -185,4 +193,3 @@ public sealed class MapInstance
         _playerCells.Remove(playerId);
     }
 }
-

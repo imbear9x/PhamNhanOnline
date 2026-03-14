@@ -24,12 +24,12 @@ public partial class ObservedCharacterMovedPacket
         return HasMapId;
     }
 
-    public bool HasInstanceId => (_mask & (1UL << 2)) != 0;
+    public bool HasZoneIndex => (_mask & (1UL << 2)) != 0;
 
-    public bool TryGetInstanceId(out int? value)
+    public bool TryGetZoneIndex(out int? value)
     {
-        value = InstanceId;
-        return HasInstanceId;
+        value = ZoneIndex;
+        return HasZoneIndex;
     }
 
     public bool HasCurrentPosX => (_mask & (1UL << 3)) != 0;
@@ -54,7 +54,7 @@ public partial class ObservedCharacterMovedPacket
 
         if (!global::System.Collections.Generic.EqualityComparer<global::System.Guid?>.Default.Equals(CharacterId, default!)) mask |= 1UL << 0;
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(MapId, default!)) mask |= 1UL << 1;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(InstanceId, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(ZoneIndex, default!)) mask |= 1UL << 2;
         if (!global::System.Collections.Generic.EqualityComparer<float?>.Default.Equals(CurrentPosX, default!)) mask |= 1UL << 3;
         if (!global::System.Collections.Generic.EqualityComparer<float?>.Default.Equals(CurrentPosY, default!)) mask |= 1UL << 4;
 
@@ -65,7 +65,7 @@ public partial class ObservedCharacterMovedPacket
         if ((mask & (1UL << 1)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, MapId.Value);
         if ((mask & (1UL << 2)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, InstanceId.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, ZoneIndex.Value);
         if ((mask & (1UL << 3)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, CurrentPosX.Value);
         if ((mask & (1UL << 4)) != 0)
@@ -81,7 +81,7 @@ public partial class ObservedCharacterMovedPacket
         if ((_mask & (1UL << 1)) != 0)
             MapId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 2)) != 0)
-            InstanceId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+            ZoneIndex = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 3)) != 0)
             CurrentPosX = (float?)(global::GameShared.Packets.PacketReader.ReadFloat(reader));
         if ((_mask & (1UL << 4)) != 0)

@@ -48,6 +48,8 @@ namespace GameServer.Entities
 		public ITable<CharacterCurrentState> CharacterCurrentStates => this.GetTable<CharacterCurrentState>();
 		public ITable<Character>             Characters             => this.GetTable<Character>();
 		public ITable<GameTimeState>         GameTimeStates         => this.GetTable<GameTimeState>();
+		public ITable<MapTemplateAdjacentMapEntity> MapTemplateAdjacentMaps => this.GetTable<MapTemplateAdjacentMapEntity>();
+		public ITable<MapTemplateEntity>     MapTemplates           => this.GetTable<MapTemplateEntity>();
 		public ITable<RealmTemplate>         RealmTemplates         => this.GetTable<RealmTemplate>();
 		public ITable<Server>                Servers                => this.GetTable<Server>();
 	}
@@ -167,3 +169,4 @@ namespace GameServer.Entities
 		#endregion
 	}
 }
+

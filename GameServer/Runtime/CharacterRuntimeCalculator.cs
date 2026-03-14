@@ -73,11 +73,13 @@ public sealed class CharacterRuntimeCalculator
     public CharacterCurrentStateDto UpdatePosition(
         CharacterCurrentStateDto currentState,
         int? mapId,
+        int? zoneIndex,
         Vector2 position)
     {
         return currentState with
         {
             CurrentMapId = mapId,
+            CurrentZoneIndex = zoneIndex ?? currentState.CurrentZoneIndex,
             CurrentPosX = position.X,
             CurrentPosY = position.Y,
         };

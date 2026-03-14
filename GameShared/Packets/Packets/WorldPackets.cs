@@ -8,7 +8,7 @@ namespace GameShared.Packets;
 public partial class MapJoinedPacket : IPacket
 {
     public MapDefinitionModel? Map { get; set; }
-    public int? InstanceId { get; set; }
+    public int? ZoneIndex { get; set; }
 }
 
 [Packet]
@@ -24,7 +24,7 @@ public partial class ObservedCharacterDespawnedPacket : IPacket
 {
     public Guid? CharacterId { get; set; }
     public int? MapId { get; set; }
-    public int? InstanceId { get; set; }
+    public int? ZoneIndex { get; set; }
 }
 
 [Packet]
@@ -33,7 +33,7 @@ public partial class ObservedCharacterMovedPacket : IPacket
 {
     public Guid? CharacterId { get; set; }
     public int? MapId { get; set; }
-    public int? InstanceId { get; set; }
+    public int? ZoneIndex { get; set; }
     public float? CurrentPosX { get; set; }
     public float? CurrentPosY { get; set; }
 }
@@ -43,5 +43,5 @@ public partial class ObservedCharacterMovedPacket : IPacket
 public partial class ObservedCharacterCurrentStateChangedPacket : IPacket
 {
     public CharacterCurrentStateModel? CurrentState { get; set; }
-    public int? InstanceId { get; set; }
+    public int? ZoneIndex { get; set; }
 }

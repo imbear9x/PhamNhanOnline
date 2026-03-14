@@ -109,9 +109,14 @@ public sealed class CharacterRuntimeService
 
     public CharacterRuntimeSnapshot UpdatePosition(PlayerSession player, int? mapId, Vector2 position)
     {
+        return UpdatePosition(player, mapId, player.ZoneIndex, position);
+    }
+
+    public CharacterRuntimeSnapshot UpdatePosition(PlayerSession player, int? mapId, int? zoneIndex, Vector2 position)
+    {
         var previousSnapshot = player.RuntimeState.CaptureSnapshot();
         var snapshot = player.RuntimeState.UpdateCurrentState(
-            current => _calculator.UpdatePosition(current, mapId, position));
+            current => _calculator.UpdatePosition(current, mapId, zoneIndex, position));
 
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
         _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);

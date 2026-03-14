@@ -1,4 +1,3 @@
-using System.Numerics;
 using GameServer.DTO;
 using GameServer.Network.Interface;
 using GameServer.Time;
@@ -27,15 +26,15 @@ public sealed class WorldInterestService
     {
         var definition = _worldManager.MapManager.ResolveDefinitionOrDefault(player.MapId == 0 ? null : player.MapId);
         var targetPosition = ResolveEntryPosition(player, definition);
-        var shouldUpdateRuntimeState =
-            player.MapId != definition.MapId ||
-            Vector2.DistanceSquared(player.Position, targetPosition) > 0.0001f;
 
-        if (shouldUpdateRuntimeState)
+        var instance = _worldManager.MapManager.JoinInstance(definition, player);
+
+        if (NeedsRuntimeStateSync(player, definition, instance.ZoneIndex, targetPosition))
         {
             var snapshot = player.RuntimeState.UpdateCurrentState(current => current with
             {
                 CurrentMapId = definition.MapId,
+                CurrentZoneIndex = instance.ZoneIndex,
                 CurrentPosX = targetPosition.X,
                 CurrentPosY = targetPosition.Y
             });
@@ -43,7 +42,6 @@ public sealed class WorldInterestService
             player.SynchronizeFromCurrentState(snapshot.CurrentState);
         }
 
-        var instance = _worldManager.MapManager.JoinInstance(definition, player);
         instance.UpdatePlayerPosition(player);
         return definition;
     }
@@ -56,7 +54,7 @@ public sealed class WorldInterestService
         _network.Send(player.ConnectionId, new MapJoinedPacket
         {
             Map = instance.Definition.ToModel(),
-            InstanceId = instance.InstanceId
+            ZoneIndex = instance.ZoneIndex
         });
 
         RefreshVisibility(player);
@@ -71,9 +69,10 @@ public sealed class WorldInterestService
         var currentMapId = currentState.CurrentMapId ?? 0;
         var previousVisibleIds = new HashSet<Guid>(player.GetVisibleCharacterIdsSnapshot());
 
-        if (previousMapId != 0 && player.InstanceId != 0 && previousMapId != currentMapId)
+        if (previousMapId != 0 && player.InstanceId != 0 &&
+            (previousMapId != currentMapId || previousState.CurrentZoneIndex != currentState.CurrentZoneIndex))
         {
-            LeaveCurrentWorld(player, previousMapId, player.InstanceId);
+            LeaveCurrentWorld(player, previousMapId, player.InstanceId, previousState.CurrentZoneIndex);
             player.InstanceId = 0;
         }
 
@@ -89,7 +88,7 @@ public sealed class WorldInterestService
             _network.Send(observer.ConnectionId, new ObservedCharacterCurrentStateChangedPacket
             {
                 CurrentState = currentState.ToModel(_gameTimeService.GetCurrentSnapshot()),
-                InstanceId = player.InstanceId
+                ZoneIndex = player.ZoneIndex
             });
         }
     }
@@ -102,10 +101,10 @@ public sealed class WorldInterestService
             return;
         }
 
-        LeaveCurrentWorld(player, player.MapId, player.InstanceId);
+        LeaveCurrentWorld(player, player.MapId, player.InstanceId, player.ZoneIndex);
     }
 
-    private void LeaveCurrentWorld(PlayerSession player, int mapId, int instanceId)
+    private void LeaveCurrentWorld(PlayerSession player, int mapId, int instanceId, int zoneIndex)
     {
         foreach (var visibleCharacterId in player.GetVisibleCharacterIdsSnapshot())
         {
@@ -117,7 +116,7 @@ public sealed class WorldInterestService
                     {
                         CharacterId = player.CharacterData.CharacterId,
                         MapId = mapId,
-                        InstanceId = instanceId
+                        ZoneIndex = zoneIndex
                     });
                 }
 
@@ -125,7 +124,7 @@ public sealed class WorldInterestService
                 {
                     CharacterId = other.CharacterData.CharacterId,
                     MapId = mapId,
-                    InstanceId = instanceId
+                    ZoneIndex = zoneIndex
                 });
             }
         }
@@ -157,7 +156,7 @@ public sealed class WorldInterestService
                 {
                     CharacterId = removedPlayer.CharacterData.CharacterId,
                     MapId = removedPlayer.MapId,
-                    InstanceId = removedPlayer.InstanceId
+                    ZoneIndex = removedPlayer.ZoneIndex
                 });
 
                 if (removedPlayer.RemoveVisibleCharacter(subject.PlayerId))
@@ -166,7 +165,7 @@ public sealed class WorldInterestService
                     {
                         CharacterId = subject.CharacterData.CharacterId,
                         MapId = subject.MapId,
-                        InstanceId = subject.InstanceId
+                        ZoneIndex = subject.ZoneIndex
                     });
                 }
             }
@@ -212,7 +211,7 @@ public sealed class WorldInterestService
             {
                 CharacterId = player.CharacterData.CharacterId,
                 MapId = player.MapId,
-                InstanceId = player.InstanceId,
+                ZoneIndex = player.ZoneIndex,
                 CurrentPosX = currentState.CurrentPosX,
                 CurrentPosY = currentState.CurrentPosY
             });
@@ -235,7 +234,14 @@ public sealed class WorldInterestService
         return result;
     }
 
-    private static Vector2 ResolveEntryPosition(PlayerSession player, MapDefinition definition)
+    private static bool NeedsRuntimeStateSync(PlayerSession player, MapDefinition definition, int zoneIndex, System.Numerics.Vector2 targetPosition)
+    {
+        return player.MapId != definition.MapId ||
+               player.ZoneIndex != zoneIndex ||
+               System.Numerics.Vector2.DistanceSquared(player.Position, targetPosition) > 0.0001f;
+    }
+
+    private static System.Numerics.Vector2 ResolveEntryPosition(PlayerSession player, MapDefinition definition)
     {
         if (player.MapId == definition.MapId)
             return definition.ClampPosition(player.Position);

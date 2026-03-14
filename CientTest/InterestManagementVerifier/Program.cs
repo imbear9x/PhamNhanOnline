@@ -25,7 +25,6 @@ foreach (var scenario in report.Scenarios)
 }
 
 Console.WriteLine($"Report: {outputPath}");
-
 return report.Success ? 0 : 1;
 
 internal sealed class InterestManagementVerifier
@@ -34,11 +33,13 @@ internal sealed class InterestManagementVerifier
 
     public VerificationReport RunAll()
     {
-        var scenarios = new List<ScenarioReport>();
-        scenarios.Add(RunScenario("JoinMap publishes map snapshot and no observer packets when alone", VerifySoloJoin));
-        scenarios.Add(RunScenario("Nearby players spawn for each other on world entry", VerifyNearbySpawnOnJoin));
-        scenarios.Add(RunScenario("Far players do not spawn until they enter interest radius", VerifyFarPlayersStayHiddenUntilNear));
-        scenarios.Add(RunScenario("Move and state-change packets only reach visible observers", VerifyMoveAndStateReplication));
+        var scenarios = new List<ScenarioReport>
+        {
+            RunScenario("Private home map keeps each player isolated in zone 0", VerifyPrivateHomeIsolation),
+            RunScenario("Join map publishes zone-aware map snapshot and nearby observers in public map", VerifyNearbySpawnOnJoin),
+            RunScenario("Far players do not spawn until they enter interest radius", VerifyFarPlayersStayHiddenUntilNear),
+            RunScenario("Move and state-change packets only reach visible observers", VerifyMoveAndStateReplication)
+        };
 
         return new VerificationReport(
             scenarios.All(x => x.Passed),
@@ -61,54 +62,58 @@ internal sealed class InterestManagementVerifier
         }
     }
 
-    private static void VerifySoloJoin(ScenarioContext context)
+    private static void VerifyPrivateHomeIsolation(ScenarioContext context)
     {
-        var alice = context.CreatePlayer("Alice", 1, 100, 100);
-        context.EnterWorld(alice);
+        var alice = context.CreatePlayer("Alice", 1, mapId: MapCatalog.HomeMapId, zoneIndex: 0, x: 64, y: 64);
+        var bob = context.CreatePlayer("Bob", 2, mapId: MapCatalog.HomeMapId, zoneIndex: 0, x: 64, y: 64);
 
-        context.ExpectPacket<MapJoinedPacket>(alice.ConnectionId, 1, "Alice should receive one MapJoined packet.");
-        context.ExpectPacket<ObservedCharacterSpawnedPacket>(alice.ConnectionId, 0, "Alice should not observe anyone when alone.");
+        context.EnterWorld(alice);
+        context.EnterWorld(bob);
+
+        context.ExpectMapJoined(alice.ConnectionId, MapCatalog.HomeMapId, 0, "Alice should enter private home zone 0.");
+        context.ExpectMapJoined(bob.ConnectionId, MapCatalog.HomeMapId, 0, "Bob should enter private home zone 0.");
+        context.ExpectPacket<ObservedCharacterSpawnedPacket>(alice.ConnectionId, 0, "Alice should not see Bob inside her private home map.");
+        context.ExpectPacket<ObservedCharacterSpawnedPacket>(bob.ConnectionId, 0, "Bob should not see Alice inside his private home map.");
     }
 
     private static void VerifyNearbySpawnOnJoin(ScenarioContext context)
     {
-        var alice = context.CreatePlayer("Alice", 1, 100, 100);
-        var bob = context.CreatePlayer("Bob", 2, 120, 120);
+        var alice = context.CreatePlayer("Alice", 1, mapId: MapCatalog.StarterFarmMapId, zoneIndex: 1, x: 100, y: 100);
+        var bob = context.CreatePlayer("Bob", 2, mapId: MapCatalog.StarterFarmMapId, zoneIndex: 1, x: 120, y: 120);
 
         context.EnterWorld(alice);
         context.ClearNetworkLog();
-
         context.EnterWorld(bob);
 
-        context.ExpectPacket<MapJoinedPacket>(bob.ConnectionId, 1, "Bob should receive map snapshot on enter.");
-        context.ExpectSpawn(bob.ConnectionId, alice.PlayerId, "Bob should observe Alice when entering nearby.");
-        context.ExpectSpawn(alice.ConnectionId, bob.PlayerId, "Alice should observe Bob when he enters nearby.");
+        context.ExpectMapJoined(bob.ConnectionId, MapCatalog.StarterFarmMapId, 1, "Bob should receive farm map zone 1 on enter.");
+        context.ExpectSpawn(bob.ConnectionId, alice.PlayerId, "Bob should observe Alice when entering nearby public zone.");
+        context.ExpectSpawn(alice.ConnectionId, bob.PlayerId, "Alice should observe Bob when he enters nearby public zone.");
     }
 
     private static void VerifyFarPlayersStayHiddenUntilNear(ScenarioContext context)
     {
-        var alice = context.CreatePlayer("Alice", 1, 100, 100);
-        var charlie = context.CreatePlayer("Charlie", 3, 700, 700);
+        var alice = context.CreatePlayer("Alice", 1, mapId: MapCatalog.StarterFarmMapId, zoneIndex: 1, x: 100, y: 100);
+        var charlie = context.CreatePlayer("Charlie", 3, mapId: MapCatalog.StarterFarmMapId, zoneIndex: 1, x: 700, y: 700);
 
         context.EnterWorld(alice);
         context.ClearNetworkLog();
-
         context.EnterWorld(charlie);
-        context.ExpectPacket<ObservedCharacterSpawnedPacket>(alice.ConnectionId, 0, "Alice should not see Charlie when out of range.");
-        context.ExpectPacket<ObservedCharacterSpawnedPacket>(charlie.ConnectionId, 0, "Charlie should not see Alice when out of range.");
+
+        context.ExpectPacket<ObservedCharacterSpawnedPacket>(alice.ConnectionId, 0, "Alice should not see Charlie when out of range in public zone.");
+        context.ExpectPacket<ObservedCharacterSpawnedPacket>(charlie.ConnectionId, 0, "Charlie should not see Alice when out of range in public zone.");
 
         context.ClearNetworkLog();
         context.MovePlayer(charlie, 110, 110);
 
-        context.ExpectSpawn(alice.ConnectionId, charlie.PlayerId, "Alice should see Charlie after he moves into range.");
-        context.ExpectSpawn(charlie.ConnectionId, alice.PlayerId, "Charlie should see Alice after moving into range.");
+        context.ExpectSpawn(alice.ConnectionId, charlie.PlayerId, "Alice should see Charlie after he moves into interest radius.");
+        context.ExpectSpawn(charlie.ConnectionId, alice.PlayerId, "Charlie should see Alice after he moves into interest radius.");
     }
 
     private static void VerifyMoveAndStateReplication(ScenarioContext context)
     {
-        var alice = context.CreatePlayer("Alice", 1, 100, 100);
-        var bob = context.CreatePlayer("Bob", 2, 120, 120);
-        var charlie = context.CreatePlayer("Charlie", 3, 700, 700);
+        var alice = context.CreatePlayer("Alice", 1, mapId: MapCatalog.StarterFarmMapId, zoneIndex: 1, x: 100, y: 100);
+        var bob = context.CreatePlayer("Bob", 2, mapId: MapCatalog.StarterFarmMapId, zoneIndex: 1, x: 120, y: 120);
+        var charlie = context.CreatePlayer("Charlie", 3, mapId: MapCatalog.StarterFarmMapId, zoneIndex: 1, x: 700, y: 700);
 
         context.EnterWorld(alice);
         context.EnterWorld(bob);
@@ -116,21 +121,21 @@ internal sealed class InterestManagementVerifier
         context.ClearNetworkLog();
 
         context.MovePlayer(bob, 130, 140);
-        context.ExpectMove(alice.ConnectionId, bob.PlayerId, "Alice should receive Bob's move while visible.");
+        context.ExpectMove(alice.ConnectionId, bob.PlayerId, 1, "Alice should receive Bob's move while he is visible in zone 1.");
         context.ExpectPacket<ObservedCharacterMovedPacket>(charlie.ConnectionId, 0, "Charlie should not receive Bob's move while far away.");
 
         context.ClearNetworkLog();
         context.ChangeState(bob, hp: 77, isDead: false, stateCode: 9);
-        context.ExpectState(alice.ConnectionId, bob.PlayerId, "Alice should receive Bob's state change while visible.");
+        context.ExpectState(alice.ConnectionId, bob.PlayerId, 1, "Alice should receive Bob's state change while visible.");
         context.ExpectPacket<ObservedCharacterCurrentStateChangedPacket>(charlie.ConnectionId, 0, "Charlie should not receive Bob's state change while far away.");
 
         context.ClearNetworkLog();
         context.MovePlayer(bob, 700, 700);
-        context.ExpectDespawn(alice.ConnectionId, bob.PlayerId, "Alice should receive despawn when Bob leaves interest radius.");
+        context.ExpectDespawn(alice.ConnectionId, bob.PlayerId, 1, "Alice should receive despawn when Bob leaves her interest radius.");
 
         context.ClearNetworkLog();
         context.ChangeState(bob, hp: 55, isDead: false, stateCode: 10);
-        context.ExpectPacket<ObservedCharacterCurrentStateChangedPacket>(alice.ConnectionId, 0, "Alice should not receive Bob's state after despawn.");
+        context.ExpectPacket<ObservedCharacterCurrentStateChangedPacket>(alice.ConnectionId, 0, "Alice should not receive Bob's state after Bob is despawned.");
     }
 }
 
@@ -154,7 +159,7 @@ internal sealed class ScenarioContext
 
     public List<string> Assertions { get; } = new();
 
-    public PlayerSession CreatePlayer(string name, int ordinal, float x, float y)
+    public PlayerSession CreatePlayer(string name, int ordinal, int mapId, int zoneIndex, float x, float y)
     {
         var playerId = Guid.Parse($"00000000-0000-0000-0000-{ordinal.ToString("D12")}");
         var character = new CharacterDto(
@@ -185,7 +190,8 @@ internal sealed class ScenarioContext
             CurrentMp: 80,
             CurrentStamina: 100,
             LifespanEndGameMinute: 999999,
-            CurrentMapId: 1,
+            CurrentMapId: mapId,
+            CurrentZoneIndex: zoneIndex,
             CurrentPosX: x,
             CurrentPosY: y,
             IsDead: false,
@@ -213,7 +219,8 @@ internal sealed class ScenarioContext
         {
             CurrentPosX = x,
             CurrentPosY = y,
-            CurrentMapId = player.MapId == 0 ? 1 : player.MapId
+            CurrentMapId = player.MapId == 0 ? MapCatalog.StarterFarmMapId : player.MapId,
+            CurrentZoneIndex = player.ZoneIndex
         }).CurrentState;
 
         player.SynchronizeFromCurrentState(current);
@@ -245,6 +252,13 @@ internal sealed class ScenarioContext
         Assert(actual == expectedCount, $"{message} Expected={expectedCount}, Actual={actual}");
     }
 
+    public void ExpectMapJoined(int connectionId, int expectedMapId, int expectedZoneIndex, string message)
+    {
+        var match = _network.GetPackets<MapJoinedPacket>(connectionId)
+            .Any(packet => packet.Map.HasValue && packet.Map.Value.MapId == expectedMapId && packet.ZoneIndex == expectedZoneIndex);
+        Assert(match, message);
+    }
+
     public void ExpectSpawn(int connectionId, Guid observedCharacterId, string message)
     {
         var match = _network
@@ -253,27 +267,27 @@ internal sealed class ScenarioContext
         Assert(match, message);
     }
 
-    public void ExpectDespawn(int connectionId, Guid observedCharacterId, string message)
+    public void ExpectDespawn(int connectionId, Guid observedCharacterId, int expectedZoneIndex, string message)
     {
         var match = _network
             .GetPackets<ObservedCharacterDespawnedPacket>(connectionId)
-            .Any(packet => packet.CharacterId == observedCharacterId);
+            .Any(packet => packet.CharacterId == observedCharacterId && packet.ZoneIndex == expectedZoneIndex);
         Assert(match, message);
     }
 
-    public void ExpectMove(int connectionId, Guid observedCharacterId, string message)
+    public void ExpectMove(int connectionId, Guid observedCharacterId, int expectedZoneIndex, string message)
     {
         var match = _network
             .GetPackets<ObservedCharacterMovedPacket>(connectionId)
-            .Any(packet => packet.CharacterId == observedCharacterId);
+            .Any(packet => packet.CharacterId == observedCharacterId && packet.ZoneIndex == expectedZoneIndex);
         Assert(match, message);
     }
 
-    public void ExpectState(int connectionId, Guid observedCharacterId, string message)
+    public void ExpectState(int connectionId, Guid observedCharacterId, int expectedZoneIndex, string message)
     {
         var match = _network
             .GetPackets<ObservedCharacterCurrentStateChangedPacket>(connectionId)
-            .Any(packet => packet.CurrentState.HasValue && packet.CurrentState.Value.CharacterId == observedCharacterId);
+            .Any(packet => packet.CurrentState.HasValue && packet.CurrentState.Value.CharacterId == observedCharacterId && packet.ZoneIndex == expectedZoneIndex);
         Assert(match, message);
     }
 

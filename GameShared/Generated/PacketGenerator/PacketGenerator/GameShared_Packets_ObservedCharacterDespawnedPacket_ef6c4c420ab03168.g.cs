@@ -24,12 +24,12 @@ public partial class ObservedCharacterDespawnedPacket
         return HasMapId;
     }
 
-    public bool HasInstanceId => (_mask & (1UL << 2)) != 0;
+    public bool HasZoneIndex => (_mask & (1UL << 2)) != 0;
 
-    public bool TryGetInstanceId(out int? value)
+    public bool TryGetZoneIndex(out int? value)
     {
-        value = InstanceId;
-        return HasInstanceId;
+        value = ZoneIndex;
+        return HasZoneIndex;
     }
 
     public void Serialize(BinaryWriter writer)
@@ -38,7 +38,7 @@ public partial class ObservedCharacterDespawnedPacket
 
         if (!global::System.Collections.Generic.EqualityComparer<global::System.Guid?>.Default.Equals(CharacterId, default!)) mask |= 1UL << 0;
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(MapId, default!)) mask |= 1UL << 1;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(InstanceId, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(ZoneIndex, default!)) mask |= 1UL << 2;
 
         writer.Write(mask);
 
@@ -47,7 +47,7 @@ public partial class ObservedCharacterDespawnedPacket
         if ((mask & (1UL << 1)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, MapId.Value);
         if ((mask & (1UL << 2)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, InstanceId.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, ZoneIndex.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -59,6 +59,6 @@ public partial class ObservedCharacterDespawnedPacket
         if ((_mask & (1UL << 1)) != 0)
             MapId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 2)) != 0)
-            InstanceId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+            ZoneIndex = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
     }
 }

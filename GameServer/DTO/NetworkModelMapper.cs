@@ -57,6 +57,7 @@ public static class NetworkModelMapper
             CurrentStamina = dto.CurrentStamina,
             RemainingLifespan = CharacterLifespanRules.CalculateRemainingLifespanYears(dto.LifespanEndGameMinute, gameTime),
             CurrentMapId = dto.CurrentMapId,
+            CurrentZoneIndex = dto.CurrentZoneIndex,
             CurrentPosX = dto.CurrentPosX,
             CurrentPosY = dto.CurrentPosY,
             IsDead = dto.IsDead,
@@ -71,13 +72,18 @@ public static class NetworkModelMapper
         {
             MapId = definition.MapId,
             Name = definition.Name,
+            MapType = (int)definition.Type,
+            ClientMapKey = definition.ClientMapKey,
+            AdjacentMapIds = definition.AdjacentMapIds.ToList(),
             Width = definition.Width,
             Height = definition.Height,
             CellSize = definition.CellSize,
             InterestRadius = definition.InterestRadius,
             DefaultSpawnX = definition.DefaultSpawnPosition.X,
             DefaultSpawnY = definition.DefaultSpawnPosition.Y,
-            MaxPlayersPerInstance = definition.MaxPlayersPerInstance
+            MaxPublicZoneCount = definition.MaxPublicZoneCount,
+            MaxPlayersPerZone = definition.MaxPlayersPerZone,
+            IsPrivatePerPlayer = definition.IsPrivatePerPlayer
         };
     }
 
@@ -89,7 +95,7 @@ public static class NetworkModelMapper
             Character = player.CharacterData.ToModel(),
             CurrentState = snapshot.CurrentState.ToModel(gameTime),
             MapId = player.MapId,
-            InstanceId = player.InstanceId
+            ZoneIndex = player.ZoneIndex
         };
     }
 

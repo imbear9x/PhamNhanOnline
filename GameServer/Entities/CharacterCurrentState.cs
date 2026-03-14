@@ -13,27 +13,25 @@ using System;
 
 namespace GameServer.Entities
 {
-	[Table("character_current_state")]
-	public class CharacterCurrentState
-	{
-		[Column("character_id"  , IsPrimaryKey = true)] public Guid     CharacterId   { get; set; } // uuid
-		[Column("current_hp"                        )] public int      CurrentHp     { get; set; } // integer
-		[Column("current_mp"                        )] public int      CurrentMp     { get; set; } // integer
-		[Column("current_stamina"                   )] public int      CurrentStamina { get; set; } // integer
-		[Column("lifespan_end_game_minute"          )] public long     LifespanEndGameMinute { get; set; } // bigint
-		[Column("current_map_id"                    )] public int?     CurrentMapId  { get; set; } // integer
-		[Column("current_pos_x"                     )] public float    CurrentPosX   { get; set; } // real
-		[Column("current_pos_y"                     )] public float    CurrentPosY   { get; set; } // real
-		[Column("is_dead"                           )] public bool     IsDead        { get; set; } // boolean
-		[Column("current_state"                     )] public int      CurrentState  { get; set; } // integer
-		[Column("last_saved_at"                     )] public DateTime LastSavedAt   { get; set; } // timestamp (6) without time zone
+    [Table("character_current_state")]
+    public class CharacterCurrentState
+    {
+        [Column("character_id", IsPrimaryKey = true)] public Guid CharacterId { get; set; }
+        [Column("current_hp")] public int CurrentHp { get; set; }
+        [Column("current_mp")] public int CurrentMp { get; set; }
+        [Column("current_stamina")] public int CurrentStamina { get; set; }
+        [Column("lifespan_end_game_minute")] public long LifespanEndGameMinute { get; set; }
+        [Column("current_map_id")] public int? CurrentMapId { get; set; }
+        [Column("current_zone_index")] public int CurrentZoneIndex { get; set; }
+        [Column("current_pos_x")] public float CurrentPosX { get; set; }
+        [Column("current_pos_y")] public float CurrentPosY { get; set; }
+        [Column("is_dead")] public bool IsDead { get; set; }
+        [Column("current_state")] public int CurrentState { get; set; }
+        [Column("last_saved_at")] public DateTime LastSavedAt { get; set; }
 
-		#region Associations
-		/// <summary>
-		/// fk_character_current_state_character
-		/// </summary>
-		[Association(CanBeNull = false, ThisKey = nameof(CharacterId), OtherKey = nameof(Character.Id))]
-		public Character Character { get; set; } = null!;
-		#endregion
-	}
+        #region Associations
+        [Association(CanBeNull = false, ThisKey = nameof(CharacterId), OtherKey = nameof(Character.Id))]
+        public Character Character { get; set; } = null!;
+        #endregion
+    }
 }

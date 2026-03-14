@@ -16,12 +16,12 @@ public partial class MapJoinedPacket
         return HasMap;
     }
 
-    public bool HasInstanceId => (_mask & (1UL << 1)) != 0;
+    public bool HasZoneIndex => (_mask & (1UL << 1)) != 0;
 
-    public bool TryGetInstanceId(out int? value)
+    public bool TryGetZoneIndex(out int? value)
     {
-        value = InstanceId;
-        return HasInstanceId;
+        value = ZoneIndex;
+        return HasZoneIndex;
     }
 
     public void Serialize(BinaryWriter writer)
@@ -29,14 +29,14 @@ public partial class MapJoinedPacket
         ulong mask = 0;
 
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.MapDefinitionModel?>.Default.Equals(Map, default!)) mask |= 1UL << 0;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(InstanceId, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(ZoneIndex, default!)) mask |= 1UL << 1;
 
         writer.Write(mask);
 
         if ((mask & (1UL << 0)) != 0)
             global::GameShared.Packets.PacketModelSerializer.Write(writer, Map.Value);
         if ((mask & (1UL << 1)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, InstanceId.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, ZoneIndex.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -46,6 +46,6 @@ public partial class MapJoinedPacket
         if ((_mask & (1UL << 0)) != 0)
             Map = (global::GameShared.Models.MapDefinitionModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.MapDefinitionModel>(reader));
         if ((_mask & (1UL << 1)) != 0)
-            InstanceId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+            ZoneIndex = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
     }
 }

@@ -167,6 +167,7 @@ CREATE TABLE public.character_current_state (
     current_hp integer DEFAULT 100 NOT NULL,
     current_mp integer DEFAULT 100 NOT NULL,
     current_map_id integer,
+    current_zone_index integer DEFAULT 0 NOT NULL,
     current_pos_x real DEFAULT 0 NOT NULL,
     current_pos_y real DEFAULT 0 NOT NULL,
     is_dead boolean DEFAULT false NOT NULL,
@@ -216,6 +217,42 @@ CREATE TABLE public.game_time_state (
 
 
 ALTER TABLE public.game_time_state OWNER TO postgres;
+
+--
+-- Name: map_template_adjacent_maps; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.map_template_adjacent_maps (
+    map_template_id integer NOT NULL,
+    adjacent_map_template_id integer NOT NULL
+);
+
+
+ALTER TABLE public.map_template_adjacent_maps OWNER TO postgres;
+
+--
+-- Name: map_templates; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.map_templates (
+    id integer NOT NULL,
+    name character varying(100) NOT NULL,
+    map_type integer NOT NULL,
+    client_map_key character varying(100) NOT NULL,
+    width real DEFAULT 0 NOT NULL,
+    height real DEFAULT 0 NOT NULL,
+    cell_size real DEFAULT 1 NOT NULL,
+    interest_radius real DEFAULT 0 NOT NULL,
+    default_spawn_x real DEFAULT 0 NOT NULL,
+    default_spawn_y real DEFAULT 0 NOT NULL,
+    max_public_zone_count integer DEFAULT 0 NOT NULL,
+    max_players_per_zone integer DEFAULT 1 NOT NULL,
+    is_private_per_player boolean DEFAULT false NOT NULL,
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.map_templates OWNER TO postgres;
 
 --
 -- Name: realm_templates; Type: TABLE; Schema: public; Owner: postgres
@@ -318,10 +355,10 @@ COPY public.character_base_stats (character_id, realm_id, cultivation, base_hp, 
 -- Data for Name: character_current_state; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.character_current_state (character_id, current_hp, current_mp, current_map_id, current_pos_x, current_pos_y, is_dead, current_state, last_saved_at, current_stamina, lifespan_end_game_minute) FROM stdin;
-77b30f1d-0ef7-4687-adbe-f9cba0f6d3fa	100	100	\N	0	0	f	0	2026-03-13 12:26:38.622264	100	210024951
-28fc9149-7910-4d95-a2a5-6c04a6d4b786	100	100	\N	0	0	f	0	2026-03-13 06:58:48.718836	100	210036689
-836b24d1-7c65-4365-a546-1e786c2c0854	100	100	\N	0	0	f	0	2026-03-13 07:55:50.573642	100	106986343853
+COPY public.character_current_state (character_id, current_hp, current_mp, current_map_id, current_zone_index, current_pos_x, current_pos_y, is_dead, current_state, last_saved_at, current_stamina, lifespan_end_game_minute) FROM stdin;
+77b30f1d-0ef7-4687-adbe-f9cba0f6d3fa	100	100	\N	0	0	0	f	0	2026-03-13 12:26:38.622264	100	210024951
+28fc9149-7910-4d95-a2a5-6c04a6d4b786	100	100	\N	0	0	0	f	0	2026-03-13 06:58:48.718836	100	210036689
+836b24d1-7c65-4365-a546-1e786c2c0854	100	100	\N	0	0	0	f	0	2026-03-13 07:55:50.573642	100	106986343853
 \.
 
 
@@ -342,6 +379,27 @@ COPY public.characters (id, account_id, server_id, name, model_id, gender, hair_
 
 COPY public.game_time_state (id, anchor_utc, anchor_game_minute, game_minutes_per_real_minute, days_per_game_year, runtime_save_interval_seconds, derived_state_refresh_interval_seconds, updated_at) FROM stdin;
 1	2026-03-13 14:42:08.124049+07	106917029983	518400	360	2	5	2026-03-13 14:42:08.124049+07
+\.
+
+
+--
+--
+-- Data for Name: map_template_adjacent_maps; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.map_template_adjacent_maps (map_template_id, adjacent_map_template_id) FROM stdin;
+1	2
+2	1
+\.
+
+
+--
+-- Data for Name: map_templates; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.map_templates (id, name, map_type, client_map_key, width, height, cell_size, interest_radius, default_spawn_x, default_spawn_y, max_public_zone_count, max_players_per_zone, is_private_per_player, created_at) FROM stdin;
+1	Player Home	0	map_home_01	256	256	32	96	64	64	0	1	t	2026-03-14 16:00:00
+2	Starter Plains	1	map_farm_01	1024	1024	64	160	128	128	2	20	f	2026-03-14 16:00:00
 \.
 
 
@@ -457,6 +515,22 @@ ALTER TABLE ONLY public.character_current_state
 
 
 --
+-- Name: map_template_adjacent_maps map_template_adjacent_maps_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.map_template_adjacent_maps
+    ADD CONSTRAINT map_template_adjacent_maps_pkey PRIMARY KEY (map_template_id, adjacent_map_template_id);
+
+
+--
+-- Name: map_templates map_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.map_templates
+    ADD CONSTRAINT map_templates_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: characters characters_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -519,6 +593,13 @@ CREATE INDEX idx_character_current_state_map_id ON public.character_current_stat
 
 
 --
+-- Name: idx_character_current_state_map_zone; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_character_current_state_map_zone ON public.character_current_state USING btree (current_map_id, current_zone_index);
+
+
+--
 -- Name: breakthrough_attempts fk_attempt_character; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -548,6 +629,22 @@ ALTER TABLE ONLY public.character_base_stats
 
 ALTER TABLE ONLY public.character_current_state
     ADD CONSTRAINT fk_character_current_state_character FOREIGN KEY (character_id) REFERENCES public.characters(id) ON DELETE CASCADE;
+
+
+--
+-- Name: map_template_adjacent_maps fk_map_template_adjacent_maps_source; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.map_template_adjacent_maps
+    ADD CONSTRAINT fk_map_template_adjacent_maps_source FOREIGN KEY (map_template_id) REFERENCES public.map_templates(id) ON DELETE CASCADE;
+
+
+--
+-- Name: map_template_adjacent_maps fk_map_template_adjacent_maps_target; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.map_template_adjacent_maps
+    ADD CONSTRAINT fk_map_template_adjacent_maps_target FOREIGN KEY (adjacent_map_template_id) REFERENCES public.map_templates(id) ON DELETE CASCADE;
 
 
 --

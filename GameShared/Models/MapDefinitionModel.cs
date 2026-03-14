@@ -7,11 +7,16 @@ public struct MapDefinitionModel
 {
     public int MapId;
     public string Name;
+    public int MapType;
+    public string ClientMapKey;
+    public List<int> AdjacentMapIds;
     public float Width;
     public float Height;
     public float CellSize;
     public float InterestRadius;
     public float DefaultSpawnX;
     public float DefaultSpawnY;
-    public int MaxPlayersPerInstance;
+    public int MaxPublicZoneCount;
+    public int MaxPlayersPerZone;
+    public bool IsPrivatePerPlayer;
 }

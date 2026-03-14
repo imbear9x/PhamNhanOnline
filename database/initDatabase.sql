@@ -84,4 +84,46 @@ SET
     base_breakthrough_rate = EXCLUDED.base_breakthrough_rate,
     failure_penalty = EXCLUDED.failure_penalty;
 
+INSERT INTO public.map_templates (
+    id,
+    name,
+    map_type,
+    client_map_key,
+    width,
+    height,
+    cell_size,
+    interest_radius,
+    default_spawn_x,
+    default_spawn_y,
+    max_public_zone_count,
+    max_players_per_zone,
+    is_private_per_player
+)
+VALUES
+    (1, 'Player Home', 0, 'map_home_01', 256, 256, 32, 96, 64, 64, 0, 1, true),
+    (2, 'Starter Plains', 1, 'map_farm_01', 1024, 1024, 64, 160, 128, 128, 2, 20, false)
+ON CONFLICT (id) DO UPDATE
+SET
+    name = EXCLUDED.name,
+    map_type = EXCLUDED.map_type,
+    client_map_key = EXCLUDED.client_map_key,
+    width = EXCLUDED.width,
+    height = EXCLUDED.height,
+    cell_size = EXCLUDED.cell_size,
+    interest_radius = EXCLUDED.interest_radius,
+    default_spawn_x = EXCLUDED.default_spawn_x,
+    default_spawn_y = EXCLUDED.default_spawn_y,
+    max_public_zone_count = EXCLUDED.max_public_zone_count,
+    max_players_per_zone = EXCLUDED.max_players_per_zone,
+    is_private_per_player = EXCLUDED.is_private_per_player;
+
+INSERT INTO public.map_template_adjacent_maps (
+    map_template_id,
+    adjacent_map_template_id
+)
+VALUES
+    (1, 2),
+    (2, 1)
+ON CONFLICT (map_template_id, adjacent_map_template_id) DO NOTHING;
+
 COMMIT;

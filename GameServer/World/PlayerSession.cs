@@ -19,6 +19,7 @@ public sealed class PlayerSession
 
     public int MapId { get; internal set; }
     public int InstanceId { get; internal set; }
+    public int ZoneIndex { get; internal set; }
 
     public Vector2 Position { get; private set; }
     public bool IsConnected { get; internal set; }
@@ -32,6 +33,7 @@ public sealed class PlayerSession
             }
         }
     }
+
     public bool AreCharacterActionsRestricted
     {
         get
@@ -96,6 +98,7 @@ public sealed class PlayerSession
         lock (_sync)
         {
             MapId = currentState.CurrentMapId ?? 0;
+            ZoneIndex = currentState.CurrentZoneIndex;
             Position = new Vector2(currentState.CurrentPosX, currentState.CurrentPosY);
         }
     }

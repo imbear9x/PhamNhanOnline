@@ -11,6 +11,7 @@ public struct CharacterCurrentStateModel
     public int CurrentStamina;
     public int RemainingLifespan;
     public int? CurrentMapId;
+    public int CurrentZoneIndex;
     public float CurrentPosX;
     public float CurrentPosY;
     public bool IsDead;

@@ -4,6 +4,7 @@ using GameServer.Exceptions;
 using GameServer.Repositories;
 using GameServer.Runtime;
 using GameServer.Time;
+using GameServer.World;
 using GameShared.Messages;
 using LinqToDB;
 using LinqToDB.Async;
@@ -33,6 +34,7 @@ public sealed class CharacterService
     private readonly CharacterCurrentStateRepository _currentStates;
     private readonly RealmTemplateRepository _realmTemplates;
     private readonly GameTimeService _gameTimeService;
+    private readonly MapCatalog _mapCatalog;
 
     public CharacterService(
         GameDb db,
@@ -40,7 +42,8 @@ public sealed class CharacterService
         CharacterBaseStatRepository baseStats,
         CharacterCurrentStateRepository currentStates,
         RealmTemplateRepository realmTemplates,
-        GameTimeService gameTimeService)
+        GameTimeService gameTimeService,
+        MapCatalog mapCatalog)
     {
         _db = db;
         _characters = characters;
@@ -48,6 +51,7 @@ public sealed class CharacterService
         _currentStates = currentStates;
         _realmTemplates = realmTemplates;
         _gameTimeService = gameTimeService;
+        _mapCatalog = mapCatalog;
     }
 
     public async Task<List<CharacterDto>> GetCharactersByAccountAsync(Guid accountId, CancellationToken cancellationToken = default)
@@ -136,7 +140,6 @@ public sealed class CharacterService
 
     public async Task<CharacterSnapshotDto?> LoadCharacterSnapshotAsync(Guid characterId, CancellationToken cancellationToken = default)
     {
-        // Single roundtrip via join (base stats/current state may not exist yet -> left join).
         var query =
             from c in _db.GetTable<Character>()
             where c.Id == characterId
@@ -282,6 +285,7 @@ public sealed class CharacterService
         existing.CurrentStamina = state.CurrentStamina;
         existing.LifespanEndGameMinute = state.LifespanEndGameMinute;
         existing.CurrentMapId = state.CurrentMapId;
+        existing.CurrentZoneIndex = state.CurrentZoneIndex;
         existing.CurrentPosX = state.CurrentPosX;
         existing.CurrentPosY = state.CurrentPosY;
         existing.IsDead = state.IsDead;
@@ -298,7 +302,7 @@ public sealed class CharacterService
         return !await _characters.NameExistsAsync(name, cancellationToken);
     }
 
-    private static CharacterCurrentState BuildDefaultCharacterCurrentState(
+    private CharacterCurrentState BuildDefaultCharacterCurrentState(
         Guid characterId,
         CharacterBaseStat? baseStat,
         int? realmLifespan,
@@ -311,6 +315,7 @@ public sealed class CharacterService
             effectiveBaseStats,
             gameTime,
             DefaultRealmLifespan);
+        var homeDefinition = _mapCatalog.ResolveHomeDefinition();
 
         return new CharacterCurrentState
         {
@@ -319,9 +324,10 @@ public sealed class CharacterService
             CurrentMp = baseStat?.BaseMp ?? DefaultBaseMp,
             CurrentStamina = baseStat?.BaseStamina ?? DefaultBaseStamina,
             LifespanEndGameMinute = lifespanEndGameMinute,
-            CurrentMapId = null,
-            CurrentPosX = 0,
-            CurrentPosY = 0,
+            CurrentMapId = homeDefinition.MapId,
+            CurrentZoneIndex = homeDefinition.DefaultZoneIndex,
+            CurrentPosX = homeDefinition.DefaultSpawnPosition.X,
+            CurrentPosY = homeDefinition.DefaultSpawnPosition.Y,
             IsDead = false,
             CurrentState = DefaultCurrentStateCode,
             LastSavedAt = DateTime.UtcNow
@@ -378,7 +384,6 @@ public sealed class CharacterService
                 throw new GameException(MessageCode.CharacterNameInvalid);
         }
 
-        // Avoid names that are only spaces/underscores.
         if (!name.Any(char.IsLetterOrDigit))
             throw new GameException(MessageCode.CharacterNameInvalid);
 
