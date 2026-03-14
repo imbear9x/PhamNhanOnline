@@ -5,6 +5,7 @@ using GameShared.Messages;
 namespace GameShared.Packets;
 
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 500)]
 public partial class LoginPacket : IPacket
 {
     [ValidationCode(MessageCode.UsernameWrong)]
@@ -14,17 +15,16 @@ public partial class LoginPacket : IPacket
 
     [ValidationCode(MessageCode.PasswordWrong)]
     [Required]
-    [StringLength(32,MinimumLength =8)]
+    [StringLength(32, MinimumLength = 8)]
     public string? Password { get; set; }
 }
 
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class LoginResultPacket : IPacket
 {
-
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
     public Guid? AccountId { get; set; }
     public string? ResumeToken { get; set; }
-    
 }

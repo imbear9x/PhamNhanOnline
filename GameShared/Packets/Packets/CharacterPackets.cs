@@ -7,6 +7,7 @@ namespace GameShared.Packets;
 
 [Packet]
 [RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 1000)]
 public partial class CreateCharacterPacket : IPacket
 {
     [ValidationCode(MessageCode.CharacterNameInvalid)]
@@ -26,6 +27,7 @@ public partial class CreateCharacterPacket : IPacket
 }
 
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class CreateCharacterResultPacket : IPacket
 {
     public bool? Success { get; set; }
@@ -37,11 +39,13 @@ public partial class CreateCharacterResultPacket : IPacket
 
 [Packet]
 [RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
 public partial class GetCharacterListPacket : IPacket
 {
 }
 
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class GetCharacterListResultPacket : IPacket
 {
     public bool? Success { get; set; }
@@ -51,6 +55,7 @@ public partial class GetCharacterListResultPacket : IPacket
 
 [Packet]
 [RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
 public partial class GetCharacterDataPacket : IPacket
 {
     [ValidationCode(MessageCode.CharacterIdInvalid)]
@@ -59,6 +64,7 @@ public partial class GetCharacterDataPacket : IPacket
 }
 
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class GetCharacterDataResultPacket : IPacket
 {
     public bool? Success { get; set; }
@@ -69,18 +75,21 @@ public partial class GetCharacterDataResultPacket : IPacket
 }
 
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class CharacterBaseStatsChangedPacket : IPacket
 {
     public CharacterBaseStatsModel? BaseStats { get; set; }
 }
 
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableSequenced, PacketTrafficClass.StateSync)]
 public partial class CharacterCurrentStateChangedPacket : IPacket
 {
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
 
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class CharacterStateTransitionPacket : IPacket
 {
     public Guid? CharacterId { get; set; }

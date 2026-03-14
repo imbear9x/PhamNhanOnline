@@ -84,8 +84,9 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         if (!_sessions.TryGetValue(connectionId, out var session))
             return;
 
+        var profile = PacketTransportPolicy.Resolve(packet);
         var data = PacketSerializer.Serialize(packet);
-        session.Peer.Send(data, DeliveryMethod.ReliableOrdered);
+        session.Peer.Send(data, profile.DeliveryMethod);
     }
 
     public string IssueResumeToken(ConnectionSession session, Guid accountId)

@@ -3,7 +3,9 @@ using GameShared.Attributes;
 using GameShared.Messages;
 
 namespace GameShared.Packets;
+
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 1000)]
 public partial class RegisterPacket : IPacket
 {
     [ValidationCode(MessageCode.UsernameWrong)]
@@ -21,20 +23,12 @@ public partial class RegisterPacket : IPacket
     [StringLength(254)]
     [EmailAddress]
     public string? Email { get; set; }
-
-
-    
 }
 
-
-
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class RegisterResultPacket : IPacket
 {
-   
-
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
-
-
 }

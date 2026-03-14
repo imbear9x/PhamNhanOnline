@@ -1,269 +1,269 @@
-# Server Scaling Roadmap
+﻿# Lộ Trình Gia Cố Server
 
-Roadmap nay duoc viet theo codebase hien tai cua `PhamNhanOnline`.
-Muc tieu la gia co nen tang som de sau nay them movement, multiplayer, combat, quest ma khong vo he thong.
+Tài liệu này bám theo codebase hiện tại của `PhamNhanOnline`.
+Mục tiêu là gia cố nền tảng sớm để sau này thêm movement, multiplayer, combat, quest mà không làm vỡ kiến trúc.
 
-## Cach dung roadmap
+## Cách dùng roadmap
 
-- Lam theo thu tu tu tren xuong duoi.
-- Khong nhay qua phase sau neu phase truoc chua on.
-- Moi muc nen duoc merge va test xong roi moi qua muc tiep.
-- Uu tien nhung thay doi giam rui ro kien truc truoc khi them tinh nang.
+- Làm theo thứ tự từ trên xuống dưới.
+- Không nên nhảy qua phase sau nếu phase trước chưa ổn.
+- Mỗi mục nên được code, test và merge xong rồi mới qua mục tiếp theo.
+- Ưu tiên các thay đổi làm giảm rủi ro kiến trúc trước khi thêm tính năng.
 
-## Nguyen tac thiet ke
+## Nguyên tắc thiết kế
 
-- Server la authoritative.
-- Tach networking, simulation, persistence thanh cac luong trach nhiem ro rang.
-- Chi gui du lieu cho nguoi can nhan.
-- Khong de world update bi block boi DB.
-- Packet realtime va packet nghiep vu khong dung chung mot kieu truyen.
+- Server là authoritative.
+- Tách rõ networking, simulation và persistence.
+- Chỉ gửi dữ liệu cho người cần nhận.
+- Không để world update bị block bởi DB.
+- Packet realtime và packet nghiệp vụ không dùng chung một kiểu truyền.
 
-## Phase 0 - Khoa nen kien truc
+## Phase 0 - Khóa nền kiến trúc
 
-Muc tieu:
-- Co tai lieu va ranh gioi ro rang truoc khi them tinh nang lon.
+Mục tiêu:
+- Có tài liệu và ranh giới rõ ràng trước khi thêm tính năng lớn.
 
-Viec can lam:
-- Chot conventions cho packet:
+Việc cần làm:
+- Chốt conventions cho packet:
   - packet request/result
   - packet event/broadcast
   - packet state sync
-- Chot conventions cho runtime state:
-  - du lieu nao la authoritative tren server
-  - du lieu nao chi la hien thi tren client
-- Chot conventions cho `Map`, `MapInstance`, `PlayerSession`, `CharacterRuntimeState`.
-- Viet tai lieu flow co ban:
-  - dang nhap
-  - vao character
-  - vao world
+- Chốt conventions cho runtime state:
+  - dữ liệu nào authoritative trên server
+  - dữ liệu nào chỉ để hiển thị trên client
+- Chốt conventions cho `Map`, `MapInstance`, `PlayerSession`, `CharacterRuntimeState`.
+- Viết tài liệu flow cơ bản:
+  - đăng nhập
+  - vào character
+  - vào world
   - runtime save
   - state change
 
 Xong phase khi:
-- Nguoi moi vao doc docs la hieu server dang van hanh theo flow nao.
+- Người mới vào đọc docs là hiểu server đang vận hành theo flow nào.
 
-## Phase 1 - Tach workload nguy hiem khoi main loop
+## Phase 1 - Tách workload nguy hiểm khỏi main loop
 
-Muc tieu:
-- Khong de packet receive va world update bi block boi thao tac cham.
+Mục tiêu:
+- Không để packet receive và world update bị block bởi thao tác chậm.
 
-Viec can lam:
-- Refactor `NetworkServer` de khong block luong nhan packet boi handler cham.
-- Giu packet cua cung mot player duoc xu ly theo thu tu, nhung khong khoa ca server.
-- Tach persistence khoi `GameLoop`:
-  - world loop chi danh dau viec can save
-  - worker rieng lo batch save xuong DB
-- Tach `RefreshTimeDerivedStateForOnlinePlayersAsync` khoi duong di de gay hitch neu sau nay no nang.
-- Them cancellation, shutdown sequence, va flush an toan.
+Việc cần làm:
+- Refactor `NetworkServer` để không block luồng nhận packet bởi handler chậm.
+- Giữ packet của cùng một player được xử lý theo thứ tự, nhưng không khóa cả server.
+- Tách persistence khỏi `GameLoop`:
+  - world loop chỉ đánh dấu việc cần save
+  - worker riêng lo batch save xuống DB
+- Tách `RefreshTimeDerivedStateForOnlinePlayersAsync` khỏi đường đi dễ gây hitch nếu sau này nó nặng.
+- Thêm cancellation, shutdown sequence và flush an toàn.
 
 Xong phase khi:
-- Mot thao tac DB cham khong lam ca world tick dung lai.
-- Packet cua player A cham khong lam player B cam thay lag ro.
+- Một thao tác DB chậm không làm cả world tick dừng lại.
+- Packet của player A chậm không làm player B cảm thấy lag rõ.
 
-## Phase 2 - Chuan hoa tick va scheduler
+## Phase 2 - Chuẩn hóa tick và scheduler
 
-Muc tieu:
-- Co simulation tick on dinh va de do dac.
+Mục tiêu:
+- Có simulation tick ổn định và dễ đo đạc.
 
-Viec can lam:
-- Thay `Thread.Sleep(...)` bang loop co do elapsed time.
-- Ghi nhan tick duration, tick overrun, queue depth.
-- Tach:
+Việc cần làm:
+- Thay `Thread.Sleep(...)` bằng loop có đo elapsed time.
+- Ghi nhận tick duration, tick overrun, queue depth.
+- Tách:
   - simulation tick
   - network send tick
   - persistence tick
-- Chot tan so tick mac dinh:
+- Chốt tần số tick mặc định:
   - world tick
   - movement snapshot tick
   - save tick
-- Them metrics/log co cau truc cho:
-  - so player online
-  - so map instance
-  - packet in/out moi giay
-  - thoi gian xu ly packet
+- Thêm metrics/log có cấu trúc cho:
+  - số player online
+  - số map instance
+  - packet in/out mỗi giây
+  - thời gian xử lý packet
 
 Xong phase khi:
-- Co the nhin log/metric de biet server dang cham o dau.
+- Có thể nhìn log/metrics để biết server đang chậm ở đâu.
 
-## Phase 3 - Packet transport strategy
+## Phase 3 - Chiến lược transport cho packet
 
-Muc tieu:
-- Dung dung delivery mode cho tung loai du lieu.
+Mục tiêu:
+- Dùng đúng delivery mode cho từng loại dữ liệu.
 
-Viec can lam:
-- Phan loai packet:
-  - reliable ordered cho login, inventory, trade, quest, state transition quan trong
-  - realtime channel cho movement/rotation/animation/state tan suat cao
-- Them packet categories trong code thay vi moi thu deu gui cung mot kieu.
-- Them correlation id cho action packet se can sau nay:
+Việc cần làm:
+- Phân loại packet:
+  - reliable ordered cho login, inventory, trade, quest, state transition quan trọng
+  - realtime channel cho movement, rotation, animation, state tần suất cao
+- Thêm packet categories trong code thay vì mọi thứ đều gửi cùng một kiểu.
+- Thêm correlation id cho action packet sẽ cần sau này:
   - skill cast
   - attack
   - interaction
   - trade request
-- Review lai rate limit:
-  - bo rate limit chung theo connection
-  - thay bang rate limit theo packet type / bucket
+- Review lại rate limit:
+  - bỏ rate limit chung theo connection
+  - thay bằng rate limit theo packet type hoặc bucket
 
 Xong phase khi:
-- Co quy tac ro rang packet nao dung kenh nao.
-- Movement sau nay khong bi thiet ke buoc phai di qua reliable ordered.
+- Có quy tắc rõ ràng packet nào dùng kênh nào.
+- Movement sau này không bị thiết kế buộc phải đi qua reliable ordered.
 
-## Phase 4 - Interest management va spatial partition
+## Phase 4 - Interest management và spatial partition
 
-Muc tieu:
-- Khong broadcast toan map/toan server mot cach mu quang.
+Mục tiêu:
+- Không broadcast toàn map hoặc toàn server một cách mù quáng.
 
-Viec can lam:
-- Them khai niem "watchers" / "observers" cho entity.
-- Chot cach xac dinh ai nhin thay ai:
-  - cung map instance
-  - trong tam nhin
-  - trong cell / grid
-- Bo sung spatial partition:
-  - grid la lua chon don gian va hop ly cho giai doan dau
-- Them cac packet:
+Việc cần làm:
+- Thêm khái niệm `watchers` hoặc `observers` cho entity.
+- Chốt cách xác định ai nhìn thấy ai:
+  - cùng map instance
+  - trong tầm nhìn
+  - trong cell hoặc grid
+- Bổ sung spatial partition:
+  - grid là lựa chọn đơn giản và hợp lý cho giai đoạn đầu
+- Thêm các packet:
   - entity spawned
   - entity despawned
   - entity moved
   - entity state changed
-- Chi gui su kien cho nhung client co lien quan.
+- Chỉ gửi sự kiện cho những client có liên quan.
 
 Xong phase khi:
-- So packet gui ra tang theo khu vuc co nguoi, khong tang theo tong so player toan server.
+- Số packet gửi ra tăng theo khu vực có người, không tăng theo tổng số player toàn server.
 
-## Phase 5 - Runtime state va dirty replication
+## Phase 5 - Runtime state và dirty replication
 
-Muc tieu:
-- Khong gui lai ca state khi chi doi 1 phan nho.
+Mục tiêu:
+- Không gửi lại cả state khi chỉ đổi một phần nhỏ.
 
-Viec can lam:
-- Chia state thanh nhom:
-  - stats co ban
+Việc cần làm:
+- Chia state thành nhóm:
+  - stats cơ bản
   - current state
   - movement state
   - combat state
   - appearance state
-- Co dirty flags rieng cho network replication, khong chi cho DB persistence.
-- Ho tro delta update thay vi gui full state moi lan.
-- Gom packet nho thanh batch hop ly neu can.
+- Có dirty flags riêng cho network replication, không chỉ cho DB persistence.
+- Hỗ trợ delta update thay vì gửi full state mỗi lần.
+- Gom packet nhỏ thành batch hợp lý nếu cần.
 
 Xong phase khi:
-- Thay doi nho chi phat sinh update nho.
+- Thay đổi nhỏ chỉ phát sinh update nhỏ.
 
-## Phase 6 - Persistence strategy
+## Phase 6 - Chiến lược persistence
 
-Muc tieu:
-- Luu DB an toan ma khong lam cham gameplay.
+Mục tiêu:
+- Lưu DB an toàn mà không làm chậm gameplay.
 
-Viec can lam:
-- Chuyen sang save queue/background worker.
+Việc cần làm:
+- Chuyển sang save queue hoặc background worker.
 - Gom save theo batch.
-- Chot chinh sach save:
+- Chốt chính sách save:
   - periodic save
   - disconnect flush
   - critical event flush
-- Phan tach du lieu:
-  - du lieu can save ngay
-  - du lieu co the save tre
-- Xem xet snapshot + event log cho cac he thong lon ve sau.
+- Phân tách dữ liệu:
+  - dữ liệu cần save ngay
+  - dữ liệu có thể save trễ
+- Xem xét snapshot cộng event log cho các hệ thống lớn về sau.
 
 Xong phase khi:
-- Online player tang len ma world tick van on.
+- Online player tăng lên mà world tick vẫn ổn.
 
-## Phase 7 - Multiplayer movement foundation
+## Phase 7 - Nền tảng movement multiplayer
 
-Muc tieu:
-- Co nen de nhin thay va di chuyen cung nhau trong map.
+Mục tiêu:
+- Có nền để nhìn thấy và di chuyển cùng nhau trong map.
 
-Viec can lam:
-- Chot model movement server-authoritative hoac hybrid co reconciliation.
-- Them packet:
+Việc cần làm:
+- Chốt model movement server-authoritative hoặc hybrid có reconciliation.
+- Thêm packet:
   - move input
   - move snapshot
-  - teleport / correction
-- Client interpolation cho player khac.
-- Client prediction co kiem soat cho player local neu can.
-- Rate limit rieng cho movement.
+  - teleport hoặc correction
+- Client interpolation cho player khác.
+- Client prediction có kiểm soát cho player local nếu cần.
+- Rate limit riêng cho movement.
 
 Xong phase khi:
-- 2-10 player cung map di chuyen muot ma khong spam packet vo toi va.
+- 2 đến 10 player cùng map di chuyển mượt mà không spam packet vô tội vạ.
 
-## Phase 8 - Combat-ready infrastructure
+## Phase 8 - Hạ tầng sẵn sàng cho combat
 
-Muc tieu:
-- San san cho skill/combat ma khong phai sua nguoc kien truc.
+Mục tiêu:
+- Sẵn sàng cho skill và combat mà không phải sửa ngược kiến trúc.
 
-Viec can lam:
-- Them action id / command id cho combat packet.
-- Tach:
+Việc cần làm:
+- Thêm action id hoặc command id cho combat packet.
+- Tách:
   - request cast
-  - result accept/reject
+  - result accept hoặc reject
   - combat event broadcast
-- Chuan hoa cooldown timing theo server authority.
-- Chuan hoa target validation, range validation, state validation.
-- Them combat event queue neu can.
+- Chuẩn hóa cooldown timing theo server authority.
+- Chuẩn hóa target validation, range validation và state validation.
+- Thêm combat event queue nếu cần.
 
 Xong phase khi:
-- Co the them skill dau tien ma khong phai doi lai network model.
+- Có thể thêm skill đầu tiên mà không phải đổi lại network model.
 
 ## Phase 9 - Quest, trade, social
 
-Muc tieu:
-- Them he thong nghiep vu tren nen da on dinh.
+Mục tiêu:
+- Thêm hệ thống nghiệp vụ trên nền đã ổn định.
 
-Viec can lam:
+Việc cần làm:
 - Quest packets theo reliable flow.
-- Trade request/result/cancel/confirm.
-- Friend/guild/chat theo packet type rieng.
-- Logging, audit va anti-abuse cho nghiep vu quan trong.
+- Trade request, result, cancel, confirm.
+- Friend, guild, chat theo packet type riêng.
+- Logging, audit và anti-abuse cho nghiệp vụ quan trọng.
 
 Xong phase khi:
-- Cac he thong nghiep vu khong anh huong xau toi realtime gameplay.
+- Các hệ thống nghiệp vụ không ảnh hưởng xấu tới realtime gameplay.
 
-## Phase 10 - Observability va load test
+## Phase 10 - Quan sát vận hành và load test
 
-Muc tieu:
-- Biet server chiu duoc den dau truoc khi dua them tinh nang lon.
+Mục tiêu:
+- Biết server chịu được đến đâu trước khi đưa thêm tính năng lớn.
 
-Viec can lam:
-- Them counters va metrics co the quan sat duoc.
-- Viet bot/client gia lap:
+Việc cần làm:
+- Thêm counters và metrics có thể quan sát được.
+- Viết bot hoặc client giả lập:
   - login
-  - vao map
-  - di chuyen
-  - spam packet hop le
-- Chay load test theo moc:
+  - vào map
+  - di chuyển
+  - spam packet hợp lệ
+- Chạy load test theo mốc:
   - 10 player
   - 50 player
   - 100 player
-  - nhieu instance
-- Ghi ket qua va bottleneck cua tung moc.
+  - nhiều instance
+- Ghi kết quả và bottleneck của từng mốc.
 
 Xong phase khi:
-- Moi thay doi lon deu co cach do anh huong performance.
+- Mỗi thay đổi lớn đều có cách đo ảnh hưởng performance.
 
-## Thu tu uu tien nen lam ngay
+## Thứ tự ưu tiên nên làm ngay
 
-Neu chi chon nhung viec nen lam rat som, uu tien theo thu tu nay:
+Nếu chỉ chọn những việc nên làm rất sớm, ưu tiên theo thứ tự này:
 
-1. Viet docs/rule nen kien truc trong Phase 0.
-2. Tach DB save khoi `GameLoop`.
-3. Sua model xu ly packet de khong block toan server.
-4. Chuan hoa delivery mode va packet categories.
-5. Bo rate limit tho hien tai, thay bang rate limit theo packet type.
-6. Them metrics/log de biet server dang cham o dau.
-7. Thiet ke interest management truoc khi lam multiplayer movement that su.
+1. Viết docs và rule nền kiến trúc trong Phase 0.
+2. Tách DB save khỏi `GameLoop`.
+3. Sửa model xử lý packet để không block toàn server.
+4. Chuẩn hóa delivery mode và packet categories.
+5. Bỏ rate limit thô hiện tại, thay bằng rate limit theo packet type.
+6. Thêm metrics và log để biết server đang chậm ở đâu.
+7. Thiết kế interest management trước khi làm multiplayer movement thật sự.
 
-## Thu tu lam viec de nho Codex
+## Cách nhờ Codex làm lần lượt
 
-De lam lan luot, co the dua lenh theo dang:
+Sau này có thể nhắn theo dạng:
 
-- "Lam Phase 0, muc 1"
-- "Lam tiep Phase 1, tach DB save khoi GameLoop"
-- "Lam Phase 3, thiet ke packet categories"
-- "Lam metrics co ban cho tick va packet"
+- `Làm Phase 0, mục 1`
+- `Làm tiếp Phase 1, tách DB save khỏi GameLoop`
+- `Làm Phase 3, thiết kế packet categories`
+- `Làm metrics cơ bản cho tick và packet`
 
-## Ghi chu cuoi
+## Ghi chú cuối
 
-Roadmap nay co chu y khong "toi uu qua som" mot cach mo ho.
-No tap trung vao nhung diem ma neu bo qua, sau nay them movement/combat/quest se de gay vo he thong nhat.
+Roadmap này tránh tối ưu sớm một cách mơ hồ.
+Nó tập trung vào những điểm mà nếu bỏ qua, sau này thêm movement, combat, quest rất dễ làm vỡ hệ thống.

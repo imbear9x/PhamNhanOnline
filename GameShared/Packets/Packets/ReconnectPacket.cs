@@ -5,6 +5,7 @@ using GameShared.Messages;
 namespace GameShared.Packets;
 
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 500)]
 public partial class ReconnectPacket : IPacket
 {
     [ValidationCode(MessageCode.ReconnectTokenInvalid)]
@@ -14,6 +15,7 @@ public partial class ReconnectPacket : IPacket
 }
 
 [Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class ReconnectResultPacket : IPacket
 {
     public bool? Success { get; set; }

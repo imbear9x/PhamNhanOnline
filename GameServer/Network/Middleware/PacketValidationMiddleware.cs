@@ -1,7 +1,6 @@
 using GameServer.Network.Interface;
 using GameServer.Network.Validations;
 using GameShared.Packets;
-using LiteNetLib;
 
 namespace GameServer.Network.Middleware;
 
@@ -23,8 +22,9 @@ public sealed class PacketValidationMiddleware : IPacketMiddleware
         {
             if (errorPacket is not null)
             {
+                var profile = PacketTransportPolicy.Resolve(errorPacket);
                 var data = PacketSerializer.Serialize(errorPacket);
-                session.Peer.Send(data, DeliveryMethod.ReliableOrdered);
+                session.Peer.Send(data, profile.DeliveryMethod);
             }
             return;
         }

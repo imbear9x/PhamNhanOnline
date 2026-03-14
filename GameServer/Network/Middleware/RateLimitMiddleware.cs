@@ -1,24 +1,33 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using GameServer.Network.Interface;
 using GameShared.Packets;
 
-namespace GameServer.Network.Middleware
+namespace GameServer.Network.Middleware;
+
+public sealed class RateLimitMiddleware : IPacketMiddleware
 {
-    public class RateLimitMiddleware : IPacketMiddleware
+    private readonly ConcurrentDictionary<RateLimitKey, long> _lastPacketTicks = new();
+
+    public async Task InvokeAsync(ConnectionSession session, IPacket packet, Func<Task> next)
     {
-        private readonly ConcurrentDictionary<int, DateTime> _lastPacketTime = new();
-
-        public async Task InvokeAsync(ConnectionSession session, IPacket packet, Func<Task> next)
+        var profile = PacketTransportPolicy.Resolve(packet);
+        if (profile.MinIntervalMs <= 0)
         {
-            if (_lastPacketTime.TryGetValue(session.ConnectionId, out var last))
-            {
-                if ((DateTime.UtcNow - last).TotalMilliseconds < 50)
-                    return;
-            }
-
-            _lastPacketTime[session.ConnectionId] = DateTime.UtcNow;
-
             await next();
+            return;
         }
+
+        var key = new RateLimitKey(session.ConnectionId, packet.GetType());
+        var now = Environment.TickCount64;
+        if (_lastPacketTicks.TryGetValue(key, out var lastTick) &&
+            now - lastTick < profile.MinIntervalMs)
+        {
+            return;
+        }
+
+        _lastPacketTicks[key] = now;
+        await next();
     }
+
+    private readonly record struct RateLimitKey(int ConnectionId, Type PacketType);
 }
