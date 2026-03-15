@@ -9,6 +9,8 @@ namespace PhamNhanOnline.Client.Features.World.Application
     {
         private readonly Dictionary<Guid, ObservedCharacterModel> observedCharacters = new Dictionary<Guid, ObservedCharacterModel>();
 
+        public event Action MapChanged;
+
         public int? CurrentMapId { get; private set; }
         public int? CurrentZoneIndex { get; private set; }
         public string CurrentMapName { get; private set; } = string.Empty;
@@ -23,6 +25,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
             CurrentMapName = map.Name ?? string.Empty;
             CurrentClientMapKey = map.ClientMapKey ?? string.Empty;
             LocalPlayerPosition = localPlayerPosition;
+            NotifyMapChanged();
         }
 
         public void ApplyLocalPlayerPosition(Vector2 localPlayerPosition)
@@ -69,6 +72,14 @@ namespace PhamNhanOnline.Client.Features.World.Application
             CurrentClientMapKey = string.Empty;
             LocalPlayerPosition = Vector2.zero;
             observedCharacters.Clear();
+            NotifyMapChanged();
+        }
+
+        private void NotifyMapChanged()
+        {
+            var handler = MapChanged;
+            if (handler != null)
+                handler();
         }
     }
 }
