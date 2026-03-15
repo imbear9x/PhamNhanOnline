@@ -835,6 +835,7 @@ MonoBehaviour:
   playerPrefab: {fileID: 6915535442127511761, guid: 809faba7c36d42944a20489cf145e686, type: 3}
   localPlayerRoot: {fileID: 1985013951}
   worldMapPresenter: {fileID: 1872203333}
+  localCharacterActionConfig: {fileID: 11400000, guid: 980196c983704fa4ae3861cbf5372c2c, type: 2}
 --- !u!1 &1985013950
 GameObject:
   m_ObjectHideFlags: 0

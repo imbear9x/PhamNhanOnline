@@ -1,6 +1,7 @@
 using System;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.Features.Character.Presentation;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -10,8 +11,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private GameObject playerPrefab;
         [SerializeField] private Transform localPlayerRoot;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
+        [SerializeField] private LocalCharacterActionConfig localCharacterActionConfig;
+        [SerializeField] private float authoritativeSnapDistance = 1.5f;
 
         private GameObject playerInstance;
+        private LocalCharacterActionController localActionController;
         private Guid? activeCharacterId;
         private Vector2 lastAppliedServerPosition;
         private bool warnedMissingPrefab;
@@ -82,6 +86,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var parent = localPlayerRoot != null ? localPlayerRoot : transform;
             playerInstance = Instantiate(playerPrefab, parent, false);
             playerInstance.name = string.Format("LocalPlayer_{0}", selectedCharacter.Value.Name);
+            localActionController = ConfigureLocalActionController(playerInstance);
             activeCharacterId = characterId;
             lastAppliedServerPosition = new Vector2(float.NaN, float.NaN);
             ClientLog.Info(string.Format("Spawned local player presenter for {0}.", selectedCharacter.Value.Name));
@@ -94,15 +99,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var serverPosition = ClientRuntime.World.LocalPlayerPosition;
             if (!force && serverPosition == lastAppliedServerPosition)
+            {
+                RefreshLocalActionSpeed();
                 return;
+            }
 
             Vector2 worldPosition;
             if (worldMapPresenter != null && worldMapPresenter.TryMapServerPositionToWorld(serverPosition, out worldPosition))
             {
-                var current = playerInstance.transform.position;
-                playerInstance.transform.position = new Vector3(worldPosition.x, worldPosition.y, current.z);
+                ApplyAuthoritativeWorldPosition(worldPosition, force);
                 lastAppliedServerPosition = serverPosition;
                 warnedPositionMapping = false;
+                RefreshLocalActionSpeed();
                 return;
             }
 
@@ -112,9 +120,23 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 warnedPositionMapping = true;
             }
 
-            var fallback = playerInstance.transform.position;
-            playerInstance.transform.position = new Vector3(serverPosition.x, serverPosition.y, fallback.z);
+            ApplyAuthoritativeWorldPosition(serverPosition, force);
             lastAppliedServerPosition = serverPosition;
+            RefreshLocalActionSpeed();
+        }
+
+        private void ApplyAuthoritativeWorldPosition(Vector2 worldPosition, bool force)
+        {
+            if (localActionController != null)
+            {
+                if (localActionController.ShouldApplyAuthoritativeWorldPosition(worldPosition, force, authoritativeSnapDistance))
+                    localActionController.ApplyAuthoritativeWorldPosition(worldPosition);
+
+                return;
+            }
+
+            var current = playerInstance.transform.position;
+            playerInstance.transform.position = new Vector3(worldPosition.x, worldPosition.y, current.z);
         }
 
         private void ClearLocalPlayer()
@@ -123,8 +145,37 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 Destroy(playerInstance);
 
             playerInstance = null;
+            localActionController = null;
             activeCharacterId = null;
             lastAppliedServerPosition = new Vector2(float.NaN, float.NaN);
+        }
+
+        private LocalCharacterActionController ConfigureLocalActionController(GameObject target)
+        {
+            if (target == null)
+                return null;
+
+            var controller = target.GetComponent<LocalCharacterActionController>();
+            if (controller == null)
+                controller = target.AddComponent<LocalCharacterActionController>();
+
+            controller.Initialize(localCharacterActionConfig, ResolveBaseSpeedPercent());
+            return controller;
+        }
+
+        private void RefreshLocalActionSpeed()
+        {
+            if (localActionController != null)
+                localActionController.SetSpeedStatPercent(ResolveBaseSpeedPercent());
+        }
+
+        private int ResolveBaseSpeedPercent()
+        {
+            var baseStats = ClientRuntime.Character.BaseStats;
+            if (!baseStats.HasValue || baseStats.Value.BaseSpeed <= 0)
+                return 100;
+
+            return baseStats.Value.BaseSpeed;
         }
     }
 }
