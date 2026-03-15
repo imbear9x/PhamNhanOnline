@@ -765,6 +765,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1872203331}
   - component: {fileID: 1872203332}
+  - component: {fileID: 1872203333}
+  - component: {fileID: 1872203334}
   m_Layer: 0
   m_Name: WorldRoot
   m_TagString: Untagged
@@ -804,6 +806,35 @@ MonoBehaviour:
   entitiesRoot: {fileID: 861396238}
   worldUiRoot: {fileID: 1200508312}
   worldCamera: {fileID: 2089833381}
+--- !u!114 &1872203333
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872203330}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e7b1453237c45c89e64b26c2d0e030c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mapCatalog: {fileID: 11400000, guid: 3d270eb130cd45f3926d799ba8b1938f, type: 2}
+  activeMapRoot: {fileID: 675277142}
+--- !u!114 &1872203334
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872203330}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2774ec6a8f8d45b196754366a3408a14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerPrefab: {fileID: 6915535442127511761, guid: 809faba7c36d42944a20489cf145e686, type: 3}
+  localPlayerRoot: {fileID: 1985013951}
+  worldMapPresenter: {fileID: 1872203333}
 --- !u!1 &1985013950
 GameObject:
   m_ObjectHideFlags: 0
@@ -944,6 +975,7 @@ GameObject:
   - component: {fileID: 2089833382}
   - component: {fileID: 2089833381}
   - component: {fileID: 2089833380}
+  - component: {fileID: 2089833383}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1025,12 +1057,30 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1998988189}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2089833383
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2089833379}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d18bb842f8346e9aa11efd892d8f90c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  localPlayerPresenter: {fileID: 1872203334}
+  worldMapPresenter: {fileID: 1872203333}
+  followOffset: {x: 0, y: 0, z: -10}
+  smoothFollow: 0
+  smoothSpeed: 8
+  clampToMapBounds: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1985995628}
   - {fileID: 1998988189}
+  - {fileID: 1985995628}
   - {fileID: 908341668}
   - {fileID: 861396238}
   - {fileID: 1200508312}

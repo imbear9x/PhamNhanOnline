@@ -18,13 +18,13 @@ public sealed class MapCatalog
             Type: MapType.Home,
             ClientMapKey: "map_home_01",
             AdjacentMapIds: new[] { StarterFarmMapId },
-            Width: 256,
-            Height: 256,
-            CellSize: 32,
-            InterestRadius: 96,
+            Width: 1000,
+            Height: 500,
+            CellSize: 62.5f,
+            InterestRadius: 187.5f,
             MaxPublicZoneCount: 0,
             MaxPlayersPerZone: 1,
-            DefaultSpawnPosition: new Vector2(64, 64),
+            DefaultSpawnPosition: new Vector2(125, 125),
             IsPrivatePerPlayer: true);
 
         var starterFarmTemplate = new MapTemplate(
@@ -33,13 +33,13 @@ public sealed class MapCatalog
             Type: MapType.Farm,
             ClientMapKey: "map_farm_01",
             AdjacentMapIds: new[] { HomeMapId },
-            Width: 1024,
-            Height: 1024,
-            CellSize: 64,
-            InterestRadius: 160,
+            Width: 1000,
+            Height: 1000,
+            CellSize: 62.5f,
+            InterestRadius: 156.25f,
             MaxPublicZoneCount: 2,
             MaxPlayersPerZone: 20,
-            DefaultSpawnPosition: new Vector2(128, 128),
+            DefaultSpawnPosition: new Vector2(125, 125),
             IsPrivatePerPlayer: false);
 
         _definitions = new ReadOnlyDictionary<int, MapDefinition>(

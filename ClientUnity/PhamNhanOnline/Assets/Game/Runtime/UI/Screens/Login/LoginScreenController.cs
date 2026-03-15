@@ -44,6 +44,10 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
 
 
             SetStatus("Ready.");
+
+            // hard code để test cho nhanh
+            usernameInput.text = "admin123456";
+            passwordInput.text = "admin@admin";
         }
 
         private void Start()

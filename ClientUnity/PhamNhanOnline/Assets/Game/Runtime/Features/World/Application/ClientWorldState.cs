@@ -15,6 +15,8 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public int? CurrentZoneIndex { get; private set; }
         public string CurrentMapName { get; private set; } = string.Empty;
         public string CurrentClientMapKey { get; private set; } = string.Empty;
+        public float CurrentMapWidth { get; private set; }
+        public float CurrentMapHeight { get; private set; }
         public Vector2 LocalPlayerPosition { get; private set; }
         public int ObservedCharacterCount { get { return observedCharacters.Count; } }
 
@@ -24,6 +26,8 @@ namespace PhamNhanOnline.Client.Features.World.Application
             CurrentZoneIndex = zoneIndex;
             CurrentMapName = map.Name ?? string.Empty;
             CurrentClientMapKey = map.ClientMapKey ?? string.Empty;
+            CurrentMapWidth = map.Width;
+            CurrentMapHeight = map.Height;
             LocalPlayerPosition = localPlayerPosition;
             NotifyMapChanged();
         }
@@ -70,6 +74,8 @@ namespace PhamNhanOnline.Client.Features.World.Application
             CurrentZoneIndex = null;
             CurrentMapName = string.Empty;
             CurrentClientMapKey = string.Empty;
+            CurrentMapWidth = 0f;
+            CurrentMapHeight = 0f;
             LocalPlayerPosition = Vector2.zero;
             observedCharacters.Clear();
             NotifyMapChanged();
