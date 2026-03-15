@@ -213,4 +213,38 @@ public sealed class GameTimeService
             throw new InvalidOperationException("This GameTimeService instance does not support persistence operations.");
         }
     }
+
+    public async Task<GameTimeState> ApplyConfigAsync(
+        GameTimeConfig config,
+        CancellationToken cancellationToken = default)
+    {
+        Validate(config);
+
+        var utcNow = DateTime.UtcNow;
+        GameTimeState current;
+        lock (_stateGate)
+        {
+            current = Clone(_state);
+        }
+
+        var currentSnapshot = BuildSnapshot(current, utcNow);
+        var updated = Clone(current);
+        updated.AnchorUtc = utcNow;
+        updated.AnchorGameMinute = currentSnapshot.CurrentGameMinute;
+        updated.GameMinutesPerRealMinute = config.GameMinutesPerRealMinute;
+        updated.DaysPerGameYear = config.DaysPerGameYear;
+        updated.RuntimeSaveIntervalSeconds = config.RuntimeSaveIntervalSeconds;
+        updated.DerivedStateRefreshIntervalSeconds = config.DerivedStateRefreshIntervalSeconds;
+        updated.UpdatedAt = utcNow;
+
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<GameTimeStateRepository>();
+        await repository.UpdateAsync(updated, cancellationToken);
+
+        lock (_stateGate)
+        {
+            _state = Clone(updated);
+            return Clone(_state);
+        }
+    }
 }

@@ -3,6 +3,7 @@ using GameServer.Diagnostics;
 using GameServer.Extensions;
 using GameServer.Network;
 using GameServer.Runtime;
+using GameServer.Time;
 using GameShared.Diagnostics;
 using GameShared.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +32,9 @@ class Program
         using var provider = services.BuildServiceProvider();
 
         Logger.Info("ServiceProvider built.");
+        if (TryRunCommandMode(args, provider))
+            return;
+
         var server = provider.GetRequiredService<NetworkServer>();
         var gameLoop = provider.GetRequiredService<GameLoop>();
         var maintenance = provider.GetRequiredService<RuntimeMaintenanceService>();
@@ -101,5 +105,49 @@ class Program
         }
 
         return defaultValue;
+    }
+
+    private static bool TryRunCommandMode(string[] args, ServiceProvider provider)
+    {
+        var command = GetStringArg(args, "--command=");
+        if (string.IsNullOrWhiteSpace(command))
+            return false;
+
+        if (string.Equals(command, "sync-game-time-config", StringComparison.OrdinalIgnoreCase))
+        {
+            RunSyncGameTimeConfig(provider);
+            return true;
+        }
+
+        throw new ArgumentException($"Unknown command: {command}");
+    }
+
+    private static void RunSyncGameTimeConfig(ServiceProvider provider)
+    {
+        var bootstrapConfig = provider.GetRequiredService<GameTimeConfig>();
+        var gameTimeService = provider.GetRequiredService<GameTimeService>();
+        var updated = gameTimeService.ApplyConfigAsync(bootstrapConfig).GetAwaiter().GetResult();
+        var snapshot = gameTimeService.GetCurrentSnapshot();
+
+        Logger.Info(
+            $"Game time config synced. Scale={updated.GameMinutesPerRealMinute}, DaysPerYear={updated.DaysPerGameYear}, RuntimeSaveInterval={updated.RuntimeSaveIntervalSeconds}, DerivedRefreshInterval={updated.DerivedStateRefreshIntervalSeconds}, AnchorGameMinute={updated.AnchorGameMinute}");
+
+        Console.WriteLine("Game time config synced from gameTimeConfig.json.");
+        Console.WriteLine($"GameMinutesPerRealMinute={updated.GameMinutesPerRealMinute}");
+        Console.WriteLine($"DaysPerGameYear={updated.DaysPerGameYear}");
+        Console.WriteLine($"RuntimeSaveIntervalSeconds={updated.RuntimeSaveIntervalSeconds}");
+        Console.WriteLine($"DerivedStateRefreshIntervalSeconds={updated.DerivedStateRefreshIntervalSeconds}");
+        Console.WriteLine($"CurrentGameMinute={snapshot.CurrentGameMinute}");
+    }
+
+    private static string? GetStringArg(string[] args, string prefix)
+    {
+        foreach (var arg in args)
+        {
+            if (arg.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return arg[prefix.Length..];
+        }
+
+        return null;
     }
 }
