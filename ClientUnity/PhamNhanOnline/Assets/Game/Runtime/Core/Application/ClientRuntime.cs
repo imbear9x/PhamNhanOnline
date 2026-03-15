@@ -8,6 +8,7 @@ using PhamNhanOnline.Client.Infrastructure.SceneLoading;
 using PhamNhanOnline.Client.Network.Packets;
 using PhamNhanOnline.Client.Network.Session;
 using PhamNhanOnline.Client.Network.Transport;
+using PhamNhanOnline.Client.UI.Common;
 
 namespace PhamNhanOnline.Client.Core.Application
 {
@@ -25,6 +26,7 @@ namespace PhamNhanOnline.Client.Core.Application
         public static ClientWorldState World { get; private set; }
         public static ClientWorldService WorldService { get; private set; }
         public static ClientLoginFlowService LoginFlow { get; private set; }
+        public static UiScreenService UiScreens { get; private set; }
 
         public static void Initialize(ClientBootstrapSettings settings)
         {
@@ -43,6 +45,7 @@ namespace PhamNhanOnline.Client.Core.Application
             Auth = new ClientAuthState();
             Character = new ClientCharacterState();
             World = new ClientWorldState();
+            UiScreens = new UiScreenService();
             AuthService = new ClientAuthService(Connection, Auth);
             CharacterService = new ClientCharacterService(Connection, Character);
             WorldService = new ClientWorldService(Connection, World, Character);

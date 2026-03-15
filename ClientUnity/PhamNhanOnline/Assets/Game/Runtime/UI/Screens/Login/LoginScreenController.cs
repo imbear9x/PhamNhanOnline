@@ -11,6 +11,9 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
 {
     public sealed class LoginScreenController : MonoBehaviour
     {
+        private const string LoginScreenId = "login";
+        private const string CreateCharacterScreenId = "create-character";
+
         [Header("Runtime")]
         [SerializeField] private ClientBootstrapSettings runtimeSettingsOverride;
 
@@ -19,14 +22,8 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
         [SerializeField] private TMP_InputField passwordInput;
         [SerializeField] private TMP_InputField characterNameInput;
 
-        [Header("Panels")]
-        [SerializeField] private GameObject loginPanelRoot;
-        [SerializeField] private GameObject createCharacterPanelRoot;
-
         [Header("Actions")]
         [SerializeField] private Button connectButton;
-        [SerializeField] private Button createCharacterButton;
-        [SerializeField] private Button openWorldButton;
 
         [Header("Defaults")]
         [SerializeField] private int defaultServerId = 1;
@@ -44,17 +41,14 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
             if (connectButton != null)
                 connectButton.onClick.AddListener(HandleConnectClicked);
 
-            if (createCharacterButton != null)
-                createCharacterButton.onClick.AddListener(HandleCreateCharacterClicked);
 
-            if (openWorldButton != null)
-                openWorldButton.onClick.AddListener(HandleOpenWorldClicked);
-
-            SetCharacterCreationMode(false);
-            if (openWorldButton != null)
-                openWorldButton.interactable = false;
 
             SetStatus("Ready.");
+        }
+
+        private void Start()
+        {
+            SetCharacterCreationMode(false);
         }
 
         private void EnsureRuntimeInitialized()
@@ -75,11 +69,7 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
             if (connectButton != null)
                 connectButton.onClick.RemoveListener(HandleConnectClicked);
 
-            if (createCharacterButton != null)
-                createCharacterButton.onClick.RemoveListener(HandleCreateCharacterClicked);
-
-            if (openWorldButton != null)
-                openWorldButton.onClick.RemoveListener(HandleOpenWorldClicked);
+           
         }
 
         private async void HandleConnectClicked()
@@ -102,8 +92,6 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
             {
                 pendingCharacterId = null;
                 SetCharacterCreationMode(true);
-                if (openWorldButton != null)
-                    openWorldButton.interactable = false;
             }
             else if (result.Success)
             {
@@ -116,81 +104,21 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
                 connectButton.interactable = true;
         }
 
-        private async void HandleCreateCharacterClicked()
-        {
-            if (!ClientRuntime.IsInitialized)
-            {
-                SetStatus("Client runtime is not initialized.");
-                return;
-            }
-
-            var characterName = characterNameInput != null ? characterNameInput.text : string.Empty;
-            if (string.IsNullOrWhiteSpace(characterName))
-            {
-                SetStatus("Enter a character name first.");
-                return;
-            }
-
-            if (createCharacterButton != null)
-                createCharacterButton.interactable = false;
-
-            SetStatus("Creating character...");
-            var result = await ClientRuntime.CharacterService.CreateCharacterAsync(characterName, defaultServerId, defaultModelId);
-            if (result.Success && result.Character.HasValue)
-            {
-                pendingCharacterId = result.Character.Value.CharacterId;
-                if (openWorldButton != null)
-                    openWorldButton.interactable = true;
-                SetStatus(string.Format("Character {0} created. Press Open World to continue.", result.Character.Value.Name));
-            }
-            else
-            {
-                SetStatus(result.Message);
-            }
-
-            if (createCharacterButton != null)
-                createCharacterButton.interactable = true;
-        }
-
-        private async void HandleOpenWorldClicked()
-        {
-            if (!ClientRuntime.IsInitialized)
-            {
-                SetStatus("Client runtime is not initialized.");
-                return;
-            }
-
-            var characterId = pendingCharacterId ?? ClientRuntime.Character.SelectedCharacterId;
-            if (!characterId.HasValue || characterId.Value == Guid.Empty)
-            {
-                SetStatus("No character is ready to enter the world.");
-                return;
-            }
-
-            SetStatus("Entering world...");
-            var result = await ClientRuntime.CharacterService.EnterWorldAsync(characterId.Value);
-            if (!result.Success)
-            {
-                SetStatus(result.Message);
-                return;
-            }
-
-            pendingCharacterId = null;
-            SetCharacterCreationMode(false);
-            if (openWorldButton != null)
-                openWorldButton.interactable = false;
-
-            SetStatus(string.Format("Loading {0}...", ClientRuntime.Settings.WorldSceneName));
-            await ClientRuntime.SceneFlow.LoadSceneAsync(ClientRuntime.Settings.WorldSceneName, LoadSceneMode.Single);
-        }
+        
 
         private void SetCharacterCreationMode(bool enabled)
         {
-            if (loginPanelRoot != null)
-                loginPanelRoot.SetActive(!enabled);
+            if (!ClientRuntime.IsInitialized)
+                return;
 
-            if (createCharacterPanelRoot != null)
-                createCharacterPanelRoot.SetActive(enabled);
+            var targetScreenId = enabled ? CreateCharacterScreenId : LoginScreenId;
+            if (!ClientRuntime.UiScreens.IsRegistered(targetScreenId))
+            {
+                ClientLog.Warn($"Screen '{targetScreenId}' is not registered in UiScreenService.");
+                return;
+            }
+
+            ClientRuntime.UiScreens.ShowOnly(targetScreenId);
         }
 
         private void SetStatus(string message)
