@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using GameServer.Diagnostics;
 using GameServer.Time;
+using GameServer.World;
 using GameShared.Logging;
 
 namespace GameServer.Runtime;
@@ -14,25 +15,29 @@ public sealed class RuntimeMaintenanceService
     private readonly CharacterCultivationService _cultivationService;
     private readonly GameTimeService _gameTimeService;
     private readonly ServerMetricsService _metrics;
+    private readonly WorldManager _worldManager;
 
     private readonly CancellationTokenSource _cts = new();
     private Thread? _thread;
     private DateTime _nextRuntimeSaveUtc = DateTime.UtcNow;
     private DateTime _nextDerivedStateRefreshUtc = DateTime.UtcNow;
     private DateTime _nextCultivationSettlementUtc = DateTime.UtcNow;
+    private DateTime _nextEmptyInstanceCleanupUtc = DateTime.UtcNow;
 
     public RuntimeMaintenanceService(
         CharacterRuntimeService runtimeService,
         CharacterRuntimeSaveService runtimeSaveService,
         CharacterCultivationService cultivationService,
         GameTimeService gameTimeService,
-        ServerMetricsService metrics)
+        ServerMetricsService metrics,
+        WorldManager worldManager)
     {
         _runtimeService = runtimeService;
         _runtimeSaveService = runtimeSaveService;
         _cultivationService = cultivationService;
         _gameTimeService = gameTimeService;
         _metrics = metrics;
+        _worldManager = worldManager;
     }
 
     public void Start()
@@ -151,6 +156,12 @@ public sealed class RuntimeMaintenanceService
             }
 
             _nextCultivationSettlementUtc = DateTime.UtcNow.Add(_cultivationService.SettlementInterval);
+        }
+
+        if (utcNow >= _nextEmptyInstanceCleanupUtc)
+        {
+            _worldManager.MapManager.CleanupExpiredEmptyPublicInstances(utcNow);
+            _nextEmptyInstanceCleanupUtc = DateTime.UtcNow.AddSeconds(15);
         }
 
         return new MaintenanceActivity(ranSave, ranRefresh);

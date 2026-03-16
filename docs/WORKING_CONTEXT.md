@@ -142,6 +142,7 @@ Cuối mỗi buổi, nên bổ sung:
 
 ## Tooling note
 - If apply_patch fails with a Windows sandbox refresh error, switch to shell-based file editing immediately instead of retrying multiple times.
+- When referencing files in Codex responses, use clickable markdown links with absolute workspace paths in the target, for example `[CharacterCultivationService.cs](/f:/PhamNhanOnline/GameServer/Runtime/CharacterCultivationService.cs)`. Avoid plain `F:\...` paths and avoid `f:/...` targets without the leading slash because they open in the browser instead of VSCode.
 
 ## Session update 2026-03-16
 

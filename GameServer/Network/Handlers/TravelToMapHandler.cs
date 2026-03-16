@@ -13,19 +13,22 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
     private readonly WorldInterestService _interestService;
     private readonly INetworkSender _server;
     private readonly MapCatalog _mapCatalog;
+    private readonly MapManager _mapManager;
 
     public TravelToMapHandler(
         CharacterRuntimeService runtimeService,
         CharacterCultivationService cultivationService,
         WorldInterestService interestService,
         INetworkSender server,
-        MapCatalog mapCatalog)
+        MapCatalog mapCatalog,
+        MapManager mapManager)
     {
         _runtimeService = runtimeService;
         _cultivationService = cultivationService;
         _interestService = interestService;
         _server = server;
         _mapCatalog = mapCatalog;
+        _mapManager = mapManager;
     }
 
     public Task HandleAsync(ConnectionSession session, TravelToMapPacket packet)
@@ -76,7 +79,10 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
             return Task.CompletedTask;
         }
 
-        _runtimeService.UpdatePosition(player, targetMapId, targetDefinition.DefaultZoneIndex, targetDefinition.DefaultSpawnPosition);
+        var targetZoneIndex = targetDefinition.IsPrivatePerPlayer
+            ? 0
+            : _mapManager.ResolveAutoJoinZone(targetDefinition);
+        _runtimeService.UpdatePosition(player, targetMapId, targetZoneIndex, targetDefinition.DefaultSpawnPosition);
         _interestService.PublishWorldSnapshot(player);
         _server.Send(session.ConnectionId, new TravelToMapResultPacket
         {

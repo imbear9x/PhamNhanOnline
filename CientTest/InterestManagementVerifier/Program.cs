@@ -151,7 +151,7 @@ internal sealed class ScenarioContext
     {
         _gameTimeService = gameTimeService;
         _network = new CapturingNetworkSender();
-        var mapCatalog = new MapCatalog();
+        var mapCatalog = CreateMapCatalog();
         var mapManager = new MapManager(mapCatalog);
         _worldManager = new WorldManager(mapManager);
         _interestService = new WorldInterestService(_worldManager, _network, _gameTimeService);
@@ -184,7 +184,8 @@ internal sealed class ScenarioContext
             LifespanBonus: 0,
             BaseFortune: 0,
             BasePotential: 0,
-            UnallocatedPotential: 0);
+            UnallocatedPotential: 0,
+            CultivationProgress: 0m);
         var currentState = new CharacterCurrentStateDto(
             playerId,
             CurrentHp: 100,
@@ -299,6 +300,63 @@ internal sealed class ScenarioContext
         Assertions.Add($"{(condition ? "PASS" : "FAIL")}: {message}");
         if (!condition)
             throw new InvalidOperationException(message);
+    }
+
+    private static MapCatalog CreateMapCatalog()
+    {
+        var homeTemplate = new MapTemplate(
+            TemplateId: MapCatalog.HomeMapId,
+            Name: "Player Home",
+            Type: MapType.Home,
+            ClientMapKey: "map_home_01",
+            SpiritualEnergyPerMinute: 100m,
+            AdjacentMapIds: [MapCatalog.StarterFarmMapId],
+            Width: 256,
+            Height: 256,
+            CellSize: 32,
+            InterestRadius: 96,
+            MaxPublicZoneCount: 0,
+            MaxPlayersPerZone: 1,
+            SupportsCavePlacement: false,
+            DefaultSpawnPosition: new System.Numerics.Vector2(64, 64),
+            IsPrivatePerPlayer: true);
+        var starterTemplate = new MapTemplate(
+            TemplateId: MapCatalog.StarterFarmMapId,
+            Name: "Starter Plains",
+            Type: MapType.Farm,
+            ClientMapKey: "map_farm_01",
+            SpiritualEnergyPerMinute: 100m,
+            AdjacentMapIds: [MapCatalog.HomeMapId],
+            Width: 1024,
+            Height: 1024,
+            CellSize: 64,
+            InterestRadius: 160,
+            MaxPublicZoneCount: 20,
+            MaxPlayersPerZone: 20,
+            SupportsCavePlacement: true,
+            DefaultSpawnPosition: new System.Numerics.Vector2(128, 128),
+            IsPrivatePerPlayer: false);
+
+        var definitions = new Dictionary<int, MapDefinition>
+        {
+            [MapCatalog.HomeMapId] = new(homeTemplate),
+            [MapCatalog.StarterFarmMapId] = new(starterTemplate)
+        };
+        var starterZones = Enumerable.Range(1, 20)
+            .Select(zoneIndex => new MapZoneSlotDefinition(
+                MapCatalog.StarterFarmMapId,
+                zoneIndex,
+                2,
+                "medium",
+                "Medium",
+                1.0m))
+            .ToArray();
+        var zoneSlots = new Dictionary<int, IReadOnlyList<MapZoneSlotDefinition>>
+        {
+            [MapCatalog.StarterFarmMapId] = starterZones
+        };
+
+        return new MapCatalog(definitions, zoneSlots);
     }
 }
 

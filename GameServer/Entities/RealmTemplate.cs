@@ -23,6 +23,7 @@ namespace GameServer.Entities
 		[Column("max_cultivation"                            )] public long?     MaxCultivation       { get; set; } // bigint
 		[Column("lifespan"                                   )] public int       Lifespan             { get; set; } // integer
 		[Column("base_breakthrough_rate"                     )] public double?   BaseBreakthroughRate { get; set; } // double precision
+		[Column("absorption_multiplier"                      )] public decimal?  AbsorptionMultiplier { get; set; } // numeric(10,4)
 		[Column("failure_penalty"                            )] public double?   FailurePenalty       { get; set; } // double precision
 		[Column("created_at"                                 )] public DateTime? CreatedAt            { get; set; } // timestamp (6) without time zone
 

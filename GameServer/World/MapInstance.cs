@@ -16,6 +16,7 @@ public sealed class MapInstance
     public bool IsPrivate => OwnerCharacterId.HasValue;
     public MapDefinition Definition { get; }
     public int MapId => Definition.MapId;
+    public DateTime? EmptySinceUtc { get; private set; }
 
     public List<PlayerSession> Players { get; } = new();
     public List<MonsterEntity> Monsters { get; } = new();
@@ -59,6 +60,7 @@ public sealed class MapInstance
                 player.ZoneIndex = ZoneIndex;
             }
 
+            EmptySinceUtc = null;
             UpdatePlayerCellUnsafe(player);
             return true;
         }
@@ -75,6 +77,9 @@ public sealed class MapInstance
             {
                 player.InstanceId = 0;
             }
+
+            if (Players.Count == 0)
+                EmptySinceUtc = DateTime.UtcNow;
         }
     }
 

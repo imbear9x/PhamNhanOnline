@@ -86,7 +86,31 @@ public static class NetworkModelMapper
             DefaultSpawnY = definition.DefaultSpawnPosition.Y,
             MaxPublicZoneCount = definition.MaxPublicZoneCount,
             MaxPlayersPerZone = definition.MaxPlayersPerZone,
+            SupportsCavePlacement = definition.SupportsCavePlacement,
             IsPrivatePerPlayer = definition.IsPrivatePerPlayer
+        };
+    }
+
+    public static MapZoneSummaryModel ToSummaryModel(this MapZoneSlotDefinition zoneSlot, int currentPlayerCount, int maxPlayerCount)
+    {
+        return new MapZoneSummaryModel
+        {
+            ZoneIndex = zoneSlot.ZoneIndex,
+            CurrentPlayerCount = currentPlayerCount,
+            MaxPlayerCount = maxPlayerCount,
+            IsActive = currentPlayerCount > 0
+        };
+    }
+
+    public static MapZoneDetailModel ToDetailModel(this MapZoneSlotDefinition zoneSlot)
+    {
+        return new MapZoneDetailModel
+        {
+            ZoneIndex = zoneSlot.ZoneIndex,
+            SpiritualEnergyTemplateId = zoneSlot.SpiritualEnergyTemplateId,
+            SpiritualEnergyCode = zoneSlot.SpiritualEnergyCode,
+            SpiritualEnergyName = zoneSlot.SpiritualEnergyName,
+            SpiritualEnergyPerMinute = zoneSlot.SpiritualEnergyPerMinute
         };
     }
 

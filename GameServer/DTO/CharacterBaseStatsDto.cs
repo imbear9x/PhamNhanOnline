@@ -17,7 +17,8 @@ public sealed record CharacterBaseStatsDto(
     int? LifespanBonus,
     double? BaseFortune,
     int? BasePotential,
-    int? UnallocatedPotential)
+    int? UnallocatedPotential,
+    decimal? CultivationProgress)
 {
     public static CharacterBaseStatsDto FromEntity(CharacterBaseStat entity, int? realmLifespan = null) =>
         new(
@@ -35,5 +36,6 @@ public sealed record CharacterBaseStatsDto(
             entity.LifespanBonus,
             entity.BaseFortune,
             entity.BasePotential,
-            entity.UnallocatedPotential);
+            entity.UnallocatedPotential,
+            entity.CultivationProgress);
 }

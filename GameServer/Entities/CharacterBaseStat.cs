@@ -30,6 +30,7 @@ namespace GameServer.Entities
 		[Column("base_fortune"                             )] public double? BaseFortune          { get; set; } // double precision
 		[Column("base_potential"                           )] public int?    BasePotential        { get; set; } // integer
 		[Column("unallocated_potential"                    )] public int?    UnallocatedPotential { get; set; } // integer
+		[Column("cultivation_progress"                     )] public decimal? CultivationProgress  { get; set; } // numeric(18,6)
 
 		#region Associations
 		/// <summary>

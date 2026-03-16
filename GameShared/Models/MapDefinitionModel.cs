@@ -18,5 +18,6 @@ public struct MapDefinitionModel
     public float DefaultSpawnY;
     public int MaxPublicZoneCount;
     public int MaxPlayersPerZone;
+    public bool SupportsCavePlacement;
     public bool IsPrivatePerPlayer;
 }

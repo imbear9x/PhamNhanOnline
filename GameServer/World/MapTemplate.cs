@@ -7,6 +7,7 @@ public sealed record MapTemplate(
     string Name,
     MapType Type,
     string ClientMapKey,
+    decimal SpiritualEnergyPerMinute,
     IReadOnlyList<int> AdjacentMapIds,
     float Width,
     float Height,
@@ -14,6 +15,7 @@ public sealed record MapTemplate(
     float InterestRadius,
     int MaxPublicZoneCount,
     int MaxPlayersPerZone,
+    bool SupportsCavePlacement,
     Vector2 DefaultSpawnPosition,
     bool IsPrivatePerPlayer)
 {

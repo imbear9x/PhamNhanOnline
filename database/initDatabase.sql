@@ -1,14 +1,61 @@
 BEGIN;
 
 ALTER TABLE public.character_base_stats
-    ADD COLUMN IF NOT EXISTS unallocated_potential integer NOT NULL DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS unallocated_potential integer NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS cultivation_progress numeric(18,6) NOT NULL DEFAULT 0;
 
 UPDATE public.character_base_stats
-SET unallocated_potential = COALESCE(unallocated_potential, COALESCE(base_potential, 0));
+SET
+    unallocated_potential = COALESCE(unallocated_potential, COALESCE(base_potential, 0)),
+    cultivation_progress = COALESCE(cultivation_progress, 0);
 
 ALTER TABLE public.character_current_state
     ADD COLUMN IF NOT EXISTS cultivation_started_at_utc timestamp without time zone NULL,
     ADD COLUMN IF NOT EXISTS last_cultivation_rewarded_at_utc timestamp without time zone NULL;
+
+CREATE TABLE IF NOT EXISTS public.spiritual_energy_templates (
+    id integer NOT NULL,
+    code character varying(50) NOT NULL,
+    name character varying(100) NOT NULL,
+    lk_per_minute numeric(10,4) NOT NULL,
+    created_at timestamp without time zone DEFAULT now(),
+    CONSTRAINT spiritual_energy_templates_pkey PRIMARY KEY (id),
+    CONSTRAINT spiritual_energy_templates_code_key UNIQUE (code)
+);
+
+ALTER TABLE public.realm_templates
+    ADD COLUMN IF NOT EXISTS absorption_multiplier numeric(10,4) NOT NULL DEFAULT 1.0;
+
+ALTER TABLE public.map_templates
+    ADD COLUMN IF NOT EXISTS spiritual_energy numeric(10,4) NOT NULL DEFAULT 100,
+    ADD COLUMN IF NOT EXISTS supports_cave_placement boolean NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS public.map_zone_slots (
+    id integer NOT NULL,
+    map_template_id integer NOT NULL,
+    zone_index integer NOT NULL,
+    spiritual_energy_template_id integer NOT NULL,
+    created_at timestamp without time zone DEFAULT now(),
+    CONSTRAINT map_zone_slots_pkey PRIMARY KEY (id),
+    CONSTRAINT map_zone_slots_map_template_zone_key UNIQUE (map_template_id, zone_index),
+    CONSTRAINT fk_map_zone_slots_map_template
+        FOREIGN KEY (map_template_id) REFERENCES public.map_templates(id),
+    CONSTRAINT fk_map_zone_slots_spiritual_energy
+        FOREIGN KEY (spiritual_energy_template_id) REFERENCES public.spiritual_energy_templates(id)
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'fk_map_templates_spiritual_energy'
+    ) THEN
+        ALTER TABLE public.map_templates
+            ADD CONSTRAINT fk_map_templates_spiritual_energy
+            FOREIGN KEY (spiritual_energy_template_id) REFERENCES public.spiritual_energy_templates(id);
+    END IF;
+END $$;
 
 INSERT INTO public.servers (id, name, status)
 VALUES (1, 'Server01', 1)
@@ -51,40 +98,41 @@ INSERT INTO public.realm_templates (
     max_cultivation,
     lifespan,
     base_breakthrough_rate,
+    absorption_multiplier,
     failure_penalty
 )
 VALUES
-    (1, 'Luyện Khí Kỳ tầng 1', 'Luyện Khí Kỳ tầng 1', 150, 120, 100, 0),
-    (2, 'Luyện Khí Kỳ tầng 2', 'Luyện Khí Kỳ tầng 2', 200, 125, 95, 0),
-    (3, 'Luyện Khí Kỳ tầng 3', 'Luyện Khí Kỳ tầng 3', 280, 130, 90, 0),
-    (4, 'Luyện Khí Kỳ tầng 4', 'Luyện Khí Kỳ tầng 4', 380, 135, 85, 0),
-    (5, 'Luyện Khí Kỳ tầng 5', 'Luyện Khí Kỳ tầng 5', 520, 140, 80, 0),
-    (6, 'Luyện Khí Kỳ tầng 6', 'Luyện Khí Kỳ tầng 6', 750, 145, 75, 0),
-    (7, 'Luyện Khí Kỳ tầng 7', 'Luyện Khí Kỳ tầng 7', 1200, 150, 70, 0),
-    (8, 'Luyện Khí Kỳ tầng 8', 'Luyện Khí Kỳ tầng 8', 1500, 155, 65, 0),
-    (9, 'Luyện Khí Kỳ tầng 9', 'Luyện Khí Kỳ tầng 9', 2000, 160, 40, 0),
-    (10, 'Trúc Cơ Sơ Kỳ', 'Trúc Cơ Sơ Kỳ', 5000, 180, 40, 0),
-    (11, 'Trúc Cơ Trung Kỳ', 'Trúc Cơ Trung Kỳ', 7000, 200, 35, 0),
-    (12, 'Trúc Cơ Hậu Kỳ', 'Trúc Cơ Hậu Kỳ', 10000, 220, 25, 0),
-    (13, 'Kết Đan Sơ Kỳ', 'Kết Đan Sơ Kỳ', 25000, 350, 30, 0),
-    (14, 'Kết Đan Trung Kỳ', 'Kết Đan Trung Kỳ', 35000, 400, 28, 0),
-    (15, 'Kết Đan Hậu Kỳ', 'Kết Đan Hậu Kỳ', 50000, 500, 20, 0),
-    (16, 'Nguyên Anh Sơ Kỳ', 'Nguyên Anh Sơ Kỳ', 125000, 1200, 18, 0),
-    (17, 'Nguyên Anh Trung Kỳ', 'Nguyên Anh Trung Kỳ', 175000, 1500, 15, 0),
-    (18, 'Nguyên Anh Hậu Kỳ', 'Nguyên Anh Hậu Kỳ', 245000, 2000, 10, 0),
-    (19, 'Hóa Thần Sơ Kỳ', 'Hóa Thần Sơ Kỳ', 600000, -1, 60, 0),
-    (20, 'Hóa Thần Trung Kỳ', 'Hóa Thần Trung Kỳ', 840000, -1, 55, 0),
-    (21, 'Hóa Thần Hậu Kỳ', 'Hóa Thần Hậu Kỳ', 1200000, -1, 30, 0),
-    (22, 'Luyện Hư Sơ Kỳ', 'Luyện Hư Sơ Kỳ', 3000000, -1, 30, 0),
-    (23, 'Luyện Hư Trung Kỳ', 'Luyện Hư Trung Kỳ', 4200000, -1, 25, 0),
-    (24, 'Luyện Hư Hậu Kỳ', 'Luyện Hư Hậu Kỳ', 9000000, -1, 15, 0),
-    (25, 'Hợp Thể Sơ Kỳ', 'Hợp Thể Sơ Kỳ', 20000000, -1, 20, 0),
-    (26, 'Hợp Thể Trung Kỳ', 'Hợp Thể Trung Kỳ', 28000000, -1, 15, 0),
-    (27, 'Hợp Thể Hậu Kỳ', 'Hợp Thể Hậu Kỳ', 40000000, -1, 10, 0),
-    (28, 'Độ Kiếp Kỳ', 'Độ Kiếp Kỳ', 100000000, -1, 12, 0),
-    (29, 'Chân Tiên Sơ Kỳ', 'Chân Tiên Sơ Kỳ', 250000000, -1, 6, 0),
-    (30, 'Chân Tiên Trung Kỳ', 'Chân Tiên Trung Kỳ', 350000000, -1, 5, 0),
-    (31, 'Chân Tiên Hậu Kỳ', 'Chân Tiên Hậu Kỳ', 500000000, -1, 4, 0)
+    (1, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 1', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 1', 150, 120, 100, 0.2, 0),
+    (2, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 2', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 2', 200, 125, 95, 0.2, 0),
+    (3, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 3', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 3', 280, 130, 90, 0.2, 0),
+    (4, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 4', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 4', 380, 135, 85, 0.2, 0),
+    (5, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 5', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 5', 520, 140, 80, 0.2, 0),
+    (6, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 6', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 6', 750, 145, 75, 0.2, 0),
+    (7, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 7', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 7', 1200, 150, 70, 0.2, 0),
+    (8, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 8', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 8', 1500, 155, 65, 0.2, 0),
+    (9, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 9', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 9', 2000, 160, 40, 0.2, 0),
+    (10, 'TrÃºc CÆ¡ SÆ¡ Ká»³', 'TrÃºc CÆ¡ SÆ¡ Ká»³', 5000, 180, 40, 0.3, 0),
+    (11, 'TrÃºc CÆ¡ Trung Ká»³', 'TrÃºc CÆ¡ Trung Ká»³', 7000, 200, 35, 0.3, 0),
+    (12, 'TrÃºc CÆ¡ Háº­u Ká»³', 'TrÃºc CÆ¡ Háº­u Ká»³', 10000, 220, 25, 0.3, 0),
+    (13, 'Káº¿t Äan SÆ¡ Ká»³', 'Káº¿t Äan SÆ¡ Ká»³', 25000, 350, 30, 0.5, 0),
+    (14, 'Káº¿t Äan Trung Ká»³', 'Káº¿t Äan Trung Ká»³', 35000, 400, 28, 0.5, 0),
+    (15, 'Káº¿t Äan Háº­u Ká»³', 'Káº¿t Äan Háº­u Ká»³', 50000, 500, 20, 0.5, 0),
+    (16, 'NguyÃªn Anh SÆ¡ Ká»³', 'NguyÃªn Anh SÆ¡ Ká»³', 125000, 1200, 18, 0.7, 0),
+    (17, 'NguyÃªn Anh Trung Ká»³', 'NguyÃªn Anh Trung Ká»³', 175000, 1500, 15, 0.7, 0),
+    (18, 'NguyÃªn Anh Háº­u Ká»³', 'NguyÃªn Anh Háº­u Ká»³', 245000, 2000, 10, 0.7, 0),
+    (19, 'HÃ³a Tháº§n SÆ¡ Ká»³', 'HÃ³a Tháº§n SÆ¡ Ká»³', 600000, -1, 60, 1.0, 0),
+    (20, 'HÃ³a Tháº§n Trung Ká»³', 'HÃ³a Tháº§n Trung Ká»³', 840000, -1, 55, 1.0, 0),
+    (21, 'HÃ³a Tháº§n Háº­u Ká»³', 'HÃ³a Tháº§n Háº­u Ká»³', 1200000, -1, 30, 1.0, 0),
+    (22, 'Luyá»‡n HÆ° SÆ¡ Ká»³', 'Luyá»‡n HÆ° SÆ¡ Ká»³', 3000000, -1, 30, 1.4, 0),
+    (23, 'Luyá»‡n HÆ° Trung Ká»³', 'Luyá»‡n HÆ° Trung Ká»³', 4200000, -1, 25, 1.4, 0),
+    (24, 'Luyá»‡n HÆ° Háº­u Ká»³', 'Luyá»‡n HÆ° Háº­u Ká»³', 9000000, -1, 15, 1.4, 0),
+    (25, 'Há»£p Thá»ƒ SÆ¡ Ká»³', 'Há»£p Thá»ƒ SÆ¡ Ká»³', 20000000, -1, 20, 2.0, 0),
+    (26, 'Há»£p Thá»ƒ Trung Ká»³', 'Há»£p Thá»ƒ Trung Ká»³', 28000000, -1, 15, 2.0, 0),
+    (27, 'Há»£p Thá»ƒ Háº­u Ká»³', 'Há»£p Thá»ƒ Háº­u Ká»³', 40000000, -1, 10, 2.0, 0),
+    (28, 'Äá»™ Kiáº¿p Ká»³', 'Äá»™ Kiáº¿p Ká»³', 100000000, -1, 12, 3.0, 0),
+    (29, 'ChÃ¢n TiÃªn SÆ¡ Ká»³', 'ChÃ¢n TiÃªn SÆ¡ Ká»³', 250000000, -1, 6, 3.0, 0),
+    (30, 'ChÃ¢n TiÃªn Trung Ká»³', 'ChÃ¢n TiÃªn Trung Ká»³', 350000000, -1, 5, 3.0, 0),
+    (31, 'ChÃ¢n TiÃªn Háº­u Ká»³', 'ChÃ¢n TiÃªn Háº­u Ká»³', 500000000, -1, 4, 3.0, 0)
 ON CONFLICT (id) DO UPDATE
 SET
     name = EXCLUDED.name,
@@ -92,7 +140,25 @@ SET
     max_cultivation = EXCLUDED.max_cultivation,
     lifespan = EXCLUDED.lifespan,
     base_breakthrough_rate = EXCLUDED.base_breakthrough_rate,
+    absorption_multiplier = EXCLUDED.absorption_multiplier,
     failure_penalty = EXCLUDED.failure_penalty;
+
+INSERT INTO public.spiritual_energy_templates (
+    id,
+    code,
+    name,
+    lk_per_minute
+)
+VALUES
+    (1, 'low', 'Low', 0.8),
+    (2, 'medium', 'Medium', 1.0),
+    (3, 'high', 'High', 1.5),
+    (4, 'dense', 'Dense', 2.0)
+ON CONFLICT (id) DO UPDATE
+SET
+    code = EXCLUDED.code,
+    name = EXCLUDED.name,
+    lk_per_minute = EXCLUDED.lk_per_minute;
 
 INSERT INTO public.map_templates (
     id,
@@ -107,11 +173,13 @@ INSERT INTO public.map_templates (
     default_spawn_y,
     max_public_zone_count,
     max_players_per_zone,
-    is_private_per_player
+    supports_cave_placement,
+    is_private_per_player,
+    spiritual_energy
 )
 VALUES
-    (1, 'Player Home', 0, 'map_home_01', 256, 256, 32, 96, 64, 64, 0, 1, true),
-    (2, 'Starter Plains', 1, 'map_farm_01', 1024, 1024, 64, 160, 128, 128, 2, 20, false)
+    (1, 'Player Home', 0, 'map_home_01', 256, 256, 32, 96, 64, 64, 0, 1, false, true, 100),
+    (2, 'Starter Plains', 1, 'map_farm_01', 1024, 1024, 64, 160, 128, 128, 20, 20, true, false, 100)
 ON CONFLICT (id) DO UPDATE
 SET
     name = EXCLUDED.name,
@@ -125,7 +193,42 @@ SET
     default_spawn_y = EXCLUDED.default_spawn_y,
     max_public_zone_count = EXCLUDED.max_public_zone_count,
     max_players_per_zone = EXCLUDED.max_players_per_zone,
-    is_private_per_player = EXCLUDED.is_private_per_player;
+    supports_cave_placement = EXCLUDED.supports_cave_placement,
+    is_private_per_player = EXCLUDED.is_private_per_player,
+    spiritual_energy = EXCLUDED.spiritual_energy;
+
+INSERT INTO public.map_zone_slots (
+    id,
+    map_template_id,
+    zone_index,
+    spiritual_energy_template_id
+)
+VALUES
+    (2001, 2, 1, 1),
+    (2002, 2, 2, 1),
+    (2003, 2, 3, 1),
+    (2004, 2, 4, 1),
+    (2005, 2, 5, 1),
+    (2006, 2, 6, 2),
+    (2007, 2, 7, 2),
+    (2008, 2, 8, 2),
+    (2009, 2, 9, 2),
+    (2010, 2, 10, 2),
+    (2011, 2, 11, 2),
+    (2012, 2, 12, 2),
+    (2013, 2, 13, 2),
+    (2014, 2, 14, 2),
+    (2015, 2, 15, 3),
+    (2016, 2, 16, 3),
+    (2017, 2, 17, 3),
+    (2018, 2, 18, 3),
+    (2019, 2, 19, 4),
+    (2020, 2, 20, 4)
+ON CONFLICT (id) DO UPDATE
+SET
+    map_template_id = EXCLUDED.map_template_id,
+    zone_index = EXCLUDED.zone_index,
+    spiritual_energy_template_id = EXCLUDED.spiritual_energy_template_id;
 
 INSERT INTO public.map_template_adjacent_maps (
     map_template_id,
@@ -137,4 +240,3 @@ VALUES
 ON CONFLICT (map_template_id, adjacent_map_template_id) DO NOTHING;
 
 COMMIT;
-

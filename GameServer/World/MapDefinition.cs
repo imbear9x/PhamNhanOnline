@@ -8,6 +8,7 @@ public sealed record MapDefinition(MapTemplate Template)
     public string Name => Template.Name;
     public MapType Type => Template.Type;
     public string ClientMapKey => Template.ClientMapKey;
+    public decimal SpiritualEnergyPerMinute => Template.SpiritualEnergyPerMinute;
     public IReadOnlyList<int> AdjacentMapIds => Template.AdjacentMapIds;
     public float Width => Template.Width;
     public float Height => Template.Height;
@@ -15,6 +16,7 @@ public sealed record MapDefinition(MapTemplate Template)
     public float InterestRadius => Template.InterestRadius;
     public int MaxPublicZoneCount => Template.MaxPublicZoneCount;
     public int MaxPlayersPerZone => Template.MaxPlayersPerZone;
+    public bool SupportsCavePlacement => Template.SupportsCavePlacement;
     public Vector2 DefaultSpawnPosition => Template.DefaultSpawnPosition;
     public bool IsPrivatePerPlayer => Template.IsPrivatePerPlayer;
     public int DefaultZoneIndex => Template.DefaultZoneIndex;

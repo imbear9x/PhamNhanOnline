@@ -14,10 +14,9 @@ namespace GameServer.Runtime;
 
 public sealed class CharacterCultivationService
 {
-    private const int CultivationPerHour = 20;
     private const int PotentialPerCultivationPoint = 1;
-
-    private static readonly TimeSpan RewardUnitInterval = TimeSpan.FromMinutes(60d / CultivationPerHour);
+    private const decimal GongPhapCoefficientStub = 1m;
+    private const decimal FormationCoefficientStub = 1m;
     private static readonly TimeSpan SettlementIntervalValue = TimeSpan.FromMinutes(5);
 
     private readonly IServiceScopeFactory _scopeFactory;
@@ -57,7 +56,7 @@ public sealed class CharacterCultivationService
 
         if (!_worldManager.MapManager.TryGetInstance(player.MapId, player.InstanceId, out var instance) ||
             !instance.Definition.IsPrivatePerPlayer ||
-            instance.Definition.MapId != MapCatalog.HomeMapId)
+            instance.Definition.Type != MapType.Home)
         {
             return CultivationActionResult.Failed(MessageCode.CultivationRequiresPrivateHome);
         }
@@ -187,7 +186,14 @@ public sealed class CharacterCultivationService
             return CultivationSnapshotSettlementResult.Unchanged(snapshot);
 
         var realms = await LoadRealmTemplatesAsync(cancellationToken);
-        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realms, DateTime.UtcNow);
+        if (!TryResolveCultivationMapDefinition(snapshot.CurrentState, out var mapDefinition) ||
+            !snapshot.BaseStats.RealmTemplateId.HasValue ||
+            !realms.TryGetValue(snapshot.BaseStats.RealmTemplateId.Value, out var realm))
+        {
+            return CultivationSnapshotSettlementResult.Unchanged(snapshot);
+        }
+
+        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, DateTime.UtcNow);
         if (!grant.HasPersistenceChange)
             return CultivationSnapshotSettlementResult.Unchanged(snapshot);
 
@@ -224,7 +230,14 @@ public sealed class CharacterCultivationService
             if (snapshot.BaseStats is null || snapshot.CurrentState is null)
                 continue;
 
-            var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realms, utcNow);
+            if (!TryResolveCultivationMapDefinition(snapshot.CurrentState, out var mapDefinition) ||
+                !snapshot.BaseStats.RealmTemplateId.HasValue ||
+                !realms.TryGetValue(snapshot.BaseStats.RealmTemplateId.Value, out var realm))
+            {
+                continue;
+            }
+
+            var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, utcNow);
             if (!grant.HasPersistenceChange)
                 continue;
 
@@ -254,7 +267,14 @@ public sealed class CharacterCultivationService
     {
         var snapshot = player.RuntimeState.CaptureSnapshot();
         var realms = await LoadRealmTemplatesAsync(cancellationToken);
-        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realms, utcNow);
+        if (!TryResolveCultivationMapDefinition(snapshot.CurrentState, out var mapDefinition) ||
+            !snapshot.BaseStats.RealmTemplateId.HasValue ||
+            !realms.TryGetValue(snapshot.BaseStats.RealmTemplateId.Value, out var realm))
+        {
+            return OnlineSettlementResult.None;
+        }
+
+        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, utcNow);
         if (!grant.HasPersistenceChange)
             return OnlineSettlementResult.None;
 
@@ -326,10 +346,11 @@ public sealed class CharacterCultivationService
         };
     }
 
-    private static CultivationGrant EvaluateGrant(
+    private CultivationGrant EvaluateGrant(
         CharacterBaseStatsDto baseStats,
         CharacterCurrentStateDto currentState,
-        IReadOnlyDictionary<int, RealmTemplate> realms,
+        RealmTemplate realm,
+        MapDefinition mapDefinition,
         DateTime utcNow)
     {
         if (currentState.CurrentState != CharacterRuntimeStateCodes.Cultivating ||
@@ -339,9 +360,6 @@ public sealed class CharacterCultivationService
             return CultivationGrant.None(baseStats, currentState);
         }
 
-        if (!baseStats.RealmTemplateId.HasValue || !realms.TryGetValue(baseStats.RealmTemplateId.Value, out var realm))
-            return CultivationGrant.None(baseStats, currentState);
-
         var rewardedFrom = currentState.LastCultivationRewardedAtUtc
                            ?? currentState.CultivationStartedAtUtc
                            ?? utcNow;
@@ -350,16 +368,21 @@ public sealed class CharacterCultivationService
 
         var maxCultivation = realm.MaxCultivation ?? long.MaxValue;
         var currentCultivation = baseStats.Cultivation ?? 0;
+        var currentProgress = baseStats.CultivationProgress ?? 0m;
         if (currentCultivation >= maxCultivation)
         {
             if (currentState.LastCultivationRewardedAtUtc.HasValue &&
-                currentState.LastCultivationRewardedAtUtc.Value >= utcNow)
+                currentState.LastCultivationRewardedAtUtc.Value >= utcNow &&
+                currentProgress == 0m)
             {
                 return CultivationGrant.None(baseStats, currentState);
             }
 
             return new CultivationGrant(
-                baseStats,
+                baseStats with
+                {
+                    CultivationProgress = 0m
+                },
                 currentState with
                 {
                     LastCultivationRewardedAtUtc = utcNow,
@@ -375,28 +398,34 @@ public sealed class CharacterCultivationService
         }
 
         var elapsed = utcNow - rewardedFrom;
-        var availableUnits = (long)Math.Floor(elapsed.Ticks / (double)RewardUnitInterval.Ticks);
-        if (availableUnits <= 0)
+        if (elapsed <= TimeSpan.Zero)
             return CultivationGrant.None(baseStats, currentState);
 
+        var spiritualEnergyPerMinute = ResolveSpiritualEnergyPerMinute(currentState, mapDefinition);
+        var rawCultivationGain = CalculateCultivationGain(elapsed, realm, spiritualEnergyPerMinute);
+        if (rawCultivationGain <= 0m)
+            return CultivationGrant.None(baseStats, currentState);
+
+        var accumulatedProgress = currentProgress + rawCultivationGain;
         var remainingToCap = maxCultivation - currentCultivation;
-        var grantedCultivation = Math.Min(availableUnits, remainingToCap);
-        if (grantedCultivation <= 0)
-            return CultivationGrant.None(baseStats, currentState);
-
-        var grantedPotential = (int)Math.Min(int.MaxValue, grantedCultivation * PotentialPerCultivationPoint);
+        var grantedCultivation = Math.Min((long)decimal.Floor(accumulatedProgress), remainingToCap);
         var reachedRealmCap = currentCultivation + grantedCultivation >= maxCultivation;
-        var rewardedTo = reachedRealmCap
-            ? utcNow
-            : rewardedFrom.AddTicks(RewardUnitInterval.Ticks * grantedCultivation);
+        var grantedPotential = grantedCultivation <= 0
+            ? 0
+            : (int)Math.Min(int.MaxValue, grantedCultivation * PotentialPerCultivationPoint);
+        var remainingProgress = accumulatedProgress - grantedCultivation;
+        if (reachedRealmCap)
+            remainingProgress = 0m;
+
         var updatedBaseStats = baseStats with
         {
             Cultivation = currentCultivation + grantedCultivation,
-            UnallocatedPotential = checked((baseStats.UnallocatedPotential ?? 0) + grantedPotential)
+            UnallocatedPotential = checked((baseStats.UnallocatedPotential ?? 0) + grantedPotential),
+            CultivationProgress = remainingProgress
         };
         var updatedCurrentState = currentState with
         {
-            LastCultivationRewardedAtUtc = rewardedTo,
+            LastCultivationRewardedAtUtc = utcNow,
             LastSavedAt = utcNow
         };
 
@@ -406,10 +435,49 @@ public sealed class CharacterCultivationService
             grantedCultivation,
             grantedPotential,
             rewardedFrom,
-            rewardedTo,
+            utcNow,
             true,
-            true,
+            grantedCultivation > 0,
             reachedRealmCap);
+    }
+
+    private decimal CalculateCultivationGain(TimeSpan elapsed, RealmTemplate realm, decimal spiritualEnergyPerMinute)
+    {
+        var elapsedMinutes = elapsed.Ticks / (decimal)TimeSpan.TicksPerMinute;
+        if (elapsedMinutes <= 0m)
+            return 0m;
+
+        return elapsedMinutes
+               * spiritualEnergyPerMinute
+               * (realm.AbsorptionMultiplier ?? 1m)
+               * GongPhapCoefficientStub
+               * FormationCoefficientStub;
+    }
+
+    private decimal ResolveSpiritualEnergyPerMinute(CharacterCurrentStateDto currentState, MapDefinition mapDefinition)
+    {
+        if (!currentState.CurrentMapId.HasValue)
+            return mapDefinition.SpiritualEnergyPerMinute;
+
+        if (currentState.CurrentZoneIndex > 0 &&
+            _mapCatalog.TryGetZoneSlot(currentState.CurrentMapId.Value, currentState.CurrentZoneIndex, out var zoneSlot))
+        {
+            return zoneSlot.SpiritualEnergyPerMinute;
+        }
+
+        return mapDefinition.SpiritualEnergyPerMinute;
+    }
+
+    private bool TryResolveCultivationMapDefinition(CharacterCurrentStateDto currentState, out MapDefinition definition)
+    {
+        definition = null!;
+        if (!currentState.CurrentMapId.HasValue)
+            return false;
+
+        if (!_mapCatalog.TryGet(currentState.CurrentMapId.Value, out definition))
+            return false;
+
+        return definition.Type == MapType.Home;
     }
 
     private async Task<Dictionary<int, RealmTemplate>> LoadRealmTemplatesAsync(CancellationToken cancellationToken)

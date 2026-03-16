@@ -62,7 +62,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
 
             session.SelectedCharacterId = data.Character.CharacterId;
             var player = _runtimeService.AttachPlayerSession(session, data);
-            _interestService.EnsurePlayerInWorld(player);
+            _interestService.EnsurePlayerInWorld(player, requestedZoneIndex: null, autoSelectPublicZone: true);
             if (isLifespanExpired)
             {
                 player.SetCharacterActionsRestricted(true);

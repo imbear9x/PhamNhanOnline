@@ -33,6 +33,18 @@ public static class PacketRegistry
             case CultivationRewardsGrantedPacket:
                 id = 36;
                 return true;
+            case GetMapZonesPacket:
+                id = 37;
+                return true;
+            case GetMapZonesResultPacket:
+                id = 38;
+                return true;
+            case SwitchMapZonePacket:
+                id = 39;
+                return true;
+            case SwitchMapZoneResultPacket:
+                id = 40;
+                return true;
         }
 
         return PacketGeneratedRegistry.TryGetId(packet, out id);
@@ -60,6 +72,14 @@ public static class PacketRegistry
                 return new AllocatePotentialResultPacket();
             case 36:
                 return new CultivationRewardsGrantedPacket();
+            case 37:
+                return new GetMapZonesPacket();
+            case 38:
+                return new GetMapZonesResultPacket();
+            case 39:
+                return new SwitchMapZonePacket();
+            case 40:
+                return new SwitchMapZoneResultPacket();
         }
 
         return PacketGeneratedRegistry.Create(id);

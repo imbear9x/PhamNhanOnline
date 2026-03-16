@@ -22,12 +22,15 @@ public sealed class WorldInterestService
         _worldManager.PlayerRemoving += HandlePlayerRemoving;
     }
 
-    public MapDefinition EnsurePlayerInWorld(PlayerSession player)
+    public MapDefinition EnsurePlayerInWorld(
+        PlayerSession player,
+        int? requestedZoneIndex = null,
+        bool autoSelectPublicZone = false)
     {
         var definition = _worldManager.MapManager.ResolveDefinitionOrDefault(player.MapId == 0 ? null : player.MapId);
         var targetPosition = ResolveEntryPosition(player, definition);
 
-        var instance = _worldManager.MapManager.JoinInstance(definition, player);
+        var instance = _worldManager.MapManager.JoinInstance(definition, player, requestedZoneIndex, autoSelectPublicZone);
 
         if (NeedsRuntimeStateSync(player, definition, instance.ZoneIndex, targetPosition))
         {
@@ -76,7 +79,7 @@ public sealed class WorldInterestService
             player.InstanceId = 0;
         }
 
-        EnsurePlayerInWorld(player);
+        EnsurePlayerInWorld(player, currentState.CurrentZoneIndex, autoSelectPublicZone: false);
         RefreshVisibility(player);
         PublishMoveToExistingObservers(player, currentState, previousVisibleIds);
     }

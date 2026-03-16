@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Core.Logging;
@@ -11,11 +12,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private KeyCode travelToAdjacentMapKey = KeyCode.T;
         [SerializeField] private KeyCode cultivationToggleKey = KeyCode.U;
+        [SerializeField] private KeyCode joinZoneKey = KeyCode.I;
+        [SerializeField] private TMP_InputField zoneInputField;
         [SerializeField] private TMP_Text currentStateText;
         [SerializeField] private TMP_Text cultivationRewardText;
 
         private bool travelInFlight;
         private bool cultivationToggleInFlight;
+        private bool zoneJoinInFlight;
+        private bool rewardTextPinnedByDebugMessage;
         private int lastStateCode = int.MinValue;
         private bool hasAppliedRewardSnapshot;
         private long lastRewardCultivation = long.MinValue;
@@ -54,6 +59,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                     cultivationToggleKey,
                     IsCultivating() ? "dung tu luyen" : "bat dau tu luyen"));
                 _ = ToggleCultivationAsync();
+                return;
+            }
+
+            if (Input.GetKeyDown(joinZoneKey) && !zoneJoinInFlight && !IsCultivating())
+            {
+                _ = JoinZoneAsync();
                 return;
             }
 
@@ -138,6 +149,56 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
         }
 
+        private async System.Threading.Tasks.Task JoinZoneAsync()
+        {
+            var currentMapId = ClientRuntime.World.CurrentMapId;
+            if (!currentMapId.HasValue)
+            {
+                ShowCultivationDebugMessage("Chua vao map nen khong the doi khu.");
+                return;
+            }
+
+            int requestedZoneIndex;
+            if (!TryGetRequestedZoneIndex(out requestedZoneIndex))
+                return;
+
+            zoneJoinInFlight = true;
+            try
+            {
+                ShowCultivationDebugMessage(string.Format("Dang doi sang khu {0}...", requestedZoneIndex));
+                var switchResult = await ClientRuntime.WorldTravelService.SwitchMapZoneAsync(currentMapId.Value, requestedZoneIndex);
+                if (!switchResult.Success)
+                {
+                    ShowCultivationActionResult("Doi khu that bai", switchResult.Code, switchResult.Message);
+                    return;
+                }
+
+                RefreshCurrentStateText(force: true);
+                if (switchResult.Zone.HasValue)
+                {
+                    var zone = switchResult.Zone.Value;
+                    ShowCultivationDebugMessage(string.Format(
+                        "Da vao khu {0}. Linh khi: {1}/phut ({2}).",
+                        zone.ZoneIndex,
+                        FormatSpiritualEnergy(zone.SpiritualEnergyPerMinute),
+                        string.IsNullOrWhiteSpace(zone.SpiritualEnergyCode) ? "unknown" : zone.SpiritualEnergyCode));
+                }
+                else
+                {
+                    ShowCultivationDebugMessage(string.Format("Da vao khu {0}.", requestedZoneIndex));
+                }
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Warn($"WorldTravelDebugController join zone exception: {ex.Message}");
+                ShowCultivationDebugMessage($"Loi doi khu: {ex.Message}");
+            }
+            finally
+            {
+                zoneJoinInFlight = false;
+            }
+        }
+
         private bool IsCultivating()
         {
             var currentState = ClientRuntime.Character.CurrentState;
@@ -158,7 +219,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                     ? "chua vao map"
                     : ClientRuntime.World.CurrentMapName;
                 var mapScope = ClientRuntime.World.CurrentMapIsPrivatePerPlayer ? "private" : "public";
-                currentStateText.text = $"Trang thai: {GetStateLabel(stateCode)} | Map: {mapName} ({mapScope})";
+                var zoneSuffix = ClientRuntime.World.CurrentZoneIndex.HasValue
+                    ? $" | Khu: {ClientRuntime.World.CurrentZoneIndex.Value}"
+                    : string.Empty;
+                currentStateText.text = $"Trang thai: {GetStateLabel(stateCode)} | Map: {mapName} ({mapScope}){zoneSuffix}";
             }
         }
 
@@ -167,7 +231,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var lastReward = ClientRuntime.Character.LastCultivationReward;
             if (!lastReward.HasValue)
             {
-                if (!hasAppliedRewardSnapshot)
+                if (!hasAppliedRewardSnapshot && !rewardTextPinnedByDebugMessage)
                     ApplyEmptyRewardStateText();
                 return;
             }
@@ -188,6 +252,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             cultivationRewardText.text =
                 $"Tu vi nhan them ({sourceLabel}): +{notice.CultivationGranted} tu vi, +{notice.UnallocatedPotentialGranted} tiem nang{capSuffix}";
             lastCultivationDebugMessage = cultivationRewardText.text;
+            rewardTextPinnedByDebugMessage = false;
             hasAppliedRewardSnapshot = true;
             lastRewardCultivation = notice.CultivationGranted;
             lastRewardPotential = notice.UnallocatedPotentialGranted;
@@ -274,8 +339,33 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             lastCultivationDebugMessage = message;
+            rewardTextPinnedByDebugMessage = true;
             if (cultivationRewardText != null)
                 cultivationRewardText.text = message;
+        }
+
+        private bool TryGetRequestedZoneIndex(out int zoneIndex)
+        {
+            zoneIndex = 0;
+            if (zoneInputField == null)
+            {
+                ShowCultivationDebugMessage("Chua gan o nhap khu trong inspector.");
+                return false;
+            }
+
+            var rawValue = zoneInputField.text == null ? string.Empty : zoneInputField.text.Trim();
+            if (string.IsNullOrEmpty(rawValue) || !int.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out zoneIndex) || zoneIndex <= 0)
+            {
+                ShowCultivationDebugMessage("Nhap so khu hop le roi nhan phim I de doi khu.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private static string FormatSpiritualEnergy(decimal value)
+        {
+            return value.ToString("0.##", CultureInfo.InvariantCulture);
         }
 
         private static string GetStateLabel(int stateCode)

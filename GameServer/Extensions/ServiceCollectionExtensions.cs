@@ -37,6 +37,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<GameTimeStateRepository>();
         services.AddScoped<MapTemplateRepository>();
         services.AddScoped<MapTemplateAdjacentMapRepository>();
+        services.AddScoped<MapZoneSlotRepository>();
+        services.AddScoped<SpiritualEnergyTemplateRepository>();
         services.AddScoped<RealmTemplateRepository>();
         services.AddScoped<AccountCredentialRepository>();
 
@@ -95,6 +97,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<GetCharacterDataPacket>, GetCharacterDataHandler>();
         services.AddScoped<IPacketHandler<EnterWorldPacket>, EnterWorldHandler>();
         services.AddScoped<IPacketHandler<TravelToMapPacket>, TravelToMapHandler>();
+        services.AddScoped<IPacketHandler<GetMapZonesPacket>, GetMapZonesHandler>();
+        services.AddScoped<IPacketHandler<SwitchMapZonePacket>, SwitchMapZoneHandler>();
         services.AddScoped<IPacketHandler<CharacterPositionSyncPacket>, CharacterPositionSyncHandler>();
         services.AddScoped<IPacketHandler<StartCultivationPacket>, StartCultivationHandler>();
         services.AddScoped<IPacketHandler<StopCultivationPacket>, StopCultivationHandler>();

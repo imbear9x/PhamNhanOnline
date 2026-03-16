@@ -18,6 +18,8 @@ public sealed class MapTemplateEntity
     [Column("default_spawn_y"                      )] public float    DefaultSpawnY     { get; set; }
     [Column("max_public_zone_count"                )] public int      MaxPublicZoneCount { get; set; }
     [Column("max_players_per_zone"                 )] public int      MaxPlayersPerZone { get; set; }
+    [Column("supports_cave_placement"              )] public bool     SupportsCavePlacement { get; set; }
     [Column("is_private_per_player"                )] public bool     IsPrivatePerPlayer { get; set; }
+    [Column("spiritual_energy"                     )] public decimal  SpiritualEnergy { get; set; }
     [Column("created_at"                           )] public DateTime? CreatedAt         { get; set; }
 }

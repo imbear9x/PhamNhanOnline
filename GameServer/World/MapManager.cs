@@ -4,6 +4,8 @@ namespace GameServer.World;
 
 public sealed class MapManager
 {
+    private static readonly TimeSpan EmptyPublicInstanceLifetime = TimeSpan.FromMinutes(2);
+
     private readonly MapCatalog _catalog;
     private readonly ConcurrentDictionary<int, ConcurrentDictionary<int, MapInstance>> _maps = new();
     private int _nextInstanceId;
@@ -15,12 +17,16 @@ public sealed class MapManager
 
     public IReadOnlyDictionary<int, ConcurrentDictionary<int, MapInstance>> Maps => _maps;
 
-    public MapInstance JoinInstance(MapDefinition definition, PlayerSession player)
+    public MapInstance JoinInstance(
+        MapDefinition definition,
+        PlayerSession player,
+        int? requestedZoneIndex = null,
+        bool autoSelectPublicZone = false)
     {
         if (definition.IsPrivatePerPlayer)
             return JoinPrivateInstance(definition, player);
 
-        return JoinPublicInstance(definition, player);
+        return JoinPublicInstance(definition, player, requestedZoneIndex, autoSelectPublicZone);
     }
 
     public void RemovePlayer(PlayerSession player)
@@ -37,7 +43,7 @@ public sealed class MapManager
             return;
 
         instance.RemovePlayer(player);
-        if (instance.PlayerCount == 0)
+        if (instance.PlayerCount == 0 && instance.IsPrivate)
         {
             instances.TryRemove(instanceId, out _);
             if (instances.IsEmpty)
@@ -72,6 +78,55 @@ public sealed class MapManager
         return result;
     }
 
+    public int ResolveAutoJoinZone(MapDefinition definition)
+    {
+        if (definition.IsPrivatePerPlayer)
+            return 0;
+
+        var populated = FindPopulatedPublicInstance(definition);
+        if (populated is not null)
+            return populated.ZoneIndex;
+
+        return definition.DefaultZoneIndex;
+    }
+
+    public IReadOnlyDictionary<int, int> GetActivePlayerCountsByZone(int mapId)
+    {
+        var result = new Dictionary<int, int>();
+        if (!_maps.TryGetValue(mapId, out var instances))
+            return result;
+
+        foreach (var instance in instances.Values)
+        {
+            if (instance.IsPrivate)
+                continue;
+
+            result[instance.ZoneIndex] = instance.PlayerCount;
+        }
+
+        return result;
+    }
+
+    public void CleanupExpiredEmptyPublicInstances(DateTime utcNow)
+    {
+        foreach (var (mapId, instances) in _maps)
+        {
+            foreach (var (instanceId, instance) in instances)
+            {
+                if (instance.IsPrivate || instance.PlayerCount > 0 || !instance.EmptySinceUtc.HasValue)
+                    continue;
+
+                if (utcNow - instance.EmptySinceUtc.Value < EmptyPublicInstanceLifetime)
+                    continue;
+
+                instances.TryRemove(instanceId, out _);
+            }
+
+            if (instances.IsEmpty)
+                _maps.TryRemove(mapId, out _);
+        }
+    }
+
     private MapInstance JoinPrivateInstance(MapDefinition definition, PlayerSession player)
     {
         var instances = _maps.GetOrAdd(definition.MapId, _ => new ConcurrentDictionary<int, MapInstance>());
@@ -93,40 +148,54 @@ public sealed class MapManager
         return created;
     }
 
-    private MapInstance JoinPublicInstance(MapDefinition definition, PlayerSession player)
+    private MapInstance JoinPublicInstance(
+        MapDefinition definition,
+        PlayerSession player,
+        int? requestedZoneIndex,
+        bool autoSelectPublicZone)
     {
-        if (player.ZoneIndex > 0 && TryGetPublicInstanceByZone(definition.MapId, player.ZoneIndex, out var preferred))
+        var targetZoneIndex = requestedZoneIndex;
+        if (!targetZoneIndex.HasValue && autoSelectPublicZone)
+            targetZoneIndex = ResolveAutoJoinZone(definition);
+        if (!targetZoneIndex.HasValue && player.ZoneIndex > 0)
+            targetZoneIndex = player.ZoneIndex;
+        if (!targetZoneIndex.HasValue || targetZoneIndex.Value <= 0)
+            targetZoneIndex = definition.DefaultZoneIndex;
+
+        if (!IsValidPublicZone(definition, targetZoneIndex.Value))
+            throw new InvalidOperationException($"Zone {targetZoneIndex.Value} is invalid for map {definition.MapId}.");
+
+        if (TryGetPublicInstanceByZone(definition.MapId, targetZoneIndex.Value, out var preferred))
         {
             if (preferred.AddPlayer(player))
                 return preferred;
         }
 
-        var instance = FindAvailablePublicInstance(definition);
-        if (instance is null)
-            instance = CreateNextPublicInstance(definition);
+        var instance = CreatePublicInstance(definition, targetZoneIndex.Value);
 
         if (!instance.AddPlayer(player))
         {
-            instance = FindAvailablePublicInstance(definition) ?? CreateNextPublicInstance(definition);
+            instance = TryGetPublicInstanceByZone(definition.MapId, targetZoneIndex.Value, out preferred)
+                ? preferred
+                : CreatePublicInstance(definition, targetZoneIndex.Value);
             if (!instance.AddPlayer(player))
-                throw new InvalidOperationException("Unable to join a public map zone.");
+                throw new InvalidOperationException($"Unable to join public map zone {targetZoneIndex.Value}.");
         }
 
         return instance;
     }
 
-    private MapInstance? FindAvailablePublicInstance(MapDefinition definition)
+    private MapInstance? FindPopulatedPublicInstance(MapDefinition definition)
     {
         if (!_maps.TryGetValue(definition.MapId, out var instances))
             return null;
 
-        foreach (var instance in instances.Values.OrderBy(x => x.ZoneIndex))
+        foreach (var instance in instances.Values
+                     .Where(x => !x.IsPrivate && x.PlayerCount > 0 && x.PlayerCount < definition.MaxPlayersPerZone)
+                     .OrderByDescending(x => x.PlayerCount)
+                     .ThenBy(x => x.ZoneIndex))
         {
-            if (instance.IsPrivate)
-                continue;
-
-            if (instance.PlayerCount < definition.MaxPlayersPerZone)
-                return instance;
+            return instance;
         }
 
         return null;
@@ -150,38 +219,28 @@ public sealed class MapManager
         return false;
     }
 
-    private MapInstance CreateNextPublicInstance(MapDefinition definition)
+    private MapInstance CreatePublicInstance(MapDefinition definition, int zoneIndex)
     {
         if (definition.MaxPublicZoneCount <= 0)
             throw new InvalidOperationException($"Map {definition.MapId} does not allow public zones.");
 
-        var usedZones = new HashSet<int>();
-        if (_maps.TryGetValue(definition.MapId, out var existing))
-        {
-            foreach (var instance in existing.Values)
-            {
-                if (!instance.IsPrivate)
-                    usedZones.Add(instance.ZoneIndex);
-            }
-        }
+        if (!IsValidPublicZone(definition, zoneIndex))
+            throw new InvalidOperationException($"Zone {zoneIndex} is invalid for map {definition.MapId}.");
 
-        for (var zoneIndex = 1; zoneIndex <= definition.MaxPublicZoneCount; zoneIndex++)
-        {
-            if (usedZones.Contains(zoneIndex))
-                continue;
-
-            return CreateInstance(definition, zoneIndex, ownerCharacterId: null);
-        }
-
-        throw new InvalidOperationException($"No public zone slot is available for map {definition.MapId}.");
+        return CreateInstance(definition, zoneIndex, ownerCharacterId: null, useZoneIndexAsInstanceId: true);
     }
 
-    private MapInstance CreateInstance(MapDefinition definition, int zoneIndex, Guid? ownerCharacterId)
+    private MapInstance CreateInstance(MapDefinition definition, int zoneIndex, Guid? ownerCharacterId, bool useZoneIndexAsInstanceId = false)
     {
-        var instanceId = Interlocked.Increment(ref _nextInstanceId);
+        var instanceId = useZoneIndexAsInstanceId ? zoneIndex : Interlocked.Increment(ref _nextInstanceId);
         var instance = new MapInstance(instanceId, zoneIndex, definition, ownerCharacterId);
         var instances = _maps.GetOrAdd(definition.MapId, _ => new ConcurrentDictionary<int, MapInstance>());
         instances[instanceId] = instance;
         return instance;
+    }
+
+    private static bool IsValidPublicZone(MapDefinition definition, int zoneIndex)
+    {
+        return zoneIndex >= 1 && zoneIndex <= definition.MaxPublicZoneCount;
     }
 }

@@ -268,6 +268,7 @@ public sealed class CharacterService
         existing.BaseFortune = stats.BaseFortune;
         existing.BasePotential = stats.BasePotential;
         existing.UnallocatedPotential = stats.UnallocatedPotential;
+        existing.CultivationProgress = stats.CultivationProgress;
 
         await _baseStats.UpdateAsync(existing, cancellationToken);
         var realmLifespan = await GetRealmLifespanAsync(existing.RealmId, cancellationToken);
@@ -403,7 +404,8 @@ public sealed class CharacterService
             LifespanBonus = DefaultLifespanBonus,
             BaseFortune = DefaultBaseFortune,
             BasePotential = DefaultBasePotential,
-            UnallocatedPotential = DefaultUnallocatedPotential
+            UnallocatedPotential = DefaultUnallocatedPotential,
+            CultivationProgress = 0m
         };
     }
 

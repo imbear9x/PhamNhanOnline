@@ -56,5 +56,8 @@ public enum MessageCode : int
     CharacterCannotMoveWhileCultivating = 3018,
 
     MapIdInvalid = 4000,
-    MapTravelNotAllowed = 4001
+    MapTravelNotAllowed = 4001,
+    MapZoneIndexInvalid = 4002,
+    MapZoneSelectionNotSupported = 4003,
+    MapZoneFull = 4004
 }
