@@ -43,5 +43,8 @@ public enum MessageCode : int
     CharacterModelInvalid = 3005,
     CharacterServerInvalid = 3006,
     CharacterLifespanExpired = 3007,
-    CharacterActionsRestricted = 3008
+    CharacterActionsRestricted = 3008,
+
+    MapIdInvalid = 4000,
+    MapTravelNotAllowed = 4001
 }

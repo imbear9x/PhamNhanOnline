@@ -25,6 +25,7 @@ namespace PhamNhanOnline.Client.Core.Application
         public static ClientCharacterService CharacterService { get; private set; }
         public static ClientWorldState World { get; private set; }
         public static ClientWorldService WorldService { get; private set; }
+        public static ClientWorldTravelService WorldTravelService { get; private set; }
         public static ClientLoginFlowService LoginFlow { get; private set; }
         public static UiScreenService UiScreens { get; private set; }
 
@@ -49,6 +50,7 @@ namespace PhamNhanOnline.Client.Core.Application
             AuthService = new ClientAuthService(Connection, Auth);
             CharacterService = new ClientCharacterService(Connection, Character);
             WorldService = new ClientWorldService(Connection, World, Character);
+            WorldTravelService = new ClientWorldTravelService(Connection);
             LoginFlow = new ClientLoginFlowService(Connection, AuthService, CharacterService, SceneFlow, settings);
 
             IsInitialized = true;
@@ -56,3 +58,5 @@ namespace PhamNhanOnline.Client.Core.Application
         }
     }
 }
+
+

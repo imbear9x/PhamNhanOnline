@@ -130,6 +130,19 @@ public sealed class MapInstance
         }
     }
 
+    public IReadOnlyCollection<PlayerSession> GetPlayersSnapshot(Guid? excludePlayerId = null)
+    {
+        lock (_sync)
+        {
+            if (!excludePlayerId.HasValue)
+                return Players.ToArray();
+
+            return Players
+                .Where(player => player.PlayerId != excludePlayerId.Value)
+                .ToArray();
+        }
+    }
+
     public MonsterEntity SpawnMonster(int monsterTemplateId, Vector2 position)
     {
         lock (_sync)

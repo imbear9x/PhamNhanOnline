@@ -767,6 +767,9 @@ GameObject:
   - component: {fileID: 1872203332}
   - component: {fileID: 1872203333}
   - component: {fileID: 1872203334}
+  - component: {fileID: 1872203335}
+  - component: {fileID: 1872203336}
+  - component: {fileID: 1872203337}
   m_Layer: 0
   m_Name: WorldRoot
   m_TagString: Untagged
@@ -836,6 +839,51 @@ MonoBehaviour:
   localPlayerRoot: {fileID: 1985013951}
   worldMapPresenter: {fileID: 1872203333}
   localCharacterActionConfig: {fileID: 11400000, guid: 980196c983704fa4ae3861cbf5372c2c, type: 2}
+  authoritativeSnapDistance: 1.5
+--- !u!114 &1872203335
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872203330}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd63b23ed234b5d47ac56ecc5163a7a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerPrefab: {fileID: 6915535442127511761, guid: 809faba7c36d42944a20489cf145e686, type: 3}
+  remotePlayersRoot: {fileID: 2070082916}
+  worldMapPresenter: {fileID: 1872203333}
+  remoteMoveSmoothing: 8
+--- !u!114 &1872203336
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872203330}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c42449d30d013ab4f835fe87e5988cbc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  travelToAdjacentMapKey: 116
+--- !u!114 &1872203337
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872203330}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d98004b7e8002b4682b8916c625d4a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  localPlayerPresenter: {fileID: 1872203334}
+  worldMapPresenter: {fileID: 1872203333}
+  syncConfig: {fileID: 11400000, guid: ef41d0ff1e4543a49b52da503a8f667c, type: 2}
 --- !u!1 &1985013950
 GameObject:
   m_ObjectHideFlags: 0

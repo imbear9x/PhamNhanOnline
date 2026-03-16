@@ -6,6 +6,8 @@ namespace GameServer.Diagnostics;
 public sealed class ServerMetricsService
 {
     private readonly ConcurrentDictionary<int, int> _sessionQueueDepths = new();
+    private readonly ConcurrentDictionary<string, PacketTrafficTotals> _inboundPacketTypes = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, PacketTrafficTotals> _outboundPacketTypes = new(StringComparer.Ordinal);
 
     private long _inboundPacketsEnqueued;
     private long _inboundPacketsDropped;
@@ -14,6 +16,10 @@ public sealed class ServerMetricsService
     private long _inboundPacketProcessingTicks;
     private long _maxInboundPacketProcessingTicks;
     private long _maxObservedQueueDepth;
+    private long _totalInboundPacketBytes;
+
+    private long _outboundPacketsSent;
+    private long _totalOutboundPacketBytes;
 
     private long _worldTicks;
     private long _worldTickOverruns;
@@ -28,18 +34,21 @@ public sealed class ServerMetricsService
     private long _maintenanceSaveRuns;
     private long _maintenanceRefreshRuns;
 
-    public void RecordInboundPacketEnqueued(int connectionId, int queueDepth)
+    public void RecordInboundPacketEnqueued(int connectionId, int queueDepth, string packetType, int packetBytes)
     {
         Interlocked.Increment(ref _inboundPacketsEnqueued);
+        Interlocked.Add(ref _totalInboundPacketBytes, packetBytes);
         _sessionQueueDepths[connectionId] = queueDepth;
         UpdateMax(ref _maxObservedQueueDepth, queueDepth);
+        GetPacketTotals(_inboundPacketTypes, packetType).Add(packetBytes);
     }
 
-    public void RecordInboundPacketDropped(int connectionId, int queueDepth)
+    public void RecordInboundPacketDropped(int connectionId, int queueDepth, string packetType, int packetBytes)
     {
         Interlocked.Increment(ref _inboundPacketsDropped);
         _sessionQueueDepths[connectionId] = queueDepth;
         UpdateMax(ref _maxObservedQueueDepth, queueDepth);
+        GetPacketTotals(_inboundPacketTypes, $"{packetType}#Dropped").Add(packetBytes);
     }
 
     public void RecordInboundPacketProcessed(int connectionId, TimeSpan duration, int queueDepth)
@@ -54,6 +63,13 @@ public sealed class ServerMetricsService
     public void RecordInboundPacketProcessingException()
     {
         Interlocked.Increment(ref _inboundPacketProcessingExceptions);
+    }
+
+    public void RecordOutboundPacketSent(string packetType, int packetBytes)
+    {
+        Interlocked.Increment(ref _outboundPacketsSent);
+        Interlocked.Add(ref _totalOutboundPacketBytes, packetBytes);
+        GetPacketTotals(_outboundPacketTypes, packetType).Add(packetBytes);
     }
 
     public void RemoveSession(int connectionId)
@@ -91,9 +107,7 @@ public sealed class ServerMetricsService
         var activeSessions = _sessionQueueDepths.Count;
         var totalQueuedPackets = 0L;
         foreach (var depth in _sessionQueueDepths.Values)
-        {
             totalQueuedPackets += depth;
-        }
 
         return new ServerMetricsSnapshot(
             InboundPacketsEnqueued: Interlocked.Read(ref _inboundPacketsEnqueued),
@@ -107,6 +121,11 @@ public sealed class ServerMetricsService
             ActiveInboundSessions: activeSessions,
             TotalQueuedInboundPackets: totalQueuedPackets,
             MaxObservedQueueDepth: Interlocked.Read(ref _maxObservedQueueDepth),
+            TotalInboundPacketBytes: Interlocked.Read(ref _totalInboundPacketBytes),
+            OutboundPacketsSent: Interlocked.Read(ref _outboundPacketsSent),
+            TotalOutboundPacketBytes: Interlocked.Read(ref _totalOutboundPacketBytes),
+            TopInboundPacketTypes: CaptureTopPacketTypes(_inboundPacketTypes),
+            TopOutboundPacketTypes: CaptureTopPacketTypes(_outboundPacketTypes),
             WorldTicks: Interlocked.Read(ref _worldTicks),
             WorldTickOverruns: Interlocked.Read(ref _worldTickOverruns),
             AverageWorldTickMs: ToAverageMilliseconds(
@@ -123,6 +142,24 @@ public sealed class ServerMetricsService
             MaintenanceSaveRuns: Interlocked.Read(ref _maintenanceSaveRuns),
             MaintenanceRefreshRuns: Interlocked.Read(ref _maintenanceRefreshRuns),
             OnlinePlayers: onlinePlayers);
+    }
+
+    private static PacketTrafficTotals GetPacketTotals(
+        ConcurrentDictionary<string, PacketTrafficTotals> source,
+        string packetType)
+    {
+        return source.GetOrAdd(packetType, _ => new PacketTrafficTotals());
+    }
+
+    private static IReadOnlyList<PacketTypeMetricsSnapshot> CaptureTopPacketTypes(
+        ConcurrentDictionary<string, PacketTrafficTotals> source)
+    {
+        return source
+            .Select(static kvp => kvp.Value.Capture(kvp.Key))
+            .OrderByDescending(static snapshot => snapshot.Bytes)
+            .ThenByDescending(static snapshot => snapshot.Count)
+            .Take(5)
+            .ToArray();
     }
 
     private static void UpdateMax(ref long target, long candidate)
@@ -146,6 +183,26 @@ public sealed class ServerMetricsService
     }
 
     private static double ToMilliseconds(long ticks) => TimeSpan.FromTicks(ticks).TotalMilliseconds;
+
+    private sealed class PacketTrafficTotals
+    {
+        private long _count;
+        private long _bytes;
+
+        public void Add(int packetBytes)
+        {
+            Interlocked.Increment(ref _count);
+            Interlocked.Add(ref _bytes, packetBytes);
+        }
+
+        public PacketTypeMetricsSnapshot Capture(string packetType)
+        {
+            return new PacketTypeMetricsSnapshot(
+                packetType,
+                Interlocked.Read(ref _count),
+                Interlocked.Read(ref _bytes));
+        }
+    }
 }
 
 public sealed record ServerMetricsSnapshot(
@@ -158,6 +215,11 @@ public sealed record ServerMetricsSnapshot(
     int ActiveInboundSessions,
     long TotalQueuedInboundPackets,
     long MaxObservedQueueDepth,
+    long TotalInboundPacketBytes,
+    long OutboundPacketsSent,
+    long TotalOutboundPacketBytes,
+    IReadOnlyList<PacketTypeMetricsSnapshot> TopInboundPacketTypes,
+    IReadOnlyList<PacketTypeMetricsSnapshot> TopOutboundPacketTypes,
     long WorldTicks,
     long WorldTickOverruns,
     double AverageWorldTickMs,
@@ -170,3 +232,5 @@ public sealed record ServerMetricsSnapshot(
     long MaintenanceSaveRuns,
     long MaintenanceRefreshRuns,
     int OnlinePlayers);
+
+public sealed record PacketTypeMetricsSnapshot(string PacketType, long Count, long Bytes);

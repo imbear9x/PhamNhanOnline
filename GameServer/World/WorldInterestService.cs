@@ -139,7 +139,7 @@ public sealed class WorldInterestService
             return;
 
         var nearbyPlayers = instance
-            .GetNearbyPlayers(subject.Position, instance.Definition.InterestRadius, subject.PlayerId)
+            .GetPlayersSnapshot(subject.PlayerId)
             .Where(player => player.IsConnected)
             .ToArray();
 

@@ -1,0 +1,240 @@
+using GameShared.Models;
+using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.Features.Character.Presentation;
+using UnityEngine;
+
+namespace PhamNhanOnline.Client.Features.World.Presentation
+{
+    [DisallowMultipleComponent]
+    public sealed class RemoteCharacterPresenter : MonoBehaviour
+    {
+        private const string MoveSpeedParameterName = "MoveSpeed";
+
+        [SerializeField] private PlayerView playerView;
+        [SerializeField] private Transform visualRoot;
+        [SerializeField] private Animator animator;
+        [SerializeField] private bool visualFacesLeftByDefault = true;
+        [SerializeField] private float moveSmoothing = 14f;
+        [SerializeField] private float animationMoveThreshold = 0.02f;
+        [SerializeField] private float animationHoldDuration = 0.12f;
+
+        private Vector3 targetPosition;
+        private bool hasTargetPosition;
+        private float visualDefaultScaleX = 1f;
+        private bool facingLeft = true;
+        private bool hasMoveSpeedParameter;
+        private int moveSpeedParameterHash;
+        private bool warnedPositionMapping;
+        private float moveAnimationTimer;
+
+        public void Initialize(float smoothing)
+        {
+            moveSmoothing = Mathf.Max(0.01f, smoothing);
+            AutoWireReferences();
+            DisableLocalOnlyComponents();
+            CacheAnimatorParameters();
+
+            if (visualRoot != null)
+                visualDefaultScaleX = visualRoot.localScale.x;
+
+            facingLeft = visualFacesLeftByDefault;
+            ApplyFacing();
+        }
+
+        public void ApplySnapshot(ObservedCharacterModel observedCharacter, WorldMapPresenter worldMapPresenter, bool snap)
+        {
+            AutoWireReferences();
+
+            Vector2 worldPosition;
+            var serverPosition = new Vector2(
+                observedCharacter.CurrentState.CurrentPosX,
+                observedCharacter.CurrentState.CurrentPosY);
+
+            if (worldMapPresenter != null && worldMapPresenter.TryMapServerPositionToWorld(serverPosition, out worldPosition))
+            {
+                SetTargetPosition(worldPosition, snap);
+                warnedPositionMapping = false;
+            }
+            else
+            {
+                if (!warnedPositionMapping)
+                {
+                    ClientLog.Warn($"RemoteCharacterPresenter on {name} could not map server position into Unity world space. Falling back to raw coordinates.");
+                    warnedPositionMapping = true;
+                }
+
+                SetTargetPosition(serverPosition, snap);
+            }
+        }
+
+        private void Awake()
+        {
+            AutoWireReferences();
+            DisableLocalOnlyComponents();
+            CacheAnimatorParameters();
+
+            if (visualRoot != null)
+                visualDefaultScaleX = visualRoot.localScale.x;
+
+            facingLeft = visualFacesLeftByDefault;
+            ApplyFacing();
+        }
+
+        private void Update()
+        {
+            if (!hasTargetPosition)
+                return;
+
+            var currentPosition = transform.position;
+            var nextPosition = Vector3.MoveTowards(
+                currentPosition,
+                targetPosition,
+                moveSmoothing * Time.deltaTime);
+
+            transform.position = nextPosition;
+            UpdateFacingAndAnimation(currentPosition, nextPosition);
+        }
+
+        private void SetTargetPosition(Vector2 worldPosition, bool snap)
+        {
+            var newTargetPosition = new Vector3(worldPosition.x, worldPosition.y, transform.position.z);
+            var movementDelta = hasTargetPosition
+                ? newTargetPosition - targetPosition
+                : newTargetPosition - transform.position;
+
+            if (movementDelta.x > animationMoveThreshold)
+                facingLeft = false;
+            else if (movementDelta.x < -animationMoveThreshold)
+                facingLeft = true;
+
+            targetPosition = newTargetPosition;
+            hasTargetPosition = true;
+
+            if (movementDelta.sqrMagnitude > animationMoveThreshold * animationMoveThreshold)
+                moveAnimationTimer = animationHoldDuration;
+
+            if (!snap)
+                return;
+
+            transform.position = targetPosition;
+            moveAnimationTimer = 0f;
+            SyncMoveAnimation(false);
+        }
+
+        private void UpdateFacingAndAnimation(Vector3 previousPosition, Vector3 nextPosition)
+        {
+            var deltaX = nextPosition.x - previousPosition.x;
+            if (deltaX > animationMoveThreshold)
+                facingLeft = false;
+            else if (deltaX < -animationMoveThreshold)
+                facingLeft = true;
+
+            ApplyFacing();
+
+            var isMovingThisFrame = Mathf.Abs(deltaX) > animationMoveThreshold;
+            var remainingDistance = Vector3.Distance(nextPosition, targetPosition);
+            var isChasingTarget = remainingDistance > animationMoveThreshold;
+
+            if (isMovingThisFrame || isChasingTarget)
+                moveAnimationTimer = animationHoldDuration;
+            else if (moveAnimationTimer > 0f)
+                moveAnimationTimer = Mathf.Max(0f, moveAnimationTimer - Time.deltaTime);
+
+            SyncMoveAnimation(isMovingThisFrame || isChasingTarget || moveAnimationTimer > 0f);
+        }
+
+        private void SyncMoveAnimation(bool isMoving)
+        {
+            if (animator == null || !hasMoveSpeedParameter)
+                return;
+
+            animator.SetFloat(moveSpeedParameterHash, isMoving ? 1f : 0f);
+        }
+
+        private void ApplyFacing()
+        {
+            if (visualRoot == null)
+                return;
+
+            if (Mathf.Approximately(visualDefaultScaleX, 0f))
+                visualDefaultScaleX = 1f;
+
+            var targetScaleX = facingLeft == visualFacesLeftByDefault
+                ? visualDefaultScaleX
+                : -visualDefaultScaleX;
+
+            var scale = visualRoot.localScale;
+            scale.x = targetScaleX;
+            visualRoot.localScale = scale;
+        }
+
+        private void DisableLocalOnlyComponents()
+        {
+            var localActionController = GetComponent<LocalCharacterActionController>();
+            if (localActionController != null)
+                localActionController.enabled = false;
+
+            var inputSources = GetComponents<CharacterActionInputSource>();
+            for (var i = 0; i < inputSources.Length; i++)
+                inputSources[i].enabled = false;
+
+            var body = playerView != null ? playerView.Body : GetComponent<Rigidbody2D>();
+            if (body != null)
+            {
+                body.velocity = Vector2.zero;
+                body.angularVelocity = 0f;
+                body.simulated = false;
+            }
+
+            var bodyCollider = playerView != null ? playerView.BodyCollider : GetComponent<Collider2D>();
+            if (bodyCollider != null)
+                bodyCollider.enabled = false;
+        }
+
+        private void CacheAnimatorParameters()
+        {
+            if (animator == null)
+            {
+                hasMoveSpeedParameter = false;
+                moveSpeedParameterHash = 0;
+                return;
+            }
+
+            moveSpeedParameterHash = Animator.StringToHash(MoveSpeedParameterName);
+            hasMoveSpeedParameter = false;
+            var parameters = animator.parameters;
+            for (var i = 0; i < parameters.Length; i++)
+            {
+                var parameter = parameters[i];
+                if (parameter.type == AnimatorControllerParameterType.Float && parameter.name == MoveSpeedParameterName)
+                {
+                    hasMoveSpeedParameter = true;
+                    break;
+                }
+            }
+        }
+
+        private void AutoWireReferences()
+        {
+            if (playerView == null)
+                playerView = GetComponent<PlayerView>();
+
+            if (playerView != null)
+            {
+                if (visualRoot == null)
+                    visualRoot = playerView.VisualRoot;
+                if (animator == null)
+                    animator = playerView.Animator;
+            }
+
+            if (visualRoot == null)
+            {
+                var child = transform.Find("VisualRoot");
+                visualRoot = child != null ? child : transform;
+            }
+
+            if (animator == null)
+                animator = GetComponentInChildren<Animator>(true);
+        }
+    }
+}

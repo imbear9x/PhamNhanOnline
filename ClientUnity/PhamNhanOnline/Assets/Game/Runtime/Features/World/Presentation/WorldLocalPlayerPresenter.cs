@@ -26,6 +26,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             get { return playerInstance != null ? playerInstance.transform : null; }
         }
 
+        public LocalCharacterActionController CurrentLocalActionController
+        {
+            get { return localActionController; }
+        }
+
         private void Start()
         {
             if (!ClientRuntime.IsInitialized)

@@ -6,6 +6,14 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
     [DisallowMultipleComponent]
     public sealed class LocalCharacterActionController : MonoBehaviour
     {
+        public enum MovementSyncPhase
+        {
+            Grounded,
+            Takeoff,
+            Flight,
+            Falling,
+        }
+
         private static readonly string[] AttackStateNames = { "Attack", "Attack2" };
         private const string MoveSpeedParameterName = "MoveSpeed";
 
@@ -73,6 +81,22 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         private bool hasFlightState;
         private bool hasFallingState;
         private bool hasMoveSpeedParameter;
+
+        public bool IsFacingLeft => facingLeft;
+
+        public MovementSyncPhase CurrentMovementSyncPhase
+        {
+            get
+            {
+                return movementPresentationPhase switch
+                {
+                    MovementPresentationPhase.Takeoff => MovementSyncPhase.Takeoff,
+                    MovementPresentationPhase.Flight => MovementSyncPhase.Flight,
+                    MovementPresentationPhase.Falling => MovementSyncPhase.Falling,
+                    _ => MovementSyncPhase.Grounded,
+                };
+            }
+        }
 
         public void Initialize(LocalCharacterActionConfig config, int baseSpeedPercent)
         {

@@ -86,6 +86,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
         var profile = PacketTransportPolicy.Resolve(packet);
         var data = PacketSerializer.Serialize(packet);
+        _metrics.RecordOutboundPacketSent(packet.GetType().Name, data.Length);
         session.Peer.Send(data, profile.DeliveryMethod);
     }
 
@@ -233,12 +234,12 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
         if (!session.TryEnqueueInboundPacket(new InboundPacketEnvelope(packet, bytes, channelNumber, deliveryMethod)))
         {
-            _metrics.RecordInboundPacketDropped(session.ConnectionId, session.PendingInboundPacketCount);
+            _metrics.RecordInboundPacketDropped(session.ConnectionId, session.PendingInboundPacketCount, packet.GetType().Name, bytes.Length);
             Logger.Error($"Inbound packet dropped: {packet.GetType().Name} (ConnectionId={session.ConnectionId})");
             return;
         }
 
-        _metrics.RecordInboundPacketEnqueued(session.ConnectionId, session.PendingInboundPacketCount);
+        _metrics.RecordInboundPacketEnqueued(session.ConnectionId, session.PendingInboundPacketCount, packet.GetType().Name, bytes.Length);
     }
 
     public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
@@ -384,3 +385,4 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
     private sealed record ResumeTicket(Guid AccountId, bool IsConnected, DateTime ExpiresAtUtc);
 }
+

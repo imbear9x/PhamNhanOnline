@@ -16,8 +16,8 @@ MonoBehaviour:
   flyUpSpeed: 70
   fallSpeed: 80
   hoverActivationHeight: 3
-  hoverDuration: 1
-  verticalVelocityChangeRate: 200
+  hoverDuration: 0.5
+  verticalVelocityChangeRate: 300
   speedStatBaseline: 100
   movementDeadZone: 0.05
   attackDuration: 0.45

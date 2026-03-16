@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e88d51497311bbb4ab66db5dac538803, type: 3}
+  m_Name: WorldLocalMovementSyncConfig
+  m_EditorClassIdentifier: 
+  minSyncIntervalSeconds: 0.1
+  maxSyncIntervalSeconds: 0.2
+  immediateStateChangeSyncIntervalSeconds: 0.05
+  syncDistanceThreshold: 10
+  movingDetectionThreshold: 0.25
+  finalStopSyncThreshold: 0.5

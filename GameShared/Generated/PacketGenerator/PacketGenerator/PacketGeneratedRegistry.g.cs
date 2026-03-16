@@ -20,65 +20,74 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.CharacterCurrentStateChangedPacket:
                 id = 4;
                 return true;
-            case global::GameShared.Packets.CharacterStateTransitionPacket:
+            case global::GameShared.Packets.CharacterPositionSyncPacket:
                 id = 5;
                 return true;
-            case global::GameShared.Packets.CreateCharacterPacket:
+            case global::GameShared.Packets.CharacterStateTransitionPacket:
                 id = 6;
                 return true;
-            case global::GameShared.Packets.CreateCharacterResultPacket:
+            case global::GameShared.Packets.CreateCharacterPacket:
                 id = 7;
                 return true;
-            case global::GameShared.Packets.EnterWorldPacket:
+            case global::GameShared.Packets.CreateCharacterResultPacket:
                 id = 8;
                 return true;
-            case global::GameShared.Packets.EnterWorldResultPacket:
+            case global::GameShared.Packets.EnterWorldPacket:
                 id = 9;
                 return true;
-            case global::GameShared.Packets.GetCharacterDataPacket:
+            case global::GameShared.Packets.EnterWorldResultPacket:
                 id = 10;
                 return true;
-            case global::GameShared.Packets.GetCharacterDataResultPacket:
+            case global::GameShared.Packets.GetCharacterDataPacket:
                 id = 11;
                 return true;
-            case global::GameShared.Packets.GetCharacterListPacket:
+            case global::GameShared.Packets.GetCharacterDataResultPacket:
                 id = 12;
                 return true;
-            case global::GameShared.Packets.GetCharacterListResultPacket:
+            case global::GameShared.Packets.GetCharacterListPacket:
                 id = 13;
                 return true;
-            case global::GameShared.Packets.LoginPacket:
+            case global::GameShared.Packets.GetCharacterListResultPacket:
                 id = 14;
                 return true;
-            case global::GameShared.Packets.LoginResultPacket:
+            case global::GameShared.Packets.LoginPacket:
                 id = 15;
                 return true;
-            case global::GameShared.Packets.MapJoinedPacket:
+            case global::GameShared.Packets.LoginResultPacket:
                 id = 16;
                 return true;
-            case global::GameShared.Packets.ObservedCharacterCurrentStateChangedPacket:
+            case global::GameShared.Packets.MapJoinedPacket:
                 id = 17;
                 return true;
-            case global::GameShared.Packets.ObservedCharacterDespawnedPacket:
+            case global::GameShared.Packets.ObservedCharacterCurrentStateChangedPacket:
                 id = 18;
                 return true;
-            case global::GameShared.Packets.ObservedCharacterMovedPacket:
+            case global::GameShared.Packets.ObservedCharacterDespawnedPacket:
                 id = 19;
                 return true;
-            case global::GameShared.Packets.ObservedCharacterSpawnedPacket:
+            case global::GameShared.Packets.ObservedCharacterMovedPacket:
                 id = 20;
                 return true;
-            case global::GameShared.Packets.ReconnectPacket:
+            case global::GameShared.Packets.ObservedCharacterSpawnedPacket:
                 id = 21;
                 return true;
-            case global::GameShared.Packets.ReconnectResultPacket:
+            case global::GameShared.Packets.ReconnectPacket:
                 id = 22;
                 return true;
-            case global::GameShared.Packets.RegisterPacket:
+            case global::GameShared.Packets.ReconnectResultPacket:
                 id = 23;
                 return true;
-            case global::GameShared.Packets.RegisterResultPacket:
+            case global::GameShared.Packets.RegisterPacket:
                 id = 24;
+                return true;
+            case global::GameShared.Packets.RegisterResultPacket:
+                id = 25;
+                return true;
+            case global::GameShared.Packets.TravelToMapPacket:
+                id = 26;
+                return true;
+            case global::GameShared.Packets.TravelToMapResultPacket:
+                id = 27;
                 return true;
             default:
                 id = default;
@@ -94,26 +103,29 @@ internal static class PacketGeneratedRegistry
             2 => new global::GameShared.Packets.ChangePasswordResultPacket(),
             3 => new global::GameShared.Packets.CharacterBaseStatsChangedPacket(),
             4 => new global::GameShared.Packets.CharacterCurrentStateChangedPacket(),
-            5 => new global::GameShared.Packets.CharacterStateTransitionPacket(),
-            6 => new global::GameShared.Packets.CreateCharacterPacket(),
-            7 => new global::GameShared.Packets.CreateCharacterResultPacket(),
-            8 => new global::GameShared.Packets.EnterWorldPacket(),
-            9 => new global::GameShared.Packets.EnterWorldResultPacket(),
-            10 => new global::GameShared.Packets.GetCharacterDataPacket(),
-            11 => new global::GameShared.Packets.GetCharacterDataResultPacket(),
-            12 => new global::GameShared.Packets.GetCharacterListPacket(),
-            13 => new global::GameShared.Packets.GetCharacterListResultPacket(),
-            14 => new global::GameShared.Packets.LoginPacket(),
-            15 => new global::GameShared.Packets.LoginResultPacket(),
-            16 => new global::GameShared.Packets.MapJoinedPacket(),
-            17 => new global::GameShared.Packets.ObservedCharacterCurrentStateChangedPacket(),
-            18 => new global::GameShared.Packets.ObservedCharacterDespawnedPacket(),
-            19 => new global::GameShared.Packets.ObservedCharacterMovedPacket(),
-            20 => new global::GameShared.Packets.ObservedCharacterSpawnedPacket(),
-            21 => new global::GameShared.Packets.ReconnectPacket(),
-            22 => new global::GameShared.Packets.ReconnectResultPacket(),
-            23 => new global::GameShared.Packets.RegisterPacket(),
-            24 => new global::GameShared.Packets.RegisterResultPacket(),
+            5 => new global::GameShared.Packets.CharacterPositionSyncPacket(),
+            6 => new global::GameShared.Packets.CharacterStateTransitionPacket(),
+            7 => new global::GameShared.Packets.CreateCharacterPacket(),
+            8 => new global::GameShared.Packets.CreateCharacterResultPacket(),
+            9 => new global::GameShared.Packets.EnterWorldPacket(),
+            10 => new global::GameShared.Packets.EnterWorldResultPacket(),
+            11 => new global::GameShared.Packets.GetCharacterDataPacket(),
+            12 => new global::GameShared.Packets.GetCharacterDataResultPacket(),
+            13 => new global::GameShared.Packets.GetCharacterListPacket(),
+            14 => new global::GameShared.Packets.GetCharacterListResultPacket(),
+            15 => new global::GameShared.Packets.LoginPacket(),
+            16 => new global::GameShared.Packets.LoginResultPacket(),
+            17 => new global::GameShared.Packets.MapJoinedPacket(),
+            18 => new global::GameShared.Packets.ObservedCharacterCurrentStateChangedPacket(),
+            19 => new global::GameShared.Packets.ObservedCharacterDespawnedPacket(),
+            20 => new global::GameShared.Packets.ObservedCharacterMovedPacket(),
+            21 => new global::GameShared.Packets.ObservedCharacterSpawnedPacket(),
+            22 => new global::GameShared.Packets.ReconnectPacket(),
+            23 => new global::GameShared.Packets.ReconnectResultPacket(),
+            24 => new global::GameShared.Packets.RegisterPacket(),
+            25 => new global::GameShared.Packets.RegisterResultPacket(),
+            26 => new global::GameShared.Packets.TravelToMapPacket(),
+            27 => new global::GameShared.Packets.TravelToMapResultPacket(),
             _ => null
         };
     }

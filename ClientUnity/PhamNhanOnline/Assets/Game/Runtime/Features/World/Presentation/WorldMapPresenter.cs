@@ -89,6 +89,32 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return true;
         }
 
+        public bool TryMapWorldPositionToServer(Vector2 worldPosition, out Vector2 serverPosition)
+        {
+            serverPosition = default;
+
+            if (!ClientRuntime.IsInitialized)
+                return false;
+
+            var mapWidth = ClientRuntime.World.CurrentMapWidth;
+            var mapHeight = ClientRuntime.World.CurrentMapHeight;
+            if (mapWidth <= 0f || mapHeight <= 0f)
+                return false;
+
+            if (!EnsurePlayableBoundsCached())
+                return false;
+
+            var boundsWidth = cachedPlayableBounds.size.x;
+            var boundsHeight = cachedPlayableBounds.size.y;
+            if (boundsWidth <= Mathf.Epsilon || boundsHeight <= Mathf.Epsilon)
+                return false;
+
+            var normalizedX = Mathf.Clamp01(Mathf.InverseLerp(cachedPlayableBounds.min.x, cachedPlayableBounds.max.x, worldPosition.x));
+            var normalizedY = Mathf.Clamp01(Mathf.InverseLerp(cachedPlayableBounds.min.y, cachedPlayableBounds.max.y, worldPosition.y));
+            serverPosition = new Vector2(normalizedX * mapWidth, normalizedY * mapHeight);
+            return true;
+        }
+
         private void HandleMapChanged()
         {
             RebuildActiveMap(ClientRuntime.World.CurrentClientMapKey);

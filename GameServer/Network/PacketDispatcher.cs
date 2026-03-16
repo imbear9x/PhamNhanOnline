@@ -1,4 +1,4 @@
-﻿using GameServer.Network.Handlers;
+using GameServer.Network.Handlers;
 using GameServer.Network.Interface;
 using GameShared.Packets;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,43 +7,45 @@ namespace GameServer.Network;
 
 public sealed class PacketDispatcher
 {
-    private readonly IServiceProvider _provider;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IEnumerable<IPacketMiddleware> _middlewares;
-    public PacketDispatcher(IServiceProvider provider, IEnumerable<IPacketMiddleware> middlewares)
+
+    public PacketDispatcher(IServiceScopeFactory scopeFactory, IEnumerable<IPacketMiddleware> middlewares)
     {
-        _provider = provider;
-        _middlewares= middlewares;
+        _scopeFactory = scopeFactory;
+        _middlewares = middlewares;
     }
 
     public async Task DispatchAsync(ConnectionSession session, IPacket packet)
     {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var scopedProvider = scope.ServiceProvider;
         var enumerator = _middlewares.GetEnumerator();
 
         Task Next()
         {
             if (!enumerator.MoveNext())
-                return ExecuteHandler(session, packet);
+                return ExecuteHandler(scopedProvider, session, packet);
 
             return enumerator.Current.InvokeAsync(session, packet, Next);
         }
 
         await Next();
     }
-    private Task ExecuteHandler(ConnectionSession session, IPacket packet)
+
+    private static Task ExecuteHandler(IServiceProvider serviceProvider, ConnectionSession session, IPacket packet)
     {
-        // ham next() ben tren se goi vao day
-        return DispatchDynamic(session, (dynamic)packet);
-    }
-    private Task DispatchDynamic<TPacket>(ConnectionSession session, TPacket packet)
-    {
-        return DispatchAsyncInternal(session, packet);
+        return DispatchDynamic(serviceProvider, session, (dynamic)packet);
     }
 
-    private async Task DispatchAsyncInternal<TPacket>(ConnectionSession session, TPacket packet)
+    private static Task DispatchDynamic<TPacket>(IServiceProvider serviceProvider, ConnectionSession session, TPacket packet)
     {
-        var handler = _provider.GetRequiredService<IPacketHandler<TPacket>>();
+        return DispatchAsyncInternal(serviceProvider, session, packet);
+    }
+
+    private static async Task DispatchAsyncInternal<TPacket>(IServiceProvider serviceProvider, ConnectionSession session, TPacket packet)
+    {
+        var handler = serviceProvider.GetRequiredService<IPacketHandler<TPacket>>();
         await handler.HandleAsync(session, packet);
     }
-
 }
-

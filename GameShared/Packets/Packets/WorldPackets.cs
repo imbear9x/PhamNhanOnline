@@ -1,4 +1,6 @@
+using System.ComponentModel.DataAnnotations;
 using GameShared.Attributes;
+using GameShared.Messages;
 using GameShared.Models;
 
 namespace GameShared.Packets;
@@ -9,6 +11,35 @@ public partial class MapJoinedPacket : IPacket
 {
     public MapDefinitionModel? Map { get; set; }
     public int? ZoneIndex { get; set; }
+}
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
+public partial class TravelToMapPacket : IPacket
+{
+    [ValidationCode(MessageCode.MapIdInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? TargetMapId { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class TravelToMapResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public int? TargetMapId { get; set; }
+}
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.UnreliableSequenced, PacketTrafficClass.RealtimeState, MinIntervalMs = 40)]
+public partial class CharacterPositionSyncPacket : IPacket
+{
+    public float? CurrentPosX { get; set; }
+    public float? CurrentPosY { get; set; }
 }
 
 [Packet]

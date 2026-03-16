@@ -93,6 +93,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<GetCharacterListPacket>, GetCharacterListHandler>();
         services.AddScoped<IPacketHandler<GetCharacterDataPacket>, GetCharacterDataHandler>();
         services.AddScoped<IPacketHandler<EnterWorldPacket>, EnterWorldHandler>();
+        services.AddScoped<IPacketHandler<TravelToMapPacket>, TravelToMapHandler>();
+        services.AddScoped<IPacketHandler<CharacterPositionSyncPacket>, CharacterPositionSyncHandler>();
 
         services.AddSingleton<IPacketValidator, LoginPacketValidator>();
         services.AddSingleton<IPacketValidator, RegisterPacketValidator>();
@@ -101,6 +103,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPacketValidator, CreateCharacterPacketValidator>();
         services.AddSingleton<IPacketValidator, GetCharacterDataPacketValidator>();
         services.AddSingleton<IPacketValidator, EnterWorldPacketValidator>();
+        services.AddSingleton<IPacketValidator, TravelToMapPacketValidator>();
 
         return services;
     }
@@ -138,4 +141,3 @@ public static class ServiceCollectionExtensions
                ?? throw new Exception($"Failed to deserialize game time config: {path}");
     }
 }
-
