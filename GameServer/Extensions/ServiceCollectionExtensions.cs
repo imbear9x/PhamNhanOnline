@@ -77,6 +77,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CharacterRuntimeService>();
         services.AddSingleton<CharacterRuntimeSaveService>();
         services.AddSingleton<CharacterLifecycleService>();
+        services.AddSingleton<CharacterCultivationService>();
         services.AddSingleton<GameLoop>();
         services.AddSingleton<RuntimeMaintenanceService>();
 
@@ -95,6 +96,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<EnterWorldPacket>, EnterWorldHandler>();
         services.AddScoped<IPacketHandler<TravelToMapPacket>, TravelToMapHandler>();
         services.AddScoped<IPacketHandler<CharacterPositionSyncPacket>, CharacterPositionSyncHandler>();
+        services.AddScoped<IPacketHandler<StartCultivationPacket>, StartCultivationHandler>();
+        services.AddScoped<IPacketHandler<StopCultivationPacket>, StopCultivationHandler>();
+        services.AddScoped<IPacketHandler<BreakthroughPacket>, BreakthroughHandler>();
+        services.AddScoped<IPacketHandler<AllocatePotentialPacket>, AllocatePotentialHandler>();
 
         services.AddSingleton<IPacketValidator, LoginPacketValidator>();
         services.AddSingleton<IPacketValidator, RegisterPacketValidator>();
@@ -104,6 +109,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPacketValidator, GetCharacterDataPacketValidator>();
         services.AddSingleton<IPacketValidator, EnterWorldPacketValidator>();
         services.AddSingleton<IPacketValidator, TravelToMapPacketValidator>();
+        services.AddSingleton<IPacketValidator, AllocatePotentialPacketValidator>();
 
         return services;
     }

@@ -11,6 +11,7 @@ public sealed class RuntimeMaintenanceService
 
     private readonly CharacterRuntimeService _runtimeService;
     private readonly CharacterRuntimeSaveService _runtimeSaveService;
+    private readonly CharacterCultivationService _cultivationService;
     private readonly GameTimeService _gameTimeService;
     private readonly ServerMetricsService _metrics;
 
@@ -18,15 +19,18 @@ public sealed class RuntimeMaintenanceService
     private Thread? _thread;
     private DateTime _nextRuntimeSaveUtc = DateTime.UtcNow;
     private DateTime _nextDerivedStateRefreshUtc = DateTime.UtcNow;
+    private DateTime _nextCultivationSettlementUtc = DateTime.UtcNow;
 
     public RuntimeMaintenanceService(
         CharacterRuntimeService runtimeService,
         CharacterRuntimeSaveService runtimeSaveService,
+        CharacterCultivationService cultivationService,
         GameTimeService gameTimeService,
         ServerMetricsService metrics)
     {
         _runtimeService = runtimeService;
         _runtimeSaveService = runtimeSaveService;
+        _cultivationService = cultivationService;
         _gameTimeService = gameTimeService;
         _metrics = metrics;
     }
@@ -130,6 +134,23 @@ public sealed class RuntimeMaintenanceService
             }
 
             _nextDerivedStateRefreshUtc = DateTime.UtcNow.AddSeconds(_gameTimeService.Config.DerivedStateRefreshIntervalSeconds);
+        }
+
+        if (utcNow >= _nextCultivationSettlementUtc)
+        {
+            try
+            {
+                _cultivationService.SettleCultivationAsync(cancellationToken).GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Periodic cultivation settlement failed.");
+            }
+
+            _nextCultivationSettlementUtc = DateTime.UtcNow.Add(_cultivationService.SettlementInterval);
         }
 
         return new MaintenanceActivity(ranSave, ranRefresh);

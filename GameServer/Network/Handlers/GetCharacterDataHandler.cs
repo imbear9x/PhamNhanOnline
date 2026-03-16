@@ -12,17 +12,20 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
 {
     private readonly CharacterService _characterService;
     private readonly CharacterLifecycleService _lifecycleService;
+    private readonly CharacterCultivationService _cultivationService;
     private readonly INetworkSender _server;
     private readonly GameTimeService _gameTimeService;
 
     public GetCharacterDataHandler(
         CharacterService characterService,
         CharacterLifecycleService lifecycleService,
+        CharacterCultivationService cultivationService,
         INetworkSender server,
         GameTimeService gameTimeService)
     {
         _characterService = characterService;
         _lifecycleService = lifecycleService;
+        _cultivationService = cultivationService;
         _server = server;
         _gameTimeService = gameTimeService;
     }
@@ -45,6 +48,8 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
                 return;
             }
 
+            var cultivationSettlement = await _cultivationService.SettleSnapshotAsync(data);
+            data = cultivationSettlement.Snapshot;
             data = await _lifecycleService.PrepareSnapshotForWorldEntryAsync(data);
             var isLifespanExpired = _lifecycleService.IsLifespanExpired(data.CurrentState);
 
@@ -56,6 +61,9 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
                 BaseStats = data.BaseStats?.ToModel(),
                 CurrentState = data.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot())
             });
+
+            if (cultivationSettlement.RewardEvent is not null)
+                _server.Send(session.ConnectionId, cultivationSettlement.RewardEvent.ToPacket());
 
             if (isLifespanExpired)
                 _lifecycleService.NotifyLifespanExpired(session.ConnectionId, data.Character.CharacterId);

@@ -66,6 +66,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (localPlayerPresenter == null || worldMapPresenter == null)
                 return;
 
+            var currentState = ClientRuntime.Character.CurrentState;
+            if (currentState.HasValue && currentState.Value.CurrentState == CultivatingStateCode)
+                return;
+
             var playerTransform = localPlayerPresenter.CurrentPlayerTransform;
             if (playerTransform == null)
                 return;
@@ -184,5 +188,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             hasSentPosition = true;
             timeSinceLastSend = 0f;
         }
+
+        private const int CultivatingStateCode = 3;
     }
 }

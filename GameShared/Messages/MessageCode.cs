@@ -44,6 +44,16 @@ public enum MessageCode : int
     CharacterServerInvalid = 3006,
     CharacterLifespanExpired = 3007,
     CharacterActionsRestricted = 3008,
+    CultivationAlreadyActive = 3009,
+    CultivationNotActive = 3010,
+    CultivationRequiresPrivateHome = 3011,
+    CultivationRealmCapReached = 3012,
+    BreakthroughNotReady = 3013,
+    BreakthroughRealmMaxed = 3014,
+    PotentialAllocationInvalid = 3015,
+    PotentialTargetInvalid = 3016,
+    CharacterMustEnterWorld = 3017,
+    CharacterCannotMoveWhileCultivating = 3018,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001

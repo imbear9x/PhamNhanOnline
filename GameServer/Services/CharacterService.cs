@@ -26,6 +26,7 @@ public sealed class CharacterService
     private const int DefaultLifespanBonus = 0;
     private const double DefaultBaseFortune = 0.01;
     private const int DefaultBasePotential = 0;
+    private const int DefaultUnallocatedPotential = 0;
     private const int DefaultAppearanceValue = 1;
 
     private readonly GameDb _db;
@@ -160,6 +161,37 @@ public sealed class CharacterService
         return new CharacterSnapshotDto(characterDto, baseStatsDto, currentStateDto);
     }
 
+    public async Task<List<CharacterSnapshotDto>> ListCultivatingCharacterSnapshotsAsync(
+        IReadOnlyCollection<Guid>? excludeCharacterIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        var excluded = excludeCharacterIds?.ToHashSet() ?? [];
+        var query =
+            from c in _db.GetTable<Character>()
+            from b in _db.GetTable<CharacterBaseStat>().LeftJoin(baseStats => baseStats.CharacterId == c.Id)
+            from s in _db.GetTable<CharacterCurrentState>().LeftJoin(currentState => currentState.CharacterId == c.Id)
+            where s != null && s.CurrentState == CharacterRuntimeStateCodes.Cultivating
+            select new { Character = c, BaseStats = b, CurrentState = s };
+
+        var rows = await query.ToListAsync(cancellationToken);
+        var result = new List<CharacterSnapshotDto>(rows.Count);
+        foreach (var row in rows)
+        {
+            if (excluded.Contains(row.Character.Id))
+                continue;
+
+            var realmLifespan = row.BaseStats is null
+                ? null
+                : await GetRealmLifespanAsync(row.BaseStats.RealmId, cancellationToken);
+            var characterDto = CharacterDto.FromEntity(row.Character);
+            var baseStatsDto = row.BaseStats is null ? null : CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan);
+            var currentStateDto = row.CurrentState is null ? null : CharacterCurrentStateDto.FromEntity(row.CurrentState);
+            result.Add(new CharacterSnapshotDto(characterDto, baseStatsDto, currentStateDto));
+        }
+
+        return result;
+    }
+
     public async Task<CharacterDto> UpdateCharacterAsync(
         Guid characterId,
         string name,
@@ -235,6 +267,7 @@ public sealed class CharacterService
         existing.LifespanBonus = stats.LifespanBonus;
         existing.BaseFortune = stats.BaseFortune;
         existing.BasePotential = stats.BasePotential;
+        existing.UnallocatedPotential = stats.UnallocatedPotential;
 
         await _baseStats.UpdateAsync(existing, cancellationToken);
         var realmLifespan = await GetRealmLifespanAsync(existing.RealmId, cancellationToken);
@@ -290,10 +323,27 @@ public sealed class CharacterService
         existing.CurrentPosY = state.CurrentPosY;
         existing.IsDead = state.IsDead;
         existing.CurrentState = state.CurrentState;
+        existing.CultivationStartedAtUtc = NormalizeUtcNullable(state.CultivationStartedAtUtc);
+        existing.LastCultivationRewardedAtUtc = NormalizeUtcNullable(state.LastCultivationRewardedAtUtc);
         existing.LastSavedAt = NormalizeUtc(state.LastSavedAt);
 
         await _currentStates.UpdateAsync(existing, cancellationToken);
         return CharacterCurrentStateDto.FromEntity(existing);
+    }
+
+    public async Task<CharacterSnapshotDto> UpdateCharacterCultivationAsync(
+        CharacterBaseStatsDto baseStats,
+        CharacterCurrentStateDto currentState,
+        CancellationToken cancellationToken = default)
+    {
+        await using var tx = await _db.BeginTransactionAsync(cancellationToken);
+        var updatedBaseStats = await UpdateCharacterBaseStatsAsync(baseStats, cancellationToken);
+        var updatedCurrentState = await UpdateCharacterCurrentStateAsync(currentState, cancellationToken);
+        await tx.CommitAsync(cancellationToken);
+        return new CharacterSnapshotDto(
+            (await LoadCharacterSnapshotAsync(baseStats.CharacterId, cancellationToken))!.Character,
+            updatedBaseStats,
+            updatedCurrentState);
     }
 
     private async Task<bool> IsCharacterNameUniqueInternalAsync(string name, CancellationToken cancellationToken)
@@ -330,6 +380,8 @@ public sealed class CharacterService
             CurrentPosY = homeDefinition.DefaultSpawnPosition.Y,
             IsDead = false,
             CurrentState = DefaultCurrentStateCode,
+            CultivationStartedAtUtc = null,
+            LastCultivationRewardedAtUtc = null,
             LastSavedAt = DateTime.UtcNow
         };
     }
@@ -350,7 +402,8 @@ public sealed class CharacterService
             BaseStamina = DefaultBaseStamina,
             LifespanBonus = DefaultLifespanBonus,
             BaseFortune = DefaultBaseFortune,
-            BasePotential = DefaultBasePotential
+            BasePotential = DefaultBasePotential,
+            UnallocatedPotential = DefaultUnallocatedPotential
         };
     }
 
@@ -368,6 +421,14 @@ public sealed class CharacterService
         return value.Kind == DateTimeKind.Utc
             ? value
             : DateTime.SpecifyKind(value, DateTimeKind.Utc);
+    }
+
+    private static DateTime? NormalizeUtcNullable(DateTime? value)
+    {
+        if (!value.HasValue)
+            return null;
+
+        return NormalizeUtc(value.Value);
     }
 
     private static string NormalizeCharacterName(string name)

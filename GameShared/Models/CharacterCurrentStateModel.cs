@@ -16,5 +16,7 @@ public struct CharacterCurrentStateModel
     public float CurrentPosY;
     public bool IsDead;
     public int CurrentState;
+    public long? CultivationStartedUnixMs;
+    public long? LastCultivationRewardedUnixMs;
     public long LastSavedUnixMs;
 }

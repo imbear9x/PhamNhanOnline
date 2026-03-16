@@ -77,7 +77,7 @@ public sealed class MapManager
         var instances = _maps.GetOrAdd(definition.MapId, _ => new ConcurrentDictionary<int, MapInstance>());
         foreach (var instance in instances.Values)
         {
-            if (instance.OwnerPlayerId != player.PlayerId)
+            if (instance.OwnerCharacterId != player.CharacterData.CharacterId)
                 continue;
 
             if (!instance.AddPlayer(player))
@@ -86,7 +86,7 @@ public sealed class MapManager
             return instance;
         }
 
-        var created = CreateInstance(definition, zoneIndex: 0, ownerPlayerId: player.PlayerId);
+        var created = CreateInstance(definition, zoneIndex: 0, ownerCharacterId: player.CharacterData.CharacterId);
         if (!created.AddPlayer(player))
             throw new InvalidOperationException("Unable to join private map instance.");
 
@@ -170,16 +170,16 @@ public sealed class MapManager
             if (usedZones.Contains(zoneIndex))
                 continue;
 
-            return CreateInstance(definition, zoneIndex, ownerPlayerId: null);
+            return CreateInstance(definition, zoneIndex, ownerCharacterId: null);
         }
 
         throw new InvalidOperationException($"No public zone slot is available for map {definition.MapId}.");
     }
 
-    private MapInstance CreateInstance(MapDefinition definition, int zoneIndex, Guid? ownerPlayerId)
+    private MapInstance CreateInstance(MapDefinition definition, int zoneIndex, Guid? ownerCharacterId)
     {
         var instanceId = Interlocked.Increment(ref _nextInstanceId);
-        var instance = new MapInstance(instanceId, zoneIndex, definition, ownerPlayerId);
+        var instance = new MapInstance(instanceId, zoneIndex, definition, ownerCharacterId);
         var instances = _maps.GetOrAdd(definition.MapId, _ => new ConcurrentDictionary<int, MapInstance>());
         instances[instanceId] = instance;
         return instance;

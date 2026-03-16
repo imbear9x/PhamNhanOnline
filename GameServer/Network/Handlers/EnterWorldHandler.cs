@@ -14,6 +14,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
     private readonly CharacterService _characterService;
     private readonly CharacterRuntimeService _runtimeService;
     private readonly CharacterLifecycleService _lifecycleService;
+    private readonly CharacterCultivationService _cultivationService;
     private readonly WorldInterestService _interestService;
     private readonly INetworkSender _server;
     private readonly GameTimeService _gameTimeService;
@@ -22,6 +23,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
         CharacterService characterService,
         CharacterRuntimeService runtimeService,
         CharacterLifecycleService lifecycleService,
+        CharacterCultivationService cultivationService,
         WorldInterestService interestService,
         INetworkSender server,
         GameTimeService gameTimeService)
@@ -29,6 +31,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
         _characterService = characterService;
         _runtimeService = runtimeService;
         _lifecycleService = lifecycleService;
+        _cultivationService = cultivationService;
         _interestService = interestService;
         _server = server;
         _gameTimeService = gameTimeService;
@@ -52,6 +55,8 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
                 return;
             }
 
+            var cultivationSettlement = await _cultivationService.SettleSnapshotAsync(data);
+            data = cultivationSettlement.Snapshot;
             data = await _lifecycleService.PrepareSnapshotForWorldEntryAsync(data);
             var isLifespanExpired = _lifecycleService.IsLifespanExpired(data.CurrentState);
 
@@ -76,6 +81,9 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
             });
 
             _interestService.PublishWorldSnapshot(player);
+
+            if (cultivationSettlement.RewardEvent is not null)
+                _server.Send(session.ConnectionId, cultivationSettlement.RewardEvent.ToPacket());
 
             if (isLifespanExpired)
                 _lifecycleService.NotifyLifespanExpired(session.ConnectionId, data.Character.CharacterId);

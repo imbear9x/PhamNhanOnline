@@ -6,12 +6,15 @@ namespace PhamNhanOnline.Client.Features.Character.Application
 {
     public sealed class ClientCharacterState
     {
+        public event Action<CultivationRewardNotice> CultivationRewardGranted;
+
         public Guid? SelectedCharacterId { get; private set; }
         public bool HasLoadedCharacterList { get; private set; }
         public CharacterModel[] CharacterList { get; private set; } = Array.Empty<CharacterModel>();
         public CharacterModel? SelectedCharacter { get; private set; }
         public CharacterBaseStatsModel? BaseStats { get; private set; }
         public CharacterCurrentStateModel? CurrentState { get; private set; }
+        public CultivationRewardNotice? LastCultivationReward { get; private set; }
 
         public void ApplyCharacterList(CharacterModel[] characters)
         {
@@ -54,6 +57,14 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             CurrentState = currentState;
         }
 
+        public void ApplyCultivationReward(CultivationRewardNotice notice)
+        {
+            LastCultivationReward = notice;
+            var handler = CultivationRewardGranted;
+            if (handler != null)
+                handler(notice);
+        }
+
         public void Clear()
         {
             SelectedCharacterId = null;
@@ -62,6 +73,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             SelectedCharacter = null;
             BaseStats = null;
             CurrentState = null;
+            LastCultivationReward = null;
         }
     }
 }

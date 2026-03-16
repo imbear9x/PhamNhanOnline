@@ -19,4 +19,5 @@ public struct CharacterBaseStatsModel
     public int LifespanBonus;
     public double BaseFortune;
     public int BasePotential;
+    public int UnallocatedPotential;
 }

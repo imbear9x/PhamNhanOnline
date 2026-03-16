@@ -29,6 +29,7 @@ namespace GameServer.Entities
 		[Column("lifespan_bonus"                           )] public int?    LifespanBonus       { get; set; } // integer
 		[Column("base_fortune"                             )] public double? BaseFortune          { get; set; } // double precision
 		[Column("base_potential"                           )] public int?    BasePotential        { get; set; } // integer
+		[Column("unallocated_potential"                    )] public int?    UnallocatedPotential { get; set; } // integer
 
 		#region Associations
 		/// <summary>

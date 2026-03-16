@@ -9,13 +9,16 @@ namespace GameServer.Network.Handlers;
 public sealed class CharacterPositionSyncHandler : IPacketHandler<CharacterPositionSyncPacket>
 {
     private readonly CharacterRuntimeService _runtimeService;
+    private readonly CharacterCultivationService _cultivationService;
     private readonly MapCatalog _mapCatalog;
 
     public CharacterPositionSyncHandler(
         CharacterRuntimeService runtimeService,
+        CharacterCultivationService cultivationService,
         MapCatalog mapCatalog)
     {
         _runtimeService = runtimeService;
+        _cultivationService = cultivationService;
         _mapCatalog = mapCatalog;
     }
 
@@ -25,6 +28,9 @@ public sealed class CharacterPositionSyncHandler : IPacketHandler<CharacterPosit
             return Task.CompletedTask;
 
         var player = session.Player;
+        if (_cultivationService.IsCultivating(player))
+            return Task.CompletedTask;
+
         if (!_mapCatalog.TryGet(player.MapId, out var definition))
             return Task.CompletedTask;
 

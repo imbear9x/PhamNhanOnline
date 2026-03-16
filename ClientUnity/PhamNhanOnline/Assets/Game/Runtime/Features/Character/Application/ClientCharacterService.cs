@@ -16,6 +16,10 @@ namespace PhamNhanOnline.Client.Features.Character.Application
         private TaskCompletionSource<CharacterDataLoadResult> characterDataCompletionSource;
         private TaskCompletionSource<CharacterCreateResult> characterCreateCompletionSource;
         private TaskCompletionSource<CharacterEnterWorldResult> characterEnterWorldCompletionSource;
+        private TaskCompletionSource<CharacterStartCultivationResult> startCultivationCompletionSource;
+        private TaskCompletionSource<CharacterStopCultivationResult> stopCultivationCompletionSource;
+        private TaskCompletionSource<CharacterBreakthroughResult> breakthroughCompletionSource;
+        private TaskCompletionSource<CharacterAllocatePotentialResult> allocatePotentialCompletionSource;
 
         public ClientCharacterService(ClientConnectionService connection, ClientCharacterState characterState)
         {
@@ -28,6 +32,11 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             connection.Packets.Subscribe<EnterWorldResultPacket>(HandleEnterWorldResult);
             connection.Packets.Subscribe<CharacterBaseStatsChangedPacket>(HandleCharacterBaseStatsChanged);
             connection.Packets.Subscribe<CharacterCurrentStateChangedPacket>(HandleCharacterCurrentStateChanged);
+            connection.Packets.Subscribe<StartCultivationResultPacket>(HandleStartCultivationResult);
+            connection.Packets.Subscribe<StopCultivationResultPacket>(HandleStopCultivationResult);
+            connection.Packets.Subscribe<BreakthroughResultPacket>(HandleBreakthroughResult);
+            connection.Packets.Subscribe<AllocatePotentialResultPacket>(HandleAllocatePotentialResult);
+            connection.Packets.Subscribe<CultivationRewardsGrantedPacket>(HandleCultivationRewardsGranted);
             connection.StateChanged += HandleConnectionStateChanged;
         }
 
@@ -82,6 +91,50 @@ namespace PhamNhanOnline.Client.Features.Character.Application
                 CharacterId = characterId
             });
             return characterEnterWorldCompletionSource.Task;
+        }
+
+        public Task<CharacterStartCultivationResult> StartCultivationAsync()
+        {
+            if (connection.State != ClientConnectionState.Connected)
+                return Task.FromResult(new CharacterStartCultivationResult(false, null, null, "Not connected to server."));
+
+            startCultivationCompletionSource = new TaskCompletionSource<CharacterStartCultivationResult>();
+            connection.Send(new StartCultivationPacket());
+            return startCultivationCompletionSource.Task;
+        }
+
+        public Task<CharacterStopCultivationResult> StopCultivationAsync()
+        {
+            if (connection.State != ClientConnectionState.Connected)
+                return Task.FromResult(new CharacterStopCultivationResult(false, null, null, "Not connected to server."));
+
+            stopCultivationCompletionSource = new TaskCompletionSource<CharacterStopCultivationResult>();
+            connection.Send(new StopCultivationPacket());
+            return stopCultivationCompletionSource.Task;
+        }
+
+        public Task<CharacterBreakthroughResult> BreakthroughAsync()
+        {
+            if (connection.State != ClientConnectionState.Connected)
+                return Task.FromResult(new CharacterBreakthroughResult(false, null, null, null, "Not connected to server."));
+
+            breakthroughCompletionSource = new TaskCompletionSource<CharacterBreakthroughResult>();
+            connection.Send(new BreakthroughPacket());
+            return breakthroughCompletionSource.Task;
+        }
+
+        public Task<CharacterAllocatePotentialResult> AllocatePotentialAsync(PotentialAllocationTarget target, int amount)
+        {
+            if (connection.State != ClientConnectionState.Connected)
+                return Task.FromResult(new CharacterAllocatePotentialResult(false, null, null, null, "Not connected to server."));
+
+            allocatePotentialCompletionSource = new TaskCompletionSource<CharacterAllocatePotentialResult>();
+            connection.Send(new AllocatePotentialPacket
+            {
+                TargetStat = (int)target,
+                Amount = amount
+            });
+            return allocatePotentialCompletionSource.Task;
         }
 
         private void HandleCharacterListResult(GetCharacterListResultPacket packet)
@@ -157,6 +210,80 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             characterState.ApplyCurrentState(packet.CurrentState);
         }
 
+        private void HandleStartCultivationResult(StartCultivationResultPacket packet)
+        {
+            if (packet.CurrentState.HasValue)
+                characterState.ApplyCurrentState(packet.CurrentState);
+
+            CompletePending(ref startCultivationCompletionSource, new CharacterStartCultivationResult(
+                packet.Success == true,
+                packet.Code,
+                packet.CurrentState,
+                packet.Success == true
+                    ? "Cultivation started."
+                    : string.Format("Failed to start cultivation: {0}", packet.Code ?? MessageCode.UnknownError)));
+        }
+
+        private void HandleStopCultivationResult(StopCultivationResultPacket packet)
+        {
+            if (packet.CurrentState.HasValue)
+                characterState.ApplyCurrentState(packet.CurrentState);
+
+            CompletePending(ref stopCultivationCompletionSource, new CharacterStopCultivationResult(
+                packet.Success == true,
+                packet.Code,
+                packet.CurrentState,
+                packet.Success == true
+                    ? "Cultivation stopped."
+                    : string.Format("Failed to stop cultivation: {0}", packet.Code ?? MessageCode.UnknownError)));
+        }
+
+        private void HandleBreakthroughResult(BreakthroughResultPacket packet)
+        {
+            if (packet.BaseStats.HasValue)
+                characterState.ApplyBaseStats(packet.BaseStats);
+            if (packet.CurrentState.HasValue)
+                characterState.ApplyCurrentState(packet.CurrentState);
+
+            CompletePending(ref breakthroughCompletionSource, new CharacterBreakthroughResult(
+                packet.Success == true,
+                packet.Code,
+                packet.BaseStats,
+                packet.CurrentState,
+                packet.Success == true
+                    ? "Breakthrough succeeded."
+                    : string.Format("Failed to breakthrough: {0}", packet.Code ?? MessageCode.UnknownError)));
+        }
+
+        private void HandleAllocatePotentialResult(AllocatePotentialResultPacket packet)
+        {
+            if (packet.BaseStats.HasValue)
+                characterState.ApplyBaseStats(packet.BaseStats);
+            if (packet.CurrentState.HasValue)
+                characterState.ApplyCurrentState(packet.CurrentState);
+
+            CompletePending(ref allocatePotentialCompletionSource, new CharacterAllocatePotentialResult(
+                packet.Success == true,
+                packet.Code,
+                packet.BaseStats,
+                packet.CurrentState,
+                packet.Success == true
+                    ? "Potential allocated."
+                    : string.Format("Failed to allocate potential: {0}", packet.Code ?? MessageCode.UnknownError)));
+        }
+
+        private void HandleCultivationRewardsGranted(CultivationRewardsGrantedPacket packet)
+        {
+            characterState.ApplyCultivationReward(new CultivationRewardNotice(
+                packet.CharacterId,
+                packet.CultivationGranted ?? 0,
+                packet.UnallocatedPotentialGranted ?? 0,
+                packet.ReachedRealmCap == true,
+                packet.IsOfflineSettlement == true,
+                packet.RewardedFromUnixMs,
+                packet.RewardedToUnixMs));
+        }
+
         private void HandleConnectionStateChanged(ClientConnectionState state)
         {
             if (state != ClientConnectionState.Disconnected)
@@ -167,6 +294,10 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             CompletePending(ref characterDataCompletionSource, new CharacterDataLoadResult(false, null, null, null, null, "Connection closed."));
             CompletePending(ref characterCreateCompletionSource, new CharacterCreateResult(false, null, null, null, null, "Connection closed."));
             CompletePending(ref characterEnterWorldCompletionSource, new CharacterEnterWorldResult(false, null, null, null, null, "Connection closed."));
+            CompletePending(ref startCultivationCompletionSource, new CharacterStartCultivationResult(false, null, null, "Connection closed."));
+            CompletePending(ref stopCultivationCompletionSource, new CharacterStopCultivationResult(false, null, null, "Connection closed."));
+            CompletePending(ref breakthroughCompletionSource, new CharacterBreakthroughResult(false, null, null, null, "Connection closed."));
+            CompletePending(ref allocatePotentialCompletionSource, new CharacterAllocatePotentialResult(false, null, null, null, "Connection closed."));
         }
 
         private static void CompletePending(ref TaskCompletionSource<CharacterListLoadResult> completionSource, CharacterListLoadResult result)
@@ -194,6 +325,38 @@ namespace PhamNhanOnline.Client.Features.Character.Application
         }
 
         private static void CompletePending(ref TaskCompletionSource<CharacterEnterWorldResult> completionSource, CharacterEnterWorldResult result)
+        {
+            var pending = completionSource;
+            completionSource = null;
+            if (pending != null)
+                pending.TrySetResult(result);
+        }
+
+        private static void CompletePending(ref TaskCompletionSource<CharacterStartCultivationResult> completionSource, CharacterStartCultivationResult result)
+        {
+            var pending = completionSource;
+            completionSource = null;
+            if (pending != null)
+                pending.TrySetResult(result);
+        }
+
+        private static void CompletePending(ref TaskCompletionSource<CharacterStopCultivationResult> completionSource, CharacterStopCultivationResult result)
+        {
+            var pending = completionSource;
+            completionSource = null;
+            if (pending != null)
+                pending.TrySetResult(result);
+        }
+
+        private static void CompletePending(ref TaskCompletionSource<CharacterBreakthroughResult> completionSource, CharacterBreakthroughResult result)
+        {
+            var pending = completionSource;
+            completionSource = null;
+            if (pending != null)
+                pending.TrySetResult(result);
+        }
+
+        private static void CompletePending(ref TaskCompletionSource<CharacterAllocatePotentialResult> completionSource, CharacterAllocatePotentialResult result)
         {
             var pending = completionSource;
             completionSource = null;

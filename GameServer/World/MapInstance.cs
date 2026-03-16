@@ -12,20 +12,20 @@ public sealed class MapInstance
 
     public int InstanceId { get; }
     public int ZoneIndex { get; }
-    public Guid? OwnerPlayerId { get; }
-    public bool IsPrivate => OwnerPlayerId.HasValue;
+    public Guid? OwnerCharacterId { get; }
+    public bool IsPrivate => OwnerCharacterId.HasValue;
     public MapDefinition Definition { get; }
     public int MapId => Definition.MapId;
 
     public List<PlayerSession> Players { get; } = new();
     public List<MonsterEntity> Monsters { get; } = new();
 
-    public MapInstance(int instanceId, int zoneIndex, MapDefinition definition, Guid? ownerPlayerId = null)
+    public MapInstance(int instanceId, int zoneIndex, MapDefinition definition, Guid? ownerCharacterId = null)
     {
         InstanceId = instanceId;
         ZoneIndex = zoneIndex;
         Definition = definition;
-        OwnerPlayerId = ownerPlayerId;
+        OwnerCharacterId = ownerCharacterId;
     }
 
     public int PlayerCount
@@ -43,7 +43,7 @@ public sealed class MapInstance
     {
         lock (_sync)
         {
-            if (IsPrivate && OwnerPlayerId != player.PlayerId)
+            if (IsPrivate && OwnerCharacterId != player.CharacterData.CharacterId)
                 return false;
 
             var maxPlayers = IsPrivate ? 1 : Definition.MaxPlayersPerZone;

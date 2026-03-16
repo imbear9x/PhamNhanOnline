@@ -107,6 +107,24 @@ public sealed class CharacterRuntimeService
         return currentStateSnapshot;
     }
 
+    public CharacterRuntimeSnapshot ApplyCurrentStateMutation(
+        PlayerSession player,
+        Func<CharacterCurrentStateDto, CharacterCurrentStateDto> mutation,
+        bool notifySelf = true,
+        bool notifyObservers = true)
+    {
+        var snapshot = player.RuntimeState.UpdateCurrentState(mutation);
+        player.SynchronizeFromCurrentState(snapshot.CurrentState);
+
+        if (notifySelf)
+            _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);
+
+        if (notifyObservers)
+            _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
+
+        return snapshot;
+    }
+
     public CharacterRuntimeSnapshot UpdatePosition(PlayerSession player, int? mapId, Vector2 position)
     {
         return UpdatePosition(player, mapId, player.ZoneIndex, position, notifySelf: true);

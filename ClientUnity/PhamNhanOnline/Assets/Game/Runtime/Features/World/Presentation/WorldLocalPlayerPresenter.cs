@@ -40,6 +40,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             TryEnsureLocalPlayer();
+            SyncInputBlockState();
             ApplyLatestPosition(force: true);
         }
 
@@ -55,6 +56,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             TryEnsureLocalPlayer();
+            SyncInputBlockState();
             ApplyLatestPosition(force: false);
         }
 
@@ -174,6 +176,16 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 localActionController.SetSpeedStatPercent(ResolveBaseSpeedPercent());
         }
 
+        private void SyncInputBlockState()
+        {
+            if (localActionController == null)
+                return;
+
+            var currentState = ClientRuntime.Character.CurrentState;
+            var shouldBlock = currentState.HasValue && currentState.Value.CurrentState == CultivatingStateCode;
+            localActionController.SetInputBlocked(shouldBlock);
+        }
+
         private int ResolveBaseSpeedPercent()
         {
             var baseStats = ClientRuntime.Character.BaseStats;
@@ -182,5 +194,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             return baseStats.Value.BaseSpeed;
         }
+
+        private const int CultivatingStateCode = 3;
     }
 }

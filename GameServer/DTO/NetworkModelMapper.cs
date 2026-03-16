@@ -43,7 +43,8 @@ public static class NetworkModelMapper
             BaseStamina = dto.BaseStamina ?? 0,
             LifespanBonus = dto.LifespanBonus ?? 0,
             BaseFortune = dto.BaseFortune ?? 0,
-            BasePotential = dto.BasePotential ?? 0
+            BasePotential = dto.BasePotential ?? 0,
+            UnallocatedPotential = dto.UnallocatedPotential ?? 0
         };
     }
 
@@ -62,6 +63,8 @@ public static class NetworkModelMapper
             CurrentPosY = dto.CurrentPosY,
             IsDead = dto.IsDead,
             CurrentState = dto.CurrentState,
+            CultivationStartedUnixMs = ToUnixMs(dto.CultivationStartedAtUtc),
+            LastCultivationRewardedUnixMs = ToUnixMs(dto.LastCultivationRewardedAtUtc),
             LastSavedUnixMs = ToUnixMs(dto.LastSavedAt) ?? 0
         };
     }

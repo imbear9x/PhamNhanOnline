@@ -183,7 +183,8 @@ internal sealed class ScenarioContext
             BaseStamina: 100,
             LifespanBonus: 0,
             BaseFortune: 0,
-            BasePotential: 0);
+            BasePotential: 0,
+            UnallocatedPotential: 0);
         var currentState = new CharacterCurrentStateDto(
             playerId,
             CurrentHp: 100,
@@ -195,7 +196,9 @@ internal sealed class ScenarioContext
             CurrentPosX: x,
             CurrentPosY: y,
             IsDead: false,
-            CurrentState: 1,
+            CurrentState: 0,
+            CultivationStartedAtUtc: null,
+            LastCultivationRewardedAtUtc: null,
             LastSavedAt: DateTime.UtcNow);
 
         return _worldManager.AddOrUpdatePlayer(
@@ -345,3 +348,5 @@ internal sealed record ScenarioReport(
     bool Passed,
     string Summary,
     IReadOnlyList<string> Assertions);
+
+

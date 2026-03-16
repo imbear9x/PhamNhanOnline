@@ -81,6 +81,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         private bool hasFlightState;
         private bool hasFallingState;
         private bool hasMoveSpeedParameter;
+        private bool isInputBlockedExternally;
 
         public bool IsFacingLeft => facingLeft;
 
@@ -120,6 +121,18 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         {
             if (baseSpeedPercent > 0)
                 speedStatPercent = baseSpeedPercent;
+        }
+
+        public void SetInputBlocked(bool blocked)
+        {
+            isInputBlockedExternally = blocked;
+            if (blocked)
+            {
+                horizontalInput = 0f;
+                verticalInput = 0f;
+                if (body != null)
+                    body.velocity = Vector2.zero;
+            }
         }
 
         public bool ShouldApplyAuthoritativeWorldPosition(Vector2 worldPosition, bool forceSnap, float teleportDistanceThreshold)
@@ -170,7 +183,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             if (actionConfig == null)
                 return;
 
-            var inputState = ReadInputState();
+            var inputState = isInputBlockedExternally ? default : ReadInputState();
             horizontalInput = inputState.Horizontal;
             verticalInput = inputState.Vertical;
 
@@ -709,3 +722,6 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         }
     }
 }
+
+
+

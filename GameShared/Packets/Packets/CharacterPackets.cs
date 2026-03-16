@@ -116,3 +116,89 @@ public partial class CharacterStateTransitionPacket : IPacket
     public Guid? CharacterId { get; set; }
     public int? Reason { get; set; }
 }
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 500)]
+public partial class StartCultivationPacket : IPacket
+{
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class StartCultivationResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
+}
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 500)]
+public partial class StopCultivationPacket : IPacket
+{
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class StopCultivationResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
+}
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 500)]
+public partial class BreakthroughPacket : IPacket
+{
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class BreakthroughResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
+}
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
+public partial class AllocatePotentialPacket : IPacket
+{
+    [ValidationCode(MessageCode.PotentialTargetInvalid)]
+    [Range(1, int.MaxValue)]
+    public int? TargetStat { get; set; }
+
+    [ValidationCode(MessageCode.PotentialAllocationInvalid)]
+    [Range(1, int.MaxValue)]
+    public int? Amount { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class AllocatePotentialResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class CultivationRewardsGrantedPacket : IPacket
+{
+    public Guid? CharacterId { get; set; }
+    public long? CultivationGranted { get; set; }
+    public int? UnallocatedPotentialGranted { get; set; }
+    public bool? ReachedRealmCap { get; set; }
+    public bool? IsOfflineSettlement { get; set; }
+    public long? RewardedFromUnixMs { get; set; }
+    public long? RewardedToUnixMs { get; set; }
+}

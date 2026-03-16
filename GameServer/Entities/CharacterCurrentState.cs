@@ -27,6 +27,8 @@ namespace GameServer.Entities
         [Column("current_pos_y")] public float CurrentPosY { get; set; }
         [Column("is_dead")] public bool IsDead { get; set; }
         [Column("current_state")] public int CurrentState { get; set; }
+        [Column("cultivation_started_at_utc")] public DateTime? CultivationStartedAtUtc { get; set; }
+        [Column("last_cultivation_rewarded_at_utc")] public DateTime? LastCultivationRewardedAtUtc { get; set; }
         [Column("last_saved_at")] public DateTime LastSavedAt { get; set; }
 
         #region Associations

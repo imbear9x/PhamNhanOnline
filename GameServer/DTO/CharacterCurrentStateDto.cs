@@ -14,6 +14,8 @@ public sealed record CharacterCurrentStateDto(
     float CurrentPosY,
     bool IsDead,
     int CurrentState,
+    DateTime? CultivationStartedAtUtc,
+    DateTime? LastCultivationRewardedAtUtc,
     DateTime LastSavedAt)
 {
     public static CharacterCurrentStateDto FromEntity(CharacterCurrentState entity) =>
@@ -29,5 +31,7 @@ public sealed record CharacterCurrentStateDto(
             entity.CurrentPosY,
             entity.IsDead,
             entity.CurrentState,
+            entity.CultivationStartedAtUtc,
+            entity.LastCultivationRewardedAtUtc,
             entity.LastSavedAt);
 }
