@@ -143,3 +143,46 @@ Cuối mỗi buổi, nên bổ sung:
 ## Tooling note
 - If apply_patch fails with a Windows sandbox refresh error, switch to shell-based file editing immediately instead of retrying multiple times.
 
+## Session update 2026-03-16
+
+- Unity client world flow da chay duoc: login -> load scene `World` -> spawn map -> spawn local player -> camera follow.
+- Da them `ClientMapCatalog`, `WorldMapPresenter`, `WorldLocalPlayerPresenter`, `WorldCameraFollowController`, `ClientMapView`.
+- Moi map prefab nen co `ClientMapView` + `PlayableBounds` (`BoxCollider2D` trigger) de quy doi server coords -> Unity world coords va clamp camera.
+- Server/client da chot he toa do logic map, khong dung art size de lam gameplay coords. `MapCatalog.cs` da duoc doi sang scale logic (`Player Home` = `1000 x 500`, `Starter Plains` = `1000 x 1000`). DB local cung da duoc sua tuong ung.
+- Local movement/action da co trong client:
+  - `LocalCharacterActionController`
+  - `LocalCharacterActionConfig`
+  - `PlayerView`
+- Flow local action hien tai:
+  - di trai/phai + quay huong dung
+  - bay len / hover / roi
+  - dang roi thi phai cham dat moi bay lai
+  - hover dung yen tren khong, bay ngang roi dung lai thi hover timer reset lai tu dau
+  - attack local co ban
+- Animator locomotion dang phu hop voi animator controller cua prefab free:
+  - `MoveSpeed` parameter duoc set tu code cho `Idle/Run`
+  - `Jump/Fly/Fall` la optional states, co state thi play, khong co thi bo qua
+- Da bo tri san hook cho logic sau nay:
+  - `CanUseFlight()`
+  - `ActivateFlightPresentation()`
+  - `DeactivateFlightPresentation()`
+  - `OnFlightPresentationActivated()`
+  - `OnFallingPresentationActivated()`
+- Local player khong nen bi authoritative server position keo nguoc lien tuc. `WorldLocalPlayerPresenter` hien chi snap khi force hoac lech qua nguong.
+- `LocalCharacterActionController` chi nen dung cho local player. Remote players ve sau nen co presenter/controller rieng, nhe hon, khong doc input va khong chay full local movement logic nay.
+- Da them smoothing cho bay/roi:
+  - `Rigidbody2D.Interpolate`
+  - `CollisionDetectionMode2D.Continuous`
+  - `VerticalVelocityChangeRate` trong `LocalCharacterActionConfig`
+
+## Session follow-up
+
+- Viec hop ly nhat cho buoi sau:
+  - tach input source khoi `LocalCharacterActionController` de de support mobile touch / virtual joystick
+  - hoac lam remote player presenter rieng
+  - hoac dinh nghia policy network movement sync (client simulate, server validate khi can)
+- Neu tiep tuc phan movement/network, uu tien giu rule:
+  - local player tu simulate
+  - server khong push vi tri local player ve client lien tuc moi tick
+  - correction chi dung khi spawn/map change/teleport/lechsai lon
+

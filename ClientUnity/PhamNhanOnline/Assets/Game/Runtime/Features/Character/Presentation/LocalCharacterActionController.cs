@@ -23,6 +23,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         [SerializeField] private Transform visualRoot;
         [SerializeField] private Transform groundCheck;
         [SerializeField] private Animator animator;
+        [SerializeField] private CharacterActionInputSource inputSource;
 
         [Header("Animation States")]
         [SerializeField] private string idleStateName = "Idle";
@@ -145,10 +146,11 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             if (actionConfig == null)
                 return;
 
-            horizontalInput = Input.GetAxisRaw("Horizontal");
-            verticalInput = Input.GetAxisRaw("Vertical");
+            var inputState = ReadInputState();
+            horizontalInput = inputState.Horizontal;
+            verticalInput = inputState.Vertical;
 
-            if ((Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.J)) && attackCooldownTimer <= 0f)
+            if (inputState.AttackPressed && attackCooldownTimer <= 0f)
                 StartAttack();
 
             if (attackTimer > 0f)
@@ -648,6 +650,12 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
 
             if (animator == null)
                 animator = GetComponentInChildren<Animator>(true);
+
+            if (inputSource == null)
+                inputSource = GetComponent<CharacterActionInputSource>();
+
+            if (inputSource == null)
+                inputSource = gameObject.AddComponent<KeyboardCharacterActionInputSource>();
         }
 
         private void ResetAirborneState()
@@ -657,6 +665,14 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             mustLandBeforeFlyingAgain = false;
             wasMovingHorizontallyInFlightLastPhysicsStep = false;
             hoverTimer = 0f;
+        }
+
+        private CharacterActionInputState ReadInputState()
+        {
+            if (inputSource == null)
+                return default;
+
+            return inputSource.ReadInput();
         }
 
         private void OnDrawGizmosSelected()

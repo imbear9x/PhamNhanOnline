@@ -12,9 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 18d1fe65cb8c4af98472ad5880c4c0ef, type: 3}
   m_Name: LocalCharacterActionConfig
   m_EditorClassIdentifier: 
-  baseMoveSpeed: 45
-  flyUpSpeed: 30
-  fallSpeed: 40
+  baseMoveSpeed: 70
+  flyUpSpeed: 70
+  fallSpeed: 80
+  hoverActivationHeight: 3
+  hoverDuration: 1
+  verticalVelocityChangeRate: 200
   speedStatBaseline: 100
   movementDeadZone: 0.05
   attackDuration: 0.45
