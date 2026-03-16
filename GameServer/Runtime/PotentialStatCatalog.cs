@@ -1,0 +1,131 @@
+using GameServer.Entities;
+using GameServer.Repositories;
+using GameServer.DTO;
+using GameShared.Models;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace GameServer.Runtime;
+
+public sealed class PotentialStatCatalog
+{
+    private readonly IReadOnlyDictionary<PotentialAllocationTarget, IReadOnlyList<PotentialStatUpgradeTier>> _tiersByTarget;
+
+    public PotentialStatCatalog(IServiceScopeFactory scopeFactory)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<PotentialStatUpgradeTierRepository>();
+        var tiers = repository.GetAllAsync().GetAwaiter().GetResult();
+        _tiersByTarget = tiers
+            .Where(static x => Enum.IsDefined(typeof(PotentialAllocationTarget), x.TargetStat))
+            .GroupBy(x => (PotentialAllocationTarget)x.TargetStat)
+            .ToDictionary(
+                x => x.Key,
+                x => (IReadOnlyList<PotentialStatUpgradeTier>)x
+                    .Where(static tier => tier.IsEnabled)
+                    .OrderBy(tier => tier.MaxUpgradeCount)
+                    .Select(tier => new PotentialStatUpgradeTier(
+                        x.Key,
+                        tier.TierIndex,
+                        tier.MaxUpgradeCount,
+                        tier.PotentialCostPerUpgrade,
+                        tier.StatGainPerUpgrade))
+                    .ToArray());
+    }
+
+    public bool Supports(PotentialAllocationTarget target)
+    {
+        return target != PotentialAllocationTarget.None &&
+               _tiersByTarget.TryGetValue(target, out var tiers) &&
+               tiers.Count > 0;
+    }
+
+    public CharacterBaseStatsDto AttachPreviews(CharacterBaseStatsDto baseStats)
+    {
+        return baseStats with
+        {
+            PotentialUpgradePreviews = BuildPreviews(baseStats)
+        };
+    }
+
+    public IReadOnlyList<PotentialUpgradePreviewDto> BuildPreviews(CharacterBaseStatsDto baseStats)
+    {
+        var targets = new[]
+        {
+            PotentialAllocationTarget.BaseHp,
+            PotentialAllocationTarget.BaseMp,
+            PotentialAllocationTarget.BaseAttack,
+            PotentialAllocationTarget.BaseSpeed,
+            PotentialAllocationTarget.BaseFortune,
+            PotentialAllocationTarget.BaseSpiritualSense
+        };
+
+        var previews = new List<PotentialUpgradePreviewDto>(targets.Length);
+        for (var i = 0; i < targets.Length; i++)
+        {
+            previews.Add(BuildPreview(baseStats, targets[i]));
+        }
+
+        return previews;
+    }
+
+    public PotentialUpgradePreviewDto BuildPreview(CharacterBaseStatsDto baseStats, PotentialAllocationTarget target)
+    {
+        var nextUpgradeCount = GetUpgradeCount(baseStats, target) + 1;
+        var tier = TryGetTier(target, nextUpgradeCount);
+        if (!tier.HasValue)
+        {
+            return new PotentialUpgradePreviewDto(
+                target,
+                nextUpgradeCount,
+                0,
+                0,
+                0m,
+                false,
+                false);
+        }
+
+        return new PotentialUpgradePreviewDto(
+            target,
+            nextUpgradeCount,
+            tier.Value.TierIndex,
+            tier.Value.PotentialCostPerUpgrade,
+            tier.Value.StatGainPerUpgrade,
+            true,
+            (baseStats.UnallocatedPotential ?? 0) >= tier.Value.PotentialCostPerUpgrade);
+    }
+
+    public PotentialStatUpgradeTier? TryGetTier(PotentialAllocationTarget target, int nextUpgradeCount)
+    {
+        if (!_tiersByTarget.TryGetValue(target, out var tiers) || tiers.Count == 0)
+            return null;
+
+        for (var i = 0; i < tiers.Count; i++)
+        {
+            if (nextUpgradeCount <= tiers[i].MaxUpgradeCount)
+                return tiers[i];
+        }
+
+        return null;
+    }
+
+    public readonly record struct PotentialStatUpgradeTier(
+        PotentialAllocationTarget Target,
+        int TierIndex,
+        int MaxUpgradeCount,
+        int PotentialCostPerUpgrade,
+        decimal StatGainPerUpgrade);
+
+    private static int GetUpgradeCount(CharacterBaseStatsDto baseStats, PotentialAllocationTarget target)
+    {
+        return target switch
+        {
+            PotentialAllocationTarget.BaseHp => baseStats.HpUpgradeCount ?? 0,
+            PotentialAllocationTarget.BaseMp => baseStats.MpUpgradeCount ?? 0,
+            PotentialAllocationTarget.BaseAttack => baseStats.AttackUpgradeCount ?? 0,
+            PotentialAllocationTarget.BaseSpeed => baseStats.SpeedUpgradeCount ?? 0,
+            PotentialAllocationTarget.BaseSpiritualSense => baseStats.SpiritualSenseUpgradeCount ?? 0,
+            PotentialAllocationTarget.BaseFortune => baseStats.FortuneUpgradeCount ?? 0,
+            _ => 0
+        };
+    }
+}

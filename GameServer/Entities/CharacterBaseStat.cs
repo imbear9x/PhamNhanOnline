@@ -21,7 +21,6 @@ namespace GameServer.Entities
 		[Column("cultivation"                              )] public long?   Cultivation          { get; set; } // bigint
 		[Column("base_hp"                                  )] public int?    BaseHp               { get; set; } // integer
 		[Column("base_mp"                                  )] public int?    BaseMp               { get; set; } // integer
-		[Column("base_physique"                            )] public int?    BasePhysique         { get; set; } // integer
 		[Column("base_attack"                              )] public int?    BaseAttack           { get; set; } // integer
 		[Column("base_speed"                               )] public int?    BaseSpeed            { get; set; } // integer
 		[Column("base_spiritual_sense"                     )] public int?    BaseSpiritualSense   { get; set; } // integer
@@ -30,6 +29,18 @@ namespace GameServer.Entities
 		[Column("base_fortune"                             )] public double? BaseFortune          { get; set; } // double precision
 		[Column("base_potential"                           )] public int?    BasePotential        { get; set; } // integer
 		[Column("unallocated_potential"                    )] public int?    UnallocatedPotential { get; set; } // integer
+		[Column("bonus_hp"                                 )] public int?    BonusHp              { get; set; } // integer
+		[Column("bonus_mp"                                 )] public int?    BonusMp              { get; set; } // integer
+		[Column("bonus_attack"                             )] public int?    BonusAttack          { get; set; } // integer
+		[Column("bonus_speed"                              )] public int?    BonusSpeed           { get; set; } // integer
+		[Column("bonus_spiritual_sense"                    )] public int?    BonusSpiritualSense  { get; set; } // integer
+		[Column("bonus_fortune"                            )] public double? BonusFortune         { get; set; } // double precision
+		[Column("hp_upgrade_count"                         )] public int?    HpUpgradeCount       { get; set; } // integer
+		[Column("mp_upgrade_count"                         )] public int?    MpUpgradeCount       { get; set; } // integer
+		[Column("attack_upgrade_count"                     )] public int?    AttackUpgradeCount   { get; set; } // integer
+		[Column("speed_upgrade_count"                      )] public int?    SpeedUpgradeCount    { get; set; } // integer
+		[Column("spiritual_sense_upgrade_count"            )] public int?    SpiritualSenseUpgradeCount { get; set; } // integer
+		[Column("fortune_upgrade_count"                    )] public int?    FortuneUpgradeCount  { get; set; } // integer
 		[Column("cultivation_progress"                     )] public decimal? CultivationProgress  { get; set; } // numeric(18,6)
 
 		#region Associations

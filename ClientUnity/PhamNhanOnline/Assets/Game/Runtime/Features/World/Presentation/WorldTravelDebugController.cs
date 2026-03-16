@@ -3,6 +3,7 @@ using System.Globalization;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Core.Logging;
+using GameShared.Models;
 using TMPro;
 using UnityEngine;
 
@@ -13,15 +14,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private KeyCode travelToAdjacentMapKey = KeyCode.T;
         [SerializeField] private KeyCode cultivationToggleKey = KeyCode.U;
         [SerializeField] private KeyCode joinZoneKey = KeyCode.I;
+        [SerializeField] private KeyCode allocatePotentialKey = KeyCode.P;
         [SerializeField] private TMP_InputField zoneInputField;
+        [SerializeField] private TMP_Dropdown allocateTargetDropdown;
         [SerializeField] private TMP_Text currentStateText;
+        [SerializeField] private TMP_Text characterStatsText;
+        [SerializeField] private TMP_Text potentialPreviewText;
         [SerializeField] private TMP_Text cultivationRewardText;
 
         private bool travelInFlight;
         private bool cultivationToggleInFlight;
         private bool zoneJoinInFlight;
+        private bool allocatePotentialInFlight;
         private bool rewardTextPinnedByDebugMessage;
         private int lastStateCode = int.MinValue;
+        private string lastStatsSnapshot = string.Empty;
         private bool hasAppliedRewardSnapshot;
         private long lastRewardCultivation = long.MinValue;
         private int lastRewardPotential = int.MinValue;
@@ -36,7 +43,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!ClientRuntime.IsInitialized)
                 return;
 
+            InitializePotentialDropdown();
             RefreshCurrentStateText(force: true);
+            RefreshCharacterStatsText(force: true);
+            RefreshPotentialPreviewText(force: true);
             RefreshRewardTextFromCachedState();
         }
 
@@ -50,6 +60,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             RefreshCurrentStateText(force: false);
+            RefreshCharacterStatsText(force: false);
+            RefreshPotentialPreviewText(force: false);
             RefreshRewardTextFromCachedState();
 
             if (WasCultivationTogglePressed() && !cultivationToggleInFlight)
@@ -65,6 +77,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (Input.GetKeyDown(joinZoneKey) && !zoneJoinInFlight && !IsCultivating())
             {
                 _ = JoinZoneAsync();
+                return;
+            }
+
+            if (Input.GetKeyDown(allocatePotentialKey) && !allocatePotentialInFlight)
+            {
+                _ = AllocatePotentialAsync();
                 return;
             }
 
@@ -100,6 +118,54 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             finally
             {
                 travelInFlight = false;
+            }
+        }
+
+        private async System.Threading.Tasks.Task AllocatePotentialAsync()
+        {
+            PotentialAllocationTarget target;
+            if (!TryGetPotentialAllocationTarget(out target))
+                return;
+
+            allocatePotentialInFlight = true;
+            try
+            {
+                var preview = GetPreview(target);
+                if (!preview.HasValue)
+                {
+                    ShowCultivationDebugMessage($"Khong co preview de nang {GetPotentialTargetLabel(target)}.");
+                    return;
+                }
+
+                ShowCultivationDebugMessage(string.Format(
+                    "Dang nang {0}: ton {1} tiem nang, +{2} chi so.",
+                    GetPotentialTargetLabel(target),
+                    preview.Value.PotentialCost,
+                    FormatPreviewGain(preview.Value)));
+                var result = await ClientRuntime.CharacterService.AllocatePotentialAsync(target);
+                if (!result.Success)
+                {
+                    ClientLog.Warn($"WorldTravelDebugController allocate potential failed: {result.Message}");
+                    ShowCultivationActionResult("Nang chi so that bai", result.Code, result.Message);
+                    return;
+                }
+
+                RefreshCharacterStatsText(force: true);
+                RefreshPotentialPreviewText(force: true);
+                ShowCultivationDebugMessage(string.Format(
+                    "Da nang {0}: ton {1} tiem nang, +{2} chi so.",
+                    GetPotentialTargetLabel(target),
+                    preview.Value.PotentialCost,
+                    FormatPreviewGain(preview.Value)));
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Warn($"WorldTravelDebugController allocate potential exception: {ex.Message}");
+                ShowCultivationDebugMessage($"Loi nang chi so: {ex.Message}");
+            }
+            finally
+            {
+                allocatePotentialInFlight = false;
             }
         }
 
@@ -226,6 +292,31 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
         }
 
+        private void RefreshCharacterStatsText(bool force)
+        {
+            if (characterStatsText == null)
+                return;
+
+            var snapshot = BuildCharacterStatsSnapshot();
+            if (!force && string.Equals(snapshot, lastStatsSnapshot, StringComparison.Ordinal))
+                return;
+
+            lastStatsSnapshot = snapshot;
+            characterStatsText.text = snapshot;
+        }
+
+        private void RefreshPotentialPreviewText(bool force)
+        {
+            if (potentialPreviewText == null)
+                return;
+
+            var previewLine = BuildPotentialPreviewLine();
+            if (!force && string.Equals(previewLine, potentialPreviewText.text, StringComparison.Ordinal))
+                return;
+
+            potentialPreviewText.text = previewLine;
+        }
+
         private void RefreshRewardTextFromCachedState()
         {
             var lastReward = ClientRuntime.Character.LastCultivationReward;
@@ -344,6 +435,26 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 cultivationRewardText.text = message;
         }
 
+        private void InitializePotentialDropdown()
+        {
+            if (allocateTargetDropdown == null)
+                return;
+
+            if (allocateTargetDropdown.options != null && allocateTargetDropdown.options.Count > 0)
+                return;
+
+            allocateTargetDropdown.ClearOptions();
+            allocateTargetDropdown.AddOptions(new System.Collections.Generic.List<string>
+            {
+                "Mau",
+                "Linh luc",
+                "Suc tan cong",
+                "Toc do",
+                "Co duyen",
+                "Than thuc"
+            });
+        }
+
         private bool TryGetRequestedZoneIndex(out int zoneIndex)
         {
             zoneIndex = 0;
@@ -361,6 +472,179 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             return true;
+        }
+
+        private bool TryGetPotentialAllocationTarget(out PotentialAllocationTarget target)
+        {
+            target = PotentialAllocationTarget.None;
+
+            if (allocateTargetDropdown == null)
+            {
+                ShowCultivationDebugMessage("Chua gan dropdown chon chi so trong inspector.");
+                return false;
+            }
+
+            target = MapDropdownIndexToPotentialTarget(allocateTargetDropdown.value);
+            if (target == PotentialAllocationTarget.None)
+            {
+                ShowCultivationDebugMessage("Chi so duoc chon khong hop le.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryGetPotentialAllocationTargetSilently(out PotentialAllocationTarget target)
+        {
+            target = PotentialAllocationTarget.None;
+            if (allocateTargetDropdown == null)
+                return false;
+
+            target = MapDropdownIndexToPotentialTarget(allocateTargetDropdown.value);
+            return target != PotentialAllocationTarget.None;
+        }
+
+        private string BuildCharacterStatsSnapshot()
+        {
+            var baseStats = ClientRuntime.Character.BaseStats;
+            var currentState = ClientRuntime.Character.CurrentState;
+            if (!baseStats.HasValue)
+                return "Chua co du lieu chi so nhan vat.";
+
+            var stats = baseStats.Value;
+            var currentHp = currentState.HasValue ? currentState.Value.CurrentHp : stats.BaseHp;
+            var currentMp = currentState.HasValue ? currentState.Value.CurrentMp : stats.BaseMp;
+            var currentStamina = currentState.HasValue ? currentState.Value.CurrentStamina : stats.BaseStamina;
+            var hpPreview = GetPreview(stats, PotentialAllocationTarget.BaseHp);
+            var mpPreview = GetPreview(stats, PotentialAllocationTarget.BaseMp);
+            var attackPreview = GetPreview(stats, PotentialAllocationTarget.BaseAttack);
+            var speedPreview = GetPreview(stats, PotentialAllocationTarget.BaseSpeed);
+            var fortunePreview = GetPreview(stats, PotentialAllocationTarget.BaseFortune);
+            var spiritualSensePreview = GetPreview(stats, PotentialAllocationTarget.BaseSpiritualSense);
+
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "Tiem nang chua dung: {0}\nHP: {1}/{2} (bonus {3}, bac {4}) | next {5}\nMP: {6}/{7} (bonus {8}, bac {9}) | next {10}\nTan cong: {11} (bonus {12}, bac {13}) | next {14}\nToc do: {15} (bonus {16}, bac {17}) | next {18}\nThan thuc: {19} (bonus {20}, bac {21}) | next {22}\nCo duyen: {23:0.##} (bonus {24:0.##}, bac {25}) | next {26}\nThe luc hien tai/max: {27}/{28}",
+                stats.UnallocatedPotential,
+                currentHp,
+                stats.BaseHp,
+                stats.BonusHp,
+                stats.HpUpgradeCount,
+                FormatPreview(hpPreview),
+                currentMp,
+                stats.BaseMp,
+                stats.BonusMp,
+                stats.MpUpgradeCount,
+                FormatPreview(mpPreview),
+                stats.BaseAttack,
+                stats.BonusAttack,
+                stats.AttackUpgradeCount,
+                FormatPreview(attackPreview),
+                stats.BaseSpeed,
+                stats.BonusSpeed,
+                stats.SpeedUpgradeCount,
+                FormatPreview(speedPreview),
+                stats.BaseSpiritualSense,
+                stats.BonusSpiritualSense,
+                stats.SpiritualSenseUpgradeCount,
+                FormatPreview(spiritualSensePreview),
+                stats.BaseFortune,
+                stats.BonusFortune,
+                stats.FortuneUpgradeCount,
+                FormatPreview(fortunePreview),
+                currentStamina,
+                stats.BaseStamina);
+        }
+
+        private string BuildPotentialPreviewLine()
+        {
+            PotentialAllocationTarget target;
+            if (!TryGetPotentialAllocationTargetSilently(out target))
+                return "Preview nang chi so: chua chon chi so.";
+
+            var preview = GetPreview(target);
+            if (!preview.HasValue || !preview.Value.IsAvailable)
+                return $"Preview {GetPotentialTargetLabel(target)}: chua co tier cau hinh.";
+
+            var state = preview.Value.CanUpgrade ? "co the nang" : "khong du tiem nang";
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "Preview {0}: lan {1}, ton {2} tiem nang, +{3} chi so, tier {4}, {5}",
+                GetPotentialTargetLabel(target),
+                preview.Value.NextUpgradeCount,
+                preview.Value.PotentialCost,
+                FormatPreviewGain(preview.Value),
+                preview.Value.TierIndex,
+                state);
+        }
+
+        private PotentialUpgradePreviewModel? GetPreview(PotentialAllocationTarget target)
+        {
+            var baseStats = ClientRuntime.Character.BaseStats;
+            return baseStats.HasValue ? GetPreview(baseStats.Value, target) : null;
+        }
+
+        private static PotentialUpgradePreviewModel? GetPreview(CharacterBaseStatsModel stats, PotentialAllocationTarget target)
+        {
+            var previews = stats.PotentialUpgradePreviews;
+            if (previews == null)
+                return null;
+
+            for (var i = 0; i < previews.Count; i++)
+            {
+                if (previews[i].TargetStat == (int)target)
+                    return previews[i];
+            }
+
+            return null;
+        }
+
+        private static string FormatPreview(PotentialUpgradePreviewModel? preview)
+        {
+            if (!preview.HasValue || !preview.Value.IsAvailable)
+                return "khong co";
+
+            var state = preview.Value.CanUpgrade ? "ok" : "thieu";
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "ton {0}, +{1}, tier {2}, {3}",
+                preview.Value.PotentialCost,
+                FormatPreviewGain(preview.Value),
+                preview.Value.TierIndex,
+                state);
+        }
+
+        private static string FormatPreviewGain(PotentialUpgradePreviewModel preview)
+        {
+            return preview.StatGain.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        private static PotentialAllocationTarget MapDropdownIndexToPotentialTarget(int dropdownIndex)
+        {
+            return dropdownIndex switch
+            {
+                0 => PotentialAllocationTarget.BaseHp,
+                1 => PotentialAllocationTarget.BaseMp,
+                2 => PotentialAllocationTarget.BaseAttack,
+                3 => PotentialAllocationTarget.BaseSpeed,
+                4 => PotentialAllocationTarget.BaseFortune,
+                5 => PotentialAllocationTarget.BaseSpiritualSense,
+                _ => PotentialAllocationTarget.None
+            };
+        }
+
+        private static string GetPotentialTargetLabel(PotentialAllocationTarget target)
+        {
+            return target switch
+            {
+                PotentialAllocationTarget.BaseHp => "Mau",
+                PotentialAllocationTarget.BaseMp => "Linh luc",
+                PotentialAllocationTarget.BaseAttack => "Suc tan cong",
+                PotentialAllocationTarget.BaseSpeed => "Toc do",
+                PotentialAllocationTarget.BaseFortune => "Co duyen",
+                PotentialAllocationTarget.BaseSpiritualSense => "Than thuc",
+                _ => "Khong ro"
+            };
         }
 
         private static string FormatSpiritualEnergy(decimal value)

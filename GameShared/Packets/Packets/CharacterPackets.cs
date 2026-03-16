@@ -174,10 +174,6 @@ public partial class AllocatePotentialPacket : IPacket
     [ValidationCode(MessageCode.PotentialTargetInvalid)]
     [Range(1, int.MaxValue)]
     public int? TargetStat { get; set; }
-
-    [ValidationCode(MessageCode.PotentialAllocationInvalid)]
-    [Range(1, int.MaxValue)]
-    public int? Amount { get; set; }
 }
 
 [Packet]

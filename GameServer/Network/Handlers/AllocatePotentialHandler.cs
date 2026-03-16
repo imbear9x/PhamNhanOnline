@@ -30,8 +30,7 @@ public sealed class AllocatePotentialHandler : IPacketHandler<AllocatePotentialP
             : PotentialAllocationTarget.None;
         var result = await _cultivationService.AllocatePotentialAsync(
             session,
-            target,
-            packet.Amount ?? 0);
+            target);
 
         _network.Send(session.ConnectionId, new AllocatePotentialResultPacket
         {

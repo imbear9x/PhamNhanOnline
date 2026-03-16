@@ -158,14 +158,11 @@ public partial class AllocatePotentialPacket
     {
         ulong mask = 0;
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(TargetStat, default!)) mask |= 1UL << 0;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(Amount, default!)) mask |= 1UL << 1;
 
         writer.Write(mask);
 
         if ((mask & (1UL << 0)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, TargetStat.Value);
-        if ((mask & (1UL << 1)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, Amount.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -174,8 +171,6 @@ public partial class AllocatePotentialPacket
 
         if ((_mask & (1UL << 0)) != 0)
             TargetStat = (int?)global::GameShared.Packets.PacketReader.ReadInt(reader);
-        if ((_mask & (1UL << 1)) != 0)
-            Amount = (int?)global::GameShared.Packets.PacketReader.ReadInt(reader);
     }
 }
 

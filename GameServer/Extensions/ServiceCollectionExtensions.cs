@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<MapTemplateAdjacentMapRepository>();
         services.AddScoped<MapZoneSlotRepository>();
         services.AddScoped<SpiritualEnergyTemplateRepository>();
+        services.AddScoped<PotentialStatUpgradeTierRepository>();
         services.AddScoped<RealmTemplateRepository>();
         services.AddScoped<AccountCredentialRepository>();
 
@@ -71,6 +72,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(BuildGameTimeBootstrapConfig());
         services.AddSingleton<GameTimeService>();
         services.AddSingleton<MapCatalog>();
+        services.AddSingleton<PotentialStatCatalog>();
+        services.AddSingleton<CharacterBaseStatsComposer>();
         services.AddSingleton<MapManager>();
         services.AddSingleton<WorldManager>();
         services.AddSingleton<WorldInterestService>();

@@ -25,6 +25,8 @@ public sealed class CharacterCultivationService
     private readonly CharacterRuntimeNotifier _notifier;
     private readonly INetworkSender _network;
     private readonly MapCatalog _mapCatalog;
+    private readonly CharacterBaseStatsComposer _baseStatsComposer;
+    private readonly PotentialStatCatalog _potentialStatCatalog;
 
     public CharacterCultivationService(
         IServiceScopeFactory scopeFactory,
@@ -32,7 +34,9 @@ public sealed class CharacterCultivationService
         CharacterRuntimeService runtimeService,
         CharacterRuntimeNotifier notifier,
         INetworkSender network,
-        MapCatalog mapCatalog)
+        MapCatalog mapCatalog,
+        CharacterBaseStatsComposer baseStatsComposer,
+        PotentialStatCatalog potentialStatCatalog)
     {
         _scopeFactory = scopeFactory;
         _worldManager = worldManager;
@@ -40,6 +44,8 @@ public sealed class CharacterCultivationService
         _notifier = notifier;
         _network = network;
         _mapCatalog = mapCatalog;
+        _baseStatsComposer = baseStatsComposer;
+        _potentialStatCatalog = potentialStatCatalog;
     }
 
     public TimeSpan SettlementInterval => SettlementIntervalValue;
@@ -148,29 +154,30 @@ public sealed class CharacterCultivationService
     public async Task<CultivationActionResult> AllocatePotentialAsync(
         ConnectionSession session,
         PotentialAllocationTarget target,
-        int amount,
         CancellationToken cancellationToken = default)
     {
         if (session.Player is null)
             return CultivationActionResult.Failed(MessageCode.CharacterMustEnterWorld);
-        if (amount <= 0)
-            return CultivationActionResult.Failed(MessageCode.PotentialAllocationInvalid);
-        if (target == PotentialAllocationTarget.None)
+        if (target == PotentialAllocationTarget.None || !_potentialStatCatalog.Supports(target))
             return CultivationActionResult.Failed(MessageCode.PotentialTargetInvalid);
 
         var player = session.Player;
         var settled = await SettleOnlinePlayerAsync(player, isOfflineSettlement: false, notifyClient: true, DateTime.UtcNow, cancellationToken);
         var snapshot = player.RuntimeState.CaptureSnapshot();
-        var currentPotential = snapshot.BaseStats.UnallocatedPotential ?? 0;
-        if (currentPotential < amount)
+        var plan = TryBuildPotentialAllocationPlan(snapshot.BaseStats, target);
+        if (!plan.HasValue)
+            return CultivationActionResult.Failed(MessageCode.PotentialTargetInvalid);
+
+        if ((snapshot.BaseStats.UnallocatedPotential ?? 0) < plan.Value.PotentialCost)
             return CultivationActionResult.Failed(MessageCode.PotentialAllocationInvalid);
 
-        var updatedBaseStats = ApplyPotentialAllocation(snapshot.BaseStats, target, amount);
+        var updatedBaseStats = ApplyPotentialAllocation(snapshot.BaseStats, plan.Value);
         if (updatedBaseStats == snapshot.BaseStats)
             return CultivationActionResult.Failed(MessageCode.PotentialTargetInvalid);
 
-        player.RuntimeState.UpdateBaseStats(_ => updatedBaseStats);
-        _notifier.NotifyBaseStatsChanged(player, updatedBaseStats);
+        var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(_baseStatsComposer.Compose(updatedBaseStats));
+        player.RuntimeState.UpdateBaseStats(_ => effectiveBaseStats);
+        _notifier.NotifyBaseStatsChanged(player, effectiveBaseStats);
         var updatedSnapshot = player.RuntimeState.CaptureSnapshot();
         return CultivationActionResult.Succeeded(
             updatedSnapshot.BaseStats,
@@ -278,13 +285,14 @@ public sealed class CharacterCultivationService
         if (!grant.HasPersistenceChange)
             return OnlineSettlementResult.None;
 
-        player.RuntimeState.UpdateBaseStats(_ => grant.UpdatedBaseStats);
+        var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(grant.UpdatedBaseStats);
+        player.RuntimeState.UpdateBaseStats(_ => effectiveBaseStats);
         player.RuntimeState.UpdateCurrentState(_ => grant.UpdatedCurrentState);
         player.SynchronizeFromCurrentState(grant.UpdatedCurrentState);
 
         if (grant.HasReward)
         {
-            _notifier.NotifyBaseStatsChanged(player, grant.UpdatedBaseStats);
+            _notifier.NotifyBaseStatsChanged(player, effectiveBaseStats);
             if (notifyClient)
             {
                 var rewardEvent = CreateRewardEvent(grant, player.CharacterData.CharacterId, isOfflineSettlement);
@@ -296,54 +304,71 @@ public sealed class CharacterCultivationService
         return OnlineSettlementResult.None;
     }
 
-    private static CharacterBaseStatsDto ApplyPotentialAllocation(
+    private PotentialAllocationPlan? TryBuildPotentialAllocationPlan(
         CharacterBaseStatsDto baseStats,
-        PotentialAllocationTarget target,
-        int amount)
+        PotentialAllocationTarget target)
     {
-        var remainingPotential = (baseStats.UnallocatedPotential ?? 0) - amount;
+        if (!_potentialStatCatalog.Supports(target))
+            return null;
+
+        var preview = _potentialStatCatalog.BuildPreview(baseStats, target);
+        if (!preview.IsAvailable)
+            return null;
+
+        return new PotentialAllocationPlan(target, preview.PotentialCost, preview.StatGain);
+    }
+
+    private static CharacterBaseStatsDto ApplyPotentialAllocation(CharacterBaseStatsDto baseStats, PotentialAllocationPlan plan)
+    {
+        var remainingPotential = (baseStats.UnallocatedPotential ?? 0) - plan.PotentialCost;
         if (remainingPotential < 0)
             return baseStats;
 
-        return target switch
+        return plan.Target switch
         {
             PotentialAllocationTarget.BaseHp => baseStats with
             {
-                BaseHp = (baseStats.BaseHp ?? 0) + amount,
+                BonusHp = checked((baseStats.BonusHp ?? 0) + DecimalToIntGain(plan.StatGain)),
+                HpUpgradeCount = checked((baseStats.HpUpgradeCount ?? 0) + 1),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseMp => baseStats with
             {
-                BaseMp = (baseStats.BaseMp ?? 0) + amount,
-                UnallocatedPotential = remainingPotential
-            },
-            PotentialAllocationTarget.BasePhysique => baseStats with
-            {
-                BasePhysique = (baseStats.BasePhysique ?? 0) + amount,
+                BonusMp = checked((baseStats.BonusMp ?? 0) + DecimalToIntGain(plan.StatGain)),
+                MpUpgradeCount = checked((baseStats.MpUpgradeCount ?? 0) + 1),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseAttack => baseStats with
             {
-                BaseAttack = (baseStats.BaseAttack ?? 0) + amount,
+                BonusAttack = checked((baseStats.BonusAttack ?? 0) + DecimalToIntGain(plan.StatGain)),
+                AttackUpgradeCount = checked((baseStats.AttackUpgradeCount ?? 0) + 1),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseSpeed => baseStats with
             {
-                BaseSpeed = (baseStats.BaseSpeed ?? 0) + amount,
+                BonusSpeed = checked((baseStats.BonusSpeed ?? 0) + DecimalToIntGain(plan.StatGain)),
+                SpeedUpgradeCount = checked((baseStats.SpeedUpgradeCount ?? 0) + 1),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseSpiritualSense => baseStats with
             {
-                BaseSpiritualSense = (baseStats.BaseSpiritualSense ?? 0) + amount,
+                BonusSpiritualSense = checked((baseStats.BonusSpiritualSense ?? 0) + DecimalToIntGain(plan.StatGain)),
+                SpiritualSenseUpgradeCount = checked((baseStats.SpiritualSenseUpgradeCount ?? 0) + 1),
                 UnallocatedPotential = remainingPotential
             },
-            PotentialAllocationTarget.BaseStamina => baseStats with
+            PotentialAllocationTarget.BaseFortune => baseStats with
             {
-                BaseStamina = (baseStats.BaseStamina ?? 0) + amount,
+                BonusFortune = (baseStats.BonusFortune ?? 0d) + (double)plan.StatGain,
+                FortuneUpgradeCount = checked((baseStats.FortuneUpgradeCount ?? 0) + 1),
                 UnallocatedPotential = remainingPotential
             },
             _ => baseStats
         };
+    }
+
+    private static int DecimalToIntGain(decimal totalGain)
+    {
+        return decimal.ToInt32(decimal.Truncate(totalGain));
     }
 
     private CultivationGrant EvaluateGrant(
@@ -606,4 +631,9 @@ public sealed class CharacterCultivationService
     {
         public static OnlineSettlementResult None => new(null);
     }
+
+    private readonly record struct PotentialAllocationPlan(
+        PotentialAllocationTarget Target,
+        int PotentialCost,
+        decimal StatGain);
 }

@@ -123,7 +123,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             return breakthroughCompletionSource.Task;
         }
 
-        public Task<CharacterAllocatePotentialResult> AllocatePotentialAsync(PotentialAllocationTarget target, int amount)
+        public Task<CharacterAllocatePotentialResult> AllocatePotentialAsync(PotentialAllocationTarget target)
         {
             if (connection.State != ClientConnectionState.Connected)
                 return Task.FromResult(new CharacterAllocatePotentialResult(false, null, null, null, "Not connected to server."));
@@ -131,8 +131,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             allocatePotentialCompletionSource = new TaskCompletionSource<CharacterAllocatePotentialResult>();
             connection.Send(new AllocatePotentialPacket
             {
-                TargetStat = (int)target,
-                Amount = amount
+                TargetStat = (int)target
             });
             return allocatePotentialCompletionSource.Task;
         }

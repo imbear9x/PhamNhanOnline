@@ -36,7 +36,6 @@ public static class NetworkModelMapper
             Cultivation = dto.Cultivation ?? 0,
             BaseHp = dto.BaseHp ?? 0,
             BaseMp = dto.BaseMp ?? 0,
-            BasePhysique = dto.BasePhysique ?? 0,
             BaseAttack = dto.BaseAttack ?? 0,
             BaseSpeed = dto.BaseSpeed ?? 0,
             BaseSpiritualSense = dto.BaseSpiritualSense ?? 0,
@@ -44,7 +43,34 @@ public static class NetworkModelMapper
             LifespanBonus = dto.LifespanBonus ?? 0,
             BaseFortune = dto.BaseFortune ?? 0,
             BasePotential = dto.BasePotential ?? 0,
-            UnallocatedPotential = dto.UnallocatedPotential ?? 0
+            UnallocatedPotential = dto.UnallocatedPotential ?? 0,
+            BonusHp = dto.BonusHp ?? 0,
+            BonusMp = dto.BonusMp ?? 0,
+            BonusAttack = dto.BonusAttack ?? 0,
+            BonusSpeed = dto.BonusSpeed ?? 0,
+            BonusSpiritualSense = dto.BonusSpiritualSense ?? 0,
+            BonusFortune = dto.BonusFortune ?? 0,
+            HpUpgradeCount = dto.HpUpgradeCount ?? 0,
+            MpUpgradeCount = dto.MpUpgradeCount ?? 0,
+            AttackUpgradeCount = dto.AttackUpgradeCount ?? 0,
+            SpeedUpgradeCount = dto.SpeedUpgradeCount ?? 0,
+            SpiritualSenseUpgradeCount = dto.SpiritualSenseUpgradeCount ?? 0,
+            FortuneUpgradeCount = dto.FortuneUpgradeCount ?? 0,
+            PotentialUpgradePreviews = dto.PotentialUpgradePreviews?.Select(ToModel).ToList()
+        };
+    }
+
+    public static PotentialUpgradePreviewModel ToModel(this PotentialUpgradePreviewDto dto)
+    {
+        return new PotentialUpgradePreviewModel
+        {
+            TargetStat = (int)dto.Target,
+            NextUpgradeCount = dto.NextUpgradeCount,
+            TierIndex = dto.TierIndex,
+            PotentialCost = dto.PotentialCost,
+            StatGain = (double)dto.StatGain,
+            IsAvailable = dto.IsAvailable,
+            CanUpgrade = dto.CanUpgrade
         };
     }
 
