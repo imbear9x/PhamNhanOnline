@@ -42,6 +42,7 @@ namespace GameServer.Entities
 		[Column("spiritual_sense_upgrade_count"            )] public int?    SpiritualSenseUpgradeCount { get; set; } // integer
 		[Column("fortune_upgrade_count"                    )] public int?    FortuneUpgradeCount  { get; set; } // integer
 		[Column("cultivation_progress"                     )] public decimal? CultivationProgress  { get; set; } // numeric(18,6)
+		[Column("potential_reward_locked"                  )] public bool?   PotentialRewardLocked { get; set; } // boolean
 
 		#region Associations
 		/// <summary>

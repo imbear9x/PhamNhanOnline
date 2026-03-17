@@ -286,6 +286,7 @@ public sealed class CharacterService
         existing.SpiritualSenseUpgradeCount = stats.SpiritualSenseUpgradeCount;
         existing.FortuneUpgradeCount = stats.FortuneUpgradeCount;
         existing.CultivationProgress = stats.CultivationProgress;
+        existing.PotentialRewardLocked = stats.PotentialRewardLocked;
 
         await _baseStats.UpdateAsync(existing, cancellationToken);
         var realmLifespan = await GetRealmLifespanAsync(existing.RealmId, cancellationToken);
@@ -433,7 +434,8 @@ public sealed class CharacterService
             SpeedUpgradeCount = 0,
             SpiritualSenseUpgradeCount = 0,
             FortuneUpgradeCount = 0,
-            CultivationProgress = 0m
+            CultivationProgress = 0m,
+            PotentialRewardLocked = false
         };
     }
 

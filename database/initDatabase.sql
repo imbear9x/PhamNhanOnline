@@ -17,12 +17,14 @@ ALTER TABLE public.character_base_stats
     ADD COLUMN IF NOT EXISTS attack_upgrade_count integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS speed_upgrade_count integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS spiritual_sense_upgrade_count integer NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS fortune_upgrade_count integer NOT NULL DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS fortune_upgrade_count integer NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS potential_reward_locked boolean NOT NULL DEFAULT false;
 
 UPDATE public.character_base_stats
 SET
     unallocated_potential = COALESCE(unallocated_potential, COALESCE(base_potential, 0)),
-    cultivation_progress = COALESCE(cultivation_progress, 0);
+    cultivation_progress = COALESCE(cultivation_progress, 0),
+    potential_reward_locked = COALESCE(potential_reward_locked, false);
 
 ALTER TABLE public.character_current_state
     ADD COLUMN IF NOT EXISTS cultivation_started_at_utc timestamp without time zone NULL,

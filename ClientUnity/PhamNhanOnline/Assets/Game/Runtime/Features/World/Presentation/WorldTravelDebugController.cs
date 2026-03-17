@@ -14,6 +14,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private KeyCode travelToAdjacentMapKey = KeyCode.T;
         [SerializeField] private KeyCode cultivationToggleKey = KeyCode.U;
+        [SerializeField] private KeyCode breakthroughKey = KeyCode.B;
         [SerializeField] private KeyCode joinZoneKey = KeyCode.I;
         [SerializeField] private KeyCode allocatePotentialKey = KeyCode.P;
         [SerializeField] private KeyCode cyclePotentialOptionKey = KeyCode.O;
@@ -26,6 +27,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private bool travelInFlight;
         private bool cultivationToggleInFlight;
+        private bool breakthroughInFlight;
         private bool zoneJoinInFlight;
         private bool allocatePotentialInFlight;
         private int selectedPotentialSpendOptionIndex;
@@ -74,6 +76,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                     cultivationToggleKey,
                     IsCultivating() ? "dung tu luyen" : "bat dau tu luyen"));
                 _ = ToggleCultivationAsync();
+                return;
+            }
+
+            if (Input.GetKeyDown(breakthroughKey) && !breakthroughInFlight)
+            {
+                ShowCultivationDebugMessage(string.Format(
+                    "Nhan phim {0}: dang gui yeu cau dot pha canh gioi.",
+                    breakthroughKey));
+                _ = BreakthroughAsync();
                 return;
             }
 
@@ -224,6 +235,38 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             finally
             {
                 cultivationToggleInFlight = false;
+                RefreshCurrentStateText(force: true);
+            }
+        }
+
+        private async System.Threading.Tasks.Task BreakthroughAsync()
+        {
+            breakthroughInFlight = true;
+            try
+            {
+                var result = await ClientRuntime.CharacterService.BreakthroughAsync();
+                if (!result.Success)
+                {
+                    ClientLog.Warn($"WorldTravelDebugController breakthrough failed: {result.Message}");
+                    ShowCultivationActionResult("Dot pha that bai", result.Code, result.Message);
+                    RefreshCharacterStatsText(force: true);
+                    RefreshPotentialPreviewText(force: true);
+                    return;
+                }
+
+                ClientLog.Info($"WorldTravelDebugController breakthrough succeeded: {result.Message}");
+                RefreshCharacterStatsText(force: true);
+                RefreshPotentialPreviewText(force: true);
+                ShowCultivationActionResult("Dot pha thanh cong", result.Code, result.Message);
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Warn($"WorldTravelDebugController breakthrough exception: {ex.Message}");
+                ShowCultivationDebugMessage($"Loi dot pha: {ex.Message}");
+            }
+            finally
+            {
+                breakthroughInFlight = false;
                 RefreshCurrentStateText(force: true);
             }
         }

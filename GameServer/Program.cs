@@ -2,6 +2,7 @@ using System.Threading;
 using GameServer.Diagnostics;
 using GameServer.Extensions;
 using GameServer.Network;
+using GameServer.Randomness;
 using GameServer.Runtime;
 using GameServer.Time;
 using GameShared.Diagnostics;
@@ -119,6 +120,12 @@ class Program
             return true;
         }
 
+        if (string.Equals(command, "preview-random-table", StringComparison.OrdinalIgnoreCase))
+        {
+            RunPreviewRandomTable(provider, args);
+            return true;
+        }
+
         throw new ArgumentException($"Unknown command: {command}");
     }
 
@@ -140,6 +147,41 @@ class Program
         Console.WriteLine($"CurrentGameMinute={snapshot.CurrentGameMinute}");
     }
 
+    private static void RunPreviewRandomTable(ServiceProvider provider, string[] args)
+    {
+        var tableId = GetStringArg(args, "--tableId=");
+        if (string.IsNullOrWhiteSpace(tableId))
+            throw new ArgumentException("Missing --tableId= for preview-random-table.");
+
+        var fortune = GetNullableDoubleArg(args, "--fortune=");
+        var rolls = Math.Clamp(GetIntArg(args, "--rolls=", 3), 1, 100);
+        var randomService = provider.GetRequiredService<IGameRandomService>();
+        var context = new GameRandomContext();
+        var options = new GameRandomOptions(Fortune: fortune);
+        var preview = randomService.PreviewTable(tableId, context, options);
+
+        Console.WriteLine($"Random table: {preview.TableId}");
+        Console.WriteLine($"Mode: {preview.Mode}");
+        Console.WriteLine(preview.Fortune.HasValue
+            ? $"Fortune: {preview.Fortune.Value:0.##}"
+            : "Fortune: <disabled>");
+        Console.WriteLine($"AppliedFortuneBonusPpm: {preview.AppliedFortuneBonusPartsPerMillion}");
+        Console.WriteLine("Effective entries:");
+        foreach (var entry in preview.EffectiveEntries)
+        {
+            var tags = entry.Tags.Count == 0 ? "-" : string.Join(",", entry.Tags);
+            Console.WriteLine(
+                $"- {entry.EntryId} | base={entry.BaseChancePartsPerMillion} | effective={entry.EffectiveChancePartsPerMillion} | bonus={entry.BonusChancePartsPerMillion} | none={entry.IsNone} | tags={tags}");
+        }
+
+        Console.WriteLine($"Sample rolls ({rolls}):");
+        for (var i = 0; i < rolls; i++)
+        {
+            var result = randomService.Roll(tableId, context, options);
+            Console.WriteLine($"- roll={result.RollValue} -> {result.SelectedEntry.EntryId}");
+        }
+    }
+
     private static string? GetStringArg(string[] args, string prefix)
     {
         foreach (var arg in args)
@@ -149,5 +191,30 @@ class Program
         }
 
         return null;
+    }
+
+    private static int GetIntArg(string[] args, string prefix, int defaultValue)
+    {
+        var raw = GetStringArg(args, prefix);
+        return int.TryParse(raw, out var parsed) ? parsed : defaultValue;
+    }
+
+    private static double GetDoubleArg(string[] args, string prefix, double defaultValue)
+    {
+        var raw = GetStringArg(args, prefix);
+        return double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : defaultValue;
+    }
+
+    private static double? GetNullableDoubleArg(string[] args, string prefix)
+    {
+        var raw = GetStringArg(args, prefix);
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        return double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
     }
 }

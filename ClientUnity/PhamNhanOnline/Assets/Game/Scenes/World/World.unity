@@ -4073,6 +4073,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   travelToAdjacentMapKey: 116
   cultivationToggleKey: 117
+  breakthroughKey: 98
   joinZoneKey: 105
   allocatePotentialKey: 112
   cyclePotentialOptionKey: 111

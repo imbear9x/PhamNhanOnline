@@ -2,6 +2,7 @@ using GameServer.DTO;
 using GameServer.Entities;
 using GameServer.Network;
 using GameServer.Network.Interface;
+using GameServer.Randomness;
 using GameServer.Repositories;
 using GameServer.Services;
 using GameServer.World;
@@ -27,6 +28,7 @@ public sealed class CharacterCultivationService
     private readonly MapCatalog _mapCatalog;
     private readonly CharacterBaseStatsComposer _baseStatsComposer;
     private readonly PotentialStatCatalog _potentialStatCatalog;
+    private readonly IGameRandomService _gameRandomService;
 
     public CharacterCultivationService(
         IServiceScopeFactory scopeFactory,
@@ -36,7 +38,8 @@ public sealed class CharacterCultivationService
         INetworkSender network,
         MapCatalog mapCatalog,
         CharacterBaseStatsComposer baseStatsComposer,
-        PotentialStatCatalog potentialStatCatalog)
+        PotentialStatCatalog potentialStatCatalog,
+        IGameRandomService gameRandomService)
     {
         _scopeFactory = scopeFactory;
         _worldManager = worldManager;
@@ -46,33 +49,30 @@ public sealed class CharacterCultivationService
         _mapCatalog = mapCatalog;
         _baseStatsComposer = baseStatsComposer;
         _potentialStatCatalog = potentialStatCatalog;
+        _gameRandomService = gameRandomService;
     }
 
     public TimeSpan SettlementInterval => SettlementIntervalValue;
 
-    public async Task<CultivationActionResult> StartCultivationAsync(ConnectionSession session, CancellationToken cancellationToken = default)
+    public Task<CultivationActionResult> StartCultivationAsync(ConnectionSession session, CancellationToken cancellationToken = default)
     {
         if (session.Player is null)
-            return CultivationActionResult.Failed(MessageCode.CharacterMustEnterWorld);
+            return Task.FromResult(CultivationActionResult.Failed(MessageCode.CharacterMustEnterWorld));
 
         var player = session.Player;
         var snapshot = player.RuntimeState.CaptureSnapshot();
         if (snapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.Cultivating)
-            return CultivationActionResult.Failed(MessageCode.CultivationAlreadyActive);
+            return Task.FromResult(CultivationActionResult.Failed(MessageCode.CultivationAlreadyActive));
 
         if (!_worldManager.MapManager.TryGetInstance(player.MapId, player.InstanceId, out var instance) ||
             !instance.Definition.IsPrivatePerPlayer ||
             instance.Definition.Type != MapType.Home)
         {
-            return CultivationActionResult.Failed(MessageCode.CultivationRequiresPrivateHome);
+            return Task.FromResult(CultivationActionResult.Failed(MessageCode.CultivationRequiresPrivateHome));
         }
 
         if (snapshot.CurrentState.IsDead || snapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired)
-            return CultivationActionResult.Failed(MessageCode.CharacterActionsRestricted);
-
-        var realms = await LoadRealmTemplatesAsync(cancellationToken);
-        if (IsRealmCapReached(snapshot.BaseStats, realms))
-            return CultivationActionResult.Failed(MessageCode.CultivationRealmCapReached);
+            return Task.FromResult(CultivationActionResult.Failed(MessageCode.CharacterActionsRestricted));
 
         var utcNow = DateTime.UtcNow;
         var currentState = snapshot.CurrentState with
@@ -84,7 +84,7 @@ public sealed class CharacterCultivationService
         };
 
         _runtimeService.ApplyCurrentStateMutation(player, _ => currentState);
-        return CultivationActionResult.Succeeded(snapshot.BaseStats, currentState);
+        return Task.FromResult(CultivationActionResult.Succeeded(snapshot.BaseStats, currentState));
     }
 
     public async Task<CultivationActionResult> StopCultivationAsync(ConnectionSession session, CancellationToken cancellationToken = default)
@@ -137,13 +137,37 @@ public sealed class CharacterCultivationService
         if (!realms.ContainsKey(nextRealmId))
             return CultivationActionResult.Failed(MessageCode.BreakthroughRealmMaxed);
 
+        var chancePartsPerMillion = ResolveBreakthroughChancePartsPerMillion(currentRealm.BaseBreakthroughRate);
+        var chanceCheck = _gameRandomService.CheckChance(chancePartsPerMillion);
+        await RecordBreakthroughAttemptAsync(
+            player.CharacterData.CharacterId,
+            currentRealm.Id,
+            chancePartsPerMillion,
+            chanceCheck.Success,
+            cancellationToken);
+
+        if (!chanceCheck.Success)
+        {
+            var penalizedBaseStats = ApplyBreakthroughFailurePenalty(snapshot.BaseStats, currentRealm);
+            var failedBaseStats = _potentialStatCatalog.AttachPreviews(_baseStatsComposer.Compose(penalizedBaseStats));
+            player.RuntimeState.UpdateBaseStats(_ => failedBaseStats);
+            _notifier.NotifyBaseStatsChanged(player, failedBaseStats);
+            var failedSnapshot = player.RuntimeState.CaptureSnapshot();
+            return CultivationActionResult.Failed(
+                MessageCode.BreakthroughFailed,
+                failedSnapshot.BaseStats,
+                failedSnapshot.CurrentState);
+        }
+
         var updatedBaseStats = snapshot.BaseStats with
         {
-            RealmTemplateId = nextRealmId
+            RealmTemplateId = nextRealmId,
+            PotentialRewardLocked = false
         };
 
-        player.RuntimeState.UpdateBaseStats(_ => updatedBaseStats);
-        _notifier.NotifyBaseStatsChanged(player, updatedBaseStats);
+        var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(_baseStatsComposer.Compose(updatedBaseStats));
+        player.RuntimeState.UpdateBaseStats(_ => effectiveBaseStats);
+        _notifier.NotifyBaseStatsChanged(player, effectiveBaseStats);
         var updatedSnapshot = player.RuntimeState.CaptureSnapshot();
         return CultivationActionResult.Succeeded(
             updatedSnapshot.BaseStats,
@@ -201,7 +225,8 @@ public sealed class CharacterCultivationService
             return CultivationSnapshotSettlementResult.Unchanged(snapshot);
         }
 
-        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, DateTime.UtcNow);
+        var potentialRewardLocked = IsPotentialRewardLocked(snapshot.BaseStats, realm);
+        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, DateTime.UtcNow, potentialRewardLocked);
         if (!grant.HasPersistenceChange)
             return CultivationSnapshotSettlementResult.Unchanged(snapshot);
 
@@ -245,7 +270,8 @@ public sealed class CharacterCultivationService
                 continue;
             }
 
-            var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, utcNow);
+            var potentialRewardLocked = IsPotentialRewardLocked(snapshot.BaseStats, realm);
+            var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, utcNow, potentialRewardLocked);
             if (!grant.HasPersistenceChange)
                 continue;
 
@@ -282,7 +308,8 @@ public sealed class CharacterCultivationService
             return OnlineSettlementResult.None;
         }
 
-        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, utcNow);
+        var potentialRewardLocked = IsPotentialRewardLocked(snapshot.BaseStats, realm);
+        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, utcNow, potentialRewardLocked);
         if (!grant.HasPersistenceChange)
             return OnlineSettlementResult.None;
 
@@ -422,7 +449,8 @@ public sealed class CharacterCultivationService
         CharacterCurrentStateDto currentState,
         RealmTemplate realm,
         MapDefinition mapDefinition,
-        DateTime utcNow)
+        DateTime utcNow,
+        bool potentialRewardLocked)
     {
         if (currentState.CurrentState != CharacterRuntimeStateCodes.Cultivating ||
             currentState.IsDead ||
@@ -481,7 +509,7 @@ public sealed class CharacterCultivationService
         var remainingToCap = maxCultivation - currentCultivation;
         var grantedCultivation = Math.Min((long)decimal.Floor(accumulatedProgress), remainingToCap);
         var reachedRealmCap = currentCultivation + grantedCultivation >= maxCultivation;
-        var grantedPotential = grantedCultivation <= 0
+        var grantedPotential = potentialRewardLocked || grantedCultivation <= 0
             ? 0
             : (int)Math.Min(int.MaxValue, grantedCultivation * PotentialPerCultivationPoint);
         var remainingProgress = accumulatedProgress - grantedCultivation;
@@ -551,6 +579,92 @@ public sealed class CharacterCultivationService
         return definition.Type == MapType.Home;
     }
 
+    public bool IsPotentialRewardLocked(
+        CharacterBaseStatsDto baseStats,
+        RealmTemplate? currentRealm = null)
+    {
+        if ((baseStats.Cultivation ?? 0) >= ((currentRealm?.MaxCultivation) ?? long.MaxValue))
+            return true;
+
+        return baseStats.PotentialRewardLocked == true;
+    }
+
+    private static int ResolveBreakthroughChancePartsPerMillion(double? baseBreakthroughRate)
+    {
+        var normalizedRate = NormalizePercentLikeRatio(baseBreakthroughRate);
+        return (int)Math.Round(normalizedRate * 1_000_000d, MidpointRounding.AwayFromZero);
+    }
+
+    private static double ResolveBreakthroughChancePercent(int chancePartsPerMillion)
+    {
+        return chancePartsPerMillion / 10_000d;
+    }
+
+    private static double ResolveFailurePenaltyRatio(double? failurePenalty)
+    {
+        return NormalizePercentLikeRatio(failurePenalty);
+    }
+
+    private static double NormalizePercentLikeRatio(double? rawValue)
+    {
+        if (!rawValue.HasValue || rawValue.Value <= 0d)
+            return 0d;
+
+        var value = rawValue.Value;
+        if (value > 1d)
+            value /= 100d;
+
+        return Math.Clamp(value, 0d, 1d);
+    }
+
+    private static CharacterBaseStatsDto ApplyBreakthroughFailurePenalty(CharacterBaseStatsDto baseStats, RealmTemplate currentRealm)
+    {
+        var currentCultivation = Math.Max(0L, baseStats.Cultivation ?? 0);
+        if (currentCultivation == 0)
+            return baseStats with
+            {
+                CultivationProgress = 0m,
+                PotentialRewardLocked = true
+            };
+
+        var penaltyRatio = ResolveFailurePenaltyRatio(currentRealm.FailurePenalty);
+        if (penaltyRatio <= 0d)
+            return baseStats with
+            {
+                CultivationProgress = 0m,
+                PotentialRewardLocked = true
+            };
+
+        var remainingRatio = 1d - penaltyRatio;
+        var updatedCultivation = (long)Math.Floor(currentCultivation * remainingRatio);
+        return baseStats with
+        {
+            Cultivation = Math.Max(0L, updatedCultivation),
+            CultivationProgress = 0m,
+            PotentialRewardLocked = true
+        };
+    }
+
+    private async Task RecordBreakthroughAttemptAsync(
+        Guid characterId,
+        int realmId,
+        int chancePartsPerMillion,
+        bool success,
+        CancellationToken cancellationToken)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var attemptRepository = scope.ServiceProvider.GetRequiredService<BreakthroughAttemptRepository>();
+        await attemptRepository.CreateAsync(new BreakthroughAttempt
+        {
+            Id = Guid.NewGuid(),
+            CharacterId = characterId,
+            RealmId = realmId,
+            SuccessRate = ResolveBreakthroughChancePercent(chancePartsPerMillion),
+            Result = success,
+            CreatedAt = DateTime.UtcNow
+        }, cancellationToken);
+    }
+
     private async Task<Dictionary<int, RealmTemplate>> LoadRealmTemplatesAsync(CancellationToken cancellationToken)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
@@ -562,14 +676,6 @@ public sealed class CharacterCultivationService
         var repository = serviceProvider.GetRequiredService<RealmTemplateRepository>();
         var realms = await repository.GetAllAsync(cancellationToken);
         return realms.ToDictionary(x => x.Id);
-    }
-
-    private static bool IsRealmCapReached(CharacterBaseStatsDto baseStats, IReadOnlyDictionary<int, RealmTemplate> realms)
-    {
-        if (!baseStats.RealmTemplateId.HasValue || !realms.TryGetValue(baseStats.RealmTemplateId.Value, out var realm))
-            return false;
-
-        return (baseStats.Cultivation ?? 0) >= (realm.MaxCultivation ?? long.MaxValue);
     }
 
     private static CultivationRewardEvent CreateRewardEvent(CultivationGrant grant, Guid characterId, bool isOfflineSettlement)
@@ -604,6 +710,14 @@ public sealed class CharacterCultivationService
         public static CultivationActionResult Failed(MessageCode code)
         {
             return new CultivationActionResult(false, code, null, null, null, null);
+        }
+
+        public static CultivationActionResult Failed(
+            MessageCode code,
+            CharacterBaseStatsDto? baseStats,
+            CharacterCurrentStateDto? currentState)
+        {
+            return new CultivationActionResult(false, code, baseStats, currentState, null, null);
         }
     }
 

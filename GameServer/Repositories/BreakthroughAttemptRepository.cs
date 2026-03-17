@@ -19,6 +19,14 @@ public sealed class BreakthroughAttemptRepository
     public Task<BreakthroughAttempt?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         _db.GetTable<BreakthroughAttempt>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public Task<bool> HasFailedAttemptForRealmAsync(Guid characterId, int realmId, CancellationToken cancellationToken = default) =>
+        _db.GetTable<BreakthroughAttempt>()
+            .AnyAsync(
+                x => x.CharacterId == characterId &&
+                     x.RealmId == realmId &&
+                     x.Result == false,
+                cancellationToken);
+
     public async Task<Guid> CreateAsync(BreakthroughAttempt entity, CancellationToken cancellationToken = default)
     {
         await _db.InsertAsync(entity, token: cancellationToken);

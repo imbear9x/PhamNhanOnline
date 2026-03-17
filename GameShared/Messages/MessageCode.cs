@@ -54,6 +54,7 @@ public enum MessageCode : int
     PotentialTargetInvalid = 3016,
     CharacterMustEnterWorld = 3017,
     CharacterCannotMoveWhileCultivating = 3018,
+    BreakthroughFailed = 3019,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001,

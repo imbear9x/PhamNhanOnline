@@ -37,6 +37,7 @@ public sealed record CharacterBaseStatsDto(
     int? SpeedUpgradeCount,
     int? SpiritualSenseUpgradeCount,
     int? FortuneUpgradeCount,
+    bool? PotentialRewardLocked,
     IReadOnlyList<PotentialUpgradePreviewDto>? PotentialUpgradePreviews)
 {
     public static CharacterBaseStatsDto FromEntity(CharacterBaseStat entity, int? realmLifespan = null) =>
@@ -75,5 +76,6 @@ public sealed record CharacterBaseStatsDto(
             entity.SpeedUpgradeCount,
             entity.SpiritualSenseUpgradeCount,
             entity.FortuneUpgradeCount,
+            entity.PotentialRewardLocked,
             null);
 }

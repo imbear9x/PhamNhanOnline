@@ -1,0 +1,27 @@
+{
+  "tables": [
+    {
+      "tableId": "monster.drop.demo_slime",
+      "mode": "Exclusive",
+      "fortuneModifier": {
+        "enabled": true,
+        "bonusPartsPerMillionPerFortunePoint": 2500,
+        "maxBonusPartsPerMillion": 150000,
+        "noneEntryId": "__none__",
+        "applyToEntryTags": []
+      },
+      "entries": [
+        {
+          "entryId": "item.demo_herb",
+          "chancePartsPerMillion": 50000,
+          "tags": [ "item_drop" ]
+        },
+        {
+          "entryId": "currency.spirit_stone_small",
+          "chancePartsPerMillion": 100000,
+          "tags": [ "currency_drop" ]
+        }
+      ]
+    }
+  ]
+}

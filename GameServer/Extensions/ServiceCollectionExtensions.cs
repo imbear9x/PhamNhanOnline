@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using GameServer.Database;
 using GameServer.Diagnostics;
 using GameServer.Network;
@@ -6,6 +7,7 @@ using GameServer.Network.Handlers;
 using GameServer.Network.Interface;
 using GameServer.Network.Middleware;
 using GameServer.Network.Validations;
+using GameServer.Randomness;
 using GameServer.Repositories;
 using GameServer.Runtime;
 using GameServer.Services;
@@ -18,6 +20,8 @@ namespace GameServer.Extensions;
 
 public static class ServiceCollectionExtensions
 {
+    private static readonly JsonSerializerOptions ConfigJsonOptions = BuildConfigJsonOptions();
+
     public static IServiceCollection AddGameServices(this IServiceCollection services)
     {
         // add game services
@@ -41,6 +45,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SpiritualEnergyTemplateRepository>();
         services.AddScoped<PotentialStatUpgradeTierRepository>();
         services.AddScoped<RealmTemplateRepository>();
+        services.AddScoped<BreakthroughAttemptRepository>();
         services.AddScoped<AccountCredentialRepository>();
 
         return services;
@@ -70,9 +75,12 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddWorldSystems(this IServiceCollection services)
     {
         services.AddSingleton(BuildGameTimeBootstrapConfig());
+        services.AddSingleton(BuildGameRandomConfig());
         services.AddSingleton<GameTimeService>();
         services.AddSingleton<MapCatalog>();
         services.AddSingleton<PotentialStatCatalog>();
+        services.AddSingleton<IRandomNumberProvider, CryptoRandomNumberProvider>();
+        services.AddSingleton<IGameRandomService, GameRandomService>();
         services.AddSingleton<CharacterBaseStatsComposer>();
         services.AddSingleton<MapManager>();
         services.AddSingleton<WorldManager>();
@@ -123,19 +131,11 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddDatabase(this IServiceCollection services)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Config", "dbConfig.json");
-
-        if (!File.Exists(path))
-            throw new Exception($"Config file not found: {path}");
-
-        var json = File.ReadAllText(path);
-
-        var dbConfig = JsonSerializer.Deserialize<DbConfig>(json)
-            ?? throw new Exception($"Failed to deserialize DB config: {path}");
+        var dbConfig = LoadConfig<DbConfig>("dbConfig.json");
         services.AddScoped<GameDb>(sp =>
         {
             if (string.IsNullOrWhiteSpace(dbConfig.ConnectionString))
-                throw new Exception($"ConnectionString is missing in: {path}");
+                throw new Exception("ConnectionString is missing in Config/dbConfig.json");
 
             return new GameDb(dbConfig.ConnectionString);
         });
@@ -145,12 +145,34 @@ public static class ServiceCollectionExtensions
 
     private static GameTimeConfig BuildGameTimeBootstrapConfig()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Config", "gameTimeConfig.json");
+        return LoadConfig<GameTimeConfig>("gameTimeConfig.json");
+    }
+
+    private static GameRandomConfig BuildGameRandomConfig()
+    {
+        return LoadConfig<GameRandomConfig>("gameRandomConfig.json");
+    }
+
+    private static T LoadConfig<T>(string fileName)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Config", fileName);
         if (!File.Exists(path))
             throw new Exception($"Config file not found: {path}");
 
         var json = File.ReadAllText(path);
-        return JsonSerializer.Deserialize<GameTimeConfig>(json)
-               ?? throw new Exception($"Failed to deserialize game time config: {path}");
+        return JsonSerializer.Deserialize<T>(json, ConfigJsonOptions)
+               ?? throw new Exception($"Failed to deserialize config: {path}");
+    }
+
+    private static JsonSerializerOptions BuildConfigJsonOptions()
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            ReadCommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true
+        };
+        options.Converters.Add(new JsonStringEnumConverter());
+        return options;
     }
 }
