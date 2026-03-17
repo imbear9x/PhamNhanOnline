@@ -154,6 +154,7 @@ public sealed class CharacterCultivationService
     public async Task<CultivationActionResult> AllocatePotentialAsync(
         ConnectionSession session,
         PotentialAllocationTarget target,
+        int requestedPotentialAmount,
         CancellationToken cancellationToken = default)
     {
         if (session.Player is null)
@@ -164,16 +165,12 @@ public sealed class CharacterCultivationService
         var player = session.Player;
         var settled = await SettleOnlinePlayerAsync(player, isOfflineSettlement: false, notifyClient: true, DateTime.UtcNow, cancellationToken);
         var snapshot = player.RuntimeState.CaptureSnapshot();
-        var plan = TryBuildPotentialAllocationPlan(snapshot.BaseStats, target);
-        if (!plan.HasValue)
-            return CultivationActionResult.Failed(MessageCode.PotentialTargetInvalid);
+        if (!TryBuildPotentialAllocationPlan(snapshot.BaseStats, target, requestedPotentialAmount, out var plan, out var failureCode))
+            return CultivationActionResult.Failed(failureCode);
 
-        if ((snapshot.BaseStats.UnallocatedPotential ?? 0) < plan.Value.PotentialCost)
-            return CultivationActionResult.Failed(MessageCode.PotentialAllocationInvalid);
-
-        var updatedBaseStats = ApplyPotentialAllocation(snapshot.BaseStats, plan.Value);
+        var updatedBaseStats = ApplyPotentialAllocation(snapshot.BaseStats, plan);
         if (updatedBaseStats == snapshot.BaseStats)
-            return CultivationActionResult.Failed(MessageCode.PotentialTargetInvalid);
+            return CultivationActionResult.Failed(MessageCode.PotentialAllocationInvalid);
 
         var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(_baseStatsComposer.Compose(updatedBaseStats));
         player.RuntimeState.UpdateBaseStats(_ => effectiveBaseStats);
@@ -182,7 +179,11 @@ public sealed class CharacterCultivationService
         return CultivationActionResult.Succeeded(
             updatedSnapshot.BaseStats,
             updatedSnapshot.CurrentState,
-            settled.RewardEvent);
+            settled.RewardEvent,
+            new PotentialAllocationOutcome(
+                plan.RequestedPotentialAmount,
+                plan.SpentPotentialAmount,
+                plan.AppliedUpgradeCount));
     }
 
     public async Task<CultivationSnapshotSettlementResult> SettleSnapshotAsync(
@@ -304,23 +305,68 @@ public sealed class CharacterCultivationService
         return OnlineSettlementResult.None;
     }
 
-    private PotentialAllocationPlan? TryBuildPotentialAllocationPlan(
+    private bool TryBuildPotentialAllocationPlan(
         CharacterBaseStatsDto baseStats,
-        PotentialAllocationTarget target)
+        PotentialAllocationTarget target,
+        int requestedPotentialAmount,
+        out PotentialAllocationPlan plan,
+        out MessageCode failureCode)
     {
+        plan = default;
+        failureCode = MessageCode.PotentialAllocationInvalid;
+
         if (!_potentialStatCatalog.Supports(target))
-            return null;
+        {
+            failureCode = MessageCode.PotentialTargetInvalid;
+            return false;
+        }
 
         var preview = _potentialStatCatalog.BuildPreview(baseStats, target);
         if (!preview.IsAvailable)
-            return null;
+        {
+            failureCode = MessageCode.PotentialTargetInvalid;
+            return false;
+        }
 
-        return new PotentialAllocationPlan(target, preview.PotentialCost, preview.StatGain);
+        var currentTier = _potentialStatCatalog.TryGetTier(target, preview.NextUpgradeCount);
+        if (!currentTier.HasValue || currentTier.Value.PotentialCostPerUpgrade <= 0)
+        {
+            failureCode = MessageCode.PotentialTargetInvalid;
+            return false;
+        }
+
+        var potentialCostPerUpgrade = currentTier.Value.PotentialCostPerUpgrade;
+        var availablePotential = baseStats.UnallocatedPotential ?? 0;
+        if (requestedPotentialAmount <= 0 || availablePotential < potentialCostPerUpgrade)
+            return false;
+
+        var currentUpgradeCount = preview.NextUpgradeCount - 1;
+        var remainingUpgradesInTier = currentTier.Value.MaxUpgradeCount - currentUpgradeCount;
+        if (remainingUpgradesInTier <= 0)
+        {
+            failureCode = MessageCode.PotentialTargetInvalid;
+            return false;
+        }
+
+        var requestedUpgradeCount = requestedPotentialAmount / potentialCostPerUpgrade;
+        var affordableUpgradeCount = availablePotential / potentialCostPerUpgrade;
+        var appliedUpgradeCount = Math.Min(requestedUpgradeCount, Math.Min(affordableUpgradeCount, remainingUpgradesInTier));
+        if (appliedUpgradeCount <= 0)
+            return false;
+
+        var spentPotentialAmount = checked(appliedUpgradeCount * potentialCostPerUpgrade);
+        plan = new PotentialAllocationPlan(
+            target,
+            requestedPotentialAmount,
+            spentPotentialAmount,
+            appliedUpgradeCount,
+            currentTier.Value.StatGainPerUpgrade * appliedUpgradeCount);
+        return true;
     }
 
     private static CharacterBaseStatsDto ApplyPotentialAllocation(CharacterBaseStatsDto baseStats, PotentialAllocationPlan plan)
     {
-        var remainingPotential = (baseStats.UnallocatedPotential ?? 0) - plan.PotentialCost;
+        var remainingPotential = (baseStats.UnallocatedPotential ?? 0) - plan.SpentPotentialAmount;
         if (remainingPotential < 0)
             return baseStats;
 
@@ -329,37 +375,37 @@ public sealed class CharacterCultivationService
             PotentialAllocationTarget.BaseHp => baseStats with
             {
                 BonusHp = checked((baseStats.BonusHp ?? 0) + DecimalToIntGain(plan.StatGain)),
-                HpUpgradeCount = checked((baseStats.HpUpgradeCount ?? 0) + 1),
+                HpUpgradeCount = checked((baseStats.HpUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseMp => baseStats with
             {
                 BonusMp = checked((baseStats.BonusMp ?? 0) + DecimalToIntGain(plan.StatGain)),
-                MpUpgradeCount = checked((baseStats.MpUpgradeCount ?? 0) + 1),
+                MpUpgradeCount = checked((baseStats.MpUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseAttack => baseStats with
             {
                 BonusAttack = checked((baseStats.BonusAttack ?? 0) + DecimalToIntGain(plan.StatGain)),
-                AttackUpgradeCount = checked((baseStats.AttackUpgradeCount ?? 0) + 1),
+                AttackUpgradeCount = checked((baseStats.AttackUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseSpeed => baseStats with
             {
                 BonusSpeed = checked((baseStats.BonusSpeed ?? 0) + DecimalToIntGain(plan.StatGain)),
-                SpeedUpgradeCount = checked((baseStats.SpeedUpgradeCount ?? 0) + 1),
+                SpeedUpgradeCount = checked((baseStats.SpeedUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseSpiritualSense => baseStats with
             {
                 BonusSpiritualSense = checked((baseStats.BonusSpiritualSense ?? 0) + DecimalToIntGain(plan.StatGain)),
-                SpiritualSenseUpgradeCount = checked((baseStats.SpiritualSenseUpgradeCount ?? 0) + 1),
+                SpiritualSenseUpgradeCount = checked((baseStats.SpiritualSenseUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseFortune => baseStats with
             {
                 BonusFortune = (baseStats.BonusFortune ?? 0d) + (double)plan.StatGain,
-                FortuneUpgradeCount = checked((baseStats.FortuneUpgradeCount ?? 0) + 1),
+                FortuneUpgradeCount = checked((baseStats.FortuneUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             _ => baseStats
@@ -543,19 +589,21 @@ public sealed class CharacterCultivationService
         MessageCode Code,
         CharacterBaseStatsDto? BaseStats,
         CharacterCurrentStateDto? CurrentState,
-        CultivationRewardEvent? RewardEvent)
+        CultivationRewardEvent? RewardEvent,
+        PotentialAllocationOutcome? PotentialAllocation)
     {
         public static CultivationActionResult Succeeded(
             CharacterBaseStatsDto? baseStats,
             CharacterCurrentStateDto? currentState,
-            CultivationRewardEvent? rewardEvent = null)
+            CultivationRewardEvent? rewardEvent = null,
+            PotentialAllocationOutcome? potentialAllocation = null)
         {
-            return new CultivationActionResult(true, MessageCode.None, baseStats, currentState, rewardEvent);
+            return new CultivationActionResult(true, MessageCode.None, baseStats, currentState, rewardEvent, potentialAllocation);
         }
 
         public static CultivationActionResult Failed(MessageCode code)
         {
-            return new CultivationActionResult(false, code, null, null, null);
+            return new CultivationActionResult(false, code, null, null, null, null);
         }
     }
 
@@ -632,8 +680,15 @@ public sealed class CharacterCultivationService
         public static OnlineSettlementResult None => new(null);
     }
 
+    public readonly record struct PotentialAllocationOutcome(
+        int RequestedPotentialAmount,
+        int SpentPotentialAmount,
+        int AppliedUpgradeCount);
+
     private readonly record struct PotentialAllocationPlan(
         PotentialAllocationTarget Target,
-        int PotentialCost,
+        int RequestedPotentialAmount,
+        int SpentPotentialAmount,
+        int AppliedUpgradeCount,
         decimal StatGain);
 }

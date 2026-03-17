@@ -30,14 +30,18 @@ public sealed class AllocatePotentialHandler : IPacketHandler<AllocatePotentialP
             : PotentialAllocationTarget.None;
         var result = await _cultivationService.AllocatePotentialAsync(
             session,
-            target);
+            target,
+            packet.RequestedPotentialAmount ?? 0);
 
         _network.Send(session.ConnectionId, new AllocatePotentialResultPacket
         {
             Success = result.Success,
             Code = result.Code,
             BaseStats = result.BaseStats?.ToModel(),
-            CurrentState = result.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot())
+            CurrentState = result.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot()),
+            RequestedPotentialAmount = result.PotentialAllocation?.RequestedPotentialAmount,
+            SpentPotentialAmount = result.PotentialAllocation?.SpentPotentialAmount,
+            AppliedUpgradeCount = result.PotentialAllocation?.AppliedUpgradeCount
         });
     }
 }

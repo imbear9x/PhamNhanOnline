@@ -10,12 +10,18 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             MessageCode? code,
             CharacterBaseStatsModel? baseStats,
             CharacterCurrentStateModel? currentState,
+            int requestedPotentialAmount,
+            int spentPotentialAmount,
+            int appliedUpgradeCount,
             string message)
         {
             Success = success;
             Code = code;
             BaseStats = baseStats;
             CurrentState = currentState;
+            RequestedPotentialAmount = requestedPotentialAmount;
+            SpentPotentialAmount = spentPotentialAmount;
+            AppliedUpgradeCount = appliedUpgradeCount;
             Message = message;
         }
 
@@ -23,6 +29,9 @@ namespace PhamNhanOnline.Client.Features.Character.Application
         public MessageCode? Code { get; }
         public CharacterBaseStatsModel? BaseStats { get; }
         public CharacterCurrentStateModel? CurrentState { get; }
+        public int RequestedPotentialAmount { get; }
+        public int SpentPotentialAmount { get; }
+        public int AppliedUpgradeCount { get; }
         public string Message { get; }
     }
 }

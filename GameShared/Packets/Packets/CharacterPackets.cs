@@ -174,6 +174,10 @@ public partial class AllocatePotentialPacket : IPacket
     [ValidationCode(MessageCode.PotentialTargetInvalid)]
     [Range(1, int.MaxValue)]
     public int? TargetStat { get; set; }
+
+    [ValidationCode(MessageCode.PotentialAllocationInvalid)]
+    [Range(1, int.MaxValue)]
+    public int? RequestedPotentialAmount { get; set; }
 }
 
 [Packet]
@@ -184,6 +188,9 @@ public partial class AllocatePotentialResultPacket : IPacket
     public MessageCode? Code { get; set; }
     public CharacterBaseStatsModel? BaseStats { get; set; }
     public CharacterCurrentStateModel? CurrentState { get; set; }
+    public int? RequestedPotentialAmount { get; set; }
+    public int? SpentPotentialAmount { get; set; }
+    public int? AppliedUpgradeCount { get; set; }
 }
 
 [Packet]

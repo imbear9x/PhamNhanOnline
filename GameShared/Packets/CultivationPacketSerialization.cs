@@ -158,11 +158,14 @@ public partial class AllocatePotentialPacket
     {
         ulong mask = 0;
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(TargetStat, default!)) mask |= 1UL << 0;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(RequestedPotentialAmount, default!)) mask |= 1UL << 1;
 
         writer.Write(mask);
 
         if ((mask & (1UL << 0)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, TargetStat.Value);
+        if ((mask & (1UL << 1)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, RequestedPotentialAmount.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -171,6 +174,8 @@ public partial class AllocatePotentialPacket
 
         if ((_mask & (1UL << 0)) != 0)
             TargetStat = (int?)global::GameShared.Packets.PacketReader.ReadInt(reader);
+        if ((_mask & (1UL << 1)) != 0)
+            RequestedPotentialAmount = (int?)global::GameShared.Packets.PacketReader.ReadInt(reader);
     }
 }
 
@@ -185,6 +190,9 @@ public partial class AllocatePotentialResultPacket
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterBaseStatsModel?>.Default.Equals(BaseStats, default!)) mask |= 1UL << 2;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterCurrentStateModel?>.Default.Equals(CurrentState, default!)) mask |= 1UL << 3;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(RequestedPotentialAmount, default!)) mask |= 1UL << 4;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SpentPotentialAmount, default!)) mask |= 1UL << 5;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(AppliedUpgradeCount, default!)) mask |= 1UL << 6;
 
         writer.Write(mask);
 
@@ -196,6 +204,12 @@ public partial class AllocatePotentialResultPacket
             global::GameShared.Packets.PacketModelSerializer.Write(writer, BaseStats.Value);
         if ((mask & (1UL << 3)) != 0)
             global::GameShared.Packets.PacketModelSerializer.Write(writer, CurrentState.Value);
+        if ((mask & (1UL << 4)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, RequestedPotentialAmount.Value);
+        if ((mask & (1UL << 5)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, SpentPotentialAmount.Value);
+        if ((mask & (1UL << 6)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, AppliedUpgradeCount.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -210,6 +224,12 @@ public partial class AllocatePotentialResultPacket
             BaseStats = (global::GameShared.Models.CharacterBaseStatsModel?)global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterBaseStatsModel>(reader);
         if ((_mask & (1UL << 3)) != 0)
             CurrentState = (global::GameShared.Models.CharacterCurrentStateModel?)global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterCurrentStateModel>(reader);
+        if ((_mask & (1UL << 4)) != 0)
+            RequestedPotentialAmount = (int?)global::GameShared.Packets.PacketReader.ReadInt(reader);
+        if ((_mask & (1UL << 5)) != 0)
+            SpentPotentialAmount = (int?)global::GameShared.Packets.PacketReader.ReadInt(reader);
+        if ((_mask & (1UL << 6)) != 0)
+            AppliedUpgradeCount = (int?)global::GameShared.Packets.PacketReader.ReadInt(reader);
     }
 }
 

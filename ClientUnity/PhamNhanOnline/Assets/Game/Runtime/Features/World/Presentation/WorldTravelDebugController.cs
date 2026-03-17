@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
@@ -15,6 +16,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private KeyCode cultivationToggleKey = KeyCode.U;
         [SerializeField] private KeyCode joinZoneKey = KeyCode.I;
         [SerializeField] private KeyCode allocatePotentialKey = KeyCode.P;
+        [SerializeField] private KeyCode cyclePotentialOptionKey = KeyCode.O;
         [SerializeField] private TMP_InputField zoneInputField;
         [SerializeField] private TMP_Dropdown allocateTargetDropdown;
         [SerializeField] private TMP_Text currentStateText;
@@ -26,6 +28,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private bool cultivationToggleInFlight;
         private bool zoneJoinInFlight;
         private bool allocatePotentialInFlight;
+        private int selectedPotentialSpendOptionIndex;
         private bool rewardTextPinnedByDebugMessage;
         private int lastStateCode = int.MinValue;
         private string lastStatsSnapshot = string.Empty;
@@ -80,6 +83,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
             }
 
+            if (Input.GetKeyDown(cyclePotentialOptionKey) && !allocatePotentialInFlight)
+            {
+                CyclePotentialSpendOption();
+                return;
+            }
+
             if (Input.GetKeyDown(allocatePotentialKey) && !allocatePotentialInFlight)
             {
                 _ = AllocatePotentialAsync();
@@ -127,22 +136,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!TryGetPotentialAllocationTarget(out target))
                 return;
 
+            PotentialUpgradePreviewModel preview;
+            int requestedPotentialAmount;
+            if (!TryGetSelectedPotentialSpendOption(target, out preview, out requestedPotentialAmount))
+                return;
+
             allocatePotentialInFlight = true;
             try
             {
-                var preview = GetPreview(target);
-                if (!preview.HasValue)
-                {
-                    ShowCultivationDebugMessage($"Khong co preview de nang {GetPotentialTargetLabel(target)}.");
-                    return;
-                }
-
                 ShowCultivationDebugMessage(string.Format(
-                    "Dang nang {0}: ton {1} tiem nang, +{2} chi so.",
+                    "Dang nang {0}: yeu cau dung {1} tiem nang, chi phi hien tai {2}/lan, +{3} moi lan.",
                     GetPotentialTargetLabel(target),
-                    preview.Value.PotentialCost,
-                    FormatPreviewGain(preview.Value)));
-                var result = await ClientRuntime.CharacterService.AllocatePotentialAsync(target);
+                    requestedPotentialAmount,
+                    preview.PotentialCost,
+                    FormatPreviewGain(preview)));
+                var result = await ClientRuntime.CharacterService.AllocatePotentialAsync(target, requestedPotentialAmount);
                 if (!result.Success)
                 {
                     ClientLog.Warn($"WorldTravelDebugController allocate potential failed: {result.Message}");
@@ -152,11 +160,16 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
                 RefreshCharacterStatsText(force: true);
                 RefreshPotentialPreviewText(force: true);
+                var partialSuffix = result.SpentPotentialAmount < result.RequestedPotentialAmount
+                    ? " do cham moc bac hien tai"
+                    : string.Empty;
                 ShowCultivationDebugMessage(string.Format(
-                    "Da nang {0}: ton {1} tiem nang, +{2} chi so.",
+                    "Da nang {0}: +{1} lan, dung {2}/{3} tiem nang{4}.",
                     GetPotentialTargetLabel(target),
-                    preview.Value.PotentialCost,
-                    FormatPreviewGain(preview.Value)));
+                    result.AppliedUpgradeCount,
+                    result.SpentPotentialAmount,
+                    result.RequestedPotentialAmount,
+                    partialSuffix));
             }
             catch (Exception ex)
             {
@@ -558,30 +571,129 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private string BuildPotentialPreviewLine()
         {
+            var baseStats = ClientRuntime.Character.BaseStats;
+            if (!baseStats.HasValue)
+                return "Preview nang chi so: chua co chi so nhan vat.";
+
             PotentialAllocationTarget target;
             if (!TryGetPotentialAllocationTargetSilently(out target))
                 return "Preview nang chi so: chua chon chi so.";
 
-            var preview = GetPreview(target);
+            var preview = GetPreview(baseStats.Value, target);
             if (!preview.HasValue || !preview.Value.IsAvailable)
                 return $"Preview {GetPotentialTargetLabel(target)}: chua co tier cau hinh.";
 
             var state = preview.Value.CanUpgrade ? "co the nang" : "khong du tiem nang";
+            var spendOptions = BuildPotentialSpendOptions(preview.Value, baseStats.Value.UnallocatedPotential);
+            if (spendOptions.Count == 0)
+            {
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Preview {0}: lan {1}, ton {2}/lan, +{3}, tier {4}, {5}",
+                    GetPotentialTargetLabel(target),
+                    preview.Value.NextUpgradeCount,
+                    preview.Value.PotentialCost,
+                    FormatPreviewGain(preview.Value),
+                    preview.Value.TierIndex,
+                    state);
+            }
+
+            var selectedIndex = NormalizeSelectedPotentialSpendOptionIndex(spendOptions.Count);
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "Preview {0}: lan {1}, ton {2} tiem nang, +{3} chi so, tier {4}, {5}",
+                "Preview {0}: lan {1}, ton {2}/lan, +{3}, tier {4}, {5} | Lua chon: {6} | Nhan {7} de doi, {8} de nang",
                 GetPotentialTargetLabel(target),
                 preview.Value.NextUpgradeCount,
                 preview.Value.PotentialCost,
                 FormatPreviewGain(preview.Value),
                 preview.Value.TierIndex,
-                state);
+                state,
+                FormatPotentialSpendOptions(spendOptions, selectedIndex),
+                cyclePotentialOptionKey,
+                allocatePotentialKey);
         }
 
         private PotentialUpgradePreviewModel? GetPreview(PotentialAllocationTarget target)
         {
             var baseStats = ClientRuntime.Character.BaseStats;
             return baseStats.HasValue ? GetPreview(baseStats.Value, target) : null;
+        }
+
+        private void CyclePotentialSpendOption()
+        {
+            PotentialAllocationTarget target;
+            if (!TryGetPotentialAllocationTarget(out target))
+                return;
+
+            var baseStats = ClientRuntime.Character.BaseStats;
+            if (!baseStats.HasValue)
+            {
+                ShowCultivationDebugMessage("Chua co du lieu chi so nhan vat.");
+                return;
+            }
+
+            var preview = GetPreview(baseStats.Value, target);
+            if (!preview.HasValue || !preview.Value.IsAvailable || !preview.Value.CanUpgrade)
+            {
+                ShowCultivationDebugMessage($"Hien khong co lua chon nang hop le cho {GetPotentialTargetLabel(target)}.");
+                return;
+            }
+
+            var spendOptions = BuildPotentialSpendOptions(preview.Value, baseStats.Value.UnallocatedPotential);
+            if (spendOptions.Count == 0)
+            {
+                ShowCultivationDebugMessage($"Hien khong co lua chon nang hop le cho {GetPotentialTargetLabel(target)}.");
+                return;
+            }
+
+            selectedPotentialSpendOptionIndex = (NormalizeSelectedPotentialSpendOptionIndex(spendOptions.Count) + 1) % spendOptions.Count;
+            RefreshPotentialPreviewText(force: true);
+            ShowCultivationDebugMessage(string.Format(
+                CultureInfo.InvariantCulture,
+                "Da chon nang {0} voi muc {1} tiem nang. Nhan {2} de xac nhan.",
+                GetPotentialTargetLabel(target),
+                spendOptions[selectedPotentialSpendOptionIndex],
+                allocatePotentialKey));
+        }
+
+        private bool TryGetSelectedPotentialSpendOption(
+            PotentialAllocationTarget target,
+            out PotentialUpgradePreviewModel preview,
+            out int requestedPotentialAmount)
+        {
+            preview = default;
+            requestedPotentialAmount = 0;
+
+            var baseStats = ClientRuntime.Character.BaseStats;
+            if (!baseStats.HasValue)
+            {
+                ShowCultivationDebugMessage("Chua co du lieu chi so nhan vat.");
+                return false;
+            }
+
+            var previewValue = GetPreview(baseStats.Value, target);
+            if (!previewValue.HasValue || !previewValue.Value.IsAvailable)
+            {
+                ShowCultivationDebugMessage($"Khong co preview de nang {GetPotentialTargetLabel(target)}.");
+                return false;
+            }
+
+            if (!previewValue.Value.CanUpgrade)
+            {
+                ShowCultivationDebugMessage($"Khong du tiem nang de nang {GetPotentialTargetLabel(target)}.");
+                return false;
+            }
+
+            var spendOptions = BuildPotentialSpendOptions(previewValue.Value, baseStats.Value.UnallocatedPotential);
+            if (spendOptions.Count == 0)
+            {
+                ShowCultivationDebugMessage($"Khong co lua chon nang hop le cho {GetPotentialTargetLabel(target)}.");
+                return false;
+            }
+
+            preview = previewValue.Value;
+            requestedPotentialAmount = spendOptions[NormalizeSelectedPotentialSpendOptionIndex(spendOptions.Count)];
+            return true;
         }
 
         private static PotentialUpgradePreviewModel? GetPreview(CharacterBaseStatsModel stats, PotentialAllocationTarget target)
@@ -617,6 +729,56 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private static string FormatPreviewGain(PotentialUpgradePreviewModel preview)
         {
             return preview.StatGain.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        private int NormalizeSelectedPotentialSpendOptionIndex(int optionCount)
+        {
+            if (optionCount <= 0)
+            {
+                selectedPotentialSpendOptionIndex = 0;
+                return 0;
+            }
+
+            if (selectedPotentialSpendOptionIndex < 0 || selectedPotentialSpendOptionIndex >= optionCount)
+                selectedPotentialSpendOptionIndex = 0;
+
+            return selectedPotentialSpendOptionIndex;
+        }
+
+        private static List<int> BuildPotentialSpendOptions(PotentialUpgradePreviewModel preview, int unallocatedPotential)
+        {
+            var result = new List<int>(3);
+            if (!preview.IsAvailable || !preview.CanUpgrade || preview.PotentialCost <= 0 || unallocatedPotential < preview.PotentialCost)
+                return result;
+
+            var multipliers = new[] { 1, 10, 100 };
+            for (var i = 0; i < multipliers.Length; i++)
+            {
+                var spendAmount = (long)preview.PotentialCost * multipliers[i];
+                if (spendAmount <= 0 || spendAmount > int.MaxValue || spendAmount > unallocatedPotential)
+                    continue;
+
+                result.Add((int)spendAmount);
+            }
+
+            return result;
+        }
+
+        private static string FormatPotentialSpendOptions(IReadOnlyList<int> spendOptions, int selectedIndex)
+        {
+            if (spendOptions.Count == 0)
+                return "khong co";
+
+            var parts = new string[spendOptions.Count];
+            for (var i = 0; i < spendOptions.Count; i++)
+            {
+                var isSelected = i == selectedIndex;
+                parts[i] = isSelected
+                    ? $"[*]{spendOptions[i]}"
+                    : spendOptions[i].ToString(CultureInfo.InvariantCulture);
+            }
+
+            return string.Join(" | ", parts);
         }
 
         private static PotentialAllocationTarget MapDropdownIndexToPotentialTarget(int dropdownIndex)

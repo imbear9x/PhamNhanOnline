@@ -4075,6 +4075,7 @@ MonoBehaviour:
   cultivationToggleKey: 117
   joinZoneKey: 105
   allocatePotentialKey: 112
+  cyclePotentialOptionKey: 111
   zoneInputField: {fileID: 1742392492}
   allocateTargetDropdown: {fileID: 1949192825}
   currentStateText: {fileID: 256479343}

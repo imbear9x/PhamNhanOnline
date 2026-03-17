@@ -123,15 +123,16 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             return breakthroughCompletionSource.Task;
         }
 
-        public Task<CharacterAllocatePotentialResult> AllocatePotentialAsync(PotentialAllocationTarget target)
+        public Task<CharacterAllocatePotentialResult> AllocatePotentialAsync(PotentialAllocationTarget target, int requestedPotentialAmount)
         {
             if (connection.State != ClientConnectionState.Connected)
-                return Task.FromResult(new CharacterAllocatePotentialResult(false, null, null, null, "Not connected to server."));
+                return Task.FromResult(new CharacterAllocatePotentialResult(false, null, null, null, 0, 0, 0, "Not connected to server."));
 
             allocatePotentialCompletionSource = new TaskCompletionSource<CharacterAllocatePotentialResult>();
             connection.Send(new AllocatePotentialPacket
             {
-                TargetStat = (int)target
+                TargetStat = (int)target,
+                RequestedPotentialAmount = requestedPotentialAmount
             });
             return allocatePotentialCompletionSource.Task;
         }
@@ -261,13 +262,27 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             if (packet.CurrentState.HasValue)
                 characterState.ApplyCurrentState(packet.CurrentState);
 
+            var requestedPotentialAmount = packet.RequestedPotentialAmount ?? 0;
+            var spentPotentialAmount = packet.SpentPotentialAmount ?? 0;
+            var appliedUpgradeCount = packet.AppliedUpgradeCount ?? 0;
+            var successMessage = appliedUpgradeCount > 0
+                ? string.Format(
+                    "Potential allocated: {0} upgrade(s), spent {1}/{2}.",
+                    appliedUpgradeCount,
+                    spentPotentialAmount,
+                    requestedPotentialAmount)
+                : "Potential allocated.";
+
             CompletePending(ref allocatePotentialCompletionSource, new CharacterAllocatePotentialResult(
                 packet.Success == true,
                 packet.Code,
                 packet.BaseStats,
                 packet.CurrentState,
+                requestedPotentialAmount,
+                spentPotentialAmount,
+                appliedUpgradeCount,
                 packet.Success == true
-                    ? "Potential allocated."
+                    ? successMessage
                     : string.Format("Failed to allocate potential: {0}", packet.Code ?? MessageCode.UnknownError)));
         }
 
@@ -296,7 +311,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             CompletePending(ref startCultivationCompletionSource, new CharacterStartCultivationResult(false, null, null, "Connection closed."));
             CompletePending(ref stopCultivationCompletionSource, new CharacterStopCultivationResult(false, null, null, "Connection closed."));
             CompletePending(ref breakthroughCompletionSource, new CharacterBreakthroughResult(false, null, null, null, "Connection closed."));
-            CompletePending(ref allocatePotentialCompletionSource, new CharacterAllocatePotentialResult(false, null, null, null, "Connection closed."));
+            CompletePending(ref allocatePotentialCompletionSource, new CharacterAllocatePotentialResult(false, null, null, null, 0, 0, 0, "Connection closed."));
         }
 
         private static void CompletePending(ref TaskCompletionSource<CharacterListLoadResult> completionSource, CharacterListLoadResult result)
