@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using GameServer.Randomness;
+using GameServer.Runtime;
 
 namespace GameServer.World;
 
@@ -7,12 +9,19 @@ public sealed class MapManager
     private static readonly TimeSpan EmptyPublicInstanceLifetime = TimeSpan.FromMinutes(2);
 
     private readonly MapCatalog _catalog;
+    private readonly EnemyDefinitionCatalog _enemyDefinitions;
+    private readonly IRandomNumberProvider _random;
     private readonly ConcurrentDictionary<int, ConcurrentDictionary<int, MapInstance>> _maps = new();
     private int _nextInstanceId;
 
-    public MapManager(MapCatalog catalog)
+    public MapManager(
+        MapCatalog catalog,
+        EnemyDefinitionCatalog enemyDefinitions,
+        IRandomNumberProvider random)
     {
         _catalog = catalog;
+        _enemyDefinitions = enemyDefinitions;
+        _random = random;
     }
 
     public IReadOnlyDictionary<int, ConcurrentDictionary<int, MapInstance>> Maps => _maps;
@@ -25,6 +34,9 @@ public sealed class MapManager
     {
         if (definition.IsPrivatePerPlayer)
             return JoinPrivateInstance(definition, player);
+
+        if (_enemyDefinitions.TryGetInstanceConfig(definition.MapId, out var instanceConfig))
+            return JoinConfiguredInstance(definition, player, instanceConfig);
 
         return JoinPublicInstance(definition, player, requestedZoneIndex, autoSelectPublicZone);
     }
@@ -63,6 +75,18 @@ public sealed class MapManager
 
         instance = null!;
         return false;
+    }
+
+    public bool DestroyInstance(int mapId, int instanceId)
+    {
+        if (!_maps.TryGetValue(mapId, out var instances))
+            return false;
+
+        var removed = instances.TryRemove(instanceId, out _);
+        if (removed && instances.IsEmpty)
+            _maps.TryRemove(mapId, out _);
+
+        return removed;
     }
 
     public MapDefinition ResolveDefinitionOrDefault(int? mapId) => _catalog.ResolveOrDefault(mapId);
@@ -107,19 +131,30 @@ public sealed class MapManager
         return result;
     }
 
-    public void CleanupExpiredEmptyPublicInstances(DateTime utcNow)
+    public void CleanupExpiredInstances(DateTime utcNow)
     {
         foreach (var (mapId, instances) in _maps)
         {
             foreach (var (instanceId, instance) in instances)
             {
-                if (instance.IsPrivate || instance.PlayerCount > 0 || !instance.EmptySinceUtc.HasValue)
+                if (instance.IsPrivate)
                     continue;
 
-                if (utcNow - instance.EmptySinceUtc.Value < EmptyPublicInstanceLifetime)
-                    continue;
+                if (instance.ShouldDestroy(utcNow))
+                {
+                    if (instance.PlayerCount > 0)
+                        continue;
 
-                instances.TryRemove(instanceId, out _);
+                    instances.TryRemove(instanceId, out _);
+                    continue;
+                }
+
+                if (instance.PlayerCount <= 0 &&
+                    instance.EmptySinceUtc.HasValue &&
+                    utcNow - instance.EmptySinceUtc.Value >= EmptyPublicInstanceLifetime)
+                {
+                    instances.TryRemove(instanceId, out _);
+                }
             }
 
             if (instances.IsEmpty)
@@ -141,9 +176,53 @@ public sealed class MapManager
             return instance;
         }
 
-        var created = CreateInstance(definition, zoneIndex: 0, ownerCharacterId: player.CharacterData.CharacterId);
+        var created = CreateInstance(
+            definition,
+            zoneIndex: 0,
+            ownerCharacterId: player.CharacterData.CharacterId,
+            runtimeKind: MapRuntimeKind.PrivateHome,
+            instanceConfig: null);
         if (!created.AddPlayer(player))
             throw new InvalidOperationException("Unable to join private map instance.");
+
+        return created;
+    }
+
+    private MapInstance JoinConfiguredInstance(
+        MapDefinition definition,
+        PlayerSession player,
+        MapInstanceConfigDefinition instanceConfig)
+    {
+        var instances = _maps.GetOrAdd(definition.MapId, _ => new ConcurrentDictionary<int, MapInstance>());
+        foreach (var instance in instances.Values.OrderBy(x => x.CreatedAtUtc))
+        {
+            if (instance.OwnerCharacterId != player.CharacterData.CharacterId)
+                continue;
+
+            if (instance.ShouldDestroy(DateTime.UtcNow))
+                continue;
+
+            if (!instance.AddPlayer(player))
+                throw new InvalidOperationException("Unable to rejoin configured instance.");
+
+            return instance;
+        }
+
+        var runtimeKind = instanceConfig.InstanceMode switch
+        {
+            InstanceMode.Timed => MapRuntimeKind.SoloTimedInstance,
+            InstanceMode.Farm => MapRuntimeKind.SoloFarmInstance,
+            _ => MapRuntimeKind.SoloTimedInstance
+        };
+
+        var created = CreateInstance(
+            definition,
+            zoneIndex: 0,
+            ownerCharacterId: player.CharacterData.CharacterId,
+            runtimeKind: runtimeKind,
+            instanceConfig: instanceConfig);
+        if (!created.AddPlayer(player))
+            throw new InvalidOperationException("Unable to join configured instance.");
 
         return created;
     }
@@ -227,16 +306,71 @@ public sealed class MapManager
         if (!IsValidPublicZone(definition, zoneIndex))
             throw new InvalidOperationException($"Zone {zoneIndex} is invalid for map {definition.MapId}.");
 
-        return CreateInstance(definition, zoneIndex, ownerCharacterId: null, useZoneIndexAsInstanceId: true);
+        return CreateInstance(
+            definition,
+            zoneIndex,
+            ownerCharacterId: null,
+            runtimeKind: MapRuntimeKind.Public,
+            instanceConfig: null,
+            useZoneIndexAsInstanceId: true);
     }
 
-    private MapInstance CreateInstance(MapDefinition definition, int zoneIndex, Guid? ownerCharacterId, bool useZoneIndexAsInstanceId = false)
+    private MapInstance CreateInstance(
+        MapDefinition definition,
+        int zoneIndex,
+        Guid? ownerCharacterId,
+        MapRuntimeKind runtimeKind,
+        MapInstanceConfigDefinition? instanceConfig,
+        bool useZoneIndexAsInstanceId = false)
     {
         var instanceId = useZoneIndexAsInstanceId ? zoneIndex : Interlocked.Increment(ref _nextInstanceId);
-        var instance = new MapInstance(instanceId, zoneIndex, definition, ownerCharacterId);
+        var spawnGroups = ResolveSpawnGroups(definition.MapId, runtimeKind, zoneIndex);
+        var instance = new MapInstance(
+            instanceId,
+            zoneIndex,
+            definition,
+            ownerCharacterId,
+            runtimeKind,
+            instanceConfig,
+            spawnGroups,
+            _enemyDefinitions,
+            _random,
+            DateTime.UtcNow);
         var instances = _maps.GetOrAdd(definition.MapId, _ => new ConcurrentDictionary<int, MapInstance>());
         instances[instanceId] = instance;
         return instance;
+    }
+
+    private IReadOnlyList<MapEnemySpawnGroupDefinition> ResolveSpawnGroups(int mapId, MapRuntimeKind runtimeKind, int zoneIndex)
+    {
+        var groups = _enemyDefinitions.GetSpawnGroupsForMap(mapId);
+        if (groups.Count == 0)
+            return Array.Empty<MapEnemySpawnGroupDefinition>();
+
+        return groups
+            .Where(group => MatchesRuntime(group, runtimeKind) && MatchesZone(group, runtimeKind, zoneIndex))
+            .OrderBy(group => group.Id)
+            .ToArray();
+    }
+
+    private static bool MatchesRuntime(MapEnemySpawnGroupDefinition group, MapRuntimeKind runtimeKind)
+    {
+        return group.RuntimeScope switch
+        {
+            MapSpawnRuntimeScope.Any => true,
+            MapSpawnRuntimeScope.Public => runtimeKind == MapRuntimeKind.Public,
+            MapSpawnRuntimeScope.Private => runtimeKind == MapRuntimeKind.PrivateHome,
+            MapSpawnRuntimeScope.Instance => runtimeKind is MapRuntimeKind.SoloTimedInstance or MapRuntimeKind.SoloFarmInstance,
+            _ => false
+        };
+    }
+
+    private static bool MatchesZone(MapEnemySpawnGroupDefinition group, MapRuntimeKind runtimeKind, int zoneIndex)
+    {
+        if (!group.ZoneIndex.HasValue)
+            return true;
+
+        return runtimeKind == MapRuntimeKind.Public && group.ZoneIndex.Value == zoneIndex;
     }
 
     private static bool IsValidPublicZone(MapDefinition definition, int zoneIndex)

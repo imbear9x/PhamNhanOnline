@@ -1219,6 +1219,13 @@ internal sealed class TableEditorControl : UserControl
             gridColumn.HeaderText = binding?.HeaderText ?? AdminColumnBindingCatalog.ToHeaderText(column.ColumnName);
             gridColumn.HeaderCell.ToolTipText = AdminFieldHelpCatalog.BuildHelpText(request.Resource, column, binding);
             gridColumn.ReadOnly = column.ReadOnly;
+            gridColumn.ValueType = column.DataType;
+            gridColumn.DefaultCellStyle.NullValue = string.Empty;
+
+            var valueType = Nullable.GetUnderlyingType(column.DataType) ?? column.DataType;
+            if (valueType == typeof(decimal) || valueType == typeof(double) || valueType == typeof(float))
+                gridColumn.DefaultCellStyle.Format = "0.###";
+
             _grid.Columns.Add(gridColumn);
         }
     }

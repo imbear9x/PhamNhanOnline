@@ -223,6 +223,18 @@ internal static class AdminColumnBindingCatalog
             order by id;
             """;
 
+        const string enemyTemplateLookupSql = """
+            select id as value, code || ' - ' || name as display
+            from public.enemy_templates
+            order by id;
+            """;
+
+        const string enemySpawnGroupLookupSql = """
+            select id as value, code || ' - ' || name as display
+            from public.map_enemy_spawn_groups
+            order by id;
+            """;
+
         Add("martial_arts", "qi_absorption_rate", headerText: "Hệ Số Hấp Thụ Linh Khí");
         Add("martial_art_stages", "martial_art_id", lookupSql: martialArtLookupSql);
         Add("martial_art_stage_stat_bonuses", "martial_art_stage_id", lookupSql: martialArtStageLookupSql);
@@ -231,6 +243,7 @@ internal static class AdminColumnBindingCatalog
 
         Add("skills", "skill_type", enumType: typeof(CombatSkillType));
         Add("skills", "target_type", enumType: typeof(SkillTargetType));
+        Add("skills", "cast_range", headerText: "Tam Xa");
 
         Add("skill_effects", "skill_id", lookupSql: skillLookupSql);
         Add("skill_effects", "effect_type", enumType: typeof(SkillEffectType));
@@ -279,6 +292,23 @@ internal static class AdminColumnBindingCatalog
         Add("game_random_entries", "game_random_table_id", lookupSql: gameRandomTableLookupSql);
         Add("game_random_entry_tags", "game_random_entry_id", lookupSql: gameRandomEntryLookupSql);
         Add("game_random_fortune_tags", "game_random_table_id", lookupSql: gameRandomTableLookupSql);
+
+        Add("enemy_templates", "kind", enumType: typeof(EnemyKind));
+        Add("enemy_template_skills", "enemy_template_id", lookupSql: enemyTemplateLookupSql);
+        Add("enemy_template_skills", "skill_id", lookupSql: skillLookupSql);
+        Add("enemy_reward_rules", "enemy_template_id", lookupSql: enemyTemplateLookupSql);
+        Add("enemy_reward_rules", "delivery_type", enumType: typeof(RewardDeliveryType));
+        Add("enemy_reward_rules", "target_rule", enumType: typeof(RewardTargetRule));
+        Add("enemy_reward_rules", "game_random_table_id", lookupSql: gameRandomTableLookupSql);
+
+        Add("map_enemy_spawn_groups", "map_template_id", lookupSql: mapTemplateLookupSql);
+        Add("map_enemy_spawn_groups", "runtime_scope", enumType: typeof(MapSpawnRuntimeScope));
+        Add("map_enemy_spawn_groups", "spawn_mode", enumType: typeof(EnemySpawnMode));
+        Add("map_enemy_spawn_entries", "spawn_group_id", lookupSql: enemySpawnGroupLookupSql);
+        Add("map_enemy_spawn_entries", "enemy_template_id", lookupSql: enemyTemplateLookupSql);
+        Add("map_instance_configs", "map_template_id", lookupSql: mapTemplateLookupSql);
+        Add("map_instance_configs", "instance_mode", enumType: typeof(InstanceMode));
+        Add("map_instance_configs", "completion_rule", enumType: typeof(InstanceCompletionRule));
 
         Add("pill_templates", "item_template_id", lookupSql: itemTemplateLookupSql);
         Add("pill_templates", "pill_category", enumType: typeof(PillCategory));

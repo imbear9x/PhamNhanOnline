@@ -10,7 +10,9 @@ internal enum AdminEditorKind
     PillRecipeWorkspace = 5,
     HerbWorkspace = 6,
     PillWorkspace = 7,
-    GameRandomWorkspace = 8
+    GameRandomWorkspace = 8,
+    EnemyWorkspace = 9,
+    EnemySpawnWorkspace = 10
 }
 
 internal enum CharacterStatType
@@ -222,4 +224,51 @@ internal enum MapType
 internal enum GameRandomTableMode
 {
     Exclusive = 0
+}
+
+internal enum EnemyKind
+{
+    Normal = 1,
+    Elite = 2,
+    Boss = 3
+}
+
+internal enum MapSpawnRuntimeScope
+{
+    Any = 0,
+    Public = 1,
+    Private = 2,
+    Instance = 3
+}
+
+internal enum EnemySpawnMode
+{
+    Timer = 1,
+    Objective = 2,
+    Manual = 3
+}
+
+internal enum RewardDeliveryType
+{
+    GroundDrop = 1,
+    DirectGrant = 2
+}
+
+internal enum RewardTargetRule
+{
+    EligibleAll = 1,
+    LastHit = 2,
+    TopDamage = 3
+}
+
+internal enum InstanceMode
+{
+    Timed = 1,
+    Farm = 2
+}
+
+internal enum InstanceCompletionRule
+{
+    None = 0,
+    KillBoss = 1
 }

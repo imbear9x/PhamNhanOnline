@@ -39,6 +39,7 @@ public sealed class SkillRuntimeBuilder
             unlock.Skill.Name,
             unlock.Skill.SkillType,
             unlock.Skill.TargetType,
+            unlock.Skill.CastRange,
             Math.Max(0, cooldownMs),
             effects);
     }

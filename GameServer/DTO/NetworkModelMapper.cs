@@ -170,6 +170,74 @@ public static class NetworkModelMapper
         };
     }
 
+    public static EnemyRuntimeModel ToModel(this MonsterEntity enemy)
+    {
+        return new EnemyRuntimeModel
+        {
+            RuntimeId = enemy.Id,
+            EnemyTemplateId = enemy.Definition.Id,
+            Code = enemy.Definition.Code,
+            Name = enemy.Definition.Name,
+            Kind = (int)enemy.Definition.Kind,
+            RuntimeState = (int)enemy.State,
+            CurrentHp = enemy.Hp,
+            MaxHp = enemy.MaxHp,
+            PosX = enemy.Position.X,
+            PosY = enemy.Position.Y,
+            SpawnGroupId = enemy.SpawnGroupId
+        };
+    }
+
+    public static GroundRewardItemModel ToModel(this GroundRewardItem item)
+    {
+        return new GroundRewardItemModel
+        {
+            ItemTemplateId = item.ItemTemplateId,
+            Quantity = item.Quantity,
+            IsBound = item.IsBound
+        };
+    }
+
+    public static GroundRewardModel ToModel(this GroundRewardEntity reward)
+    {
+        return new GroundRewardModel
+        {
+            RewardId = reward.Id,
+            OwnerCharacterId = reward.OwnerCharacterId,
+            PosX = reward.Position.X,
+            PosY = reward.Position.Y,
+            CreatedUnixMs = ToUnixMs(reward.CreatedAtUtc) ?? 0,
+            FreeAtUnixMs = ToUnixMs(reward.FreeAtUtc),
+            DestroyAtUnixMs = ToUnixMs(reward.DestroyAtUtc) ?? 0,
+            Items = reward.Items.Select(ToModel).ToList()
+        };
+    }
+
+    public static InventoryItemModel ToModel(this InventoryItemView view)
+    {
+        return new InventoryItemModel
+        {
+            PlayerItemId = view.PlayerItemId,
+            ItemTemplateId = view.Definition.Id,
+            Code = view.Definition.Code,
+            Name = view.Definition.Name,
+            ItemType = (int)view.Definition.ItemType,
+            Rarity = (int)view.Definition.Rarity,
+            Quantity = view.Quantity,
+            IsBound = view.IsBound,
+            MaxStack = view.Definition.MaxStack,
+            IsTradeable = view.Definition.IsTradeable,
+            IsDroppable = view.Definition.IsDroppable,
+            IsDestroyable = view.Definition.IsDestroyable,
+            Icon = view.Definition.Icon,
+            Description = view.Definition.Description,
+            IsEquipped = view.IsEquipped,
+            EquippedSlot = view.EquippedSlot.HasValue ? (int)view.EquippedSlot.Value : null,
+            EnhanceLevel = view.EnhanceLevel,
+            Durability = view.Durability
+        };
+    }
+
     private static long? ToUnixMs(DateTime? dateTime)
     {
         if (!dateTime.HasValue)

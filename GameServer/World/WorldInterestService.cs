@@ -60,7 +60,72 @@ public sealed class WorldInterestService
             ZoneIndex = instance.ZoneIndex
         });
 
+        _network.Send(player.ConnectionId, new WorldRuntimeSnapshotPacket
+        {
+            MapId = instance.MapId,
+            InstanceId = instance.InstanceId,
+            ZoneIndex = instance.ZoneIndex,
+            RuntimeKind = (int)instance.RuntimeKind,
+            ExpiresAtUnixMs = ToUnixMs(instance.ExpiresAtUtc),
+            CompletedAtUnixMs = ToUnixMs(instance.CompletedAtUtc),
+            Enemies = instance.GetEnemiesSnapshot().Select(x => x.ToModel()).ToList(),
+            GroundRewards = instance.GetGroundRewardsSnapshot().Select(x => x.ToModel()).ToList()
+        });
+
         RefreshVisibility(player);
+    }
+
+    public void NotifyEnemySpawned(MapInstance instance, MonsterEntity enemy)
+    {
+        BroadcastToInstancePlayers(instance, new EnemySpawnedPacket
+        {
+            MapId = instance.MapId,
+            InstanceId = instance.InstanceId,
+            Enemy = enemy.ToModel()
+        });
+    }
+
+    public void NotifyEnemyDespawned(MapInstance instance, int enemyRuntimeId)
+    {
+        BroadcastToInstancePlayers(instance, new EnemyDespawnedPacket
+        {
+            MapId = instance.MapId,
+            InstanceId = instance.InstanceId,
+            EnemyRuntimeId = enemyRuntimeId
+        });
+    }
+
+    public void NotifyEnemyHpChanged(MapInstance instance, EnemyHpChangedRuntimeEvent hpChanged)
+    {
+        BroadcastToInstancePlayers(instance, new EnemyHpChangedPacket
+        {
+            MapId = instance.MapId,
+            InstanceId = instance.InstanceId,
+            EnemyRuntimeId = hpChanged.EnemyRuntimeId,
+            CurrentHp = hpChanged.CurrentHp,
+            MaxHp = hpChanged.MaxHp,
+            RuntimeState = (int)hpChanged.RuntimeState
+        });
+    }
+
+    public void NotifyGroundRewardSpawned(MapInstance instance, GroundRewardEntity reward)
+    {
+        BroadcastToInstancePlayers(instance, new GroundRewardSpawnedPacket
+        {
+            MapId = instance.MapId,
+            InstanceId = instance.InstanceId,
+            Reward = reward.ToModel()
+        });
+    }
+
+    public void NotifyGroundRewardDespawned(MapInstance instance, int rewardId)
+    {
+        BroadcastToInstancePlayers(instance, new GroundRewardDespawnedPacket
+        {
+            MapId = instance.MapId,
+            InstanceId = instance.InstanceId,
+            RewardId = rewardId
+        });
     }
 
     public void HandlePositionUpdated(
@@ -244,11 +309,33 @@ public sealed class WorldInterestService
                System.Numerics.Vector2.DistanceSquared(player.Position, targetPosition) > 0.0001f;
     }
 
+    private void BroadcastToInstancePlayers(MapInstance instance, IPacket packet)
+    {
+        foreach (var player in instance.GetPlayersSnapshot())
+        {
+            if (!player.IsConnected)
+                continue;
+
+            _network.Send(player.ConnectionId, packet);
+        }
+    }
+
     private static System.Numerics.Vector2 ResolveEntryPosition(PlayerSession player, MapDefinition definition)
     {
         if (player.MapId == definition.MapId)
             return definition.ClampPosition(player.Position);
 
         return definition.DefaultSpawnPosition;
+    }
+
+    private static long? ToUnixMs(DateTime? value)
+    {
+        if (!value.HasValue)
+            return null;
+
+        var utc = value.Value.Kind == DateTimeKind.Utc
+            ? value.Value
+            : DateTime.SpecifyKind(value.Value, DateTimeKind.Utc);
+        return new DateTimeOffset(utc).ToUnixTimeMilliseconds();
     }
 }

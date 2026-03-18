@@ -263,3 +263,19 @@ public partial class SetActiveMartialArtResultPacket : IPacket
     public MessageCode? Code { get; set; }
     public CharacterBaseStatsModel? BaseStats { get; set; }
 }
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
+public partial class GetInventoryPacket : IPacket
+{
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class GetInventoryResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public List<InventoryItemModel>? Items { get; set; }
+}

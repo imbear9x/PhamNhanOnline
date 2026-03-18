@@ -61,6 +61,7 @@ public sealed class CombatDefinitionCatalog
                 skill.Name,
                 (CombatSkillType)skill.SkillType,
                 (SkillTargetType)skill.TargetType,
+                (float)skill.CastRange,
                 skill.CooldownMs,
                 skill.Description,
                 effectsBySkillId.GetValueOrDefault(skill.Id, Array.Empty<SkillEffectDefinition>()));

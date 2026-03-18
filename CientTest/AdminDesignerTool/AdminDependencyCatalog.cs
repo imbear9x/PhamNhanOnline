@@ -139,6 +139,29 @@ internal static class AdminDependencyCatalog
             [
                 Check("Game random table", "select count(*) from public.game_random_tables;", "Can tao it nhat 1 Game Random Table truoc khi them Game Random Fortune Tags.")
             ],
+            ["enemy_template_skills"] =
+            [
+                Check("Enemy template", "select count(*) from public.enemy_templates;", "Can tao it nhat 1 Enemy Template truoc khi them Enemy Skills."),
+                Check("Skill", "select count(*) from public.skills;", "Can tao it nhat 1 Skill truoc khi them Enemy Skills.")
+            ],
+            ["enemy_reward_rules"] =
+            [
+                Check("Enemy template", "select count(*) from public.enemy_templates;", "Can tao it nhat 1 Enemy Template truoc khi them Enemy Reward Rules."),
+                Check("Random table", "select count(*) from public.game_random_tables;", "Can tao it nhat 1 Game Random Table truoc khi them Enemy Reward Rules.")
+            ],
+            ["map_enemy_spawn_groups"] =
+            [
+                Check("Map template", "select count(*) from public.map_templates;", "Can tao it nhat 1 Map Template truoc khi them Enemy Spawn Groups.")
+            ],
+            ["map_enemy_spawn_entries"] =
+            [
+                Check("Spawn group", "select count(*) from public.map_enemy_spawn_groups;", "Can tao it nhat 1 Enemy Spawn Group truoc khi them Spawn Entries."),
+                Check("Enemy template", "select count(*) from public.enemy_templates;", "Can tao it nhat 1 Enemy Template truoc khi them Spawn Entries.")
+            ],
+            ["map_instance_configs"] =
+            [
+                Check("Map template", "select count(*) from public.map_templates;", "Can tao it nhat 1 Map Template truoc khi them Map Instance Configs.")
+            ],
             ["map_zone_slots"] =
             [
                 Check("Map template", "select count(*) from public.map_templates;", "Can tao it nhat 1 Map Template truoc khi them Map Zone Slots."),

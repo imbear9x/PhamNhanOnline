@@ -93,6 +93,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<PillRecipeInputRepository>();
         services.AddScoped<PlayerPillRecipeRepository>();
         services.AddScoped<PillRecipeMasteryStageRepository>();
+        services.AddScoped<EnemyTemplateRepository>();
+        services.AddScoped<EnemyTemplateSkillRepository>();
+        services.AddScoped<EnemyRewardRuleRepository>();
+        services.AddScoped<MapEnemySpawnGroupRepository>();
+        services.AddScoped<MapEnemySpawnEntryRepository>();
+        services.AddScoped<MapInstanceConfigRepository>();
 
         return services;
     }
@@ -128,6 +134,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CombatDefinitionCatalog>();
         services.AddSingleton<ItemDefinitionCatalog>();
         services.AddSingleton<AlchemyDefinitionCatalog>();
+        services.AddSingleton<EnemyDefinitionCatalog>();
         services.AddSingleton<IRandomNumberProvider, CryptoRandomNumberProvider>();
         services.AddSingleton<IGameRandomService, GameRandomService>();
         services.AddSingleton<CharacterBaseStatsComposer>();
@@ -142,6 +149,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CharacterRuntimeSaveService>();
         services.AddSingleton<CharacterLifecycleService>();
         services.AddSingleton<CharacterCultivationService>();
+        services.AddSingleton<EnemyRewardRuntimeService>();
+        services.AddSingleton<MapInstanceLifecycleService>();
         services.AddSingleton<GameLoop>();
         services.AddSingleton<RuntimeMaintenanceService>();
 
@@ -158,6 +167,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<GetCharacterListPacket>, GetCharacterListHandler>();
         services.AddScoped<IPacketHandler<GetCharacterDataPacket>, GetCharacterDataHandler>();
         services.AddScoped<IPacketHandler<EnterWorldPacket>, EnterWorldHandler>();
+        services.AddScoped<IPacketHandler<GetInventoryPacket>, GetInventoryHandler>();
         services.AddScoped<IPacketHandler<TravelToMapPacket>, TravelToMapHandler>();
         services.AddScoped<IPacketHandler<GetMapZonesPacket>, GetMapZonesHandler>();
         services.AddScoped<IPacketHandler<SwitchMapZonePacket>, SwitchMapZoneHandler>();
@@ -169,6 +179,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<GetOwnedMartialArtsPacket>, GetOwnedMartialArtsHandler>();
         services.AddScoped<IPacketHandler<UseMartialArtBookPacket>, UseMartialArtBookHandler>();
         services.AddScoped<IPacketHandler<SetActiveMartialArtPacket>, SetActiveMartialArtHandler>();
+        services.AddScoped<IPacketHandler<AttackEnemyPacket>, AttackEnemyHandler>();
+        services.AddScoped<IPacketHandler<PickupGroundRewardPacket>, PickupGroundRewardHandler>();
 
         services.AddSingleton<IPacketValidator, LoginPacketValidator>();
         services.AddSingleton<IPacketValidator, RegisterPacketValidator>();

@@ -155,6 +155,8 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                 "pill_workspace" => BuildPillWorkspace(resourcesByKey),
                 "herb_workspace" => BuildHerbWorkspace(resourcesByKey),
                 "game_random_workspace" => BuildGameRandomWorkspace(resourcesByKey),
+                "enemy_workspace" => BuildEnemyWorkspace(resourcesByKey),
+                "enemy_spawn_workspace" => BuildEnemySpawnWorkspace(resourcesByKey),
                 _ => throw new InvalidOperationException($"Workspace {workspaceKey} is not supported.")
             };
         }
@@ -562,6 +564,97 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                                 ["game_random_table_id"] = parentId
                             }),
                         () => BuildEmptyRequest(fortuneTags, "Chọn một random table ở bảng trên để xem fortune tags.")),
+                ]);
+        }
+
+        private static WorkspaceDefinition BuildEnemyWorkspace(
+            IReadOnlyDictionary<string, AdminResourceDefinition> resourcesByKey)
+        {
+            var enemies = resourcesByKey["enemy_templates"];
+            var skills = resourcesByKey["enemy_template_skills"];
+            var rewardRules = resourcesByKey["enemy_reward_rules"];
+
+            return new WorkspaceDefinition(
+                "id",
+                new AdminTableLoadRequest(
+                    enemies,
+                    TitleOverride: "Danh Sach Enemy",
+                    HelpTextOverride: "Bang cha de tao va chon enemy/boss. Chon 1 dong de sua skill va reward rule ben duoi."),
+                [
+                    new WorkspaceChildDefinition(
+                        "Skills",
+                        parentId => new AdminTableLoadRequest(
+                            skills,
+                            SelectSql: $"""
+                                select *
+                                from public.enemy_template_skills
+                                where enemy_template_id = {parentId}
+                                order by order_index, id;
+                                """,
+                            DescriptionOverride: $"Chi hien thi skill cua enemy id = {parentId}.",
+                            HelpTextOverride: "Khi bam Them Dong, tool se tu dien enemy_template_id theo enemy dang chon.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["enemy_template_id"] = parentId,
+                                ["order_index"] = 1
+                            }),
+                        () => BuildEmptyRequest(skills, "Chon mot enemy o bang tren de xem skill.")),
+                    new WorkspaceChildDefinition(
+                        "Reward Rules",
+                        parentId => new AdminTableLoadRequest(
+                            rewardRules,
+                            SelectSql: $"""
+                                select *
+                                from public.enemy_reward_rules
+                                where enemy_template_id = {parentId}
+                                order by order_index, id;
+                                """,
+                            DescriptionOverride: $"Chi hien thi reward rule cua enemy id = {parentId}.",
+                            HelpTextOverride: "Khi bam Them Dong, tool se tu dien enemy_template_id theo enemy dang chon.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["enemy_template_id"] = parentId,
+                                ["delivery_type"] = 1,
+                                ["target_rule"] = 1,
+                                ["roll_count"] = 1,
+                                ["order_index"] = 1
+                            }),
+                        () => BuildEmptyRequest(rewardRules, "Chon mot enemy o bang tren de xem reward rule.")),
+                ]);
+        }
+
+        private static WorkspaceDefinition BuildEnemySpawnWorkspace(
+            IReadOnlyDictionary<string, AdminResourceDefinition> resourcesByKey)
+        {
+            var spawnGroups = resourcesByKey["map_enemy_spawn_groups"];
+            var spawnEntries = resourcesByKey["map_enemy_spawn_entries"];
+
+            return new WorkspaceDefinition(
+                "id",
+                new AdminTableLoadRequest(
+                    spawnGroups,
+                    TitleOverride: "Danh Sach Spawn Group",
+                    HelpTextOverride: "Bang cha de tao va chon spawn group. Chon 1 dong de sua danh sach enemy spawn ben duoi."),
+                [
+                    new WorkspaceChildDefinition(
+                        "Spawn Entries",
+                        parentId => new AdminTableLoadRequest(
+                            spawnEntries,
+                            SelectSql: $"""
+                                select *
+                                from public.map_enemy_spawn_entries
+                                where spawn_group_id = {parentId}
+                                order by order_index, id;
+                                """,
+                            DescriptionOverride: $"Chi hien thi spawn entry cua group id = {parentId}.",
+                            HelpTextOverride: "Khi bam Them Dong, tool se tu dien spawn_group_id theo group dang chon.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["spawn_group_id"] = parentId,
+                                ["weight"] = 1,
+                                ["order_index"] = 1
+                            }),
+                        () => BuildEmptyRequest(spawnEntries, "Chon mot spawn group o bang tren de xem spawn entries.")),
                 ]);
         }
 

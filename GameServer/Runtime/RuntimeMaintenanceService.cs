@@ -160,7 +160,7 @@ public sealed class RuntimeMaintenanceService
 
         if (utcNow >= _nextEmptyInstanceCleanupUtc)
         {
-            _worldManager.MapManager.CleanupExpiredEmptyPublicInstances(utcNow);
+            _worldManager.MapManager.CleanupExpiredInstances(utcNow);
             _nextEmptyInstanceCleanupUtc = DateTime.UtcNow.AddSeconds(15);
         }
 

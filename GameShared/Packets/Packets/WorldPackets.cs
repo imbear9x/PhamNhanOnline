@@ -127,3 +127,125 @@ public partial class ObservedCharacterCurrentStateChangedPacket : IPacket
     public CharacterCurrentStateModel? CurrentState { get; set; }
     public int? ZoneIndex { get; set; }
 }
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class WorldRuntimeSnapshotPacket : IPacket
+{
+    public int? MapId { get; set; }
+    public int? InstanceId { get; set; }
+    public int? ZoneIndex { get; set; }
+    public int? RuntimeKind { get; set; }
+    public long? ExpiresAtUnixMs { get; set; }
+    public long? CompletedAtUnixMs { get; set; }
+    public List<EnemyRuntimeModel>? Enemies { get; set; }
+    public List<GroundRewardModel>? GroundRewards { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class EnemySpawnedPacket : IPacket
+{
+    public int? MapId { get; set; }
+    public int? InstanceId { get; set; }
+    public EnemyRuntimeModel? Enemy { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class EnemyDespawnedPacket : IPacket
+{
+    public int? MapId { get; set; }
+    public int? InstanceId { get; set; }
+    public int? EnemyRuntimeId { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableSequenced, PacketTrafficClass.StateSync)]
+public partial class EnemyHpChangedPacket : IPacket
+{
+    public int? MapId { get; set; }
+    public int? InstanceId { get; set; }
+    public int? EnemyRuntimeId { get; set; }
+    public int? CurrentHp { get; set; }
+    public int? MaxHp { get; set; }
+    public int? RuntimeState { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class GroundRewardSpawnedPacket : IPacket
+{
+    public int? MapId { get; set; }
+    public int? InstanceId { get; set; }
+    public GroundRewardModel? Reward { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class GroundRewardDespawnedPacket : IPacket
+{
+    public int? MapId { get; set; }
+    public int? InstanceId { get; set; }
+    public int? RewardId { get; set; }
+}
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.Business, MinIntervalMs = 80)]
+public partial class AttackEnemyPacket : IPacket
+{
+    [ValidationCode(MessageCode.EnemyRuntimeIdInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? EnemyRuntimeId { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int? MartialArtSkillId { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.Business)]
+public partial class AttackEnemyResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public int? EnemyRuntimeId { get; set; }
+    public int? DamageApplied { get; set; }
+    public int? RemainingHp { get; set; }
+    public bool? IsKilled { get; set; }
+}
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.Business, MinIntervalMs = 80)]
+public partial class PickupGroundRewardPacket : IPacket
+{
+    [ValidationCode(MessageCode.GroundRewardIdInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? RewardId { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.Business)]
+public partial class PickupGroundRewardResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public int? RewardId { get; set; }
+    public List<GroundRewardItemModel>? GrantedItems { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class MapInstanceClosedPacket : IPacket
+{
+    public int? ClosedMapId { get; set; }
+    public int? ClosedInstanceId { get; set; }
+    public int? Reason { get; set; }
+    public int? RedirectMapId { get; set; }
+    public int? RedirectZoneIndex { get; set; }
+    public float? RedirectPosX { get; set; }
+    public float? RedirectPosY { get; set; }
+}

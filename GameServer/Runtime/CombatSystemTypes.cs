@@ -134,6 +134,7 @@ public sealed record SkillDefinition(
     string Name,
     CombatSkillType SkillType,
     SkillTargetType TargetType,
+    float CastRange,
     int CooldownMs,
     string? Description,
     IReadOnlyList<SkillEffectDefinition> Effects);
@@ -224,5 +225,6 @@ public sealed record SkillRuntimeDefinition(
     string Name,
     CombatSkillType SkillType,
     SkillTargetType TargetType,
+    float CastRange,
     int CooldownMs,
     IReadOnlyList<SkillRuntimeEffect> Effects);

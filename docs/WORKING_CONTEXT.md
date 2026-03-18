@@ -534,3 +534,247 @@ Cuối mỗi buổi, nên bổ sung:
 - Migration moi:
   - `20260318_drop_herb_age_years_columns.sql`
 
+## Session update 2026-03-18 enemy boss instance reward foundation
+
+- Da them draft flow gameplay/server cho enemy, boss, map instance, leash, respawn, reward vao `docs/ENEMY_BOSS_INSTANCE_FLOW_DRAFT.md`.
+- Da chot cac rule gameplay chinh:
+  - enemy/boss co skill, khong dung MP, chi dung cooldown va minimum cast interval
+  - enemy thuong out-of-combat mot luc se hoi day mau, boss thi khong
+  - reward tach 2 kieu:
+    - `ground drop`
+    - `direct reward`
+  - target reward co the theo:
+    - tat ca nguoi du dieu kien
+    - last hit
+    - top damage
+  - instance solo phase dau
+  - instance timed het gio thi dong runtime
+  - instance farm neu vang nguoi mot thoi gian moi huy
+- Da them schema/migration moi:
+  - `20260318_add_enemy_instance_reward_foundation.sql`
+- Da cap nhat `initDatabase.sql` va apply migration nay vao DB local `phamnhan_online`.
+- Da them nhom bang config moi:
+  - `enemy_templates`
+  - `enemy_template_skills`
+  - `enemy_reward_rules`
+  - `map_enemy_spawn_groups`
+  - `map_enemy_spawn_entries`
+  - `map_instance_configs`
+- Da them entity/repository/runtime definition catalog cho he enemy-instance.
+- Da mo rong `MapManager` de support:
+  - public map co spawn group
+  - private home runtime co spawn group neu config scope phu hop
+  - map instance solo co `map_instance_configs`
+- Da mo rong `MapInstance` runtime de quan ly:
+  - spawn groups
+  - enemy runtime
+  - pending death events
+  - ground rewards
+  - completion state cua instance
+- Da them `EnemyRewardRuntimeService`:
+  - xu ly pending death events trong game loop
+  - phat reward direct vao inventory qua `ItemService`
+  - tao `GroundRewardEntity` cho reward roi xuong dat
+  - chia `cultivation_reward_total` va `potential_reward_total` theo damage contribution
+- Da noi `GameLoop`, `RuntimeMaintenanceService`, `ServiceCollectionExtensions` vao he thong moi.
+- Da mo rong admin tool de co the config duoc ngay:
+  - `Enemy Workspace`
+  - `Enemy Spawn Workspace`
+  - cac bang generic cho `map_instance_configs`
+  - enum/FK/dependency cho toan bo bang enemy-instance-reward moi
+- Build verify:
+  - `dotnet build GameServer/GameServer.csproj` pass
+
+## Session update 2026-03-19 hard-set admin02 test martial art
+
+- Da seed rieng cho account test `admin02` bang file:
+  - `database/seeds/20260319_seed_admin02_truong_xuan_cong.sql`
+- Muc dich:
+  - cho phep test combat/skill truoc khi hoan thien luong hoc cong phap va nhat sach cong phap trong client
+- Seed nay hien:
+  - tim character dau tien cua account `admin02`
+  - them `Trường Xuân Công` vao `player_martial_arts`
+  - them `Mộc Miên chưởng` vao `player_skills`
+  - gan `slot_index = 1` trong `player_skill_loadouts`
+  - set `character_base_stats.active_martial_art_id = 1`
+- Da apply vao DB local `phamnhan_online`.
+- State verify cho character `Admin02A`:
+  - co `player_martial_arts.martial_art_id = 1`
+  - co `player_skills.skill_id = 1`
+  - co loadout slot `1`
+  - active martial art hien la `1`
+  - `dotnet build CientTest/AdminDesignerTool/AdminDesignerTool.csproj -o tmp_codex/admin_enemy_build` pass
+- Luu y hien tai:
+  - server foundation da co runtime spawn/death/reward, nhung packet/client flow combat, spawn sync, loot pickup, vao/ra instance va destroy instance khi van con player se duoc map tiep voi Unity o nhiep sau
+  - reward entry id cho enemy reward rule hien support kieu thuc dung:
+    - `item:<id>`
+    - `item:<id>:<quantity>`
+    - `item_code:<code>`
+    - `item_code:<code>:<quantity>`
+    - va co fallback doc theo item code truc tiep/entry dang `item.xxx`
+
+## Session update 2026-03-18 skill cast range
+
+- Da bo sung truong `cast_range` vao `public.skills`.
+- Da cap nhat:
+  - `20260318_add_martial_art_skill_foundation.sql`
+  - `initDatabase.sql`
+  - migration moi `20260318_add_skill_cast_range.sql`
+- Da noi field nay vao:
+  - `SkillEntity`
+  - `SkillDefinition`
+  - `SkillRuntimeDefinition`
+  - `CombatDefinitionCatalog`
+  - `SkillRuntimeBuilder`
+- Admin tool da co:
+  - cot hien thi `Tam Xa`
+  - field help mo ta ro y nghia cua `cast_range`
+- Chu y:
+  - field nay chu yeu de client va AI biet khoang cach hop ly de dung skill
+  - server khong can validate vi tri qua chat moi frame de tranh tang chi phi runtime
+  - hien tai khong co packet/model `GameShared` nao dang serialize skill template rieng, nen khong mo rong packet o nhiep nay
+
+## Session update 2026-03-18 enemy combat packets and runtime sync
+
+- Da noi xong flow packet/runtime de client co the danh quai that:
+  - packet moi:
+    - `AttackEnemyPacket`
+    - `AttackEnemyResultPacket`
+    - `PickupGroundRewardPacket`
+    - `PickupGroundRewardResultPacket`
+    - `WorldRuntimeSnapshotPacket`
+    - `EnemySpawnedPacket`
+    - `EnemyDespawnedPacket`
+    - `EnemyHpChangedPacket`
+    - `GroundRewardSpawnedPacket`
+    - `GroundRewardDespawnedPacket`
+    - `MapInstanceClosedPacket`
+- Da them model `GameShared` moi:
+  - `EnemyRuntimeModel`
+  - `GroundRewardItemModel`
+  - `GroundRewardModel`
+- Da cap nhat `PacketRegistry` va file serialize manual `GameShared/Packets/EnemyWorldPacketSerialization.cs`.
+- Da bo sung `MessageCode` moi cho flow enemy/drop:
+  - `EnemyRuntimeIdInvalid`
+  - `EnemyNotFound`
+  - `EnemyAlreadyDead`
+  - `GroundRewardIdInvalid`
+  - `GroundRewardNotFound`
+  - `GroundRewardNotOwnedYet`
+  - `GroundRewardExpired`
+  - `CharacterNotInWorldInstance`
+  - `MapInstanceClosed`
+- `WorldInterestService.PublishWorldSnapshot(...)` gio gui them `WorldRuntimeSnapshotPacket` sau `MapJoinedPacket`, gom:
+  - danh sach enemy dang song/da spawn trong instance
+  - danh sach ground reward hien co
+  - thong tin runtime kind / expire / completed timestamp cua instance
+- Da mo rong `MapInstance` de co event queue runtime:
+  - enemy spawn
+  - enemy hp change
+  - enemy despawn
+  - ground reward spawn
+  - ground reward despawn
+- `GameLoop` hien:
+  - update instance
+  - process reward death events
+  - phat cac packet sync runtime xuong player trong instance
+  - xu ly lifecycle destroy/evacuate instance
+- Ground drop ownership da doi tu `player id` sang `character id` de packet/client de xu ly hon.
+- Da them `TryClaimGroundReward(...)` trong `MapInstance` va handler `PickupGroundRewardHandler`.
+- Da them handler `AttackEnemyHandler`:
+  - client gui `enemy_runtime_id`
+  - server ap damage co ban theo `BaseAttack`
+  - chua validate range chat o server
+  - hp sync cho moi nguoi trong instance se duoc broadcast o tick tiep theo
+- Da them `MapInstanceLifecycleService`:
+  - neu instance het han/den luc huy ma van con player ben trong
+  - server gui `MapInstanceClosedPacket`
+  - roi day player ve home map
+  - sau do publish world snapshot moi cho player
+- Chu y hien tai:
+  - phan nay moi map packet/shared + server runtime/handler, chua map UI/logic Unity client
+  - `AttackEnemyPacket.MartialArtSkillId` moi de danh dau contract cho client, chua tham gia cong thuc damage that
+  - ground drop free-for-all duoc client co the tu suy ra tu `FreeAtUnixMs`, server chua phat packet rieng khi owner lock vua het han
+- Build verify:
+  - `dotnet build GameServer/GameServer.csproj` pass
+  - `dotnet build GameShared/GameShared.csproj` van co hien tuong CLI tra `Build FAILED` nhung khong co error; tuy nhien `GameServer` build thanh cong voi `GameShared` moi nen contract hien tai van compile duoc end-to-end
+
+## Session update 2026-03-19 seed enemy test data for map 03
+
+- Da seed bo data test quai cho `Map 03` bang file:
+  - `database/seeds/20260319_seed_map03_enemy_test.sql`
+- Da apply vao DB local `phamnhan_online`.
+- Data vua seed:
+  - enemy:
+    - `1001 enemy_soi_lang_bang`
+    - `1002 enemy_gau_nau_tinh`
+  - skill:
+    - `2001 hoa_dan_soi`
+    - `2002 dam_xa`
+  - reward random table:
+    - `enemy.drop.soi_lang_bang`
+    - `enemy.drop.gau_nau_tinh`
+  - spawn group:
+    - wolf o giua map `(500, 500)`
+    - bear o `(700, 500)`
+    - respawn `5s`
+- Rule da chot khi seed:
+  - ca 2 la `EnemyKind.Normal`
+  - `enemy_templates.code` chinh la key model cho client
+  - reward mac dinh `GroundDrop`
+  - target rule `EligibleAll`
+  - ownership `30s`, free-for-all tiep `30s`
+  - map 03 la map farm public, khong tao `map_instance_configs`
+  - skill tam thoi de `cast_range = 2000` de test de dang
+- Drop table:
+  - Soi lang bang: tong `50%` roi `1-3 linh thach`
+  - Gau nau tinh: tong `20%` roi `1-3 linh thach`
+  - ca 2 dang chia deu theo 3 muc so luong
+- Luu y:
+  - du lieu skill/effect cua enemy da co de client/AI dung sau nay
+  - runtime hien tai da support player danh enemy, enemy chet va roi do
+  - enemy gay damage nguoc lai vao player chua duoc noi runtime combat day du
+
+## Session update 2026-03-19 inventory packet and enemy retaliation
+
+- Da bo sung packet inventory de client co the mo balo va dong bo sau khi nhat do:
+  - `GetInventoryPacket`
+  - `GetInventoryResultPacket`
+- Da them model `GameShared` moi:
+  - `InventoryItemModel`
+- Da cap nhat:
+  - `GameShared/Packets/PacketRegistry.cs`
+  - `GameShared/Packets/InventoryPacketSerialization.cs`
+  - `GameServer/DTO/NetworkModelMapper.cs`
+  - handler moi `GameServer/Network/Handlers/GetInventoryHandler.cs`
+  - DI registration trong `ServiceCollectionExtensions`
+- `GetInventoryHandler` hien:
+  - yeu cau session da `EnterWorld`
+  - doc inventory qua `ItemService.GetInventoryAsync(...)`
+  - tra danh sach item stack/non-stack, equipment state, icon, description, slot, do ben...
+- Da noi enemy combat phase 1 theo huong toi gian:
+  - enemy khong chu dong tan cong khi player di vao tam
+  - enemy chi khoa muc tieu va danh tra sau khi bi player danh
+  - neu player ra khoi `combat_radius`, roi instance, hoac mat ket noi thi enemy bo target va ve `Patrol`
+- `MonsterEntity` hien co them:
+  - `CombatTargetPlayerId`
+  - `NextAttackAtUtc`
+  - logic schedule don danh tiep theo theo `MinimumSkillIntervalMs`
+- `MapInstance` hien:
+  - tao `PlayerDamageRuntimeEvent`
+  - moi tick neu target van trong tam danh thi queue damage len player
+  - neu out-of-combat lau van giu rule cu:
+    - boss ve patrol
+    - enemy thuong hoi day HP roi ve patrol
+- `GameLoop` hien drain `PlayerDamageRuntimeEvent` va ap damage that len player qua `CharacterRuntimeService.ApplyDamage(...)`
+- He qua cho test Unity phase 1:
+  - co the vao map, load quai/drop snapshot
+  - player danh quai -> quai mat mau
+  - quai danh tra player neu con trong combat range
+  - player chay xa qua tam -> quai ngung danh va ve patrol
+  - danh chet quai -> roi do xuong dat
+  - client co the gui `PickupGroundRewardPacket`
+  - client co the gui `GetInventoryPacket` de refresh tui do
+- Build verify:
+  - `dotnet build GameServer/GameServer.csproj` pass
+

@@ -63,6 +63,45 @@ public static class PacketRegistry
             case SetActiveMartialArtResultPacket:
                 id = 46;
                 return true;
+            case WorldRuntimeSnapshotPacket:
+                id = 47;
+                return true;
+            case EnemySpawnedPacket:
+                id = 48;
+                return true;
+            case EnemyDespawnedPacket:
+                id = 49;
+                return true;
+            case EnemyHpChangedPacket:
+                id = 50;
+                return true;
+            case GroundRewardSpawnedPacket:
+                id = 51;
+                return true;
+            case GroundRewardDespawnedPacket:
+                id = 52;
+                return true;
+            case AttackEnemyPacket:
+                id = 53;
+                return true;
+            case AttackEnemyResultPacket:
+                id = 54;
+                return true;
+            case PickupGroundRewardPacket:
+                id = 55;
+                return true;
+            case PickupGroundRewardResultPacket:
+                id = 56;
+                return true;
+            case MapInstanceClosedPacket:
+                id = 57;
+                return true;
+            case GetInventoryPacket:
+                id = 58;
+                return true;
+            case GetInventoryResultPacket:
+                id = 59;
+                return true;
         }
 
         return PacketGeneratedRegistry.TryGetId(packet, out id);
@@ -110,6 +149,32 @@ public static class PacketRegistry
                 return new SetActiveMartialArtPacket();
             case 46:
                 return new SetActiveMartialArtResultPacket();
+            case 47:
+                return new WorldRuntimeSnapshotPacket();
+            case 48:
+                return new EnemySpawnedPacket();
+            case 49:
+                return new EnemyDespawnedPacket();
+            case 50:
+                return new EnemyHpChangedPacket();
+            case 51:
+                return new GroundRewardSpawnedPacket();
+            case 52:
+                return new GroundRewardDespawnedPacket();
+            case 53:
+                return new AttackEnemyPacket();
+            case 54:
+                return new AttackEnemyResultPacket();
+            case 55:
+                return new PickupGroundRewardPacket();
+            case 56:
+                return new PickupGroundRewardResultPacket();
+            case 57:
+                return new MapInstanceClosedPacket();
+            case 58:
+                return new GetInventoryPacket();
+            case 59:
+                return new GetInventoryResultPacket();
         }
 
         return PacketGeneratedRegistry.Create(id);

@@ -94,6 +94,7 @@ internal static class AdminFieldHelpCatalog
             "mutation_rate" => "Ý nghĩa: tỷ lệ đột biến cơ bản của công thức.",
             "mutation_rate_cap" => "Ý nghĩa: trần trên của tỷ lệ đột biến sau khi cộng bonus.",
             "cooldown_ms" => "Ý nghĩa: thời gian hồi chiêu tính bằng mili giây. Ví dụ: `1500` là 1,5 giây.",
+            "cast_range" => "Ý nghĩa: tầm thi triển thực tế của skill để client và AI biết cần đứng gần tới đâu mới dùng được. Ví dụ: `1.5` cho cận chiến, `6.0` cho chưởng tầm trung, `10.0` cho bắn xa.",
             "max_stack" => "Ý nghĩa: số lượng tối đa trong một stack item. Ví dụ: `1` với trang bị, `99` với nguyên liệu.",
             _ => "Hãy nhập giá trị đúng theo nghiệp vụ của bảng này. Nếu đây là trường liên kết thì ưu tiên chọn từ dropdown thay vì gõ tay ID."
         };
@@ -134,6 +135,7 @@ internal static class AdminFieldHelpCatalog
             ["pill_recipe_inputs.required_herb_maturity"] = "Giữ chỗ cho phase sau khi craft trực tiếp từ cây đang trồng.\nHiện tại thường để `None`.",
             ["pill_recipe_mastery_stages.required_total_craft_count"] = "Tổng số lần luyện cần đạt để mở mốc thông thạo này.\nVí dụ: `10`, `50`, `100`.",
             ["pill_recipe_mastery_stages.success_rate_bonus"] = "Bonus tỷ lệ thành công nhận được khi đạt mốc thông thạo.\nVí dụ: `0.03` để cộng 3%.",
+            ["skills.cast_range"] = "Tầm thi triển gốc của skill.\nVí dụ: `1.5` cho đòn chém cận chiến, `4` cho thương pháp tầm ngắn, `8` cho chưởng tầm xa.\nField này chủ yếu để client và AI xử lý khoảng cách hợp lý, server không cần validate quá chặt ở mọi frame.",
 
             ["herb_templates.seed_item_template_id"] = "Item Template của hạt giống dùng để trồng mới herb này.\nVí dụ: `hat_giong_huyet_sam`.\nKhi người chơi trồng từ hạt, server sẽ map từ item này sang đúng herb template.",
             ["herb_templates.replant_item_template_id"] = "Item Template của cây sống có thể mang trong túi và trồng lại.\nVí dụ: `cay_non_huyet_sam`, `linh_thao_song`.\nDùng cho case nhổ cây non hoặc cây sống khỏi vườn, bỏ vào túi rồi sau đó trồng lại.\nKhuyến nghị: chọn Item Template có loại `HerbPlant` để dễ phân biệt với hạt giống.",

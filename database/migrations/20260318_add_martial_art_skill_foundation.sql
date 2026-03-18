@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS public.skills (
     name character varying(100) NOT NULL,
     skill_type integer NOT NULL,
     target_type integer NOT NULL,
+    cast_range numeric(10, 4) NOT NULL DEFAULT 1.0,
     cooldown_ms integer NOT NULL DEFAULT 0,
     description text NULL,
     created_at timestamp without time zone DEFAULT now(),

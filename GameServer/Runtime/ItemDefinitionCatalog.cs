@@ -7,6 +7,7 @@ namespace GameServer.Runtime;
 public sealed class ItemDefinitionCatalog
 {
     private readonly IReadOnlyDictionary<int, ItemDefinition> _itemsById;
+    private readonly IReadOnlyDictionary<string, ItemDefinition> _itemsByCode;
     private readonly IReadOnlyDictionary<int, CraftRecipeDefinition> _craftRecipesById;
 
     public ItemDefinitionCatalog(IServiceScopeFactory scopeFactory)
@@ -21,11 +22,15 @@ public sealed class ItemDefinitionCatalog
         var craftMutationBonuses = scope.ServiceProvider.GetRequiredService<CraftRecipeMutationBonusRepository>().GetAllAsync().GetAwaiter().GetResult();
 
         _itemsById = BuildItems(itemTemplates, equipmentTemplates, equipmentTemplateStats, martialArtBooks);
+        _itemsByCode = _itemsById.Values.ToDictionary(x => x.Code, StringComparer.OrdinalIgnoreCase);
         _craftRecipesById = BuildCraftRecipes(craftRecipes, craftRequirements, craftMutationBonuses);
     }
 
     public bool TryGetItem(int itemTemplateId, out ItemDefinition definition) =>
         _itemsById.TryGetValue(itemTemplateId, out definition!);
+
+    public bool TryGetItemByCode(string code, out ItemDefinition definition) =>
+        _itemsByCode.TryGetValue(code, out definition!);
 
     public bool TryGetCraftRecipe(int recipeId, out CraftRecipeDefinition definition) =>
         _craftRecipesById.TryGetValue(recipeId, out definition!);

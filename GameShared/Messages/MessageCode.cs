@@ -65,5 +65,15 @@ public enum MessageCode : int
     MapTravelNotAllowed = 4001,
     MapZoneIndexInvalid = 4002,
     MapZoneSelectionNotSupported = 4003,
-    MapZoneFull = 4004
+    MapZoneFull = 4004,
+
+    EnemyRuntimeIdInvalid = 5000,
+    EnemyNotFound = 5001,
+    EnemyAlreadyDead = 5002,
+    GroundRewardIdInvalid = 5003,
+    GroundRewardNotFound = 5004,
+    GroundRewardNotOwnedYet = 5005,
+    GroundRewardExpired = 5006,
+    CharacterNotInWorldInstance = 5007,
+    MapInstanceClosed = 5008
 }
