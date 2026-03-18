@@ -27,6 +27,10 @@ public static class ServiceCollectionExtensions
         // add game services
         services.AddScoped<AccountService>();
         services.AddScoped<CharacterService>();
+        services.AddScoped<ItemService>();
+        services.AddScoped<EquipmentService>();
+        services.AddScoped<CraftService>();
+        services.AddScoped<EquipmentStatService>();
 
         return services;
     }
@@ -47,6 +51,26 @@ public static class ServiceCollectionExtensions
         services.AddScoped<RealmTemplateRepository>();
         services.AddScoped<BreakthroughAttemptRepository>();
         services.AddScoped<AccountCredentialRepository>();
+        services.AddScoped<MartialArtRepository>();
+        services.AddScoped<MartialArtStageRepository>();
+        services.AddScoped<MartialArtStageStatBonusRepository>();
+        services.AddScoped<SkillRepository>();
+        services.AddScoped<SkillEffectRepository>();
+        services.AddScoped<MartialArtSkillRepository>();
+        services.AddScoped<MartialArtSkillScalingRepository>();
+        services.AddScoped<PlayerMartialArtRepository>();
+        services.AddScoped<PlayerSkillRepository>();
+        services.AddScoped<PlayerSkillLoadoutRepository>();
+        services.AddScoped<ItemTemplateRepository>();
+        services.AddScoped<PlayerItemRepository>();
+        services.AddScoped<EquipmentTemplateRepository>();
+        services.AddScoped<EquipmentTemplateStatRepository>();
+        services.AddScoped<PlayerEquipmentRepository>();
+        services.AddScoped<PlayerEquipmentStatBonusRepository>();
+        services.AddScoped<CraftRecipeRepository>();
+        services.AddScoped<CraftRecipeRequirementRepository>();
+        services.AddScoped<CraftRecipeMutationBonusRepository>();
+        services.AddScoped<MartialArtBookTemplateRepository>();
 
         return services;
     }
@@ -79,9 +103,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GameTimeService>();
         services.AddSingleton<MapCatalog>();
         services.AddSingleton<PotentialStatCatalog>();
+        services.AddSingleton<CombatDefinitionCatalog>();
+        services.AddSingleton<ItemDefinitionCatalog>();
         services.AddSingleton<IRandomNumberProvider, CryptoRandomNumberProvider>();
         services.AddSingleton<IGameRandomService, GameRandomService>();
         services.AddSingleton<CharacterBaseStatsComposer>();
+        services.AddSingleton<MartialArtProgressionService>();
+        services.AddSingleton<SkillRuntimeBuilder>();
         services.AddSingleton<MapManager>();
         services.AddSingleton<WorldManager>();
         services.AddSingleton<WorldInterestService>();

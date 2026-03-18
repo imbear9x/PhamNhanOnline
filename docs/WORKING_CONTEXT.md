@@ -238,3 +238,84 @@ Cuối mỗi buổi, nên bổ sung:
   - Semantics uu tien cho loot/drop la `Exclusive`: moi lan roll chi ra 1 ket qua.
   - `Co duyen` buff tat ca entry hop le theo huong A: tang chance cac entry va rut phan do tu `None`, de de balance.
 
+## Session update 2026-03-18
+
+- Da them foundation server-side cho he thong `cong phap -> skill` theo huong data-driven, chua pha flow Unity/client hien tai:
+  - migration/schema moi cho `martial_arts`, `martial_art_stages`, `martial_art_stage_stat_bonuses`
+  - `skills`, `skill_effects`, `martial_art_skills`, `martial_art_skill_scalings`
+  - runtime progress/loadout: `player_martial_arts`, `player_skills`, `player_skill_loadouts`
+- Da them `Entity` + `Repository` + DI registration tuong ung trong `GameServer`.
+- Da them runtime foundation:
+  - `CombatDefinitionCatalog`
+  - `MartialArtProgressionService`
+  - `SkillRuntimeBuilder`
+  - bo enum/record typed cho stat bonus, effect, scaling, runtime skill
+- Giu nguyen quyet dinh an toan:
+  - KHONG bat buoc character phai co cong phap moi duoc `StartCultivation` o phase nay, de tranh pha flow da verify.
+  - KHONG tiep tuc day vao combat packet/client UI o buoi nay.
+  - bonus cong phap hien chi moi co foundation runtime; chua tu dong cong vao `CharacterBaseStatsComposer`.
+- Diem can chot o buoi sau neu muon day tiep:
+  - co muon cultivation realm hien tai phai gan voi 1 cong phap dang active khong
+  - bonus `value_type` nao se duoc support o phase 1 ngoai `Flat`
+  - phap bao/vu khi se la he thong rieng song song hay di qua chung skill/equipment pipeline
+
+## Session update 2026-03-18 item foundation
+
+- Da them foundation server-side cho `item / equipment / crafting`, chua noi vao `CharacterBaseStats` runtime:
+  - migration/schema moi:
+    - `item_templates`
+    - `player_items`
+    - `equipment_templates`
+    - `equipment_template_stats`
+    - `player_equipments`
+    - `player_equipment_stat_bonuses`
+    - `craft_recipes`
+    - `craft_recipe_requirements`
+    - `craft_recipe_mutation_bonuses`
+    - `martial_art_book_templates`
+- Da them `Entity` + `Repository` + DI registration tuong ung trong `GameServer`.
+- Da them runtime catalog/types:
+  - `ItemDefinitionCatalog`
+  - `ItemSystemTypes`
+- Da them service foundation:
+  - `ItemService`
+  - `EquipmentService`
+  - `EquipmentStatService`
+  - `CraftService`
+- Quy tac da chot trong code phase nay:
+  - equipment sinh theo huong `template base + instance bonus`
+  - item equipment khi tao moi se co `player_equipment` row di kem
+  - item dang equip khong duoc xoa/craft consume
+  - craft item non-stackable bat buoc chi dinh `player_item_id`
+  - craft currency cost chua noi he thong tien te, nen service se tu choi recipe co `cost_currency_value > 0`
+  - mutation chi sinh bonus instance cho output la equipment
+  - CHUA noi `EquipmentStatService` vao `CharacterBaseStatsComposer` hay runtime player snapshot
+
+## Session update 2026-03-18 admin designer tool
+
+- Da tao project moi `CientTest/AdminDesignerTool` theo huong WinForms `.NET 8` de game design co the config template truc tiep tren DB.
+- Tool hien tai dung co che generic table editor qua `NpgsqlDataAdapter`, co navigation theo nhom:
+  - `Cong Phap`
+  - `Item & Equipment`
+  - `Che Tao`
+  - `Balance`
+  - `World`
+  - `Mo Rong Sau Nay`
+- Resource dang mo san trong tool:
+  - cong phap / tang / bonus / skill / skill effect / unlock / scaling
+  - item template / equipment template / equipment stats / martial art book
+  - craft recipe / requirements / mutation bonuses
+  - realm / potential upgrade tiers / spiritual energy / map / map zone
+- Tool tu tim `GameServer/Config/dbConfig.json` tu thu muc chay len tren; khong can hard-code connection string trong project.
+- UI hien co:
+  - cay navigation ben trai
+  - bang editor ben phai
+  - mo ta + huong dan cho tung resource
+  - `Tai Lai`, `Them Dong`, `Nhan Ban Dong`, `Xoa Dong`, `Luu Thay Doi`
+  - bo loc nhanh tren bang dang mo
+- Huong chon cho phase nay:
+  - uu tien ship nhanh mot MVP designer-friendly, chua lam form chuyen biet theo tung resource
+  - boss/drop moi dat san diem mo rong; khi schema co that thi them resource vao catalog la edit duoc ngay
+- Build verify:
+  - `dotnet build CientTest/AdminDesignerTool/AdminDesignerTool.csproj` -> pass, 0 warning, 0 error
+
