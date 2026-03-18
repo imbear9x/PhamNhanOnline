@@ -156,6 +156,9 @@ public sealed class ItemDefinitionCatalog
         if (definition.ItemType == ItemType.Soil && definition.MaxStack != 1)
             throw new InvalidOperationException($"Soil item template {definition.Id} must have max_stack = 1.");
 
+        if (definition.ItemType == ItemType.HerbPlant && definition.MaxStack != 1)
+            throw new InvalidOperationException($"Herb plant item template {definition.Id} must have max_stack = 1.");
+
         if (definition.Equipment is not null && definition.ItemType != ItemType.Equipment)
             throw new InvalidOperationException($"Item template {definition.Id} has equipment data but item_type is not Equipment.");
 

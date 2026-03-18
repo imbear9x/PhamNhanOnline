@@ -152,6 +152,13 @@ internal static class AdminColumnBindingCatalog
             order by id;
             """;
 
+        const string herbPlantItemTemplateLookupSql = """
+            select id as value, code || ' - ' || name as display
+            from public.item_templates
+            where item_type = 12
+            order by id;
+            """;
+
         const string soilItemTemplateLookupSql = """
             select id as value, code || ' - ' || name as display
             from public.item_templates
@@ -293,6 +300,7 @@ internal static class AdminColumnBindingCatalog
         Add("soil_templates", "item_template_id", lookupSql: soilItemTemplateLookupSql);
 
         Add("herb_templates", "seed_item_template_id", lookupSql: herbSeedItemTemplateLookupSql);
+        Add("herb_templates", "replant_item_template_id", lookupSql: herbPlantItemTemplateLookupSql);
         Add("herb_growth_stage_configs", "herb_template_id", lookupSql: herbTemplateLookupSql);
         Add("herb_growth_stage_configs", "stage", enumType: typeof(HerbGrowthStage));
         Add("herb_harvest_outputs", "herb_template_id", lookupSql: herbTemplateLookupSql);

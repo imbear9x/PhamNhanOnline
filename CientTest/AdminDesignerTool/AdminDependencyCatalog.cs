@@ -116,7 +116,8 @@ internal static class AdminDependencyCatalog
             ],
             ["herb_templates"] =
             [
-                Check("Herb seed item template", "select count(*) from public.item_templates where item_type = 9;", "Can tao it nhat 1 Item Template co loai HerbSeed truoc khi them Herb Templates.")
+                Check("Herb seed item template", "select count(*) from public.item_templates where item_type = 9;", "Can tao it nhat 1 Item Template co loai HerbSeed truoc khi them Herb Templates."),
+                Check("Herb plant item template", "select count(*) from public.item_templates where item_type = 12;", "Can tao it nhat 1 Item Template co loai HerbPlant truoc khi them Herb Templates de support nho cay non/cay song vao tui roi trong lai.")
             ],
             ["herb_growth_stage_configs"] =
             [

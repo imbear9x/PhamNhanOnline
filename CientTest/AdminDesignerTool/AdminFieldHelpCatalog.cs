@@ -87,6 +87,7 @@ internal static class AdminFieldHelpCatalog
             "result_pill_item_template_id" => "Ý nghĩa: Item Template của viên đan tạo ra sau khi luyện.",
             "recipe_book_item_template_id" => "Ý nghĩa: Item Template của sách hoặc đan phương dùng để học công thức.",
             "seed_item_template_id" => "Ý nghĩa: Item Template của hạt giống để trồng herb này.",
+            "replant_item_template_id" => "Ý nghĩa: Item Template của cây sống có thể bỏ vào túi rồi trồng lại. Nên chọn item loại HerbPlant.",
             "growth_speed_rate" => "Ý nghĩa: hệ số tốc độ tăng trưởng của đất. Ví dụ: `1.0` là bình thường, `1.5` là nhanh hơn 50%.",
             "max_active_seconds" => "Ý nghĩa: tổng số giây đất còn hiệu lực. Ví dụ: `86400` là 1 ngày.",
             "success_rate" => "Ý nghĩa: tỷ lệ thành công cơ bản. Hãy xem đúng quy ước của bảng này trước khi nhập.",
@@ -101,14 +102,14 @@ internal static class AdminFieldHelpCatalog
     private static readonly IReadOnlyDictionary<string, string> SpecificHelp =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["item_templates.id"] = "Đây là mã số chính của Item Template.\nVí dụ: `1001`.\nKhuyến nghị: chừa các dải ID theo nhóm item để sau này dễ quản lý, ví dụ 1000-1999 cho vũ khí, 2000-2999 cho đan dược.",
+            ["item_templates.id"] = "Đây là mã số chính của Item Template.\nVí dụ: `1001`.\nKhuyến nghị: chia các dải ID theo nhóm item để sau này dễ quản lý, ví dụ 1000-1999 cho vũ khí, 2000-2999 cho đan dược.",
             ["item_templates.code"] = "Mã logic của item để code và data tham chiếu.\nVí dụ: `kiem_sat`, `dan_hoi_linh`, `hat_giong_huyet_sam`.\nKhuyến nghị: dùng chữ thường, không dấu, ngăn cách bằng `_`, không đổi tùy tiện sau khi đã dùng trong data khác.",
             ["item_templates.name"] = "Tên hiển thị của item trong tool và UI.\nVí dụ: `Kiếm Sắt`, `Hồi Linh Đan`, `Hạt Giống Huyết Sâm`.",
             ["item_templates.icon"] = "Đường dẫn icon hoặc mã icon dùng cho client.\nVí dụ: `icons/items/kiem_sat.png` hoặc `item_kiem_sat` tùy quy ước project.\nĐây là ô văn bản tự do, có thể nhập chuỗi dài hơn 1 ký tự.",
             ["item_templates.description"] = "Mô tả nội dung, công dụng hoặc ghi chú cho item.\nVí dụ: `Thanh kiếm sắt phổ thông dành cho tân thủ.`\nĐây là ô văn bản tự do, có thể nhập mô tả dài nhiều câu.",
-            ["item_templates.item_type"] = "Loại item gốc.\nVí dụ: `Equipment` cho trang bị, `Consumable` cho vật phẩm dùng trực tiếp, `HerbSeed` cho hạt giống, `Soil` cho linh thổ.\nLưu ý: nhiều bảng con phụ thuộc trực tiếp vào trường này, nên cần chọn đúng ngay từ đầu.",
+            ["item_templates.item_type"] = "Loại item gốc.\nVí dụ: `Equipment` cho trang bị, `Consumable` cho vật phẩm dùng trực tiếp, `HerbSeed` cho hạt giống, `HerbPlant` cho cây sống có thể trồng lại, `Soil` cho linh thổ.\nLưu ý: nhiều bảng con phụ thuộc trực tiếp vào trường này, nên cần chọn đúng ngay từ đầu.",
             ["item_templates.rarity"] = "Phẩm chất của item.\nVí dụ: `Common`, `Rare`, `Epic`.\nDùng để cân bằng và hiển thị độ hiếm trong UI.",
-            ["item_templates.max_stack"] = "Số lượng tối đa trong một stack.\nVí dụ: trang bị thường là `1`, nguyên liệu có thể là `99` hoặc `999`.\nNếu là `Equipment` hoặc `Soil` thì thường nên để `1`.",
+            ["item_templates.max_stack"] = "Số lượng tối đa trong một stack.\nVí dụ: trang bị thường là `1`, nguyên liệu có thể là `99` hoặc `999`.\nNếu là `Equipment`, `Soil` hoặc `HerbPlant` thì thường nên để `1`.",
             ["item_templates.is_tradeable"] = "Có cho phép giao dịch giữa người chơi hay không.\nVí dụ: bật nếu item được phép mua bán.",
             ["item_templates.is_droppable"] = "Có cho phép ném hoặc rơi ra thế giới hay không.",
             ["item_templates.is_destroyable"] = "Có cho phép hủy item khỏi inventory hay không.",
@@ -133,6 +134,9 @@ internal static class AdminFieldHelpCatalog
             ["pill_recipe_inputs.required_herb_maturity"] = "Giữ chỗ cho phase sau khi craft trực tiếp từ cây đang trồng.\nHiện tại thường để `None`.",
             ["pill_recipe_mastery_stages.required_total_craft_count"] = "Tổng số lần luyện cần đạt để mở mốc thông thạo này.\nVí dụ: `10`, `50`, `100`.",
             ["pill_recipe_mastery_stages.success_rate_bonus"] = "Bonus tỷ lệ thành công nhận được khi đạt mốc thông thạo.\nVí dụ: `0.03` để cộng 3%.",
+
+            ["herb_templates.seed_item_template_id"] = "Item Template của hạt giống dùng để trồng mới herb này.\nVí dụ: `hat_giong_huyet_sam`.\nKhi người chơi trồng từ hạt, server sẽ map từ item này sang đúng herb template.",
+            ["herb_templates.replant_item_template_id"] = "Item Template của cây sống có thể mang trong túi và trồng lại.\nVí dụ: `cay_non_huyet_sam`, `linh_thao_song`.\nDùng cho case nhổ cây non hoặc cây sống khỏi vườn, bỏ vào túi rồi sau đó trồng lại.\nKhuyến nghị: chọn Item Template có loại `HerbPlant` để dễ phân biệt với hạt giống.",
 
             ["game_random_tables.table_id"] = "Mã bảng random mà runtime sẽ gọi.\nVí dụ: `monster.drop.demo_slime`, `boss.drop.hac_ho`, `craft.bonus.weapon_common`.\nNên đặt ổn định, có namespace rõ ràng.",
             ["game_random_tables.mode"] = "Chế độ hoạt động của bảng random.\nHiện tại runtime mới hỗ trợ `Exclusive`, nghĩa là chọn một kết quả cuối cùng sau khi chuẩn hóa tổng tỷ lệ.",

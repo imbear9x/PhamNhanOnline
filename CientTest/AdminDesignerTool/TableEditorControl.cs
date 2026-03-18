@@ -191,6 +191,7 @@ internal sealed class TableEditorControl : UserControl
         _grid.EnableHeadersVisualStyles = false;
         _grid.SelectionChanged += (_, _) => SelectedRowChanged?.Invoke(this, EventArgs.Empty);
         _grid.DataError += (_, _) => { };
+        _grid.CellParsing += GridOnCellParsing;
         _grid.CellFormatting += GridOnCellFormatting;
         _grid.CellEndEdit += GridOnCellEndEdit;
         _grid.CurrentCellDirtyStateChanged += GridOnCurrentCellDirtyStateChanged;
@@ -965,6 +966,39 @@ internal sealed class TableEditorControl : UserControl
         _grid.Refresh();
     }
 
+    private void GridOnCellParsing(object? sender, DataGridViewCellParsingEventArgs e)
+    {
+        if (_isReloadingData || _table is null || e.RowIndex < 0 || e.ColumnIndex < 0)
+            return;
+
+        var columnName = _grid.Columns[e.ColumnIndex].DataPropertyName;
+        if (string.IsNullOrWhiteSpace(columnName) || !_table.Columns.Contains(columnName))
+            return;
+
+        var column = _table.Columns[columnName];
+        var targetType = Nullable.GetUnderlyingType(column.DataType) ?? column.DataType;
+        if (targetType != typeof(decimal) &&
+            targetType != typeof(double) &&
+            targetType != typeof(float))
+        {
+            return;
+        }
+
+        var text = Convert.ToString(e.Value)?.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            e.Value = column.AllowDBNull ? DBNull.Value : GetDefaultValue(column);
+            e.ParsingApplied = true;
+            return;
+        }
+
+        if (!TryParseFlexibleNumber(text, targetType, out var parsedValue))
+            return;
+
+        e.Value = parsedValue;
+        e.ParsingApplied = true;
+    }
+
     private void GridOnCellEnter(object? sender, DataGridViewCellEventArgs e)
     {
         if (_isReloadingData || e.RowIndex < 0 || e.ColumnIndex < 0)
@@ -1325,6 +1359,69 @@ internal sealed class TableEditorControl : UserControl
             || type == typeof(bool)
             || type == typeof(DateTime)
             || type == typeof(Guid);
+    }
+
+    private static bool TryParseFlexibleNumber(string text, Type targetType, out object parsedValue)
+    {
+        parsedValue = default!;
+
+        var normalized = text.Replace(" ", string.Empty);
+        var styles = NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowThousands;
+        var cultures = new[]
+        {
+            CultureInfo.CurrentCulture,
+            CultureInfo.InvariantCulture,
+            CultureInfo.GetCultureInfo("vi-VN"),
+            CultureInfo.GetCultureInfo("en-US")
+        };
+
+        foreach (var culture in cultures.DistinctBy(static x => x.Name))
+        {
+            if (targetType == typeof(decimal) && decimal.TryParse(normalized, styles, culture, out var decimalValue))
+            {
+                parsedValue = decimalValue;
+                return true;
+            }
+
+            if (targetType == typeof(double) && double.TryParse(normalized, styles, culture, out var doubleValue))
+            {
+                parsedValue = doubleValue;
+                return true;
+            }
+
+            if (targetType == typeof(float) && float.TryParse(normalized, styles, culture, out var floatValue))
+            {
+                parsedValue = floatValue;
+                return true;
+            }
+        }
+
+        var alternate = normalized.Contains(',')
+            ? normalized.Replace(",", ".")
+            : normalized.Replace(".", ",");
+
+        foreach (var culture in cultures.DistinctBy(static x => x.Name))
+        {
+            if (targetType == typeof(decimal) && decimal.TryParse(alternate, styles, culture, out var decimalValue))
+            {
+                parsedValue = decimalValue;
+                return true;
+            }
+
+            if (targetType == typeof(double) && double.TryParse(alternate, styles, culture, out var doubleValue))
+            {
+                parsedValue = doubleValue;
+                return true;
+            }
+
+            if (targetType == typeof(float) && float.TryParse(alternate, styles, culture, out var floatValue))
+            {
+                parsedValue = floatValue;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private sealed record ValidationIssue(

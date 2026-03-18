@@ -113,7 +113,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
         if (_definition is null)
             return;
 
-        if (!_masterEditor.TryGetSelectedInt("id", out var parentId))
+        if (!_masterEditor.TryGetSelectedInt(_definition.MasterKeyColumn, out var parentId))
         {
             foreach (var child in _definition.Children)
             {
@@ -130,6 +130,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
     }
 
     private sealed record WorkspaceDefinition(
+        string MasterKeyColumn,
         AdminTableLoadRequest MasterRequest,
         IReadOnlyList<WorkspaceChildDefinition> Children);
 
@@ -166,6 +167,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             var skillUnlocks = resourcesByKey["martial_art_skills"];
 
             return new WorkspaceDefinition(
+                "id",
                 new AdminTableLoadRequest(
                     martialArts,
                     TitleOverride: "Danh Sach Cong Phap",
@@ -210,6 +212,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             var mutationBonuses = resourcesByKey["craft_recipe_mutation_bonuses"];
 
             return new WorkspaceDefinition(
+                "id",
                 new AdminTableLoadRequest(
                     recipes,
                     TitleOverride: "Danh Sach Craft Recipe",
@@ -266,6 +269,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             var equipmentStats = resourcesByKey["equipment_template_stats"];
 
             return new WorkspaceDefinition(
+                "id",
                 new AdminTableLoadRequest(
                     itemTemplates,
                     SelectSql: """
@@ -335,6 +339,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             var zoneSlots = resourcesByKey["map_zone_slots"];
 
             return new WorkspaceDefinition(
+                "id",
                 new AdminTableLoadRequest(
                     maps,
                     TitleOverride: "Danh Sach Map",
@@ -368,6 +373,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             var masteryStages = resourcesByKey["pill_recipe_mastery_stages"];
 
             return new WorkspaceDefinition(
+                "id",
                 new AdminTableLoadRequest(
                     recipes,
                     TitleOverride: "Danh Sach Dan Phuong",
@@ -423,6 +429,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             var effects = resourcesByKey["pill_effects"];
 
             return new WorkspaceDefinition(
+                "item_template_id",
                 new AdminTableLoadRequest(
                     pills,
                     TitleOverride: "Danh Sach Pill",
@@ -457,6 +464,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             var harvestOutputs = resourcesByKey["herb_harvest_outputs"];
 
             return new WorkspaceDefinition(
+                "id",
                 new AdminTableLoadRequest(
                     herbs,
                     TitleOverride: "Danh Sach Herb",
@@ -511,6 +519,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             var fortuneTags = resourcesByKey["game_random_fortune_tags"];
 
             return new WorkspaceDefinition(
+                "id",
                 new AdminTableLoadRequest(
                     tables,
                     TitleOverride: "Danh Sach Random Table",

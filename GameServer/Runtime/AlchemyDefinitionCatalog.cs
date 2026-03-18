@@ -11,6 +11,7 @@ public sealed class AlchemyDefinitionCatalog
     private readonly IReadOnlyDictionary<int, PillRecipeTemplateDefinition> _pillRecipesByBookItemId;
     private readonly IReadOnlyDictionary<int, HerbTemplateDefinition> _herbsById;
     private readonly IReadOnlyDictionary<int, HerbTemplateDefinition> _herbsBySeedItemId;
+    private readonly IReadOnlyDictionary<int, HerbTemplateDefinition> _herbsByReplantItemId;
     private readonly IReadOnlyDictionary<int, SoilTemplateDefinition> _soilsByItemId;
 
     public AlchemyDefinitionCatalog(IServiceScopeFactory scopeFactory)
@@ -31,6 +32,9 @@ public sealed class AlchemyDefinitionCatalog
         _pillRecipesByBookItemId = _pillRecipesById.Values.ToDictionary(x => x.RecipeBookItemTemplateId);
         _herbsById = BuildHerbs(herbTemplates, herbGrowthStages, herbHarvestOutputs);
         _herbsBySeedItemId = _herbsById.Values.ToDictionary(x => x.SeedItemTemplateId);
+        _herbsByReplantItemId = _herbsById.Values
+            .Where(x => x.ReplantItemTemplateId.HasValue)
+            .ToDictionary(x => x.ReplantItemTemplateId!.Value);
         _soilsByItemId = soilTemplates.ToDictionary(
             x => x.ItemTemplateId,
             x => new SoilTemplateDefinition(x.ItemTemplateId, x.GrowthSpeedRate, x.MaxActiveSeconds, x.Description));
@@ -50,6 +54,9 @@ public sealed class AlchemyDefinitionCatalog
 
     public bool TryGetHerbBySeedItemTemplate(int seedItemTemplateId, out HerbTemplateDefinition definition) =>
         _herbsBySeedItemId.TryGetValue(seedItemTemplateId, out definition!);
+
+    public bool TryGetHerbByReplantItemTemplate(int replantItemTemplateId, out HerbTemplateDefinition definition) =>
+        _herbsByReplantItemId.TryGetValue(replantItemTemplateId, out definition!);
 
     public bool TryGetSoil(int itemTemplateId, out SoilTemplateDefinition definition) =>
         _soilsByItemId.TryGetValue(itemTemplateId, out definition!);
@@ -162,8 +169,7 @@ public sealed class AlchemyDefinitionCatalog
                         stage.HerbTemplateId,
                         (HerbGrowthStage)stage.Stage,
                         stage.StageName,
-                        stage.RequiredGrowthSeconds,
-                        stage.AgeYears))
+                        stage.RequiredGrowthSeconds))
                     .ToArray());
 
         var harvestOutputsByHerbId = harvestOutputs
@@ -190,6 +196,7 @@ public sealed class AlchemyDefinitionCatalog
                 x.Code,
                 x.Name,
                 x.SeedItemTemplateId,
+                x.ReplantItemTemplateId,
                 x.Description,
                 growthStagesByHerbId.GetValueOrDefault(x.Id, Array.Empty<HerbGrowthStageDefinition>()),
                 harvestOutputsByHerbId.GetValueOrDefault(x.Id, Array.Empty<HerbHarvestOutputDefinition>())));

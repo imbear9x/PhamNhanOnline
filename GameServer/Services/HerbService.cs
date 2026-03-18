@@ -176,7 +176,6 @@ public sealed class HerbService
             CurrentStage = (int)HerbGrowthStage.Seedling,
             PlantedAt = DateTime.UtcNow,
             AccumulatedGrowthSeconds = 0,
-            CurrentAgeYears = 0,
             State = (int)PlayerHerbState.Planting,
             CurrentPlotId = plot.Id,
             CreatedAt = DateTime.UtcNow,
@@ -421,7 +420,6 @@ public sealed class HerbService
             herb.HerbTemplateId,
             (HerbGrowthStage)herb.CurrentStage,
             herb.AccumulatedGrowthSeconds,
-            herb.CurrentAgeYears,
             herb.State == (int)PlayerHerbState.Planting && herb.CurrentPlotId.HasValue && soilRemainingSeconds > 0,
             herb.CurrentPlotId,
             soilPlayerItemId,
@@ -471,12 +469,10 @@ public sealed class HerbService
         if (stage is null)
         {
             herb.CurrentStage = (int)HerbGrowthStage.Seedling;
-            herb.CurrentAgeYears = 0;
             return;
         }
 
         herb.CurrentStage = (int)stage.Stage;
-        herb.CurrentAgeYears = stage.AgeYears;
     }
 
     private static int ToPartsPerMillion(double rawRate)

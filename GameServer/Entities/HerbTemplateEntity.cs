@@ -9,7 +9,7 @@ public sealed class HerbTemplateEntity
     [Column("code"), NotNull] public string Code { get; set; } = string.Empty;
     [Column("name"), NotNull] public string Name { get; set; } = string.Empty;
     [Column("seed_item_template_id"), NotNull] public int SeedItemTemplateId { get; set; }
+    [Column("replant_item_template_id")] public int? ReplantItemTemplateId { get; set; }
     [Column("description")] public string? Description { get; set; }
     [Column("created_at"), NotNull] public DateTime CreatedAt { get; set; }
 }
-

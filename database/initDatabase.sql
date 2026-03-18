@@ -753,13 +753,17 @@ CREATE TABLE IF NOT EXISTS public.herb_templates (
     code character varying(50) NOT NULL,
     name character varying(100) NOT NULL,
     seed_item_template_id integer NOT NULL,
+    replant_item_template_id integer NULL,
     description text NULL,
     created_at timestamp without time zone NOT NULL DEFAULT now(),
     CONSTRAINT herb_templates_pkey PRIMARY KEY (id),
     CONSTRAINT herb_templates_code_key UNIQUE (code),
     CONSTRAINT herb_templates_seed_item_template_key UNIQUE (seed_item_template_id),
+    CONSTRAINT herb_templates_replant_item_template_key UNIQUE (replant_item_template_id),
     CONSTRAINT fk_herb_templates_seed_item_template
-        FOREIGN KEY (seed_item_template_id) REFERENCES public.item_templates(id)
+        FOREIGN KEY (seed_item_template_id) REFERENCES public.item_templates(id),
+    CONSTRAINT fk_herb_templates_replant_item_template
+        FOREIGN KEY (replant_item_template_id) REFERENCES public.item_templates(id)
 );
 
 CREATE TABLE IF NOT EXISTS public.herb_growth_stage_configs (
@@ -768,7 +772,6 @@ CREATE TABLE IF NOT EXISTS public.herb_growth_stage_configs (
     stage integer NOT NULL,
     stage_name character varying(50) NOT NULL,
     required_growth_seconds bigint NOT NULL,
-    age_years integer NOT NULL DEFAULT 0,
     CONSTRAINT herb_growth_stage_configs_herb_stage_key UNIQUE (herb_template_id, stage),
     CONSTRAINT fk_herb_growth_stage_configs_herb_template
         FOREIGN KEY (herb_template_id) REFERENCES public.herb_templates(id)
@@ -781,7 +784,6 @@ CREATE TABLE IF NOT EXISTS public.player_herbs (
     current_stage integer NOT NULL,
     planted_at timestamp without time zone NULL,
     accumulated_growth_seconds bigint NOT NULL DEFAULT 0,
-    current_age_years integer NOT NULL DEFAULT 0,
     state integer NOT NULL,
     current_plot_id bigint NULL,
     created_at timestamp without time zone NOT NULL DEFAULT now(),

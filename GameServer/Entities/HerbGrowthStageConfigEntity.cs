@@ -10,6 +10,4 @@ public sealed class HerbGrowthStageConfigEntity
     [Column("stage"), NotNull] public int Stage { get; set; }
     [Column("stage_name"), NotNull] public string StageName { get; set; } = string.Empty;
     [Column("required_growth_seconds"), NotNull] public long RequiredGrowthSeconds { get; set; }
-    [Column("age_years"), NotNull] public int AgeYears { get; set; }
 }
-

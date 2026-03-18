@@ -1,5 +1,18 @@
 namespace AdminDesignerTool;
 
+internal enum AdminEditorKind
+{
+    GenericTable = 0,
+    MartialArtWorkspace = 1,
+    CraftRecipeWorkspace = 2,
+    EquipmentWorkspace = 3,
+    MapWorkspace = 4,
+    PillRecipeWorkspace = 5,
+    HerbWorkspace = 6,
+    PillWorkspace = 7,
+    GameRandomWorkspace = 8
+}
+
 internal enum CharacterStatType
 {
     None = 0,
@@ -107,7 +120,8 @@ internal enum ItemType
     PillRecipeBook = 8,
     HerbSeed = 9,
     HerbMaterial = 10,
-    Soil = 11
+    Soil = 11,
+    HerbPlant = 12
 }
 
 internal enum ItemRarity

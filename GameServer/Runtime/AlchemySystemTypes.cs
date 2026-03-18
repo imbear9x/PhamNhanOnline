@@ -118,8 +118,7 @@ public sealed record HerbGrowthStageDefinition(
     int HerbTemplateId,
     HerbGrowthStage Stage,
     string StageName,
-    long RequiredGrowthSeconds,
-    int AgeYears);
+    long RequiredGrowthSeconds);
 
 public sealed record HerbHarvestOutputDefinition(
     int Id,
@@ -135,6 +134,7 @@ public sealed record HerbTemplateDefinition(
     string Code,
     string Name,
     int SeedItemTemplateId,
+    int? ReplantItemTemplateId,
     string? Description,
     IReadOnlyList<HerbGrowthStageDefinition> GrowthStages,
     IReadOnlyList<HerbHarvestOutputDefinition> HarvestOutputs);
@@ -173,7 +173,6 @@ public sealed record HerbRuntimeState(
     int HerbTemplateId,
     HerbGrowthStage CurrentStage,
     long AccumulatedGrowthSeconds,
-    int CurrentAgeYears,
     bool IsGrowing,
     long? CurrentPlotId,
     long? CurrentSoilPlayerItemId,

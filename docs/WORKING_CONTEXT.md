@@ -505,3 +505,32 @@ Cuối mỗi buổi, nên bổ sung:
   - neu dang tu luyen thi cac lan settlement sau se dung `active martial art` moi nhat
 - Da apply migration `20260318_add_active_martial_art_id.sql` vao DB local `phamnhan_online`.
 
+## Session update 2026-03-18 herb replant item direction
+
+- Da chot huong cho he herb:
+  - `seed_item_template_id` dung cho trong moi tu hat giong
+  - `replant_item_template_id` dung cho item cay song/co the nho vao tui roi trong lai
+- Da them item type moi `HerbPlant = 12` trong runtime va admin tool.
+- Da mo rong `herb_templates` voi truong `replant_item_template_id`.
+- Da cap nhat `AlchemyDefinitionCatalog` de co the lookup herb theo:
+  - `seed_item_template_id`
+  - `replant_item_template_id`
+- Da cap nhat admin tool:
+  - dropdown rieng cho `replant_item_template_id` chi lay item type `HerbPlant`
+  - dependency check yeu cau co ca `HerbSeed` va `HerbPlant` truoc khi tao `Herb Template`
+  - help text/resource help mo ta ro khac nhau giua hat giong va cay song co the trong lai
+- Migration moi:
+  - `20260318_add_herb_replant_item_template.sql`
+
+## Session update 2026-03-18 herb age years removal
+
+- Da go bo truong `age_years` khoi bang config `herb_growth_stage_configs`.
+- Da go bo truong `current_age_years` khoi bang runtime `player_herbs`.
+- Da cap nhat entity/runtime/service lien quan de khong con doc/ghi hai truong nay.
+- Tuoi hien thi cua linh duoc ve sau se duoc tinh dong tu:
+  - thoi diem trong cay
+  - game server time
+- Khong coi `age_years` trong DB la nguon su that nua.
+- Migration moi:
+  - `20260318_drop_herb_age_years_columns.sql`
+

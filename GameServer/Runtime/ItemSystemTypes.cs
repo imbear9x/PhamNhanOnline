@@ -12,7 +12,8 @@ public enum ItemType
     PillRecipeBook = 8,
     HerbSeed = 9,
     HerbMaterial = 10,
-    Soil = 11
+    Soil = 11,
+    HerbPlant = 12
 }
 
 public enum ItemRarity
