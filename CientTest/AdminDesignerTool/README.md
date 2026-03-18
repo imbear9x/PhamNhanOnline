@@ -10,6 +10,7 @@ Tool admin MVP de game design config truc tiep cac bang template trong PostgreSQ
 
 ## Cac nhom hien co
 
+- `Designer Workspace`
 - `Cong Phap`
 - `Item & Equipment`
 - `Che Tao`
@@ -27,7 +28,7 @@ Tool se tu tim `GameServer/Config/dbConfig.json` tu thu muc hien tai di nguoc le
 
 ## Ghi chu
 
-- Day la generic table editor, nen FK / enum van dang hien duoi dang so.
+- Grid generic da support dropdown cho cac cot FK / enum pho bien.
 - Trong UI da co `Description` va `HelpText` cho tung resource de game design biet thu tu config.
 - Co san cac thao tac:
   - `Tai Lai`
@@ -36,10 +37,14 @@ Tool se tu tim `GameServer/Config/dbConfig.json` tu thu muc hien tai di nguoc le
   - `Xoa Dong`
   - `Luu Thay Doi`
   - `Loc nhanh`
+- Co them 3 workspace chuyen biet:
+  - `Martial Art Workspace`
+  - `Craft Recipe Workspace`
+  - `Equipment Workspace`
 
 ## Gioi han phase nay
 
-- Chua co form chuyen biet cho tung loai resource.
-- Chua co dropdown FK / enum lookup.
+- Stage bonus, skill scaling, martial art book va mot so bang balance/world van chu yeu edit theo grid generic.
 - Chua co schema boss/drop that, nen moi dat san diem mo rong trong navigation.
 - Chua co auth/permission; hien la tool local noi thang vao DB.
+- Enum trong admin tool hien duoc mirror local theo schema/runtime hien tai de giu project build doc lap voi `GameServer`.

@@ -7,7 +7,8 @@ internal sealed record AdminResourceDefinition(
     string TableName,
     string? DefaultOrderBy,
     string Description,
-    string HelpText)
+    string HelpText,
+    AdminEditorKind EditorKind = AdminEditorKind.GenericTable)
 {
     public string SelectSql =>
         string.IsNullOrWhiteSpace(DefaultOrderBy)
@@ -21,6 +22,10 @@ internal static class AdminResourceCatalog
     {
         return
         [
+            new("martial_art_workspace", "Designer Workspace", "Martial Art Workspace", string.Empty, null, "Workspace chuyen biet de chinh cong phap, tang va skill unlock theo kieu master-detail.", "Chon cong phap o bang tren, cac tab ben duoi tu dong loc theo cong phap dang chon. Cac bang sau nhu stage bonus va scaling van co the edit o grid generic ben duoi nhom Cong Phap.", AdminEditorKind.MartialArtWorkspace),
+            new("craft_recipe_workspace", "Designer Workspace", "Craft Recipe Workspace", string.Empty, null, "Workspace chuyen biet de chinh recipe, requirement va mutation bonus theo cung 1 man hinh.", "Chon recipe o bang tren, cac tab ben duoi tu dong loc theo recipe dang chon. Khi them dong moi, tool se tu dien craft_recipe_id.", AdminEditorKind.CraftRecipeWorkspace),
+            new("equipment_workspace", "Designer Workspace", "Equipment Workspace", string.Empty, null, "Workspace chuyen biet de chinh equipment item template, equipment core va base stat.", "Chi hien thi item template co item_type = Equipment. Chon 1 item template o bang tren de edit phan equipment core va base stat ben duoi.", AdminEditorKind.EquipmentWorkspace),
+
             new("martial_arts", "Cong Phap", "Cong Phap", "martial_arts", "id", "Dinh nghia cong phap goc. Nen tao cong phap truoc roi moi them stage/skill unlock.", "Thu tu khuyen nghi: tao cong phap -> tao cac tang -> them bonus tang -> map skill unlock.\r\nLuu y: bang nay dung id thu cong, nen game design can co quy uoc dat id/code de tranh trung."),
             new("martial_art_stages", "Cong Phap", "Tang Cong Phap", "martial_art_stages", "martial_art_id, stage_level", "Moi tang cua cong phap, gom exp, bottleneck va rate dot pha.", "Moi dong phai tro den mot martial_art_id hop le.\r\nNen giu stage_level tang dan tu 1..max_stage cua cong phap."),
             new("martial_art_stage_stat_bonuses", "Cong Phap", "Bonus Tang Cong Phap", "martial_art_stage_stat_bonuses", "martial_art_stage_id, id", "Bonus stat theo tung tang cong phap.", "Bang nay dung de buff stat theo tang.\r\nstat_type va value_type hien la enum dang luu duoi dang so, can thong nhat bang enum voi team code."),
@@ -38,9 +43,24 @@ internal static class AdminResourceCatalog
             new("craft_recipe_requirements", "Che Tao", "Craft Requirements", "craft_recipe_requirements", "craft_recipe_id, id", "Nguyen lieu/requirement cua recipe, gom ca optional requirement.", "Moi requirement tro den mot item template.\r\nNeu la non-stackable item, runtime se can player_item_id cu the luc craft."),
             new("craft_recipe_mutation_bonuses", "Che Tao", "Craft Mutation Bonuses", "craft_recipe_mutation_bonuses", "craft_recipe_id, id", "Bonus instance sinh ra neu craft mutation thanh cong.", "Bang nay hien co y nghia ro nhat voi output la equipment.\r\nstat_type va value_type la enum dang luu so."),
 
+            new("pill_templates", "Dan Duoc & Duoc Vien", "Pill Templates", "pill_templates", "item_template_id", "Template dan duoc gan voi item consumable/passive material.", "Thu tu khuyen nghi: tao item pill truoc -> tao pill template -> them cac effect.\r\nPhase nay chi config template va recipe; runtime consume pill se lam o phase sau."),
+            new("pill_effects", "Dan Duoc & Duoc Vien", "Pill Effects", "pill_effects", "pill_template_id, order_index", "Danh sach effect cua tung pill.", "Moi pill co the co nhieu effect theo order_index.\r\nvalue_type, stat_type dang luu enum duoi dang so."),
+            new("pill_recipe_templates", "Dan Duoc & Duoc Vien", "Pill Recipe Templates", "pill_recipe_templates", "id", "Dan phuong tach rieng khoi craft recipe thuong.", "Moi recipe tro den item sach dan phuong va item pill ket qua.\r\nThanh cong that bai va mastery duoc xu ly boi AlchemyService rieng."),
+            new("pill_recipe_inputs", "Dan Duoc & Duoc Vien", "Pill Recipe Inputs", "pill_recipe_inputs", "pill_recipe_template_id, id", "Nguyen lieu va optional input cua dan phuong.", "required_herb_maturity da co schema, nhung runtime phase nay chua cho craft truc tiep tu cay dang trong.\r\nNen uu tien dung item duoc lieu thu hoach ra inventory."),
+            new("pill_recipe_mastery_stages", "Dan Duoc & Duoc Vien", "Pill Recipe Mastery", "pill_recipe_mastery_stages", "pill_recipe_template_id, required_total_craft_count", "Moc thong thao cua tung dan phuong.", "Moi moc se tang them success rate bonus.\r\nRuntime lay moc cao nhat da dat duoc, khong cong don tat ca cac moc."),
+            new("soil_templates", "Dan Duoc & Duoc Vien", "Soil Templates", "soil_templates", "item_template_id", "Linh tho/dat trong dung cho duoc vien.", "item_template_id phai tro den item type = Soil.\r\nSoil la item non-stackable, co toc do tang truong va thoi gian hieu luc toi da."),
+            new("herb_templates", "Dan Duoc & Duoc Vien", "Herb Templates", "herb_templates", "id", "Template duoc lieu trong duoc vien.", "Moi herb can tro den 1 seed item template.\r\nCac moc tang truong va output thu hoach duoc config o bang con."),
+            new("herb_growth_stage_configs", "Dan Duoc & Duoc Vien", "Herb Growth Stages", "herb_growth_stage_configs", "herb_template_id, required_growth_seconds", "Moc tang truong va tuoi duoc lieu.", "Nen config stage tang dan tu Seedling -> Mature -> Perfect.\r\nrequired_growth_seconds la tong so giay tang truong tich luy de dat moc do."),
+            new("herb_harvest_outputs", "Dan Duoc & Duoc Vien", "Herb Harvest Outputs", "herb_harvest_outputs", "herb_template_id, required_stage, id", "Vat pham nhan duoc khi thu hoach duoc lieu.", "Runtime uu tien output dung stage hien tai; neu khong co se lay moc stage thap hon gan nhat.\r\nCo the tra ra duoc lieu, hat giong, hoac item khac tuy design."),
+
             new("realm_templates", "Balance", "Realm Templates", "realm_templates", "id", "Canh gioi tu luyen.", "Bang balance canh gioi hien dang duoc server su dung.\r\nSua cac he so o day se anh huong progression."),
             new("potential_stat_upgrade_tiers", "Balance", "Potential Upgrade Tiers", "potential_stat_upgrade_tiers", "target_stat, tier_index", "Config tier nang stat bang potential.", "target_stat map voi enum PotentialAllocationTarget trong GameShared.\r\nHien dang co None, BaseHp, BaseMp, BaseAttack, BaseSpeed, BaseSpiritualSense, BaseFortune."),
             new("spiritual_energy_templates", "Balance", "Spiritual Energy Templates", "spiritual_energy_templates", "id", "Template linh khi cho zone/map.", "Template linh khi de map/zone tro vao.\r\nNen sua thong so voi mindset balance toan map."),
+
+            new("game_random_tables", "Random & Drop", "Game Random Tables", "game_random_tables", "id", "Bang config random/drop tong quat cua game.", "Moi bang random co `table_id` dung trong code/runtime. Fortune modifier va none entry duoc config truc tiep o day."),
+            new("game_random_entries", "Random & Drop", "Game Random Entries", "game_random_entries", "game_random_table_id, order_index", "Danh sach entry cua tung bang random.", "Moi entry thuoc ve 1 bang random. `order_index` giup giu thu tu cau hinh, `chance_parts_per_million` dung scale 1_000_000."),
+            new("game_random_entry_tags", "Random & Drop", "Game Random Entry Tags", "game_random_entry_tags", "game_random_entry_id, id", "Tag cua tung entry de fortune modifier co the ap dung co dieu kien.", "Neu bang random chi can fortune ap cho mot so loai entry thi config tag o day."),
+            new("game_random_fortune_tags", "Random & Drop", "Game Random Fortune Tags", "game_random_fortune_tags", "game_random_table_id, id", "Danh sach tag duoc phep nhan fortune bonus trong bang random.", "Neu de trong, fortune se ap cho tat ca entry hop le. Neu co du lieu, chi entry nao mang mot trong cac tag nay moi duoc tang chance."),
             new("map_templates", "World", "Map Templates", "map_templates", "id", "Map template co the chinh ngay trong admin.", "Map template la lop tong.\r\nSau khi tao map, tao tiep map zone slots de gan noi dung theo tung zone."),
             new("map_zone_slots", "World", "Map Zone Slots", "map_zone_slots", "map_template_id, zone_index", "Zone slot va linh khi theo zone.", "Moi zone slot tro den map_template va spiritual_energy_template neu co.\r\nzone_index nen khong bi trung trong cung map."),
 

@@ -4,7 +4,9 @@ internal sealed class MainForm : Form
 {
     private readonly SplitContainer _splitContainer;
     private readonly TreeView _navigationTree;
-    private readonly TableEditorControl? _editorControl;
+    private readonly Panel _editorHostPanel;
+    private readonly TableEditorControl? _genericEditorControl;
+    private readonly MasterDetailWorkspaceControl? _workspaceEditorControl;
     private readonly Label _connectionInfoLabel;
     private readonly IReadOnlyDictionary<string, AdminResourceDefinition> _resourcesByKey;
 
@@ -66,14 +68,27 @@ internal sealed class MainForm : Form
                 : $"Dang dung dbConfig: {configPath}"
         };
 
+        _editorHostPanel = new Panel { Dock = DockStyle.Fill };
+
         if (!string.IsNullOrWhiteSpace(connectionString))
         {
-            _editorControl = new TableEditorControl(connectionString) { Dock = DockStyle.Fill };
-            _splitContainer.Panel2.Controls.Add(_editorControl);
+            _genericEditorControl = new TableEditorControl(connectionString)
+            {
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
+            _workspaceEditorControl = new MasterDetailWorkspaceControl(connectionString, _resourcesByKey)
+            {
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
+
+            _editorHostPanel.Controls.Add(_genericEditorControl);
+            _editorHostPanel.Controls.Add(_workspaceEditorControl);
         }
         else
         {
-            _splitContainer.Panel2.Controls.Add(new Label
+            _editorHostPanel.Controls.Add(new Label
             {
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
@@ -82,6 +97,7 @@ internal sealed class MainForm : Form
             });
         }
 
+        _splitContainer.Panel2.Controls.Add(_editorHostPanel);
         _splitContainer.Panel2.Controls.Add(_connectionInfoLabel);
         Controls.Add(_splitContainer);
 
@@ -100,12 +116,26 @@ internal sealed class MainForm : Form
     private async void NavigationTreeOnAfterSelect(object? sender, TreeViewEventArgs e)
     {
         var selectedNode = e.Node;
-        if (_editorControl is null || selectedNode is null || selectedNode.Tag is not string key)
+        if (selectedNode is null || selectedNode.Tag is not string key)
             return;
         if (!_resourcesByKey.TryGetValue(key, out var resource))
             return;
 
-        await _editorControl.LoadResourceAsync(resource);
+        if (resource.EditorKind == AdminEditorKind.GenericTable)
+        {
+            if (_genericEditorControl is null)
+                return;
+
+            ShowEditor(_genericEditorControl);
+            await _genericEditorControl.LoadResourceAsync(resource);
+            return;
+        }
+
+        if (_workspaceEditorControl is null)
+            return;
+
+        ShowEditor(_workspaceEditorControl);
+        await _workspaceEditorControl.LoadWorkspaceAsync(resource);
     }
 
     private void BuildNavigation()
@@ -133,5 +163,11 @@ internal sealed class MainForm : Form
             if (firstGroup is not null && firstGroup.Nodes.Count > 0)
                 _navigationTree.SelectedNode = firstGroup.Nodes[0];
         }
+    }
+
+    private void ShowEditor(Control controlToShow)
+    {
+        foreach (Control child in _editorHostPanel.Controls)
+            child.Visible = ReferenceEquals(child, controlToShow);
     }
 }

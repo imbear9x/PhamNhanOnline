@@ -313,9 +313,134 @@ Cuối mỗi buổi, nên bổ sung:
   - mo ta + huong dan cho tung resource
   - `Tai Lai`, `Them Dong`, `Nhan Ban Dong`, `Xoa Dong`, `Luu Thay Doi`
   - bo loc nhanh tren bang dang mo
+- Da nang cap UX tiep theo:
+  - grid generic support dropdown cho FK / enum pho bien
+  - them 3 workspace chuyen biet:
+    - `Martial Art Workspace`
+    - `Craft Recipe Workspace`
+    - `Equipment Workspace`
+  - workspace hoat dong theo kieu master-detail: chon bang cha o tren, bang con o tab duoi tu dong loc theo parent dang chon
+  - child editor tu dien FK mac dinh khi bam `Them Dong` o cac quan he truc tiep (`martial_art_id`, `craft_recipe_id`, `item_template_id`, ...)
 - Huong chon cho phase nay:
-  - uu tien ship nhanh mot MVP designer-friendly, chua lam form chuyen biet theo tung resource
+  - uu tien designer workflow truoc cho 3 cum quan trong nhat: cong phap, craft recipe, equipment
+  - van giu generic table editor cho cac bang con lai de mo rong nhanh
   - boss/drop moi dat san diem mo rong; khi schema co that thi them resource vao catalog la edit duoc ngay
 - Build verify:
   - `dotnet build CientTest/AdminDesignerTool/AdminDesignerTool.csproj` -> pass, 0 warning, 0 error
+
+## Session update 2026-03-18 alchemy herb cave foundation
+
+- Da chot huong kien truc theo design moi:
+  - tach rieng he `pill_recipe_*` khoi `craft_recipe_*`
+  - `consume pill -> apply effect` de phase sau
+  - them `ItemType` moi:
+    - `PillRecipeBook = 8`
+    - `HerbSeed = 9`
+    - `HerbMaterial = 10`
+    - `Soil = 11`
+- Da them migration/schema moi cho cum `dan duoc / duoc vien / dong phu co ban`:
+  - `player_caves`
+  - `player_garden_plots`
+  - `soil_templates`
+  - `player_soils`
+  - `herb_templates`
+  - `herb_growth_stage_configs`
+  - `player_herbs`
+  - `herb_harvest_outputs`
+  - `pill_templates`
+  - `pill_effects`
+  - `pill_recipe_templates`
+  - `pill_recipe_inputs`
+  - `player_pill_recipes`
+  - `pill_recipe_mastery_stages`
+- Da them `Entity` + `Repository` + DI registrations tuong ung trong `GameServer`.
+- Da them runtime catalog/types/service:
+  - `AlchemySystemTypes`
+  - `AlchemyDefinitionCatalog`
+  - `PillRecipeService`
+  - `AlchemyService`
+  - `HerbService`
+- Quy tac da chot trong code phase nay:
+  - character moi tao se duoc cap `home cave` rieng dua theo `MapCatalog.ResolveHomeDefinition()`
+  - `home cave` hien luu thong tin co ban:
+    - cua ai
+    - map nao
+    - zone nao
+    - co 8 `garden plot` mac dinh
+  - `soil` la item non-stackable, co row runtime rieng trong `player_soils`
+  - dang trong cay se dung growth time tich luy + toc do tang truong cua soil
+  - khi soil het thoi gian hieu luc se thanh `Depleted`
+  - `required_herb_maturity` da co trong schema nhung `AlchemyService` se tu choi input kieu nay o phase hien tai
+  - phase hien tai uu tien flow:
+    - hoc dan phuong tu item sach
+    - luyen dan tu item da nam trong inventory
+    - trong cay / thu hoach / tra item ve inventory
+  - chua noi effect cua pill vao pipeline dung vat pham/runtime buff
+- Da nang cap admin tool de game design config duoc cum alchemy/herb:
+  - them nhom resource `Dan Duoc & Duoc Vien`
+  - them FK/enum dropdown cho:
+    - `pill_templates`
+    - `pill_effects`
+    - `pill_recipe_templates`
+    - `pill_recipe_inputs`
+    - `pill_recipe_mastery_stages`
+    - `soil_templates`
+    - `herb_templates`
+    - `herb_growth_stage_configs`
+    - `herb_harvest_outputs`
+- Build verify:
+  - `dotnet build GameServer/GameServer.csproj` -> pass
+  - `dotnet build CientTest/AdminDesignerTool/AdminDesignerTool.csproj` -> pass
+
+## Admin tool rule
+
+- Quy uoc tiep tuc cho cac buoi sau:
+  - neu them bang moi thuoc nhom `config/template/balance/content` cua game thi mac dinh phai cap nhat `AdminDesignerTool` cung buoi do, khong de tool admin bi tre pha so voi schema moi
+  - muc tieu la game design co the cau hinh du lieu bang tool admin thay vi phai sua SQL tay
+  - toi thieu moi bang config moi can duoc xem xet:
+    - them resource vao navigation neu phu hop
+    - map FK/enum dropdown neu co
+    - bo sung workspace chuyen biet neu bang do la cum resource duoc dung thuong xuyen
+
+## Session update 2026-03-18 game random config to database
+
+- Da chuyen he `gameRandom` tu doc file `GameServer/Config/gameRandomConfig.json` sang doc DB luc startup.
+- Schema moi da them:
+  - `game_random_tables`
+  - `game_random_entries`
+  - `game_random_entry_tags`
+  - `game_random_fortune_tags`
+- Da seed du lieu demo tu file cu sang DB:
+  - `monster.drop.demo_slime`
+  - `item.demo_herb`
+  - `currency.spirit_stone_small`
+  - tag `item_drop`, `currency_drop`
+- `IGameRandomService` va `GameRandomService` duoc giu nguyen interface/runtime behavior; chi doi nguon config sang DB loader trong `ServiceCollectionExtensions`.
+- Da xoa luong copy file config va xoa file `GameServer/Config/gameRandomConfig.json` khoi repo de tranh 2 nguon su that song song.
+- Admin tool da duoc cap nhat de config duoc cum bang moi:
+  - `Game Random Tables`
+  - `Game Random Entries`
+  - `Game Random Entry Tags`
+  - `Game Random Fortune Tags`
+- Build verify:
+  - `dotnet build GameServer/GameServer.csproj` -> pass
+  - `dotnet build CientTest/AdminDesignerTool/AdminDesignerTool.csproj` -> pass
+
+## Session note 2026-03-18 local database schema sync
+
+- Da kiem tra DB local `phamnhan_online` bang `psql` va xac nhan truoc do moi chi co nhom bang `Cong Phap`; cac bang `item / equipment / crafting / alchemy / herb / game_random` chua ton tai trong DB that.
+- Da apply truc tiep vao DB local cac migration:
+  - `20260318_add_item_equipment_crafting_foundation.sql`
+  - `20260318_add_alchemy_herb_cave_foundation.sql`
+  - `20260318_add_game_random_config_tables.sql`
+- Sau khi apply, cac bang config moi da ton tai trong DB va admin tool moi co the load schema dung cho nhom resource tuong ung.
+
+## Session update 2026-03-18 admin dependency UX
+
+- Da them dependency check cho `AdminDesignerTool` de tranh game design bam `Them Dong` trong khi bang cha chua co du lieu.
+- Cac bang phu thuoc FK/nguon du lieu cha (vi du `equipment_templates`, `soil_templates`, `pill_effects`, `pill_recipe_inputs`, `map_zone_slots`, `game_random_entries`, ...) gio se:
+  - tu kiem tra DB khi mo resource
+  - khoa nut `Them Dong` neu chua du dieu kien
+  - hien thong bao ro rang trong man hinh ve bang/du lieu cha dang thieu
+- Muc tieu la loai bo kieu UX "thu bam roi moi doan" va thay bang thong bao huong dan truc tiep.
 

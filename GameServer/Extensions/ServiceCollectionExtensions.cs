@@ -31,6 +31,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<EquipmentService>();
         services.AddScoped<CraftService>();
         services.AddScoped<EquipmentStatService>();
+        services.AddScoped<PillRecipeService>();
+        services.AddScoped<AlchemyService>();
+        services.AddScoped<HerbService>();
 
         return services;
     }
@@ -47,6 +50,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<MapTemplateAdjacentMapRepository>();
         services.AddScoped<MapZoneSlotRepository>();
         services.AddScoped<SpiritualEnergyTemplateRepository>();
+        services.AddScoped<GameRandomTableRepository>();
+        services.AddScoped<GameRandomEntryRepository>();
+        services.AddScoped<GameRandomEntryTagRepository>();
+        services.AddScoped<GameRandomFortuneTagRepository>();
         services.AddScoped<PotentialStatUpgradeTierRepository>();
         services.AddScoped<RealmTemplateRepository>();
         services.AddScoped<BreakthroughAttemptRepository>();
@@ -71,6 +78,20 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CraftRecipeRequirementRepository>();
         services.AddScoped<CraftRecipeMutationBonusRepository>();
         services.AddScoped<MartialArtBookTemplateRepository>();
+        services.AddScoped<PlayerCaveRepository>();
+        services.AddScoped<PlayerGardenPlotRepository>();
+        services.AddScoped<SoilTemplateRepository>();
+        services.AddScoped<PlayerSoilRepository>();
+        services.AddScoped<HerbTemplateRepository>();
+        services.AddScoped<HerbGrowthStageConfigRepository>();
+        services.AddScoped<PlayerHerbRepository>();
+        services.AddScoped<HerbHarvestOutputRepository>();
+        services.AddScoped<PillTemplateRepository>();
+        services.AddScoped<PillEffectRepository>();
+        services.AddScoped<PillRecipeTemplateRepository>();
+        services.AddScoped<PillRecipeInputRepository>();
+        services.AddScoped<PlayerPillRecipeRepository>();
+        services.AddScoped<PillRecipeMasteryStageRepository>();
 
         return services;
     }
@@ -99,12 +120,13 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddWorldSystems(this IServiceCollection services)
     {
         services.AddSingleton(BuildGameTimeBootstrapConfig());
-        services.AddSingleton(BuildGameRandomConfig());
+        services.AddSingleton(BuildGameRandomConfigFromDatabase);
         services.AddSingleton<GameTimeService>();
         services.AddSingleton<MapCatalog>();
         services.AddSingleton<PotentialStatCatalog>();
         services.AddSingleton<CombatDefinitionCatalog>();
         services.AddSingleton<ItemDefinitionCatalog>();
+        services.AddSingleton<AlchemyDefinitionCatalog>();
         services.AddSingleton<IRandomNumberProvider, CryptoRandomNumberProvider>();
         services.AddSingleton<IGameRandomService, GameRandomService>();
         services.AddSingleton<CharacterBaseStatsComposer>();
@@ -176,9 +198,73 @@ public static class ServiceCollectionExtensions
         return LoadConfig<GameTimeConfig>("gameTimeConfig.json");
     }
 
-    private static GameRandomConfig BuildGameRandomConfig()
+    private static GameRandomConfig BuildGameRandomConfigFromDatabase(IServiceProvider rootProvider)
     {
-        return LoadConfig<GameRandomConfig>("gameRandomConfig.json");
+        using var scope = rootProvider.CreateScope();
+        var tableRepository = scope.ServiceProvider.GetRequiredService<GameRandomTableRepository>();
+        var entryRepository = scope.ServiceProvider.GetRequiredService<GameRandomEntryRepository>();
+        var entryTagRepository = scope.ServiceProvider.GetRequiredService<GameRandomEntryTagRepository>();
+        var fortuneTagRepository = scope.ServiceProvider.GetRequiredService<GameRandomFortuneTagRepository>();
+
+        var tables = tableRepository.GetAllAsync().GetAwaiter().GetResult();
+        var entries = entryRepository.GetAllAsync().GetAwaiter().GetResult();
+        var entryTags = entryTagRepository.GetAllAsync().GetAwaiter().GetResult();
+        var fortuneTags = fortuneTagRepository.GetAllAsync().GetAwaiter().GetResult();
+
+        var entryTagsByEntryId = entryTags
+            .GroupBy(x => x.GameRandomEntryId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<string>)g
+                    .Select(x => x.Tag)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x)
+                    .ToArray());
+
+        var fortuneTagsByTableId = fortuneTags
+            .GroupBy(x => x.GameRandomTableId)
+            .ToDictionary(
+                g => g.Key,
+                g => g
+                    .Select(x => x.Tag)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x)
+                    .ToList());
+
+        var entriesByTableId = entries
+            .GroupBy(x => x.GameRandomTableId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(x => x.OrderIndex).ThenBy(x => x.Id).ToArray());
+
+        return new GameRandomConfig
+        {
+            Tables = tables
+                .OrderBy(x => x.Id)
+                .Select(table => new GameRandomTableConfig
+                {
+                    TableId = table.TableId,
+                    Mode = (GameRandomTableMode)table.Mode,
+                    FortuneModifier = new GameRandomFortuneModifierConfig
+                    {
+                        Enabled = table.FortuneEnabled,
+                        BonusPartsPerMillionPerFortunePoint = table.FortuneBonusPartsPerMillionPerFortunePoint,
+                        MaxBonusPartsPerMillion = table.FortuneMaxBonusPartsPerMillion,
+                        NoneEntryId = table.NoneEntryId,
+                        ApplyToEntryTags = fortuneTagsByTableId.GetValueOrDefault(table.Id, [])
+                    },
+                    Entries = entriesByTableId.GetValueOrDefault(table.Id, [])
+                        .Select(entry => new GameRandomEntryConfig
+                        {
+                            EntryId = entry.EntryId,
+                            ChancePartsPerMillion = entry.ChancePartsPerMillion,
+                            IsNone = entry.IsNone,
+                            Tags = entryTagsByEntryId.GetValueOrDefault(entry.Id, []).ToList()
+                        })
+                        .ToList()
+                })
+                .ToList()
+        };
     }
 
     private static T LoadConfig<T>(string fileName)

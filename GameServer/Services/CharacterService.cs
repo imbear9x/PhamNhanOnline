@@ -27,11 +27,14 @@ public sealed class CharacterService
     private const int DefaultBasePotential = 0;
     private const int DefaultUnallocatedPotential = 0;
     private const int DefaultAppearanceValue = 1;
+    private const int DefaultHomeGardenPlotCount = 8;
 
     private readonly GameDb _db;
     private readonly CharacterRepository _characters;
     private readonly CharacterBaseStatRepository _baseStats;
     private readonly CharacterCurrentStateRepository _currentStates;
+    private readonly PlayerCaveRepository _playerCaves;
+    private readonly PlayerGardenPlotRepository _playerGardenPlots;
     private readonly RealmTemplateRepository _realmTemplates;
     private readonly GameTimeService _gameTimeService;
     private readonly MapCatalog _mapCatalog;
@@ -43,6 +46,8 @@ public sealed class CharacterService
         CharacterRepository characters,
         CharacterBaseStatRepository baseStats,
         CharacterCurrentStateRepository currentStates,
+        PlayerCaveRepository playerCaves,
+        PlayerGardenPlotRepository playerGardenPlots,
         RealmTemplateRepository realmTemplates,
         GameTimeService gameTimeService,
         MapCatalog mapCatalog,
@@ -53,6 +58,8 @@ public sealed class CharacterService
         _characters = characters;
         _baseStats = baseStats;
         _currentStates = currentStates;
+        _playerCaves = playerCaves;
+        _playerGardenPlots = playerGardenPlots;
         _realmTemplates = realmTemplates;
         _gameTimeService = gameTimeService;
         _mapCatalog = mapCatalog;
@@ -111,6 +118,7 @@ public sealed class CharacterService
         await _characters.CreateAsync(character, cancellationToken);
         await _baseStats.CreateAsync(baseStat, cancellationToken);
         await _currentStates.CreateAsync(currentState, cancellationToken);
+        await EnsureHomeCaveAsync(character.Id, cancellationToken);
         await tx.CommitAsync(cancellationToken);
 
         var baseStatsDto = AttachPotentialPreviews(_baseStatsComposer.Compose(CharacterBaseStatsDto.FromEntity(baseStat, realmLifespan)));
@@ -486,6 +494,39 @@ public sealed class CharacterService
     private CharacterBaseStatsDto AttachPotentialPreviews(CharacterBaseStatsDto baseStats)
     {
         return _potentialStatCatalog.AttachPreviews(baseStats);
+    }
+
+    private async Task EnsureHomeCaveAsync(Guid characterId, CancellationToken cancellationToken)
+    {
+        var existingHomeCave = await _playerCaves.GetHomeByOwnerAsync(characterId, cancellationToken);
+        if (existingHomeCave is not null)
+            return;
+
+        var homeDefinition = _mapCatalog.ResolveHomeDefinition();
+        var cave = new PlayerCaveEntity
+        {
+            OwnerCharacterId = characterId,
+            MapTemplateId = homeDefinition.MapId,
+            ZoneIndex = homeDefinition.DefaultZoneIndex,
+            IsHome = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        cave.Id = await _playerCaves.CreateAsync(cave, cancellationToken);
+        for (var plotIndex = 1; plotIndex <= DefaultHomeGardenPlotCount; plotIndex++)
+        {
+            await _playerGardenPlots.CreateAsync(new PlayerGardenPlotEntity
+            {
+                PlayerId = characterId,
+                CaveId = cave.Id,
+                PlotIndex = plotIndex,
+                CurrentSoilPlayerItemId = null,
+                CurrentPlayerHerbId = null,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }, cancellationToken);
+        }
     }
 }
 

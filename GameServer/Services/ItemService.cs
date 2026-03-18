@@ -10,17 +10,20 @@ public sealed class ItemService
     private readonly PlayerItemRepository _playerItems;
     private readonly PlayerEquipmentRepository _playerEquipments;
     private readonly PlayerEquipmentStatBonusRepository _playerEquipmentBonuses;
+    private readonly PlayerSoilRepository _playerSoils;
 
     public ItemService(
         ItemDefinitionCatalog definitions,
         PlayerItemRepository playerItems,
         PlayerEquipmentRepository playerEquipments,
-        PlayerEquipmentStatBonusRepository playerEquipmentBonuses)
+        PlayerEquipmentStatBonusRepository playerEquipmentBonuses,
+        PlayerSoilRepository playerSoils)
     {
         _definitions = definitions;
         _playerItems = playerItems;
         _playerEquipments = playerEquipments;
         _playerEquipmentBonuses = playerEquipmentBonuses;
+        _playerSoils = playerSoils;
     }
 
     public async Task<IReadOnlyList<PlayerItemEntity>> AddItemAsync(
@@ -52,6 +55,7 @@ public sealed class ItemService
                 };
                 entity.Id = await _playerItems.CreateAsync(entity, cancellationToken);
                 await EnsureEquipmentRecordIfNeededAsync(definition, entity.Id, cancellationToken);
+                await EnsureSoilRecordIfNeededAsync(definition, entity.Id, cancellationToken);
                 touched.Add(entity);
             }
 
@@ -167,9 +171,15 @@ public sealed class ItemService
         if (equipment?.EquippedSlot.HasValue == true)
             throw new InvalidOperationException($"Player item {playerItemId} is currently equipped and cannot be removed.");
 
+        var soil = await _playerSoils.GetByPlayerItemIdAsync(playerItemId, cancellationToken);
+        if (soil is not null && soil.State == (int)PlayerSoilState.Inserted)
+            throw new InvalidOperationException($"Player item {playerItemId} is currently inserted into a garden plot and cannot be removed.");
+
         await _playerEquipmentBonuses.DeleteByPlayerItemIdAsync(playerItemId, cancellationToken);
         if (equipment is not null)
             await _playerEquipments.DeleteAsync(playerItemId, cancellationToken);
+        if (soil is not null)
+            await _playerSoils.DeleteAsync(playerItemId, cancellationToken);
 
         await _playerItems.DeleteAsync(playerItemId, cancellationToken);
     }
@@ -225,6 +235,25 @@ public sealed class ItemService
             EquippedSlot = null,
             EnhanceLevel = 0,
             Durability = null,
+            UpdatedAt = DateTime.UtcNow
+        }, cancellationToken);
+    }
+
+    private async Task EnsureSoilRecordIfNeededAsync(ItemDefinition definition, long playerItemId, CancellationToken cancellationToken)
+    {
+        if (definition.ItemType != ItemType.Soil)
+            return;
+
+        var existing = await _playerSoils.GetByPlayerItemIdAsync(playerItemId, cancellationToken);
+        if (existing is not null)
+            return;
+
+        await _playerSoils.CreateAsync(new PlayerSoilEntity
+        {
+            PlayerItemId = playerItemId,
+            TotalUsedSeconds = 0,
+            State = (int)PlayerSoilState.InInventory,
+            InsertedPlotId = null,
             UpdatedAt = DateTime.UtcNow
         }, cancellationToken);
     }

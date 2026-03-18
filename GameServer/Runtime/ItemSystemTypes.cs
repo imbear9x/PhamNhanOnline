@@ -8,7 +8,11 @@ public enum ItemType
     Talisman = 4,
     MartialArtBook = 5,
     Currency = 6,
-    QuestItem = 7
+    QuestItem = 7,
+    PillRecipeBook = 8,
+    HerbSeed = 9,
+    HerbMaterial = 10,
+    Soil = 11
 }
 
 public enum ItemRarity
