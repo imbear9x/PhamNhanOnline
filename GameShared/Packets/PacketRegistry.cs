@@ -45,6 +45,24 @@ public static class PacketRegistry
             case SwitchMapZoneResultPacket:
                 id = 40;
                 return true;
+            case GetOwnedMartialArtsPacket:
+                id = 41;
+                return true;
+            case GetOwnedMartialArtsResultPacket:
+                id = 42;
+                return true;
+            case UseMartialArtBookPacket:
+                id = 43;
+                return true;
+            case UseMartialArtBookResultPacket:
+                id = 44;
+                return true;
+            case SetActiveMartialArtPacket:
+                id = 45;
+                return true;
+            case SetActiveMartialArtResultPacket:
+                id = 46;
+                return true;
         }
 
         return PacketGeneratedRegistry.TryGetId(packet, out id);
@@ -80,6 +98,18 @@ public static class PacketRegistry
                 return new SwitchMapZonePacket();
             case 40:
                 return new SwitchMapZoneResultPacket();
+            case 41:
+                return new GetOwnedMartialArtsPacket();
+            case 42:
+                return new GetOwnedMartialArtsResultPacket();
+            case 43:
+                return new UseMartialArtBookPacket();
+            case 44:
+                return new UseMartialArtBookResultPacket();
+            case 45:
+                return new SetActiveMartialArtPacket();
+            case 46:
+                return new SetActiveMartialArtResultPacket();
         }
 
         return PacketGeneratedRegistry.Create(id);

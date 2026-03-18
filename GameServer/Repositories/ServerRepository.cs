@@ -21,12 +21,12 @@ public sealed class ServerRepository
 
     public async Task<int> CreateAsync(Server entity, CancellationToken cancellationToken = default)
     {
-        await _db.InsertAsync(entity, token: cancellationToken);
+        await _db.InsertEntityAsync(entity, cancellationToken);
         return entity.Id;
     }
 
     public Task<int> UpdateAsync(Server entity, CancellationToken cancellationToken = default) =>
-        _db.UpdateAsync(entity, token: cancellationToken);
+        _db.UpdateEntityAsync(entity, cancellationToken);
 
     public Task<int> DeleteAsync(int id, CancellationToken cancellationToken = default) =>
         _db.GetTable<Server>().Where(x => x.Id == id).DeleteAsync(cancellationToken);

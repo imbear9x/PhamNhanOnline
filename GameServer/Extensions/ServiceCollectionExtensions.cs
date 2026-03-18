@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AccountService>();
         services.AddScoped<CharacterService>();
         services.AddScoped<ItemService>();
+        services.AddScoped<MartialArtService>();
         services.AddScoped<EquipmentService>();
         services.AddScoped<CraftService>();
         services.AddScoped<EquipmentStatService>();
@@ -165,6 +166,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<StopCultivationPacket>, StopCultivationHandler>();
         services.AddScoped<IPacketHandler<BreakthroughPacket>, BreakthroughHandler>();
         services.AddScoped<IPacketHandler<AllocatePotentialPacket>, AllocatePotentialHandler>();
+        services.AddScoped<IPacketHandler<GetOwnedMartialArtsPacket>, GetOwnedMartialArtsHandler>();
+        services.AddScoped<IPacketHandler<UseMartialArtBookPacket>, UseMartialArtBookHandler>();
+        services.AddScoped<IPacketHandler<SetActiveMartialArtPacket>, SetActiveMartialArtHandler>();
 
         services.AddSingleton<IPacketValidator, LoginPacketValidator>();
         services.AddSingleton<IPacketValidator, RegisterPacketValidator>();

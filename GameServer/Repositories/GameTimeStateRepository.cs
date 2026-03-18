@@ -20,7 +20,7 @@ public sealed class GameTimeStateRepository
 
     public async Task<int> CreateAsync(GameTimeState entity, CancellationToken cancellationToken = default)
     {
-        await _db.InsertAsync(entity, token: cancellationToken);
+        await _db.InsertEntityAsync(entity, cancellationToken);
         return entity.Id;
     }
 

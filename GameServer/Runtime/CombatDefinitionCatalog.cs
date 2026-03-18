@@ -152,6 +152,7 @@ public sealed class CombatDefinitionCatalog
                 martialArt.Quality,
                 martialArt.Category,
                 martialArt.Description,
+                martialArt.QiAbsorptionRate,
                 martialArt.MaxStage,
                 stagesByMartialArtId.GetValueOrDefault(martialArt.Id, Array.Empty<MartialArtStageDefinition>()),
                 skillUnlocksByMartialArtId.GetValueOrDefault(martialArt.Id, Array.Empty<MartialArtSkillUnlockDefinition>()));

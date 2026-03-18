@@ -21,12 +21,12 @@ public sealed class CharacterBaseStatRepository
 
     public async Task<Guid> CreateAsync(CharacterBaseStat entity, CancellationToken cancellationToken = default)
     {
-        await _db.InsertAsync(entity, token: cancellationToken);
+        await _db.InsertEntityAsync(entity, cancellationToken);
         return entity.CharacterId;
     }
 
     public Task<int> UpdateAsync(CharacterBaseStat entity, CancellationToken cancellationToken = default) =>
-        _db.UpdateAsync(entity, token: cancellationToken);
+        _db.UpdateEntityAsync(entity, cancellationToken);
 
     public Task<int> DeleteAsync(Guid characterId, CancellationToken cancellationToken = default) =>
         _db.GetTable<CharacterBaseStat>().Where(x => x.CharacterId == characterId).DeleteAsync(cancellationToken);

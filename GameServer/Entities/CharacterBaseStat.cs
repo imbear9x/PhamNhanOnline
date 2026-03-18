@@ -41,6 +41,7 @@ namespace GameServer.Entities
 		[Column("speed_upgrade_count"                      )] public int?    SpeedUpgradeCount    { get; set; } // integer
 		[Column("spiritual_sense_upgrade_count"            )] public int?    SpiritualSenseUpgradeCount { get; set; } // integer
 		[Column("fortune_upgrade_count"                    )] public int?    FortuneUpgradeCount  { get; set; } // integer
+		[Column("active_martial_art_id"                    )] public int?    ActiveMartialArtId   { get; set; } // integer
 		[Column("cultivation_progress"                     )] public decimal? CultivationProgress  { get; set; } // numeric(18,6)
 		[Column("potential_reward_locked"                  )] public bool?   PotentialRewardLocked { get; set; } // boolean
 

@@ -21,13 +21,13 @@ public sealed class BreakthroughConditionRepository
 
     public async Task<int> CreateAsync(BreakthroughCondition entity, CancellationToken cancellationToken = default)
     {
-        var id = await _db.InsertWithInt32IdentityAsync(entity, token: cancellationToken);
+        var id = await _db.InsertEntityWithInt32IdentityAsync(entity, cancellationToken);
         entity.Id = id;
         return id;
     }
 
     public Task<int> UpdateAsync(BreakthroughCondition entity, CancellationToken cancellationToken = default) =>
-        _db.UpdateAsync(entity, token: cancellationToken);
+        _db.UpdateEntityAsync(entity, cancellationToken);
 
     public Task<int> DeleteAsync(int id, CancellationToken cancellationToken = default) =>
         _db.GetTable<BreakthroughCondition>().Where(x => x.Id == id).DeleteAsync(cancellationToken);

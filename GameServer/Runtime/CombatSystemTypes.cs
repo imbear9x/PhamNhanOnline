@@ -162,6 +162,7 @@ public sealed record MartialArtDefinition(
     int Quality,
     string? Category,
     string? Description,
+    decimal QiAbsorptionRate,
     int MaxStage,
     IReadOnlyList<MartialArtStageDefinition> Stages,
     IReadOnlyList<MartialArtSkillUnlockDefinition> SkillUnlocks);

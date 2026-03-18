@@ -18,6 +18,7 @@ ALTER TABLE public.character_base_stats
     ADD COLUMN IF NOT EXISTS speed_upgrade_count integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS spiritual_sense_upgrade_count integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS fortune_upgrade_count integer NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS active_martial_art_id integer NULL,
     ADD COLUMN IF NOT EXISTS potential_reward_locked boolean NOT NULL DEFAULT false;
 
 UPDATE public.character_base_stats
@@ -406,11 +407,19 @@ CREATE TABLE IF NOT EXISTS public.martial_arts (
     quality integer NOT NULL DEFAULT 1,
     category character varying(50) NULL,
     description text NULL,
+    qi_absorption_rate numeric(10,4) NOT NULL DEFAULT 1.0,
     max_stage integer NOT NULL,
     created_at timestamp without time zone DEFAULT now(),
     CONSTRAINT martial_arts_pkey PRIMARY KEY (id),
     CONSTRAINT martial_arts_code_key UNIQUE (code)
 );
+
+ALTER TABLE public.martial_arts
+    ADD COLUMN IF NOT EXISTS qi_absorption_rate numeric(10,4) NOT NULL DEFAULT 1.0;
+
+UPDATE public.martial_arts
+SET qi_absorption_rate = COALESCE(qi_absorption_rate, 1.0)
+WHERE qi_absorption_rate IS NULL;
 
 CREATE TABLE IF NOT EXISTS public.martial_art_stages (
     id integer NOT NULL,

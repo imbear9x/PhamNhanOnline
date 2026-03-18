@@ -24,8 +24,8 @@ public sealed class PlayerSkillLoadoutRepository
             .FirstOrDefaultAsync(x => x.PlayerId == playerId && x.SlotIndex == slotIndex, cancellationToken);
 
     public Task<long> CreateAsync(PlayerSkillLoadoutEntity entity, CancellationToken cancellationToken = default) =>
-        _db.InsertWithInt64IdentityAsync(entity, token: cancellationToken);
+        _db.InsertEntityWithInt64IdentityAsync(entity, cancellationToken);
 
     public Task<int> UpdateAsync(PlayerSkillLoadoutEntity entity, CancellationToken cancellationToken = default) =>
-        _db.UpdateAsync(entity, token: cancellationToken);
+        _db.UpdateEntityAsync(entity, cancellationToken);
 }

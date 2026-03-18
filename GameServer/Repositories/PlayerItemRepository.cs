@@ -41,10 +41,10 @@ public sealed class PlayerItemRepository
             .ToListAsync(cancellationToken);
 
     public Task<long> CreateAsync(PlayerItemEntity entity, CancellationToken cancellationToken = default) =>
-        _db.InsertWithInt64IdentityAsync(entity, token: cancellationToken);
+        _db.InsertEntityWithInt64IdentityAsync(entity, cancellationToken);
 
     public Task<int> UpdateAsync(PlayerItemEntity entity, CancellationToken cancellationToken = default) =>
-        _db.UpdateAsync(entity, token: cancellationToken);
+        _db.UpdateEntityAsync(entity, cancellationToken);
 
     public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default) =>
         _db.GetTable<PlayerItemEntity>().Where(x => x.Id == id).DeleteAsync(cancellationToken);

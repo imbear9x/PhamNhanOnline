@@ -205,3 +205,61 @@ public partial class CultivationRewardsGrantedPacket : IPacket
     public long? RewardedFromUnixMs { get; set; }
     public long? RewardedToUnixMs { get; set; }
 }
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
+public partial class GetOwnedMartialArtsPacket : IPacket
+{
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class GetOwnedMartialArtsResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public List<PlayerMartialArtModel>? MartialArts { get; set; }
+    public int? ActiveMartialArtId { get; set; }
+}
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 300)]
+public partial class UseMartialArtBookPacket : IPacket
+{
+    [ValidationCode(MessageCode.MartialArtBookItemInvalid)]
+    [Required]
+    [Range(1, long.MaxValue)]
+    public long? PlayerItemId { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class UseMartialArtBookResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+    public PlayerMartialArtModel? LearnedMartialArt { get; set; }
+}
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 300)]
+public partial class SetActiveMartialArtPacket : IPacket
+{
+    [ValidationCode(MessageCode.ActiveMartialArtInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? MartialArtId { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class SetActiveMartialArtResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+}

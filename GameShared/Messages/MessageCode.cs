@@ -55,6 +55,11 @@ public enum MessageCode : int
     CharacterMustEnterWorld = 3017,
     CharacterCannotMoveWhileCultivating = 3018,
     BreakthroughFailed = 3019,
+    MartialArtBookItemInvalid = 3020,
+    MartialArtAlreadyLearned = 3021,
+    MartialArtNotLearned = 3022,
+    CultivationRequiresActiveMartialArt = 3023,
+    ActiveMartialArtInvalid = 3024,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001,

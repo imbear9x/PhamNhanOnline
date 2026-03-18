@@ -32,5 +32,6 @@ public struct CharacterBaseStatsModel
     public int SpeedUpgradeCount;
     public int SpiritualSenseUpgradeCount;
     public int FortuneUpgradeCount;
+    public int ActiveMartialArtId;
     public List<PotentialUpgradePreviewModel>? PotentialUpgradePreviews;
 }

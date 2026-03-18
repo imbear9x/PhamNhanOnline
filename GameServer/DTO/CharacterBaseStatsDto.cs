@@ -37,6 +37,7 @@ public sealed record CharacterBaseStatsDto(
     int? SpeedUpgradeCount,
     int? SpiritualSenseUpgradeCount,
     int? FortuneUpgradeCount,
+    int? ActiveMartialArtId,
     bool? PotentialRewardLocked,
     IReadOnlyList<PotentialUpgradePreviewDto>? PotentialUpgradePreviews)
 {
@@ -76,6 +77,7 @@ public sealed record CharacterBaseStatsDto(
             entity.SpeedUpgradeCount,
             entity.SpiritualSenseUpgradeCount,
             entity.FortuneUpgradeCount,
+            entity.ActiveMartialArtId,
             entity.PotentialRewardLocked,
             null);
 }

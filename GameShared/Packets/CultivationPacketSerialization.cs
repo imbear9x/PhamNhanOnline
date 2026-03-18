@@ -286,3 +286,176 @@ public partial class CultivationRewardsGrantedPacket
             RewardedToUnixMs = (long?)global::GameShared.Packets.PacketReader.ReadLong(reader);
     }
 }
+
+public partial class GetOwnedMartialArtsPacket
+{
+    public void Serialize(BinaryWriter writer)
+    {
+        writer.Write(0UL);
+    }
+
+    public void Deserialize(BinaryReader reader)
+    {
+        _ = reader.ReadUInt64();
+    }
+}
+
+public partial class GetOwnedMartialArtsResultPacket
+{
+    private ulong _mask;
+
+    public void Serialize(BinaryWriter writer)
+    {
+        ulong mask = 0;
+        if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<global::System.Collections.Generic.List<global::GameShared.Models.PlayerMartialArtModel>?>.Default.Equals(MartialArts, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(ActiveMartialArtId, default!)) mask |= 1UL << 3;
+
+        writer.Write(mask);
+
+        if ((mask & (1UL << 0)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, Success.Value);
+        if ((mask & (1UL << 1)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, (int)Code.Value);
+        if ((mask & (1UL << 2)) != 0)
+            global::GameShared.Packets.PacketModelSerializer.WriteList(writer, MartialArts);
+        if ((mask & (1UL << 3)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, ActiveMartialArtId.Value);
+    }
+
+    public void Deserialize(BinaryReader reader)
+    {
+        _mask = reader.ReadUInt64();
+
+        if ((_mask & (1UL << 0)) != 0)
+            Success = (bool?)global::GameShared.Packets.PacketReader.ReadBool(reader);
+        if ((_mask & (1UL << 1)) != 0)
+            Code = (global::GameShared.Messages.MessageCode?)global::GameShared.Packets.PacketReader.ReadInt(reader);
+        if ((_mask & (1UL << 2)) != 0)
+            MartialArts = global::GameShared.Packets.PacketModelSerializer.ReadList<global::GameShared.Models.PlayerMartialArtModel>(reader);
+        if ((_mask & (1UL << 3)) != 0)
+            ActiveMartialArtId = (int?)global::GameShared.Packets.PacketReader.ReadInt(reader);
+    }
+}
+
+public partial class UseMartialArtBookPacket
+{
+    private ulong _mask;
+
+    public void Serialize(BinaryWriter writer)
+    {
+        ulong mask = 0;
+        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(PlayerItemId, default!)) mask |= 1UL << 0;
+
+        writer.Write(mask);
+
+        if ((mask & (1UL << 0)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, PlayerItemId.Value);
+    }
+
+    public void Deserialize(BinaryReader reader)
+    {
+        _mask = reader.ReadUInt64();
+
+        if ((_mask & (1UL << 0)) != 0)
+            PlayerItemId = (long?)global::GameShared.Packets.PacketReader.ReadLong(reader);
+    }
+}
+
+public partial class UseMartialArtBookResultPacket
+{
+    private ulong _mask;
+
+    public void Serialize(BinaryWriter writer)
+    {
+        ulong mask = 0;
+        if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterBaseStatsModel?>.Default.Equals(BaseStats, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.PlayerMartialArtModel?>.Default.Equals(LearnedMartialArt, default!)) mask |= 1UL << 3;
+
+        writer.Write(mask);
+
+        if ((mask & (1UL << 0)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, Success.Value);
+        if ((mask & (1UL << 1)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, (int)Code.Value);
+        if ((mask & (1UL << 2)) != 0)
+            global::GameShared.Packets.PacketModelSerializer.Write(writer, BaseStats.Value);
+        if ((mask & (1UL << 3)) != 0)
+            global::GameShared.Packets.PacketModelSerializer.Write(writer, LearnedMartialArt.Value);
+    }
+
+    public void Deserialize(BinaryReader reader)
+    {
+        _mask = reader.ReadUInt64();
+
+        if ((_mask & (1UL << 0)) != 0)
+            Success = (bool?)global::GameShared.Packets.PacketReader.ReadBool(reader);
+        if ((_mask & (1UL << 1)) != 0)
+            Code = (global::GameShared.Messages.MessageCode?)global::GameShared.Packets.PacketReader.ReadInt(reader);
+        if ((_mask & (1UL << 2)) != 0)
+            BaseStats = (global::GameShared.Models.CharacterBaseStatsModel?)global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterBaseStatsModel>(reader);
+        if ((_mask & (1UL << 3)) != 0)
+            LearnedMartialArt = (global::GameShared.Models.PlayerMartialArtModel?)global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.PlayerMartialArtModel>(reader);
+    }
+}
+
+public partial class SetActiveMartialArtPacket
+{
+    private ulong _mask;
+
+    public void Serialize(BinaryWriter writer)
+    {
+        ulong mask = 0;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(MartialArtId, default!)) mask |= 1UL << 0;
+
+        writer.Write(mask);
+
+        if ((mask & (1UL << 0)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, MartialArtId.Value);
+    }
+
+    public void Deserialize(BinaryReader reader)
+    {
+        _mask = reader.ReadUInt64();
+
+        if ((_mask & (1UL << 0)) != 0)
+            MartialArtId = (int?)global::GameShared.Packets.PacketReader.ReadInt(reader);
+    }
+}
+
+public partial class SetActiveMartialArtResultPacket
+{
+    private ulong _mask;
+
+    public void Serialize(BinaryWriter writer)
+    {
+        ulong mask = 0;
+        if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterBaseStatsModel?>.Default.Equals(BaseStats, default!)) mask |= 1UL << 2;
+
+        writer.Write(mask);
+
+        if ((mask & (1UL << 0)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, Success.Value);
+        if ((mask & (1UL << 1)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, (int)Code.Value);
+        if ((mask & (1UL << 2)) != 0)
+            global::GameShared.Packets.PacketModelSerializer.Write(writer, BaseStats.Value);
+    }
+
+    public void Deserialize(BinaryReader reader)
+    {
+        _mask = reader.ReadUInt64();
+
+        if ((_mask & (1UL << 0)) != 0)
+            Success = (bool?)global::GameShared.Packets.PacketReader.ReadBool(reader);
+        if ((_mask & (1UL << 1)) != 0)
+            Code = (global::GameShared.Messages.MessageCode?)global::GameShared.Packets.PacketReader.ReadInt(reader);
+        if ((_mask & (1UL << 2)) != 0)
+            BaseStats = (global::GameShared.Models.CharacterBaseStatsModel?)global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterBaseStatsModel>(reader);
+    }
+}

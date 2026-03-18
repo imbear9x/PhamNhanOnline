@@ -27,12 +27,11 @@ public sealed class PlayerSoilRepository
     }
 
     public Task CreateAsync(PlayerSoilEntity entity, CancellationToken cancellationToken = default) =>
-        _db.InsertAsync(entity, token: cancellationToken);
+        _db.InsertEntityAsync(entity, cancellationToken);
 
     public Task<int> UpdateAsync(PlayerSoilEntity entity, CancellationToken cancellationToken = default) =>
-        _db.UpdateAsync(entity, token: cancellationToken);
+        _db.UpdateEntityAsync(entity, cancellationToken);
 
     public Task<int> DeleteAsync(long playerItemId, CancellationToken cancellationToken = default) =>
         _db.GetTable<PlayerSoilEntity>().Where(x => x.PlayerItemId == playerItemId).DeleteAsync(cancellationToken);
 }
-

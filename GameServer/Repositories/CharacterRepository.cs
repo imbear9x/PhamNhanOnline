@@ -21,12 +21,12 @@ public sealed class CharacterRepository
 
     public async Task<Guid> CreateAsync(Character entity, CancellationToken cancellationToken = default)
     {
-        await _db.InsertAsync(entity, token: cancellationToken);
+        await _db.InsertEntityAsync(entity, cancellationToken);
         return entity.Id;
     }
 
     public Task<int> UpdateAsync(Character entity, CancellationToken cancellationToken = default) =>
-        _db.UpdateAsync(entity, token: cancellationToken);
+        _db.UpdateEntityAsync(entity, cancellationToken);
 
     public Task<int> DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
         _db.GetTable<Character>().Where(x => x.Id == id).DeleteAsync(cancellationToken);

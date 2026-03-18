@@ -293,6 +293,7 @@ public sealed class CharacterService
         existing.SpeedUpgradeCount = stats.SpeedUpgradeCount;
         existing.SpiritualSenseUpgradeCount = stats.SpiritualSenseUpgradeCount;
         existing.FortuneUpgradeCount = stats.FortuneUpgradeCount;
+        existing.ActiveMartialArtId = stats.ActiveMartialArtId;
         existing.CultivationProgress = stats.CultivationProgress;
         existing.PotentialRewardLocked = stats.PotentialRewardLocked;
 
@@ -442,6 +443,7 @@ public sealed class CharacterService
             SpeedUpgradeCount = 0,
             SpiritualSenseUpgradeCount = 0,
             FortuneUpgradeCount = 0,
+            ActiveMartialArtId = null,
             CultivationProgress = 0m,
             PotentialRewardLocked = false
         };

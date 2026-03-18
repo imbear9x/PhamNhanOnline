@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS public.martial_arts (
     quality integer NOT NULL DEFAULT 1,
     category character varying(50) NULL,
     description text NULL,
+    qi_absorption_rate numeric(10,4) NOT NULL DEFAULT 1.0,
     max_stage integer NOT NULL,
     created_at timestamp without time zone DEFAULT now(),
     CONSTRAINT martial_arts_pkey PRIMARY KEY (id),

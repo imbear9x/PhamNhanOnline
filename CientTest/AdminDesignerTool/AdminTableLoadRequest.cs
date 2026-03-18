@@ -5,7 +5,12 @@ internal enum AdminEditorKind
     GenericTable = 0,
     MartialArtWorkspace = 1,
     CraftRecipeWorkspace = 2,
-    EquipmentWorkspace = 3
+    EquipmentWorkspace = 3,
+    MapWorkspace = 4,
+    PillRecipeWorkspace = 5,
+    HerbWorkspace = 6,
+    PillWorkspace = 7,
+    GameRandomWorkspace = 8
 }
 
 internal sealed record AdminTableLoadRequest(

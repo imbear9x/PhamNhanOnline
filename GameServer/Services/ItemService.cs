@@ -184,6 +184,48 @@ public sealed class ItemService
         await _playerItems.DeleteAsync(playerItemId, cancellationToken);
     }
 
+    public async Task ConsumePlayerItemAsync(
+        Guid playerId,
+        long playerItemId,
+        int quantity,
+        CancellationToken cancellationToken = default)
+    {
+        if (quantity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(quantity));
+
+        var playerItem = await _playerItems.GetByIdAsync(playerItemId, cancellationToken)
+                         ?? throw new InvalidOperationException($"Player item {playerItemId} was not found.");
+        if (playerItem.PlayerId != playerId)
+            throw new InvalidOperationException($"Player item {playerItemId} does not belong to player {playerId}.");
+
+        var definition = GetDefinition(playerItem.ItemTemplateId);
+        if (IsExpired(playerItem.ExpireAt))
+            throw new InvalidOperationException($"Player item {playerItemId} has expired.");
+
+        if (!definition.IsStackable)
+        {
+            if (quantity != 1)
+                throw new InvalidOperationException($"Non-stackable item {playerItemId} can only be consumed one at a time.");
+
+            await RemovePlayerItemAsync(playerId, playerItemId, cancellationToken);
+            return;
+        }
+
+        if (playerItem.Quantity < quantity)
+            throw new InvalidOperationException($"Player item {playerItemId} does not have enough quantity.");
+
+        playerItem.Quantity -= quantity;
+        playerItem.UpdatedAt = DateTime.UtcNow;
+
+        if (playerItem.Quantity <= 0)
+        {
+            await _playerItems.DeleteAsync(playerItemId, cancellationToken);
+            return;
+        }
+
+        await _playerItems.UpdateAsync(playerItem, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<InventoryItemView>> GetInventoryAsync(Guid playerId, CancellationToken cancellationToken = default)
     {
         var playerItems = await _playerItems.ListByPlayerIdAsync(playerId, cancellationToken);

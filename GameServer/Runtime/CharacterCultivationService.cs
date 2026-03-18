@@ -16,7 +16,7 @@ namespace GameServer.Runtime;
 public sealed class CharacterCultivationService
 {
     private const int PotentialPerCultivationPoint = 1;
-    private const decimal GongPhapCoefficientStub = 1m;
+    private const decimal DefaultQiAbsorptionRate = 1m;
     private const decimal FormationCoefficientStub = 1m;
     private static readonly TimeSpan SettlementIntervalValue = TimeSpan.FromMinutes(5);
 
@@ -26,6 +26,7 @@ public sealed class CharacterCultivationService
     private readonly CharacterRuntimeNotifier _notifier;
     private readonly INetworkSender _network;
     private readonly MapCatalog _mapCatalog;
+    private readonly CombatDefinitionCatalog _combatDefinitions;
     private readonly CharacterBaseStatsComposer _baseStatsComposer;
     private readonly PotentialStatCatalog _potentialStatCatalog;
     private readonly IGameRandomService _gameRandomService;
@@ -37,6 +38,7 @@ public sealed class CharacterCultivationService
         CharacterRuntimeNotifier notifier,
         INetworkSender network,
         MapCatalog mapCatalog,
+        CombatDefinitionCatalog combatDefinitions,
         CharacterBaseStatsComposer baseStatsComposer,
         PotentialStatCatalog potentialStatCatalog,
         IGameRandomService gameRandomService)
@@ -47,6 +49,7 @@ public sealed class CharacterCultivationService
         _notifier = notifier;
         _network = network;
         _mapCatalog = mapCatalog;
+        _combatDefinitions = combatDefinitions;
         _baseStatsComposer = baseStatsComposer;
         _potentialStatCatalog = potentialStatCatalog;
         _gameRandomService = gameRandomService;
@@ -73,6 +76,9 @@ public sealed class CharacterCultivationService
 
         if (snapshot.CurrentState.IsDead || snapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired)
             return Task.FromResult(CultivationActionResult.Failed(MessageCode.CharacterActionsRestricted));
+
+        if (!TryResolveQiAbsorptionRate(snapshot.BaseStats, out _))
+            return Task.FromResult(CultivationActionResult.Failed(MessageCode.CultivationRequiresActiveMartialArt));
 
         var utcNow = DateTime.UtcNow;
         var currentState = snapshot.CurrentState with
@@ -226,11 +232,13 @@ public sealed class CharacterCultivationService
         }
 
         var potentialRewardLocked = IsPotentialRewardLocked(snapshot.BaseStats, realm);
-        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, DateTime.UtcNow, potentialRewardLocked);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        if (!TryResolveQiAbsorptionRate(snapshot.BaseStats, out var qiAbsorptionRate))
+            return CultivationSnapshotSettlementResult.Unchanged(snapshot);
+        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, DateTime.UtcNow, potentialRewardLocked, qiAbsorptionRate);
         if (!grant.HasPersistenceChange)
             return CultivationSnapshotSettlementResult.Unchanged(snapshot);
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
         var characterService = scope.ServiceProvider.GetRequiredService<CharacterService>();
         var updatedSnapshot = await characterService.UpdateCharacterCultivationAsync(
             grant.UpdatedBaseStats,
@@ -271,7 +279,9 @@ public sealed class CharacterCultivationService
             }
 
             var potentialRewardLocked = IsPotentialRewardLocked(snapshot.BaseStats, realm);
-            var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, utcNow, potentialRewardLocked);
+            if (!TryResolveQiAbsorptionRate(snapshot.BaseStats, out var qiAbsorptionRate))
+                continue;
+            var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, utcNow, potentialRewardLocked, qiAbsorptionRate);
             if (!grant.HasPersistenceChange)
                 continue;
 
@@ -309,7 +319,9 @@ public sealed class CharacterCultivationService
         }
 
         var potentialRewardLocked = IsPotentialRewardLocked(snapshot.BaseStats, realm);
-        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, utcNow, potentialRewardLocked);
+        if (!TryResolveQiAbsorptionRate(snapshot.BaseStats, out var qiAbsorptionRate))
+            return OnlineSettlementResult.None;
+        var grant = EvaluateGrant(snapshot.BaseStats, snapshot.CurrentState, realm, mapDefinition, utcNow, potentialRewardLocked, qiAbsorptionRate);
         if (!grant.HasPersistenceChange)
             return OnlineSettlementResult.None;
 
@@ -450,7 +462,8 @@ public sealed class CharacterCultivationService
         RealmTemplate realm,
         MapDefinition mapDefinition,
         DateTime utcNow,
-        bool potentialRewardLocked)
+        bool potentialRewardLocked,
+        decimal qiAbsorptionRate)
     {
         if (currentState.CurrentState != CharacterRuntimeStateCodes.Cultivating ||
             currentState.IsDead ||
@@ -501,7 +514,7 @@ public sealed class CharacterCultivationService
             return CultivationGrant.None(baseStats, currentState);
 
         var spiritualEnergyPerMinute = ResolveSpiritualEnergyPerMinute(currentState, mapDefinition);
-        var rawCultivationGain = CalculateCultivationGain(elapsed, realm, spiritualEnergyPerMinute);
+        var rawCultivationGain = CalculateCultivationGain(elapsed, realm, spiritualEnergyPerMinute, qiAbsorptionRate);
         if (rawCultivationGain <= 0m)
             return CultivationGrant.None(baseStats, currentState);
 
@@ -540,17 +553,36 @@ public sealed class CharacterCultivationService
             reachedRealmCap);
     }
 
-    private decimal CalculateCultivationGain(TimeSpan elapsed, RealmTemplate realm, decimal spiritualEnergyPerMinute)
+    private decimal CalculateCultivationGain(TimeSpan elapsed, RealmTemplate realm, decimal spiritualEnergyPerMinute, decimal qiAbsorptionRate)
     {
         var elapsedMinutes = elapsed.Ticks / (decimal)TimeSpan.TicksPerMinute;
         if (elapsedMinutes <= 0m)
             return 0m;
 
+        var normalizedQiAbsorptionRate = qiAbsorptionRate > 0m
+            ? qiAbsorptionRate
+            : DefaultQiAbsorptionRate;
+
         return elapsedMinutes
                * spiritualEnergyPerMinute
                * (realm.AbsorptionMultiplier ?? 1m)
-               * GongPhapCoefficientStub
+               * normalizedQiAbsorptionRate
                * FormationCoefficientStub;
+    }
+
+    private bool TryResolveQiAbsorptionRate(CharacterBaseStatsDto baseStats, out decimal qiAbsorptionRate)
+    {
+        qiAbsorptionRate = DefaultQiAbsorptionRate;
+        if (!baseStats.ActiveMartialArtId.HasValue || baseStats.ActiveMartialArtId.Value <= 0)
+            return false;
+
+        if (!_combatDefinitions.TryGetMartialArt(baseStats.ActiveMartialArtId.Value, out var martialArt))
+            return false;
+
+        qiAbsorptionRate = martialArt.QiAbsorptionRate > 0m
+            ? martialArt.QiAbsorptionRate
+            : DefaultQiAbsorptionRate;
+        return true;
     }
 
     private decimal ResolveSpiritualEnergyPerMinute(CharacterCurrentStateDto currentState, MapDefinition mapDefinition)

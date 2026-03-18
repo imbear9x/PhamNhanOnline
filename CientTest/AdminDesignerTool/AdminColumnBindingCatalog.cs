@@ -216,6 +216,7 @@ internal static class AdminColumnBindingCatalog
             order by id;
             """;
 
+        Add("martial_arts", "qi_absorption_rate", headerText: "Hệ Số Hấp Thụ Linh Khí");
         Add("martial_art_stages", "martial_art_id", lookupSql: martialArtLookupSql);
         Add("martial_art_stage_stat_bonuses", "martial_art_stage_id", lookupSql: martialArtStageLookupSql);
         Add("martial_art_stage_stat_bonuses", "stat_type", enumType: typeof(CharacterStatType));

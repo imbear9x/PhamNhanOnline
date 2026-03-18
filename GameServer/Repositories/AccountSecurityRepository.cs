@@ -21,12 +21,12 @@ public sealed class AccountSecurityRepository
 
     public async Task<Guid> CreateAsync(AccountSecurity entity, CancellationToken cancellationToken = default)
     {
-        await _db.InsertAsync(entity, token: cancellationToken);
+        await _db.InsertEntityAsync(entity, cancellationToken);
         return entity.AccountId;
     }
 
     public Task<int> UpdateAsync(AccountSecurity entity, CancellationToken cancellationToken = default) =>
-        _db.UpdateAsync(entity, token: cancellationToken);
+        _db.UpdateEntityAsync(entity, cancellationToken);
 
     public Task<int> DeleteAsync(Guid accountId, CancellationToken cancellationToken = default) =>
         _db.GetTable<AccountSecurity>().Where(x => x.AccountId == accountId).DeleteAsync(cancellationToken);

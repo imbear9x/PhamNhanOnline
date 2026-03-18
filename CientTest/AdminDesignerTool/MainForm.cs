@@ -59,10 +59,10 @@ internal sealed class MainForm : Form
         _connectionInfoLabel = new Label
         {
             Dock = DockStyle.Top,
-            Height = 34,
-            Font = new Font("Segoe UI", 9f, FontStyle.Regular),
+            Height = 24,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
             ForeColor = Color.DimGray,
-            Padding = new Padding(12, 8, 0, 0),
+            Padding = new Padding(12, 4, 0, 0),
             Text = string.IsNullOrWhiteSpace(configPath)
                 ? "Chua resolve duoc GameServer/Config/dbConfig.json"
                 : $"Dang dung dbConfig: {configPath}"

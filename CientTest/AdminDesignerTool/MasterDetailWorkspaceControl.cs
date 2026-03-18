@@ -26,17 +26,18 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
         _titleLabel = new Label
         {
             Dock = DockStyle.Top,
-            Height = 34,
-            Font = new Font("Segoe UI", 16f, FontStyle.Bold),
+            Height = 28,
+            Font = new Font("Segoe UI", 14f, FontStyle.Bold),
             Text = "Designer Workspace"
         };
 
         _descriptionLabel = new Label
         {
             Dock = DockStyle.Top,
-            Height = 52,
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Regular),
-            ForeColor = Color.DimGray
+            Height = 28,
+            Font = new Font("Segoe UI", 9f, FontStyle.Regular),
+            ForeColor = Color.DimGray,
+            AutoEllipsis = true
         };
 
         _helpTextBox = new TextBox
@@ -56,7 +57,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             Orientation = Orientation.Horizontal
         };
 
-        _masterEditor = new TableEditorControl(connectionString);
+        _masterEditor = new TableEditorControl(connectionString, showResourceHelpBox: false);
         _masterEditor.SelectedRowChanged += MasterEditorOnSelectedRowChanged;
 
         _detailTabs = new TabControl
@@ -68,7 +69,6 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
         _splitContainer.Panel2.Controls.Add(_detailTabs);
 
         Controls.Add(_splitContainer);
-        Controls.Add(_helpTextBox);
         Controls.Add(_descriptionLabel);
         Controls.Add(_titleLabel);
     }
@@ -99,7 +99,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
 
         foreach (var child in definition.Children)
         {
-            var editor = new TableEditorControl(_masterEditor.ConnectionString);
+            var editor = new TableEditorControl(_masterEditor.ConnectionString, showResourceHelpBox: false);
             _detailEditors[child.TabTitle] = editor;
 
             var page = new TabPage(child.TabTitle);
@@ -149,6 +149,11 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                 "martial_art_workspace" => BuildMartialArtWorkspace(resourcesByKey),
                 "craft_recipe_workspace" => BuildCraftRecipeWorkspace(resourcesByKey),
                 "equipment_workspace" => BuildEquipmentWorkspace(resourcesByKey),
+                "map_workspace" => BuildMapWorkspace(resourcesByKey),
+                "pill_recipe_workspace" => BuildPillRecipeWorkspace(resourcesByKey),
+                "pill_workspace" => BuildPillWorkspace(resourcesByKey),
+                "herb_workspace" => BuildHerbWorkspace(resourcesByKey),
+                "game_random_workspace" => BuildGameRandomWorkspace(resourcesByKey),
                 _ => throw new InvalidOperationException($"Workspace {workspaceKey} is not supported.")
             };
         }
@@ -323,11 +328,240 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                 ]);
         }
 
+        private static WorkspaceDefinition BuildMapWorkspace(
+            IReadOnlyDictionary<string, AdminResourceDefinition> resourcesByKey)
+        {
+            var maps = resourcesByKey["map_templates"];
+            var zoneSlots = resourcesByKey["map_zone_slots"];
+
+            return new WorkspaceDefinition(
+                new AdminTableLoadRequest(
+                    maps,
+                    TitleOverride: "Danh Sach Map",
+                    HelpTextOverride: "Bang cha de tao va chon map. Chon 1 dong de sua cac zone slot ben duoi."),
+                [
+                    new WorkspaceChildDefinition(
+                        "Zone Slots",
+                        parentId => new AdminTableLoadRequest(
+                            zoneSlots,
+                            SelectSql: $"""
+                                select *
+                                from public.map_zone_slots
+                                where map_template_id = {parentId}
+                                order by zone_index;
+                                """,
+                            DescriptionOverride: $"Chỉ hiển thị zone slot của map id = {parentId}.",
+                            HelpTextOverride: "Khi bấm Thêm Dòng, tool sẽ tự điền map_template_id theo map đang chọn.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["map_template_id"] = parentId
+                            }),
+                        () => BuildEmptyRequest(zoneSlots, "Chọn một map ở bảng trên để xem zone slot.")),
+                ]);
+        }
+
+        private static WorkspaceDefinition BuildPillRecipeWorkspace(
+            IReadOnlyDictionary<string, AdminResourceDefinition> resourcesByKey)
+        {
+            var recipes = resourcesByKey["pill_recipe_templates"];
+            var inputs = resourcesByKey["pill_recipe_inputs"];
+            var masteryStages = resourcesByKey["pill_recipe_mastery_stages"];
+
+            return new WorkspaceDefinition(
+                new AdminTableLoadRequest(
+                    recipes,
+                    TitleOverride: "Danh Sach Dan Phuong",
+                    HelpTextOverride: "Bang cha de tao va chon dan phuong. Chon 1 dong de sua input va mastery ben duoi."),
+                [
+                    new WorkspaceChildDefinition(
+                        "Nguyen Lieu",
+                        parentId => new AdminTableLoadRequest(
+                            inputs,
+                            SelectSql: $"""
+                                select *
+                                from public.pill_recipe_inputs
+                                where pill_recipe_template_id = {parentId}
+                                order by id;
+                                """,
+                            DescriptionOverride: $"Chỉ hiển thị nguyên liệu của đan phương id = {parentId}.",
+                            HelpTextOverride: "Khi bấm Thêm Dòng, tool sẽ tự điền pill_recipe_template_id theo đan phương đang chọn.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["pill_recipe_template_id"] = parentId,
+                                ["required_quantity"] = 1,
+                                ["is_optional"] = false,
+                                ["success_rate_bonus"] = 0d,
+                                ["mutation_bonus_rate"] = 0d
+                            }),
+                        () => BuildEmptyRequest(inputs, "Chọn một đan phương ở bảng trên để xem nguyên liệu.")),
+                    new WorkspaceChildDefinition(
+                        "Mastery",
+                        parentId => new AdminTableLoadRequest(
+                            masteryStages,
+                            SelectSql: $"""
+                                select *
+                                from public.pill_recipe_mastery_stages
+                                where pill_recipe_template_id = {parentId}
+                                order by required_total_craft_count, id;
+                                """,
+                            DescriptionOverride: $"Chỉ hiển thị mốc mastery của đan phương id = {parentId}.",
+                            HelpTextOverride: "Khi bấm Thêm Dòng, tool sẽ tự điền pill_recipe_template_id theo đan phương đang chọn.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["pill_recipe_template_id"] = parentId,
+                                ["required_total_craft_count"] = 10,
+                                ["success_rate_bonus"] = 0d
+                            }),
+                        () => BuildEmptyRequest(masteryStages, "Chọn một đan phương ở bảng trên để xem các mốc mastery.")),
+                ]);
+        }
+
+        private static WorkspaceDefinition BuildPillWorkspace(
+            IReadOnlyDictionary<string, AdminResourceDefinition> resourcesByKey)
+        {
+            var pills = resourcesByKey["pill_templates"];
+            var effects = resourcesByKey["pill_effects"];
+
+            return new WorkspaceDefinition(
+                new AdminTableLoadRequest(
+                    pills,
+                    TitleOverride: "Danh Sach Pill",
+                    HelpTextOverride: "Bang cha de tao va chon pill template. Chon 1 dong de sua cac effect ben duoi."),
+                [
+                    new WorkspaceChildDefinition(
+                        "Effects",
+                        parentId => new AdminTableLoadRequest(
+                            effects,
+                            SelectSql: $"""
+                                select *
+                                from public.pill_effects
+                                where pill_template_id = {parentId}
+                                order by order_index, id;
+                                """,
+                            DescriptionOverride: $"Chỉ hiển thị effect của pill id = {parentId}.",
+                            HelpTextOverride: "Khi bấm Thêm Dòng, tool sẽ tự điền pill_template_id theo pill đang chọn.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["pill_template_id"] = parentId,
+                                ["order_index"] = 1
+                            }),
+                        () => BuildEmptyRequest(effects, "Chọn một pill template ở bảng trên để xem effect.")),
+                ]);
+        }
+
+        private static WorkspaceDefinition BuildHerbWorkspace(
+            IReadOnlyDictionary<string, AdminResourceDefinition> resourcesByKey)
+        {
+            var herbs = resourcesByKey["herb_templates"];
+            var growthStages = resourcesByKey["herb_growth_stage_configs"];
+            var harvestOutputs = resourcesByKey["herb_harvest_outputs"];
+
+            return new WorkspaceDefinition(
+                new AdminTableLoadRequest(
+                    herbs,
+                    TitleOverride: "Danh Sach Herb",
+                    HelpTextOverride: "Bang cha de tao va chon herb template. Chon 1 dong de sua growth stage va harvest output ben duoi."),
+                [
+                    new WorkspaceChildDefinition(
+                        "Growth Stages",
+                        parentId => new AdminTableLoadRequest(
+                            growthStages,
+                            SelectSql: $"""
+                                select *
+                                from public.herb_growth_stage_configs
+                                where herb_template_id = {parentId}
+                                order by required_growth_seconds, id;
+                                """,
+                            DescriptionOverride: $"Chỉ hiển thị growth stage của herb id = {parentId}.",
+                            HelpTextOverride: "Khi bấm Thêm Dòng, tool sẽ tự điền herb_template_id theo herb đang chọn.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["herb_template_id"] = parentId,
+                                ["required_growth_seconds"] = 0
+                            }),
+                        () => BuildEmptyRequest(growthStages, "Chọn một herb template ở bảng trên để xem growth stage.")),
+                    new WorkspaceChildDefinition(
+                        "Harvest Outputs",
+                        parentId => new AdminTableLoadRequest(
+                            harvestOutputs,
+                            SelectSql: $"""
+                                select *
+                                from public.herb_harvest_outputs
+                                where herb_template_id = {parentId}
+                                order by required_stage, id;
+                                """,
+                            DescriptionOverride: $"Chỉ hiển thị harvest output của herb id = {parentId}.",
+                            HelpTextOverride: "Khi bấm Thêm Dòng, tool sẽ tự điền herb_template_id theo herb đang chọn.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["herb_template_id"] = parentId,
+                                ["required_stage"] = 1,
+                                ["result_quantity"] = 1,
+                                ["output_chance"] = 1d
+                            }),
+                        () => BuildEmptyRequest(harvestOutputs, "Chọn một herb template ở bảng trên để xem harvest output.")),
+                ]);
+        }
+
+        private static WorkspaceDefinition BuildGameRandomWorkspace(
+            IReadOnlyDictionary<string, AdminResourceDefinition> resourcesByKey)
+        {
+            var tables = resourcesByKey["game_random_tables"];
+            var entries = resourcesByKey["game_random_entries"];
+            var fortuneTags = resourcesByKey["game_random_fortune_tags"];
+
+            return new WorkspaceDefinition(
+                new AdminTableLoadRequest(
+                    tables,
+                    TitleOverride: "Danh Sach Random Table",
+                    HelpTextOverride: "Bang cha de tao va chon random table. Chon 1 dong de sua entries va fortune tags ben duoi."),
+                [
+                    new WorkspaceChildDefinition(
+                        "Entries",
+                        parentId => new AdminTableLoadRequest(
+                            entries,
+                            SelectSql: $"""
+                                select *
+                                from public.game_random_entries
+                                where game_random_table_id = {parentId}
+                                order by order_index, id;
+                                """,
+                            DescriptionOverride: $"Chỉ hiển thị entries của random table id = {parentId}.",
+                            HelpTextOverride: "Khi bấm Thêm Dòng, tool sẽ tự điền game_random_table_id theo bảng random đang chọn.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["game_random_table_id"] = parentId,
+                                ["order_index"] = 1,
+                                ["chance_parts_per_million"] = 100000,
+                                ["is_none"] = false
+                            }),
+                        () => BuildEmptyRequest(entries, "Chọn một random table ở bảng trên để xem entries.")),
+                    new WorkspaceChildDefinition(
+                        "Fortune Tags",
+                        parentId => new AdminTableLoadRequest(
+                            fortuneTags,
+                            SelectSql: $"""
+                                select *
+                                from public.game_random_fortune_tags
+                                where game_random_table_id = {parentId}
+                                order by id;
+                                """,
+                            DescriptionOverride: $"Chỉ hiển thị fortune tags của random table id = {parentId}.",
+                            HelpTextOverride: "Khi bấm Thêm Dòng, tool sẽ tự điền game_random_table_id theo bảng random đang chọn.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["game_random_table_id"] = parentId
+                            }),
+                        () => BuildEmptyRequest(fortuneTags, "Chọn một random table ở bảng trên để xem fortune tags.")),
+                ]);
+        }
+
         private static AdminTableLoadRequest BuildEmptyRequest(AdminResourceDefinition resource, string helpText)
         {
             return new AdminTableLoadRequest(
                 resource,
                 SelectSql: $"select * from public.{resource.TableName} where 1 = 0;",
+                DescriptionOverride: "Chưa có bản ghi cha đang được chọn.",
                 HelpTextOverride: helpText);
         }
     }

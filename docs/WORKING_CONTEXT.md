@@ -468,3 +468,40 @@ Cuối mỗi buổi, nên bổ sung:
   - `Game Random`
 - Da them highlight cot dang duoc chon trong `Field Help` bang cach to mau header cua cot tuong ung.
 
+## Session update 2026-03-18 martial art qi absorption rate
+
+- Da bo sung truong `qi_absorption_rate` vao `public.martial_arts`.
+- Da them migration `20260318_add_martial_art_qi_absorption_rate.sql` va cap nhat `initDatabase.sql`.
+- Da noi truong nay vao `MartialArtEntity`, `MartialArtDefinition`, `CombatDefinitionCatalog`.
+- Da moc no vao cong thuc tu luyen trong `CharacterCultivationService` tai diem thay the `GongPhapCoefficientStub`.
+- Ban dau tung tam lay he so theo cong phap so huu cao nhat, nhung assumption nay da bi thay the boi he `active martial art` o muc ben duoi.
+- Da apply migration nay vao DB local `phamnhan_online` de tool/server tren may local dung duoc ngay.
+
+## Session update 2026-03-18 active martial art flow
+
+- Da them `active_martial_art_id` vao `public.character_base_stats`.
+- Da them migration `20260318_add_active_martial_art_id.sql` va cap nhat `initDatabase.sql`.
+- Da mo rong `CharacterBaseStat`, `CharacterBaseStatsDto`, `CharacterBaseStatsModel`, `NetworkModelMapper`, `CharacterService` de luu/truyen `active_martial_art_id`.
+- Da them model/DTO moi:
+  - `GameShared/Models/PlayerMartialArtModel.cs`
+  - `GameServer/DTO/PlayerMartialArtDto.cs`
+- Da them service moi `MartialArtService` de xu ly:
+  - lay danh sach cong phap nguoi choi dang so huu
+  - dung item `Sach cong phap` de hoc cong phap
+  - chon `cong phap tu luyen chinh` (active martial art)
+- Da them packet/handler moi:
+  - `GetOwnedMartialArtsPacket`
+  - `UseMartialArtBookPacket`
+  - `SetActiveMartialArtPacket`
+- Da noi `StartCultivationAsync` vao rule moi:
+  - neu chua co `active martial art` thi reject voi `MessageCode.CultivationRequiresActiveMartialArt`
+  - he so `qi_absorption_rate` de tinh tu vi chi lay theo `active martial art` dang chon
+- Luong gameplay hien tai:
+  - nguoi choi dung item `MartialArtBook` de hoc cong phap
+  - hoc xong van chua du dieu kien tu luyen neu chua active cong phap
+  - nguoi choi co the doi cong phap active sau do
+- Gia dinh hien tai:
+  - doi active cong phap duoc phep bat ky luc nao
+  - neu dang tu luyen thi cac lan settlement sau se dung `active martial art` moi nhat
+- Da apply migration `20260318_add_active_martial_art_id.sql` vao DB local `phamnhan_online`.
+

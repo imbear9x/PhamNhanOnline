@@ -27,10 +27,10 @@ public sealed class PlayerEquipmentRepository
         _db.GetTable<PlayerEquipmentEntity>().FirstOrDefaultAsync(x => x.PlayerItemId == playerItemId, cancellationToken);
 
     public Task<int> CreateAsync(PlayerEquipmentEntity entity, CancellationToken cancellationToken = default) =>
-        _db.InsertAsync(entity, token: cancellationToken);
+        _db.InsertEntityAsync(entity, cancellationToken);
 
     public Task<int> UpdateAsync(PlayerEquipmentEntity entity, CancellationToken cancellationToken = default) =>
-        _db.UpdateAsync(entity, token: cancellationToken);
+        _db.UpdateEntityAsync(entity, cancellationToken);
 
     public Task<int> DeleteAsync(long playerItemId, CancellationToken cancellationToken = default) =>
         _db.GetTable<PlayerEquipmentEntity>().Where(x => x.PlayerItemId == playerItemId).DeleteAsync(cancellationToken);

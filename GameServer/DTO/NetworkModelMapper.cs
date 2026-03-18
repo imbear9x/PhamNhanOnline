@@ -56,6 +56,7 @@ public static class NetworkModelMapper
             SpeedUpgradeCount = dto.SpeedUpgradeCount ?? 0,
             SpiritualSenseUpgradeCount = dto.SpiritualSenseUpgradeCount ?? 0,
             FortuneUpgradeCount = dto.FortuneUpgradeCount ?? 0,
+            ActiveMartialArtId = dto.ActiveMartialArtId ?? 0,
             PotentialUpgradePreviews = dto.PotentialUpgradePreviews?.Select(ToModel).ToList()
         };
     }
@@ -71,6 +72,23 @@ public static class NetworkModelMapper
             StatGain = (double)dto.StatGain,
             IsAvailable = dto.IsAvailable,
             CanUpgrade = dto.CanUpgrade
+        };
+    }
+
+    public static PlayerMartialArtModel ToModel(this PlayerMartialArtDto dto)
+    {
+        return new PlayerMartialArtModel
+        {
+            MartialArtId = dto.MartialArtId,
+            Code = dto.Code,
+            Name = dto.Name,
+            Quality = dto.Quality,
+            Category = dto.Category,
+            CurrentStage = dto.CurrentStage,
+            CurrentExp = dto.CurrentExp,
+            MaxStage = dto.MaxStage,
+            QiAbsorptionRate = (double)dto.QiAbsorptionRate,
+            IsActive = dto.IsActive
         };
     }
 
