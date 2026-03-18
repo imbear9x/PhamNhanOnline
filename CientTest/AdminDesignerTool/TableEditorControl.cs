@@ -17,6 +17,8 @@ internal sealed class TableEditorControl : UserControl
     private readonly Button _saveButton;
     private readonly TextBox _filterTextBox;
     private readonly Button _clearFilterButton;
+    private readonly ComboBox _fieldHelpComboBox;
+    private readonly TextBox _fieldHelpTextBox;
     private readonly DataGridView _grid;
     private readonly Label _statusLabel;
 
@@ -128,6 +130,52 @@ internal sealed class TableEditorControl : UserControl
         filterPanel.Controls.Add(_filterTextBox);
         filterPanel.Controls.Add(_clearFilterButton);
 
+        var fieldHelpPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            Height = 76,
+            ColumnCount = 2,
+            RowCount = 2,
+            Padding = new Padding(0, 2, 0, 0)
+        };
+        fieldHelpPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180f));
+        fieldHelpPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        fieldHelpPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 28f));
+        fieldHelpPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+
+        fieldHelpPanel.Controls.Add(new Label
+        {
+            Text = "Trợ giúp trường:",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft
+        }, 0, 0);
+
+        _fieldHelpComboBox = new ComboBox
+        {
+            Dock = DockStyle.Fill,
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        _fieldHelpComboBox.SelectedIndexChanged += (_, _) => UpdateFieldHelpFromSelection();
+        fieldHelpPanel.Controls.Add(_fieldHelpComboBox, 1, 0);
+
+        fieldHelpPanel.Controls.Add(new Label
+        {
+            Text = "Mô tả trường:",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.TopLeft
+        }, 0, 1);
+
+        _fieldHelpTextBox = new TextBox
+        {
+            Dock = DockStyle.Fill,
+            Multiline = true,
+            ReadOnly = true,
+            ScrollBars = ScrollBars.Vertical,
+            BackColor = Color.WhiteSmoke,
+            Font = new Font("Segoe UI", 9f, FontStyle.Regular)
+        };
+        fieldHelpPanel.Controls.Add(_fieldHelpTextBox, 1, 1);
+
         _grid = new DataGridView
         {
             Dock = DockStyle.Fill,
@@ -139,11 +187,14 @@ internal sealed class TableEditorControl : UserControl
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             MultiSelect = true
         };
+        _grid.EnableHeadersVisualStyles = false;
         _grid.SelectionChanged += (_, _) => SelectedRowChanged?.Invoke(this, EventArgs.Empty);
         _grid.DataError += (_, _) => { };
         _grid.CellFormatting += GridOnCellFormatting;
         _grid.CellEndEdit += GridOnCellEndEdit;
         _grid.CurrentCellDirtyStateChanged += GridOnCurrentCellDirtyStateChanged;
+        _grid.CellEnter += GridOnCellEnter;
+        _grid.ColumnHeaderMouseClick += GridOnColumnHeaderMouseClick;
 
         _statusLabel = new Label
         {
@@ -155,6 +206,7 @@ internal sealed class TableEditorControl : UserControl
 
         Controls.Add(_grid);
         Controls.Add(_statusLabel);
+        Controls.Add(fieldHelpPanel);
         Controls.Add(filterPanel);
         Controls.Add(buttonPanel);
         Controls.Add(_helpTextBox);
@@ -221,6 +273,7 @@ internal sealed class TableEditorControl : UserControl
 
             BuildGridColumns(_request, _table);
             _grid.DataSource = _table.DefaultView;
+            PopulateFieldHelpOptions(_request, _table);
             SelectFirstRow();
             ApplyFilter();
         }
@@ -408,6 +461,81 @@ internal sealed class TableEditorControl : UserControl
             _helpTextBox.Text = $"{_request.EffectiveHelpText}\r\n\r\nChua the them dong moi:\r\n{dependencyText}";
             _statusLabel.Text = _dependencyEvaluation.MissingMessages[0];
         }
+    }
+
+    private void PopulateFieldHelpOptions(AdminTableLoadRequest request, DataTable table)
+    {
+        _fieldHelpComboBox.BeginUpdate();
+        try
+        {
+            _fieldHelpComboBox.Items.Clear();
+            foreach (DataColumn column in table.Columns)
+            {
+                var binding = AdminColumnBindingCatalog.Find(request.Resource.TableName, column.ColumnName);
+                var displayName = binding?.HeaderText ?? AdminColumnBindingCatalog.ToHeaderText(column.ColumnName);
+                _fieldHelpComboBox.Items.Add(new FieldHelpOption(column.ColumnName, displayName));
+            }
+
+            if (_fieldHelpComboBox.Items.Count > 0)
+                _fieldHelpComboBox.SelectedIndex = 0;
+            else
+                _fieldHelpTextBox.Text = "Bảng hiện tại không có trường nào để hiển thị mô tả.";
+        }
+        finally
+        {
+            _fieldHelpComboBox.EndUpdate();
+        }
+    }
+
+    private void UpdateFieldHelpFromSelection()
+    {
+        if (_request is null || _table is null || _fieldHelpComboBox.SelectedItem is not FieldHelpOption option)
+        {
+            _fieldHelpTextBox.Text = string.Empty;
+            UpdateFieldHelpHighlight(null);
+            return;
+        }
+
+        if (_table.Columns[option.ColumnName] is not DataColumn column)
+        {
+            _fieldHelpTextBox.Text = string.Empty;
+            UpdateFieldHelpHighlight(null);
+            return;
+        }
+
+        var binding = AdminColumnBindingCatalog.Find(_request.Resource.TableName, option.ColumnName);
+        _fieldHelpTextBox.Text = AdminFieldHelpCatalog.BuildHelpText(_request.Resource, column, binding);
+        UpdateFieldHelpHighlight(option.ColumnName);
+    }
+
+    private void SelectFieldHelp(string columnName)
+    {
+        for (var index = 0; index < _fieldHelpComboBox.Items.Count; index++)
+        {
+            if (_fieldHelpComboBox.Items[index] is not FieldHelpOption option)
+                continue;
+
+            if (!string.Equals(option.ColumnName, columnName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            _fieldHelpComboBox.SelectedIndex = index;
+            return;
+        }
+    }
+
+    private void UpdateFieldHelpHighlight(string? selectedColumnName)
+    {
+        foreach (DataGridViewColumn column in _grid.Columns)
+        {
+            var isSelected = !string.IsNullOrWhiteSpace(selectedColumnName) &&
+                             string.Equals(column.DataPropertyName, selectedColumnName, StringComparison.OrdinalIgnoreCase);
+
+            column.HeaderCell.Style.BackColor = isSelected ? Color.FromArgb(255, 244, 204) : Color.WhiteSmoke;
+            column.HeaderCell.Style.ForeColor = Color.Black;
+            column.HeaderCell.Style.Font = new Font(_grid.Font, isSelected ? FontStyle.Bold : FontStyle.Regular);
+        }
+
+        _grid.Invalidate();
     }
 
     private (NpgsqlDataAdapter Adapter, DataTable Table) LoadTable(AdminTableLoadRequest request)
@@ -784,6 +912,26 @@ internal sealed class TableEditorControl : UserControl
         _grid.Refresh();
     }
 
+    private void GridOnCellEnter(object? sender, DataGridViewCellEventArgs e)
+    {
+        if (_isReloadingData || e.RowIndex < 0 || e.ColumnIndex < 0)
+            return;
+
+        var columnName = _grid.Columns[e.ColumnIndex].DataPropertyName;
+        if (!string.IsNullOrWhiteSpace(columnName))
+            SelectFieldHelp(columnName);
+    }
+
+    private void GridOnColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
+    {
+        if (_isReloadingData || e.ColumnIndex < 0)
+            return;
+
+        var columnName = _grid.Columns[e.ColumnIndex].DataPropertyName;
+        if (!string.IsNullOrWhiteSpace(columnName))
+            SelectFieldHelp(columnName);
+    }
+
     private void GridOnCellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
     {
         if (_isReloadingData || e.RowIndex < 0 || e.ColumnIndex < 0)
@@ -982,6 +1130,7 @@ internal sealed class TableEditorControl : UserControl
 
             gridColumn.Name = column.ColumnName;
             gridColumn.HeaderText = binding?.HeaderText ?? AdminColumnBindingCatalog.ToHeaderText(column.ColumnName);
+            gridColumn.HeaderCell.ToolTipText = AdminFieldHelpCatalog.BuildHelpText(request.Resource, column, binding);
             gridColumn.ReadOnly = column.ReadOnly;
             _grid.Columns.Add(gridColumn);
         }
@@ -1073,4 +1222,11 @@ internal sealed class TableEditorControl : UserControl
         DataRow Row,
         string ColumnName,
         string Message);
+
+    private sealed record FieldHelpOption(
+        string ColumnName,
+        string DisplayName)
+    {
+        public override string ToString() => DisplayName;
+    }
 }

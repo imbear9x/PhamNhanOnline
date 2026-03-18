@@ -444,3 +444,27 @@ Cuối mỗi buổi, nên bổ sung:
   - hien thong bao ro rang trong man hinh ve bang/du lieu cha dang thieu
 - Muc tieu la loai bo kieu UX "thu bam roi moi doan" va thay bang thong bao huong dan truc tiep.
 
+## Session update 2026-03-18 admin field help UX
+
+- Da them `Field Help` panel ngay trong `TableEditorControl`:
+  - co combo chon field cua bang hien tai
+  - co o mo ta read-only giai thich field dung de lam gi, can nhap gi
+- Da gan tooltip vao header cua tung cot bang grid de hover chuot vao ten field co the thay help text.
+- Field help hien tai ket hop:
+  - mo ta chung theo ten field (`id`, `code`, `name`, `item_template_id`, `chance_parts_per_million`, ...)
+  - mo ta rieng cho mot so field quan trong (`item_type`, `pill_category`, `seed_item_template_id`, `game_random.mode`, ...)
+- Muc tieu la giam phu thuoc vao viec nho schema/ID va giup game design tu tin hon khi nhap data.
+
+## Session update 2026-03-18 admin field help content polish
+
+- Da doi `tooltip` va `field help` sang tieng Viet co dau cho de doc va de dung.
+- Da bo sung help text theo kieu:
+  - y nghia cua field
+  - cach nhap
+  - vi du gia tri mau
+- Da viet chi tiet hon cho 3 cum du kien dung nhieu:
+  - `Item Templates`
+  - `Pill Recipe`
+  - `Game Random`
+- Da them highlight cot dang duoc chon trong `Field Help` bang cach to mau header cua cot tuong ung.
+
