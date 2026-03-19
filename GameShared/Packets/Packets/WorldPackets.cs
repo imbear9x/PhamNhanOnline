@@ -125,6 +125,8 @@ public partial class ObservedCharacterMovedPacket : IPacket
 public partial class ObservedCharacterCurrentStateChangedPacket : IPacket
 {
     public CharacterCurrentStateModel? CurrentState { get; set; }
+    public int? MaxHp { get; set; }
+    public int? MaxMp { get; set; }
     public int? ZoneIndex { get; set; }
 }
 

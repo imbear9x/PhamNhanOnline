@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e88d51497311bbb4ab66db5dac538803, type: 3}
   m_Name: WorldLocalMovementSyncConfig
   m_EditorClassIdentifier: 
-  minSyncIntervalSeconds: 0.1
-  maxSyncIntervalSeconds: 0.2
+  minSyncIntervalSeconds: 0.5
+  maxSyncIntervalSeconds: 0.5
   immediateStateChangeSyncIntervalSeconds: 0.05
-  syncDistanceThreshold: 50
-  movingDetectionThreshold: 1
+  syncDistanceThreshold: 10
+  movingDetectionThreshold: 30
   finalStopSyncThreshold: 0.5

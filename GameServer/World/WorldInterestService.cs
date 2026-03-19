@@ -72,7 +72,11 @@ public sealed class WorldInterestService
             GroundRewards = instance.GetGroundRewardsSnapshot().Select(x => x.ToModel()).ToList()
         });
 
+        // The client rebuilds its observed-entity list after a fresh world snapshot,
+        // so force this session to resend the currently visible players as spawn packets.
+        player.ClearVisibleCharacters();
         RefreshVisibility(player);
+        ResendVisiblePlayersToSubject(player);
     }
 
     public void NotifyEnemySpawned(MapInstance instance, MonsterEntity enemy)
@@ -151,11 +155,17 @@ public sealed class WorldInterestService
 
     public void NotifyCurrentStateChanged(PlayerSession player, CharacterCurrentStateDto currentState)
     {
+        var snapshot = player.RuntimeState.CaptureSnapshot();
+        var maxHp = snapshot.BaseStats.BaseHp ?? 0;
+        var maxMp = snapshot.BaseStats.BaseMp ?? 0;
+
         foreach (var observer in GetVisiblePlayers(player))
         {
             _network.Send(observer.ConnectionId, new ObservedCharacterCurrentStateChangedPacket
             {
                 CurrentState = currentState.ToModel(_gameTimeService.GetCurrentSnapshot()),
+                MaxHp = maxHp,
+                MaxMp = maxMp,
                 ZoneIndex = player.ZoneIndex
             });
         }
@@ -176,9 +186,9 @@ public sealed class WorldInterestService
     {
         foreach (var visibleCharacterId in player.GetVisibleCharacterIdsSnapshot())
         {
-            if (_worldManager.TryGetPlayer(visibleCharacterId, out var other))
+            if (_worldManager.TryGetPlayerByCharacterId(visibleCharacterId, out var other))
             {
-                if (other.RemoveVisibleCharacter(player.PlayerId))
+                if (other.RemoveVisibleCharacter(player.CharacterData.CharacterId))
                 {
                     _network.Send(other.ConnectionId, new ObservedCharacterDespawnedPacket
                     {
@@ -212,13 +222,13 @@ public sealed class WorldInterestService
             .ToArray();
 
         var nextVisibleIds = nearbyPlayers
-            .Select(player => player.PlayerId)
+            .Select(player => player.CharacterData.CharacterId)
             .ToHashSet();
         var currentVisibleIds = subject.GetVisibleCharacterIdsSnapshot().ToHashSet();
 
         foreach (var removedId in currentVisibleIds.Except(nextVisibleIds))
         {
-            if (_worldManager.TryGetPlayer(removedId, out var removedPlayer))
+            if (_worldManager.TryGetPlayerByCharacterId(removedId, out var removedPlayer))
             {
                 _network.Send(subject.ConnectionId, new ObservedCharacterDespawnedPacket
                 {
@@ -227,7 +237,7 @@ public sealed class WorldInterestService
                     ZoneIndex = removedPlayer.ZoneIndex
                 });
 
-                if (removedPlayer.RemoveVisibleCharacter(subject.PlayerId))
+                if (removedPlayer.RemoveVisibleCharacter(subject.CharacterData.CharacterId))
                 {
                     _network.Send(removedPlayer.ConnectionId, new ObservedCharacterDespawnedPacket
                     {
@@ -243,7 +253,7 @@ public sealed class WorldInterestService
 
         foreach (var visiblePlayer in nearbyPlayers)
         {
-            if (subject.AddVisibleCharacter(visiblePlayer.PlayerId))
+            if (subject.AddVisibleCharacter(visiblePlayer.CharacterData.CharacterId))
             {
                 _network.Send(subject.ConnectionId, new ObservedCharacterSpawnedPacket
                 {
@@ -251,7 +261,7 @@ public sealed class WorldInterestService
                 });
             }
 
-            if (visiblePlayer.AddVisibleCharacter(subject.PlayerId))
+            if (visiblePlayer.AddVisibleCharacter(subject.CharacterData.CharacterId))
             {
                 _network.Send(visiblePlayer.ConnectionId, new ObservedCharacterSpawnedPacket
                 {
@@ -269,7 +279,7 @@ public sealed class WorldInterestService
         var currentVisibleIds = player.GetVisibleCharacterIdsSnapshot().ToHashSet();
         foreach (var observerId in previousVisibleIds.Intersect(currentVisibleIds))
         {
-            if (!_worldManager.TryGetPlayer(observerId, out var observer))
+            if (!_worldManager.TryGetPlayerByCharacterId(observerId, out var observer))
                 continue;
 
             if (observer.MapId != player.MapId || observer.InstanceId != player.InstanceId)
@@ -291,7 +301,7 @@ public sealed class WorldInterestService
         var result = new List<PlayerSession>();
         foreach (var visibleId in player.GetVisibleCharacterIdsSnapshot())
         {
-            if (_worldManager.TryGetPlayer(visibleId, out var visiblePlayer) &&
+            if (_worldManager.TryGetPlayerByCharacterId(visibleId, out var visiblePlayer) &&
                 visiblePlayer.MapId == player.MapId &&
                 visiblePlayer.InstanceId == player.InstanceId)
             {
@@ -300,6 +310,18 @@ public sealed class WorldInterestService
         }
 
         return result;
+    }
+
+    private void ResendVisiblePlayersToSubject(PlayerSession subject)
+    {
+        var visiblePlayers = GetVisiblePlayers(subject);
+        foreach (var visiblePlayer in visiblePlayers)
+        {
+            _network.Send(subject.ConnectionId, new ObservedCharacterSpawnedPacket
+            {
+                Character = visiblePlayer.ToObservedCharacterModel(_gameTimeService.GetCurrentSnapshot())
+            });
+        }
     }
 
     private static bool NeedsRuntimeStateSync(PlayerSession player, MapDefinition definition, int zoneIndex, System.Numerics.Vector2 targetPosition)

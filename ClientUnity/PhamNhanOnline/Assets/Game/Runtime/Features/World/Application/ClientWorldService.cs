@@ -1,5 +1,6 @@
 using GameShared.Packets;
 using PhamNhanOnline.Client.Features.Character.Application;
+using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Network.Session;
 using UnityEngine;
 
@@ -9,20 +10,27 @@ namespace PhamNhanOnline.Client.Features.World.Application
     {
         private readonly ClientWorldState worldState;
         private readonly ClientCharacterState characterState;
+        private readonly ClientTargetState targetState;
 
         public ClientWorldService(
             ClientConnectionService connection,
             ClientWorldState worldState,
-            ClientCharacterState characterState)
+            ClientCharacterState characterState,
+            ClientTargetState targetState)
         {
             this.worldState = worldState;
             this.characterState = characterState;
+            this.targetState = targetState;
 
             connection.Packets.Subscribe<MapJoinedPacket>(HandleMapJoined);
+            connection.Packets.Subscribe<WorldRuntimeSnapshotPacket>(HandleWorldRuntimeSnapshot);
             connection.Packets.Subscribe<ObservedCharacterSpawnedPacket>(HandleObservedCharacterSpawned);
             connection.Packets.Subscribe<ObservedCharacterDespawnedPacket>(HandleObservedCharacterDespawned);
             connection.Packets.Subscribe<ObservedCharacterMovedPacket>(HandleObservedCharacterMoved);
             connection.Packets.Subscribe<ObservedCharacterCurrentStateChangedPacket>(HandleObservedCharacterCurrentStateChanged);
+            connection.Packets.Subscribe<EnemySpawnedPacket>(HandleEnemySpawned);
+            connection.Packets.Subscribe<EnemyDespawnedPacket>(HandleEnemyDespawned);
+            connection.Packets.Subscribe<EnemyHpChangedPacket>(HandleEnemyHpChanged);
             connection.Packets.Subscribe<CharacterCurrentStateChangedPacket>(HandleCharacterCurrentStateChanged);
             connection.StateChanged += HandleConnectionStateChanged;
         }
@@ -40,6 +48,13 @@ namespace PhamNhanOnline.Client.Features.World.Application
             }
 
             worldState.ApplyMapJoin(packet.Map.Value, packet.ZoneIndex ?? 0, localPosition);
+            worldState.ReplaceEnemies(null);
+            targetState.Clear();
+        }
+
+        private void HandleWorldRuntimeSnapshot(WorldRuntimeSnapshotPacket packet)
+        {
+            worldState.ReplaceEnemies(packet.Enemies);
         }
 
         private void HandleObservedCharacterSpawned(ObservedCharacterSpawnedPacket packet)
@@ -56,6 +71,8 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 return;
 
             worldState.RemoveObservedCharacter(packet.CharacterId.Value);
+            if (targetState.IsSelectedObservedCharacter(packet.CharacterId.Value))
+                targetState.Clear();
         }
 
         private void HandleObservedCharacterMoved(ObservedCharacterMovedPacket packet)
@@ -71,7 +88,37 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (!packet.CurrentState.HasValue)
                 return;
 
-            worldState.ApplyObservedCurrentState(packet.CurrentState.Value);
+            worldState.ApplyObservedCurrentState(packet.CurrentState.Value, packet.MaxHp, packet.MaxMp);
+        }
+
+        private void HandleEnemySpawned(EnemySpawnedPacket packet)
+        {
+            if (!packet.Enemy.HasValue)
+                return;
+
+            worldState.UpsertEnemy(packet.Enemy.Value);
+        }
+
+        private void HandleEnemyDespawned(EnemyDespawnedPacket packet)
+        {
+            if (!packet.EnemyRuntimeId.HasValue)
+                return;
+
+            worldState.RemoveEnemy(packet.EnemyRuntimeId.Value);
+            if (targetState.IsSelectedEnemy(packet.EnemyRuntimeId.Value))
+                targetState.Clear();
+        }
+
+        private void HandleEnemyHpChanged(EnemyHpChangedPacket packet)
+        {
+            if (!packet.EnemyRuntimeId.HasValue)
+                return;
+
+            worldState.ApplyEnemyHpChanged(
+                packet.EnemyRuntimeId.Value,
+                packet.CurrentHp,
+                packet.MaxHp,
+                packet.RuntimeState);
         }
 
         private void HandleCharacterCurrentStateChanged(CharacterCurrentStateChangedPacket packet)
@@ -86,7 +133,10 @@ namespace PhamNhanOnline.Client.Features.World.Application
         private void HandleConnectionStateChanged(ClientConnectionState state)
         {
             if (state == ClientConnectionState.Disconnected)
+            {
                 worldState.Clear();
+                targetState.Clear();
+            }
         }
     }
 }

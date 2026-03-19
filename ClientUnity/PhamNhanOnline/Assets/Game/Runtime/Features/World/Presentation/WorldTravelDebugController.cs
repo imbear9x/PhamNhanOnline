@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Core.Logging;
@@ -12,6 +13,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 {
     public sealed class WorldTravelDebugController : MonoBehaviour
     {
+        private const int MaxExternalCharacterStatsDebugLines = 8;
+        private static readonly Queue<string> externalCharacterStatsDebugLines = new Queue<string>();
+
         [SerializeField] private KeyCode travelToAdjacentMapKey = KeyCode.T;
         [SerializeField] private KeyCode cultivationToggleKey = KeyCode.U;
         [SerializeField] private KeyCode breakthroughKey = KeyCode.B;
@@ -42,6 +46,35 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private long? lastRewardFromUnixMs;
         private long? lastRewardToUnixMs;
         private string lastCultivationDebugMessage = string.Empty;
+
+        public static void SetExternalCharacterStatsDebugLine(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                externalCharacterStatsDebugLines.Clear();
+                return;
+            }
+
+            externalCharacterStatsDebugLines.Clear();
+            externalCharacterStatsDebugLines.Enqueue(message.Trim());
+        }
+
+        public static void AppendExternalCharacterStatsDebugLine(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return;
+
+            var normalized = message.Trim();
+            if (externalCharacterStatsDebugLines.Count > 0 &&
+                string.Equals(externalCharacterStatsDebugLines.Last(), normalized, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            externalCharacterStatsDebugLines.Enqueue(normalized);
+            while (externalCharacterStatsDebugLines.Count > MaxExternalCharacterStatsDebugLines)
+                externalCharacterStatsDebugLines.Dequeue();
+        }
 
         private void Start()
         {
@@ -609,7 +642,17 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 stats.FortuneUpgradeCount,
                 FormatPreview(fortunePreview),
                 currentStamina,
-                stats.BaseStamina);
+                stats.BaseStamina)
+                + BuildExternalCharacterStatsDebugSuffix();
+        }
+
+        private static string BuildExternalCharacterStatsDebugSuffix()
+        {
+            if (externalCharacterStatsDebugLines.Count == 0)
+                return string.Empty;
+
+            return "\n[TargetDebug] " +
+                   string.Join("\n[TargetDebug] ", externalCharacterStatsDebugLines.ToArray());
         }
 
         private string BuildPotentialPreviewLine()

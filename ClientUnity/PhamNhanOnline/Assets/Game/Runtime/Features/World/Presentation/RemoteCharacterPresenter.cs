@@ -1,6 +1,7 @@
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Character.Presentation;
+using PhamNhanOnline.Client.Features.Targeting.Application;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -26,6 +27,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private int moveSpeedParameterHash;
         private bool warnedPositionMapping;
         private float moveAnimationTimer;
+        private WorldTargetable targetable;
 
         public void Initialize(float smoothing)
         {
@@ -44,6 +46,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public void ApplySnapshot(ObservedCharacterModel observedCharacter, WorldMapPresenter worldMapPresenter, bool snap)
         {
             AutoWireReferences();
+            ConfigureTargetable(observedCharacter);
 
             Vector2 worldPosition;
             var serverPosition = new Vector2(
@@ -183,7 +186,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             {
                 body.velocity = Vector2.zero;
                 body.angularVelocity = 0f;
-                body.simulated = false;
+                // Keep the rigidbody in the 2D physics world so trigger-based target
+                // colliders can still be hit by OverlapPoint queries.
+                body.bodyType = RigidbodyType2D.Kinematic;
+                body.gravityScale = 0f;
+                body.simulated = true;
             }
 
             var bodyCollider = playerView != null ? playerView.BodyCollider : GetComponent<Collider2D>();
@@ -216,6 +223,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void AutoWireReferences()
         {
+            if (targetable == null)
+                targetable = GetComponent<WorldTargetable>();
+
             if (playerView == null)
                 playerView = GetComponent<PlayerView>();
 
@@ -235,6 +245,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (animator == null)
                 animator = GetComponentInChildren<Animator>(true);
+        }
+
+        private void ConfigureTargetable(ObservedCharacterModel observedCharacter)
+        {
+            if (targetable == null)
+                targetable = gameObject.AddComponent<WorldTargetable>();
+
+            targetable.Configure(WorldTargetHandle.CreateObservedCharacter(observedCharacter.Character.CharacterId));
         }
     }
 }

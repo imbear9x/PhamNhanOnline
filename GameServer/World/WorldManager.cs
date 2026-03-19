@@ -65,6 +65,21 @@ public sealed class WorldManager
         return _onlinePlayers.TryGetValue(playerId, out session!);
     }
 
+    public bool TryGetPlayerByCharacterId(Guid characterId, out PlayerSession session)
+    {
+        foreach (var player in _onlinePlayers.Values)
+        {
+            if (player.CharacterData.CharacterId != characterId)
+                continue;
+
+            session = player;
+            return true;
+        }
+
+        session = null!;
+        return false;
+    }
+
     public IReadOnlyCollection<PlayerSession> GetOnlinePlayersSnapshot()
     {
         return _onlinePlayers.Values.ToList();

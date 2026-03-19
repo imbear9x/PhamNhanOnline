@@ -23,6 +23,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void Awake()
         {
             EnsureRuntimeInitialized();
+            EnsureWorldTargetSelectionController();
 
             if (mapRoot == null || entitiesRoot == null || worldUiRoot == null)
                 Debug.LogWarning("WorldSceneController is missing one or more scene roots.");
@@ -39,6 +40,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             ClientRuntime.Initialize(settings);
             ClientLog.Info($"Client runtime auto-initialized from World scene using {settings.name}.");
+        }
+
+        private void EnsureWorldTargetSelectionController()
+        {
+            var controller = GetComponent<WorldClickTargetSelectionController>();
+            if (controller == null)
+                controller = gameObject.AddComponent<WorldClickTargetSelectionController>();
+
+            controller.Initialize(worldCamera);
         }
     }
 }

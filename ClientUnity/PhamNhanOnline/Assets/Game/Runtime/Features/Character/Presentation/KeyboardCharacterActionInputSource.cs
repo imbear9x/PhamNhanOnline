@@ -10,7 +10,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             {
                 Horizontal = Input.GetAxisRaw("Horizontal"),
                 Vertical = Input.GetAxisRaw("Vertical"),
-                AttackPressed = Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.J),
+                AttackPressed = Input.GetKeyDown(KeyCode.J),
             };
         }
     }

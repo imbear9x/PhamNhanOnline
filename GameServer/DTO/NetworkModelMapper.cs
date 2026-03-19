@@ -165,6 +165,8 @@ public static class NetworkModelMapper
         {
             Character = player.CharacterData.ToModel(),
             CurrentState = snapshot.CurrentState.ToModel(gameTime),
+            MaxHp = snapshot.BaseStats.BaseHp ?? 0,
+            MaxMp = snapshot.BaseStats.BaseMp ?? 0,
             MapId = player.MapId,
             ZoneIndex = player.ZoneIndex
         };
