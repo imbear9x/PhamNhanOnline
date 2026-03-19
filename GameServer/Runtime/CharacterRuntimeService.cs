@@ -38,21 +38,22 @@ public sealed class CharacterRuntimeService
             ?? throw new InvalidOperationException("Base stats must exist before attaching runtime state.");
         var currentState = snapshot.CurrentState
             ?? throw new InvalidOperationException("Current state must exist before attaching runtime state.");
+        var clampedCurrentState = _calculator.ClampCurrentStateToBaseStats(baseStats, currentState);
 
         var player = _worldManager.AddOrUpdatePlayer(
             session.PlayerId,
             session.ConnectionId,
             snapshot.Character,
             baseStats,
-            currentState);
+            clampedCurrentState);
 
         session.Player = player;
         session.SelectedCharacterId = snapshot.Character.CharacterId;
         var currentRemaining = CharacterLifespanRules.CalculateRemainingLifespanYears(
-            currentState.LifespanEndGameMinute,
+            clampedCurrentState.LifespanEndGameMinute,
             _gameTimeService.GetCurrentSnapshot());
         player.TryUpdateReportedRemainingLifespan(currentRemaining);
-        var isRestricted = currentRemaining <= 0 || currentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired;
+        var isRestricted = currentRemaining <= 0 || clampedCurrentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired;
         player.SetCharacterActionsRestricted(isRestricted);
         session.AreCharacterActionsRestricted = isRestricted;
         return player;

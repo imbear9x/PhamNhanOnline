@@ -15,6 +15,6 @@ MonoBehaviour:
   minSyncIntervalSeconds: 0.1
   maxSyncIntervalSeconds: 0.2
   immediateStateChangeSyncIntervalSeconds: 0.05
-  syncDistanceThreshold: 10
-  movingDetectionThreshold: 0.25
+  syncDistanceThreshold: 50
+  movingDetectionThreshold: 1
   finalStopSyncThreshold: 0.5

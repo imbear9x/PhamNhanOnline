@@ -8,6 +8,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 {
     public sealed class WorldLocalPlayerPresenter : MonoBehaviour
     {
+        private const float DefaultBoundsPadding = 0.1f;
+
         [SerializeField] private GameObject playerPrefab;
         [SerializeField] private Transform localPlayerRoot;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
@@ -82,6 +84,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
             }
 
+            if (worldMapPresenter != null && !worldMapPresenter.TryGetPlayableBounds(out _))
+                return;
+
             var characterId = selectedCharacter.Value.CharacterId;
             if (playerInstance != null && activeCharacterId == characterId)
                 return;
@@ -112,28 +117,98 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             Vector2 worldPosition;
-            if (worldMapPresenter != null && worldMapPresenter.TryMapServerPositionToWorld(serverPosition, out worldPosition))
+            if (!TryResolveWorldPosition(serverPosition, out worldPosition))
             {
-                ApplyAuthoritativeWorldPosition(worldPosition, force);
-                lastAppliedServerPosition = serverPosition;
-                warnedPositionMapping = false;
                 RefreshLocalActionSpeed();
                 return;
             }
 
-            if (!warnedPositionMapping)
-            {
-                ClientLog.Warn("WorldLocalPlayerPresenter could not map server position into Unity world space. Falling back to raw coordinates.");
-                warnedPositionMapping = true;
-            }
-
-            ApplyAuthoritativeWorldPosition(serverPosition, force);
+            ApplyAuthoritativeWorldPosition(worldPosition, force);
             lastAppliedServerPosition = serverPosition;
             RefreshLocalActionSpeed();
         }
 
+        private bool TryResolveWorldPosition(Vector2 serverPosition, out Vector2 worldPosition)
+        {
+            worldPosition = default;
+
+            if (worldMapPresenter == null)
+                return false;
+
+            if (worldMapPresenter.TryMapServerPositionToWorld(serverPosition, out worldPosition))
+            {
+                worldPosition = ClampToPlayableBounds(worldPosition);
+                warnedPositionMapping = false;
+                return true;
+            }
+
+            Bounds playableBounds;
+            if (!worldMapPresenter.TryGetPlayableBounds(out playableBounds))
+                return false;
+
+            if (!warnedPositionMapping)
+            {
+                ClientLog.Warn("WorldLocalPlayerPresenter could not map server position into Unity world space. Using safe PlayableBounds fallback instead of raw coordinates.");
+                warnedPositionMapping = true;
+            }
+
+            worldPosition = ClampToPlayableBounds(playableBounds.center);
+            return true;
+        }
+
+        private Vector2 ClampToPlayableBounds(Vector2 worldPosition)
+        {
+            if (worldMapPresenter == null)
+                return worldPosition;
+
+            Bounds playableBounds;
+            if (!worldMapPresenter.TryGetPlayableBounds(out playableBounds))
+                return worldPosition;
+
+            var padding = ResolvePlayableBoundsPadding();
+            var minX = playableBounds.min.x + padding.x;
+            var maxX = playableBounds.max.x - padding.x;
+            var minY = playableBounds.min.y + padding.y;
+            var maxY = playableBounds.max.y - padding.y;
+
+            var clampedX = maxX >= minX
+                ? Mathf.Clamp(worldPosition.x, minX, maxX)
+                : playableBounds.center.x;
+            var clampedY = maxY >= minY
+                ? Mathf.Clamp(worldPosition.y, minY, maxY)
+                : playableBounds.center.y;
+
+            return new Vector2(clampedX, clampedY);
+        }
+
+        private Vector2 ResolvePlayableBoundsPadding()
+        {
+            var bodyCollider = ResolvePlayerBodyCollider();
+            if (bodyCollider == null)
+                return new Vector2(DefaultBoundsPadding, DefaultBoundsPadding);
+
+            var extents = bodyCollider.bounds.extents;
+            return new Vector2(
+                Mathf.Max(DefaultBoundsPadding, extents.x),
+                Mathf.Max(DefaultBoundsPadding, extents.y));
+        }
+
+        private Collider2D ResolvePlayerBodyCollider()
+        {
+            if (playerInstance == null)
+                return null;
+
+            var playerView = playerInstance.GetComponent<PlayerView>();
+            if (playerView != null && playerView.BodyCollider != null)
+                return playerView.BodyCollider;
+
+            return playerInstance.GetComponent<Collider2D>();
+        }
+
         private void ApplyAuthoritativeWorldPosition(Vector2 worldPosition, bool force)
         {
+            worldPosition = ClampToPlayableBounds(worldPosition);
+
             if (localActionController != null)
             {
                 if (localActionController.ShouldApplyAuthoritativeWorldPosition(worldPosition, force, authoritativeSnapDistance))
