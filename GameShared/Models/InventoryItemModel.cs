@@ -18,6 +18,7 @@ public struct InventoryItemModel
     public bool IsDroppable;
     public bool IsDestroyable;
     public string? Icon;
+    public string? BackgroundIcon;
     public string? Description;
     public bool IsEquipped;
     public int? EquippedSlot;

@@ -232,6 +232,7 @@ public static class NetworkModelMapper
             IsDroppable = view.Definition.IsDroppable,
             IsDestroyable = view.Definition.IsDestroyable,
             Icon = view.Definition.Icon,
+            BackgroundIcon = view.Definition.BackgroundIcon,
             Description = view.Definition.Description,
             IsEquipped = view.IsEquipped,
             EquippedSlot = view.EquippedSlot.HasValue ? (int)view.EquippedSlot.Value : null,

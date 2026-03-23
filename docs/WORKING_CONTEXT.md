@@ -589,6 +589,33 @@ Cuối mỗi buổi, nên bổ sung:
 - Build verify:
   - `dotnet build GameServer/GameServer.csproj` pass
 
+## Session update 2026-03-24 inventory UI foundation
+
+- Da them client-side inventory runtime:
+  - `ClientInventoryState`
+  - `ClientInventoryService`
+  - cache inventory tren `ClientRuntime.Inventory`
+- `WorldInventoryPanelController` hien:
+  - van bind duoc character name + stat lines
+  - tu load `GetInventoryPacket` khi chua co cache
+  - neu da co cache thi dung lai, khong goi server lai moi lan mo tab
+  - bind inventory grid va tooltip item
+- Da them bo UI reusable cho inventory:
+  - `InventoryItemPresentationCatalog`
+  - `InventoryItemGridView`
+  - `InventoryItemSlotView`
+  - `InventoryItemTooltipView`
+- Huong presentation data da chot:
+  - `item_templates.icon` la key item icon cho client
+  - `item_templates.background_icon` la key background slot/khung item cho client
+  - neu `background_icon` trong DB de trong thi client fallback theo rarity hoac item_type trong catalog
+- Da cap nhat:
+  - `GameShared.Models.InventoryItemModel` them `BackgroundIcon`
+  - `GameServer` mapper/entity/item definition de tra field nay
+  - migration DB `20260324_add_item_template_background_icon.sql`
+  - help text trong `AdminDesignerTool`
+- Checklist setup Unity cho inventory grid/tooltip da duoc ghi vao `docs/UNITY_CLIENT_SCENE_SETUP.md`
+
 ## Session update 2026-03-19 hard-set admin02 test martial art
 
 - Da seed rieng cho account test `admin02` bang file:

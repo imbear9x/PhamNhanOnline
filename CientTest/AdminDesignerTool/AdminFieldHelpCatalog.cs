@@ -107,6 +107,7 @@ internal static class AdminFieldHelpCatalog
             ["item_templates.code"] = "Mã logic của item để code và data tham chiếu.\nVí dụ: `kiem_sat`, `dan_hoi_linh`, `hat_giong_huyet_sam`.\nKhuyến nghị: dùng chữ thường, không dấu, ngăn cách bằng `_`, không đổi tùy tiện sau khi đã dùng trong data khác.",
             ["item_templates.name"] = "Tên hiển thị của item trong tool và UI.\nVí dụ: `Kiếm Sắt`, `Hồi Linh Đan`, `Hạt Giống Huyết Sâm`.",
             ["item_templates.icon"] = "Đường dẫn icon hoặc mã icon dùng cho client.\nVí dụ: `icons/items/kiem_sat.png` hoặc `item_kiem_sat` tùy quy ước project.\nĐây là ô văn bản tự do, có thể nhập chuỗi dài hơn 1 ký tự.",
+            ["item_templates.background_icon"] = "Mã background/icon nền của item dùng cho client UI.\nVí dụ: `bg_item_epic`, `bg_item_pill`, `bg_item_weapon_green`.\nNếu để trống, client có thể fallback theo rarity hoặc item_type.",
             ["item_templates.description"] = "Mô tả nội dung, công dụng hoặc ghi chú cho item.\nVí dụ: `Thanh kiếm sắt phổ thông dành cho tân thủ.`\nĐây là ô văn bản tự do, có thể nhập mô tả dài nhiều câu.",
             ["item_templates.item_type"] = "Loại item gốc.\nVí dụ: `Equipment` cho trang bị, `Consumable` cho vật phẩm dùng trực tiếp, `HerbSeed` cho hạt giống, `HerbPlant` cho cây sống có thể trồng lại, `Soil` cho linh thổ.\nLưu ý: nhiều bảng con phụ thuộc trực tiếp vào trường này, nên cần chọn đúng ngay từ đầu.",
             ["item_templates.rarity"] = "Phẩm chất của item.\nVí dụ: `Common`, `Rare`, `Epic`.\nDùng để cân bằng và hiển thị độ hiếm trong UI.",

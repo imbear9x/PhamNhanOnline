@@ -84,6 +84,7 @@ public sealed record ItemDefinition(
     bool IsDroppable,
     bool IsDestroyable,
     string? Icon,
+    string? BackgroundIcon,
     string? Description,
     EquipmentDefinition? Equipment,
     MartialArtBookDefinition? MartialArtBook)

@@ -148,28 +148,28 @@ Add 5 entries into `Tabs`:
 
 2. Inventory
 - `Tab Id` -> `inventory`
-- `Title` -> `Kho do`
+- `Title` -> `Kho đồ`
 - `Button` -> `InventoryTabButton`
 - `Content Root` -> `InventoryPanel`
-- `Content Text` -> `InventoryContentText`
+- `Content Text` -> để trống nếu `InventoryPanel` đã có `WorldInventoryPanelController`
 
 3. Stats
 - `Tab Id` -> `stats`
-- `Title` -> `Chi so`
+- `Title` -> `Chỉ số`
 - `Button` -> `StatsTabButton`
 - `Content Root` -> `StatsPanel`
 - `Content Text` -> `StatsContentText`
 
 4. Equipment
 - `Tab Id` -> `equipment`
-- `Title` -> `Trang bi`
+- `Title` -> `Trang bị`
 - `Button` -> `EquipmentTabButton`
 - `Content Root` -> `EquipmentPanel`
 - `Content Text` -> `EquipmentContentText`
 
 5. Guild
 - `Tab Id` -> `guild`
-- `Title` -> `Bang hoi`
+- `Title` -> `Bang hội`
 - `Button` -> `GuildTabButton`
 - `Content Root` -> `GuildPanel`
 - `Content Text` -> `GuildContentText`
@@ -180,6 +180,155 @@ Setup note:
 - Place `MenuButton` in `HudCanvas` so it is always visible.
 - Place `WorldMenuPanel` in `ScreenCanvas` so it overlays gameplay cleanly.
 - If you want popup confirm dialogs later, put them in `ModalCanvas`, not inside `HudCanvas`.
+
+### 3.2. Inventory grid and tooltip checklist
+
+Mục tiêu:
+- giữ `WorldInventoryPanelController` trên `InventoryPanel`
+- để controller tự bind tên nhân vật, stat lines, inventory grid và tooltip
+- không sinh inventory UI bằng code ở runtime
+
+Hierarchy gợi ý bên trong `InventoryPanel`:
+
+```text
+InventoryPanel
+  CharacterNameText
+  StatsRow
+    StatsList
+      StatLineTemplate
+  InventoryStatusText
+  InventoryGrid
+    Viewport
+      Content
+        InventoryItemTemplate
+          Background
+          Icon
+          QuantityRoot
+            QuantityText
+          EquippedMarker
+          EnhanceRoot
+            EnhanceText
+          SelectedHighlight
+  ItemTooltipPanel
+    TooltipBackground
+    TooltipIcon
+    TooltipNameText
+    TooltipMetaText
+    TooltipDescriptionText
+    TooltipQuantityText
+```
+
+Checklist:
+
+1. Khu vực nhân vật và chỉ số
+- Giữ `WorldInventoryPanelController` trên `InventoryPanel`.
+- `Character Name Text` -> `CharacterNameText`
+- `Stat List View` -> object `StatsList` có `StatLineListView`
+- Trong `StatsList`, dùng `StatLineTemplate` hiện có với `StatLineView`.
+
+2. Text trạng thái inventory
+- Tạo `InventoryStatusText` là một `TMP_Text` đơn giản.
+- `Inventory Status Text` -> `InventoryStatusText`
+- Text này dùng cho các trạng thái kiểu:
+- `Đang tải kho đồ...`
+- `Kho đồ đang trống.`
+- `12 vật phẩm`
+
+3. Root của inventory grid
+- Thêm `ScrollRect` hoặc một container thường tên `InventoryGrid`.
+- Bên trong tạo `Viewport/Content`.
+- Thêm `GridLayoutGroup` trên `Content`.
+- Giá trị khởi đầu gợi ý:
+- `Cell Size`: around `64 x 64` or `72 x 72`
+- `Spacing`: `6 x 6`
+- `Constraint`: `Fixed Column Count`
+- `Constraint Count`: `5` or `6`
+
+4. Template item trong inventory
+- Tạo `InventoryItemTemplate` là con của `Content`.
+- Gắn `InventoryItemSlotView` lên root của `InventoryItemTemplate`.
+- Root nên có `Image` hoặc `Button` nếu bạn muốn dùng transition/selectable của Unity.
+- Các ref con:
+- `Background` -> ảnh nền/khung item
+- `Icon` -> ảnh icon item
+- `QuantityRoot` -> root badge nhỏ cho số lượng stack
+- `QuantityText` -> text dưới `QuantityRoot`
+- `EquippedMarker` -> badge góc tùy chọn như `E`
+- `EnhanceRoot` -> root badge tùy chọn cho `+1`, `+2`
+- `EnhanceText` -> text dưới `EnhanceRoot`
+- `SelectedHighlight` -> object glow/viền cho item đang được chọn
+
+5. Inventory item grid view
+- Gắn `InventoryItemGridView` lên `InventoryGrid` hoặc `Content`.
+- `Content Root` -> `Content`
+- `Item Template` -> `InventoryItemTemplate`
+- Giữ `Hide Template Object` ở trạng thái enabled.
+- `Inventory Grid View` on `WorldInventoryPanelController` -> this `InventoryItemGridView`
+- Có thể giữ `InventoryItemTemplate` active trong editor nếu dễ design hơn; script sẽ tự hide khi Play.
+
+6. Tooltip panel
+- Tạo `ItemTooltipPanel` ở đâu đó trong `InventoryPanel`, thường là bên phải.
+- Gắn `InventoryItemTooltipView` lên `ItemTooltipPanel`.
+- Có thể giữ `ItemTooltipPanel` active trong editor để dễ chỉnh style, nhưng khi Play nó sẽ bị hide cho tới khi có item được chọn hoặc hover.
+- Các ref:
+- `Panel Root` -> `ItemTooltipPanel`
+- `Background Image` -> `TooltipBackground`
+- `Icon Image` -> `TooltipIcon`
+- `Name Text` -> `TooltipNameText`
+- `Meta Text` -> `TooltipMetaText`
+- `Description Text` -> `TooltipDescriptionText`
+- `Quantity Text` -> `TooltipQuantityText`
+- `Item Tooltip View` on `WorldInventoryPanelController` -> this `InventoryItemTooltipView`
+
+7. Asset presentation catalog
+- Tạo một `ScriptableObject` asset:
+- `Create > PhamNhanOnline > UI > Inventory Item Presentation Catalog`
+- Path gợi ý:
+- `Assets/Game/Content/ScriptableObjects/UI/InventoryItemPresentationCatalog.asset`
+- Kéo asset đó vào `Item Presentation Catalog` trên `WorldInventoryPanelController`
+
+8. Điền mapping icon và background
+- Trong catalog, thêm `iconEntries` với key khớp `item_templates.icon` từ DB.
+- Ví dụ key:
+- `item_kiem_sat`
+- `item_hoi_linh_dan`
+- `item_linh_thach`
+- Trong catalog, thêm `backgroundEntries` với key khớp `item_templates.background_icon` từ DB.
+- Ví dụ key:
+- `bg_item_common`
+- `bg_item_rare`
+- `bg_item_pill`
+- `bg_item_weapon_green`
+- Đồng thời cấu hình fallback:
+- `Default Icon Sprite`
+- `Default Background Sprite`
+- `Rarity Backgrounds`
+- `Item Type Backgrounds`
+
+9. Quy ước đặt tên ở phía DB/admin
+- `item_templates.icon` nên là key icon item gửi sang client.
+- `item_templates.background_icon` nên là key tùy chọn cho nền/khung item gửi sang client.
+- Nếu `background_icon` để trống, client sẽ fallback theo `rarity` hoặc `item_type` trong catalog.
+
+10. Wiring cuối cùng trên `WorldInventoryPanelController`
+- `Character Name Text` -> `CharacterNameText`
+- `Stat List View` -> `StatsList`
+- `Inventory Status Text` -> `InventoryStatusText`
+- `Inventory Grid View` -> `InventoryGridView`
+- `Item Tooltip View` -> `InventoryItemTooltipView`
+- `Item Presentation Catalog` -> `InventoryItemPresentationCatalog.asset`
+- Thường nên giữ:
+- `Auto Load Missing Inventory Data` enabled
+- `Force Refresh Inventory On Enable` disabled
+- `Inventory Reload Retry Cooldown Seconds` around `2`
+
+11. Luồng test
+- Vào world bằng một character.
+- Mở `Kho đồ`.
+- Nếu inventory chưa được load, client sẽ gửi `GetInventoryPacket`.
+- Nếu cache inventory đã có sẵn, panel sẽ dùng lại danh sách item đó.
+- Hover hoặc click vào một item slot:
+- icon, tên, rarity/type, description, quantity, equipped state sẽ hiện trong tooltip.
 
 ## Naming rules
 

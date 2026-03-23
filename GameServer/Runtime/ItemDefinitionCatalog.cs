@@ -86,6 +86,7 @@ public sealed class ItemDefinitionCatalog
                 template.IsDroppable,
                 template.IsDestroyable,
                 template.Icon,
+                template.BackgroundIcon,
                 template.Description,
                 equipmentByTemplateId.GetValueOrDefault(template.Id),
                 martialArtBooksByItemId.GetValueOrDefault(template.Id));

@@ -2,6 +2,7 @@ using System;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Auth.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
+using PhamNhanOnline.Client.Features.Inventory.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Features.World.Application;
 using PhamNhanOnline.Client.Infrastructure.Config;
@@ -24,6 +25,8 @@ namespace PhamNhanOnline.Client.Core.Application
         public static ClientAuthService AuthService { get; private set; }
         public static ClientCharacterState Character { get; private set; }
         public static ClientCharacterService CharacterService { get; private set; }
+        public static ClientInventoryState Inventory { get; private set; }
+        public static ClientInventoryService InventoryService { get; private set; }
         public static ClientTargetState Target { get; private set; }
         public static ClientWorldState World { get; private set; }
         public static ClientWorldService WorldService { get; private set; }
@@ -47,11 +50,13 @@ namespace PhamNhanOnline.Client.Core.Application
             Connection = new ClientConnectionService(new LiteNetLibClientTransport(), settings.ServerEndpoint, PacketDispatcher);
             Auth = new ClientAuthState();
             Character = new ClientCharacterState();
+            Inventory = new ClientInventoryState();
             Target = new ClientTargetState();
             World = new ClientWorldState();
             UiScreens = new UiScreenService();
             AuthService = new ClientAuthService(Connection, Auth);
             CharacterService = new ClientCharacterService(Connection, Character);
+            InventoryService = new ClientInventoryService(Connection, Inventory);
             WorldService = new ClientWorldService(Connection, World, Character, Target);
             WorldTravelService = new ClientWorldTravelService(Connection);
             LoginFlow = new ClientLoginFlowService(Connection, AuthService, CharacterService, SceneFlow, settings);
