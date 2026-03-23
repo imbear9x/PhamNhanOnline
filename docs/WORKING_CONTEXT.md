@@ -146,6 +146,10 @@ Cuối mỗi buổi, nên bổ sung:
 - If apply_patch fails with a Windows sandbox refresh error, switch to shell-based file editing immediately instead of retrying multiple times.
 - When referencing files in Codex responses, use clickable markdown links with absolute workspace paths in the target, for example `[CharacterCultivationService.cs](/f:/PhamNhanOnline/GameServer/Runtime/CharacterCultivationService.cs)`. Avoid plain `F:\...` paths and avoid `f:/...` targets without the leading slash because they open in the browser instead of VSCode.
 
+## UI collaboration rule
+- Với UI gameplay trong Unity, ưu tiên viết code khung/controller trước rồi để user tự dựng hierarchy/prefab/scene trong Editor và kéo ref bằng Inspector.
+- Tránh sinh cả UI hierarchy bằng runtime code nếu user không yêu cầu rõ kiểu đó, vì sẽ làm scene khó nhìn, khó chỉnh và khó maintain.
+
 ## Session update 2026-03-16
 
 - Unity client world flow da chay duoc: login -> load scene `World` -> spawn map -> spawn local player -> camera follow.

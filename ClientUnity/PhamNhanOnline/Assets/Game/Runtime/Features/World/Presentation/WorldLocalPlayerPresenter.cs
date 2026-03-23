@@ -2,6 +2,7 @@ using System;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Character.Presentation;
+using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -257,7 +258,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             var currentState = ClientRuntime.Character.CurrentState;
-            var shouldBlock = currentState.HasValue && currentState.Value.CurrentState == CultivatingStateCode;
+            var shouldBlock =
+                (currentState.HasValue && currentState.Value.CurrentState == CultivatingStateCode) ||
+                WorldMenuController.IsAnyMenuOpen;
             localActionController.SetInputBlocked(shouldBlock);
         }
 

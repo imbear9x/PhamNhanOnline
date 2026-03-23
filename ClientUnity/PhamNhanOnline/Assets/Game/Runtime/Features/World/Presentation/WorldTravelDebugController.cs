@@ -5,6 +5,7 @@ using System.Linq;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.UI.World;
 using GameShared.Models;
 using TMPro;
 using UnityEngine;
@@ -101,6 +102,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             RefreshCharacterStatsText(force: false);
             RefreshPotentialPreviewText(force: false);
             RefreshRewardTextFromCachedState();
+
+            if (WorldMenuController.IsAnyMenuOpen)
+                return;
 
             if (WasCultivationTogglePressed() && !cultivationToggleInFlight)
             {
