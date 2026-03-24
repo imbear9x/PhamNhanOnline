@@ -33,6 +33,7 @@ Config/dbConfig.json
 # Local temporary tooling
 tmp_tools/
 tmp_codex/
+artifacts/
 
 # Unity project generated files and local caches
 ClientUnity/**/[Ll]ibrary/
