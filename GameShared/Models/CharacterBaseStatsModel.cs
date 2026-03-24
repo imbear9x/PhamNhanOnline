@@ -8,6 +8,10 @@ public struct CharacterBaseStatsModel
 {
     public Guid CharacterId;
     public int RealmTemplateId;
+    public string RealmDisplayName;
+    public long RealmMaxCultivation;
+    public double BreakthroughChancePercent;
+    public bool HasNextRealm;
     public long Cultivation;
 
     public int BaseHp;
@@ -20,6 +24,12 @@ public struct CharacterBaseStatsModel
     public double BaseFortune;
     public int BasePotential;
     public int UnallocatedPotential;
+    public int PotentialHpBonus;
+    public int PotentialMpBonus;
+    public int PotentialAttackBonus;
+    public int PotentialSpeedBonus;
+    public int PotentialSpiritualSenseBonus;
+    public double PotentialFortuneBonus;
     public int FinalHp;
     public int FinalMp;
     public int FinalAttack;

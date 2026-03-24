@@ -94,8 +94,14 @@ public sealed class CharacterFinalStatService
         var stamina = baseStats.GetRawStamina();
         var fortune = baseStats.GetRawFortune() + potentialBonuses.Fortune + ResolvePercentFortuneBonus(baseStats.GetRawFortune(), combinedModifiers) + ResolveFlatFortuneBonus(combinedModifiers);
 
-        return baseStats with
+        return await _characterService.EnrichBaseStatsAsync(baseStats with
         {
+            PotentialHpBonus = potentialBonuses.Hp,
+            PotentialMpBonus = potentialBonuses.Mp,
+            PotentialAttackBonus = potentialBonuses.Attack,
+            PotentialSpeedBonus = potentialBonuses.Speed,
+            PotentialSpiritualSenseBonus = potentialBonuses.SpiritualSense,
+            PotentialFortuneBonus = potentialBonuses.Fortune,
             FinalHp = hp,
             FinalMp = mp,
             FinalAttack = attack,
@@ -103,7 +109,7 @@ public sealed class CharacterFinalStatService
             FinalSpiritualSense = spiritualSense,
             FinalStamina = stamina,
             FinalFortune = fortune
-        };
+        }, cancellationToken);
     }
 
     private async Task<ItemStatModifierBundle> BuildActiveMartialArtModifiersAsync(
@@ -243,6 +249,16 @@ public sealed class CharacterFinalStatService
                current.FinalSpeed == updated.FinalSpeed &&
                current.FinalSpiritualSense == updated.FinalSpiritualSense &&
                current.FinalStamina == updated.FinalStamina &&
-               Math.Abs((current.FinalFortune ?? 0d) - (updated.FinalFortune ?? 0d)) < 0.000001d;
+               (current.PotentialHpBonus ?? 0) == (updated.PotentialHpBonus ?? 0) &&
+               (current.PotentialMpBonus ?? 0) == (updated.PotentialMpBonus ?? 0) &&
+               (current.PotentialAttackBonus ?? 0) == (updated.PotentialAttackBonus ?? 0) &&
+               (current.PotentialSpeedBonus ?? 0) == (updated.PotentialSpeedBonus ?? 0) &&
+               (current.PotentialSpiritualSenseBonus ?? 0) == (updated.PotentialSpiritualSenseBonus ?? 0) &&
+               Math.Abs((current.PotentialFortuneBonus ?? 0d) - (updated.PotentialFortuneBonus ?? 0d)) < 0.000001d &&
+               Math.Abs((current.FinalFortune ?? 0d) - (updated.FinalFortune ?? 0d)) < 0.000001d &&
+               string.Equals(current.RealmDisplayName ?? string.Empty, updated.RealmDisplayName ?? string.Empty, StringComparison.Ordinal) &&
+               (current.RealmMaxCultivation ?? 0L) == (updated.RealmMaxCultivation ?? 0L) &&
+               Math.Abs((current.BreakthroughChancePercent ?? 0d) - (updated.BreakthroughChancePercent ?? 0d)) < 0.000001d &&
+               (current.HasNextRealm ?? false) == (updated.HasNextRealm ?? false);
     }
 }

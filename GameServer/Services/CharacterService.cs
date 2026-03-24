@@ -118,7 +118,7 @@ public sealed class CharacterService
         await EnsureHomeCaveAsync(character.Id, cancellationToken);
         await tx.CommitAsync(cancellationToken);
 
-        var baseStatsDto = AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(baseStat, realmLifespan));
+        var baseStatsDto = await EnrichBaseStatsAsync(CharacterBaseStatsDto.FromEntity(baseStat, realmLifespan), cancellationToken);
         return new CharacterSnapshotDto(
             CharacterDto.FromEntity(character),
             baseStatsDto,
@@ -145,7 +145,9 @@ public sealed class CharacterService
             ? null
             : await GetRealmLifespanAsync(row.BaseStats.RealmId, cancellationToken);
         var characterDto = CharacterDto.FromEntity(row.Character);
-        var baseStatsDto = row.BaseStats is null ? null : AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan));
+        var baseStatsDto = row.BaseStats is null
+            ? null
+            : await EnrichBaseStatsAsync(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan), cancellationToken);
         var currentStateDto = row.CurrentState is null ? null : CharacterCurrentStateDto.FromEntity(row.CurrentState);
         return new CharacterSnapshotDto(characterDto, baseStatsDto, currentStateDto);
     }
@@ -167,7 +169,9 @@ public sealed class CharacterService
             ? null
             : await GetRealmLifespanAsync(row.BaseStats.RealmId, cancellationToken);
         var characterDto = CharacterDto.FromEntity(row.Character);
-        var baseStatsDto = row.BaseStats is null ? null : AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan));
+        var baseStatsDto = row.BaseStats is null
+            ? null
+            : await EnrichBaseStatsAsync(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan), cancellationToken);
         var currentStateDto = row.CurrentState is null ? null : CharacterCurrentStateDto.FromEntity(row.CurrentState);
         return new CharacterSnapshotDto(characterDto, baseStatsDto, currentStateDto);
     }
@@ -195,7 +199,9 @@ public sealed class CharacterService
                 ? null
                 : await GetRealmLifespanAsync(row.BaseStats.RealmId, cancellationToken);
             var characterDto = CharacterDto.FromEntity(row.Character);
-            var baseStatsDto = row.BaseStats is null ? null : AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan));
+            var baseStatsDto = row.BaseStats is null
+                ? null
+                : await EnrichBaseStatsAsync(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan), cancellationToken);
             var currentStateDto = row.CurrentState is null ? null : CharacterCurrentStateDto.FromEntity(row.CurrentState);
             result.Add(new CharacterSnapshotDto(characterDto, baseStatsDto, currentStateDto));
         }
@@ -248,14 +254,14 @@ public sealed class CharacterService
         if (existing is not null)
         {
             var existingRealmLifespan = await GetRealmLifespanAsync(existing.RealmId, cancellationToken);
-            return AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(existing, existingRealmLifespan));
+            return await EnrichBaseStatsAsync(CharacterBaseStatsDto.FromEntity(existing, existingRealmLifespan), cancellationToken);
         }
 
         var entity = BuildDefaultCharacterBaseStats(characterId);
 
         await _baseStats.CreateAsync(entity, cancellationToken);
         var realmLifespan = await GetRealmLifespanAsync(entity.RealmId, cancellationToken);
-        return AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(entity, realmLifespan));
+        return await EnrichBaseStatsAsync(CharacterBaseStatsDto.FromEntity(entity, realmLifespan), cancellationToken);
     }
 
     public async Task<CharacterBaseStatsDto> UpdateCharacterBaseStatsAsync(
@@ -290,7 +296,7 @@ public sealed class CharacterService
 
         await _baseStats.UpdateAsync(existing, cancellationToken);
         var realmLifespan = await GetRealmLifespanAsync(existing.RealmId, cancellationToken);
-        return AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(existing, realmLifespan));
+        return await EnrichBaseStatsAsync(CharacterBaseStatsDto.FromEntity(existing, realmLifespan), cancellationToken);
     }
 
     public async Task<CharacterCurrentStateDto?> GetCharacterCurrentStateAsync(
@@ -385,7 +391,7 @@ public sealed class CharacterService
         int? realmLifespan,
         GameTimeSnapshot gameTime)
     {
-        var effectiveBaseStats = AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(
+        var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(CharacterBaseStatsDto.FromEntity(
             baseStat ?? BuildDefaultCharacterBaseStats(characterId),
             realmLifespan ?? DefaultRealmLifespan));
         var lifespanEndGameMinute = CharacterLifespanRules.CreateLifespanEndGameMinute(
@@ -486,9 +492,72 @@ public sealed class CharacterService
         return name;
     }
 
-    private CharacterBaseStatsDto AttachPotentialPreviews(CharacterBaseStatsDto baseStats)
+    public async Task<CharacterBaseStatsDto> EnrichBaseStatsAsync(
+        CharacterBaseStatsDto baseStats,
+        CancellationToken cancellationToken = default)
     {
-        return _potentialStatCatalog.AttachPreviews(baseStats);
+        var enriched = _potentialStatCatalog.AttachPreviews(baseStats);
+        if (!enriched.RealmTemplateId.HasValue || enriched.RealmTemplateId.Value <= 0)
+        {
+            return enriched with
+            {
+                RealmDisplayName = string.Empty,
+                RealmMaxCultivation = 0,
+                BreakthroughChancePercent = 0d,
+                HasNextRealm = false
+            };
+        }
+
+        var realm = await _realmTemplates.GetByIdAsync(enriched.RealmTemplateId.Value, cancellationToken);
+        if (realm is null)
+        {
+            return enriched with
+            {
+                RealmDisplayName = string.Empty,
+                RealmMaxCultivation = 0,
+                BreakthroughChancePercent = 0d,
+                HasNextRealm = false
+            };
+        }
+
+        var nextRealm = await _realmTemplates.GetByIdAsync(realm.Id + 1, cancellationToken);
+        return enriched with
+        {
+            RealmDisplayName = BuildRealmDisplayName(realm),
+            RealmMaxCultivation = Math.Max(0L, realm.MaxCultivation ?? 0L),
+            BreakthroughChancePercent = ResolveBreakthroughChancePercent(realm.BaseBreakthroughRate),
+            HasNextRealm = nextRealm is not null
+        };
+    }
+
+    private static string BuildRealmDisplayName(RealmTemplate realm)
+    {
+        var name = string.IsNullOrWhiteSpace(realm.Name) ? string.Empty : realm.Name.Trim();
+        var stageName = string.IsNullOrWhiteSpace(realm.StageName) ? string.Empty : realm.StageName.Trim();
+
+        if (string.IsNullOrEmpty(name))
+            return stageName;
+        if (string.IsNullOrEmpty(stageName))
+            return name;
+
+        return string.Concat(name, " - ", stageName);
+    }
+
+    private static double ResolveBreakthroughChancePercent(double? rawRate)
+    {
+        return NormalizePercentLikeRatio(rawRate) * 100d;
+    }
+
+    private static double NormalizePercentLikeRatio(double? rawValue)
+    {
+        if (!rawValue.HasValue || rawValue.Value <= 0d)
+            return 0d;
+
+        var value = rawValue.Value;
+        if (value > 1d)
+            value /= 100d;
+
+        return Math.Clamp(value, 0d, 1d);
     }
 
     private async Task EnsureHomeCaveAsync(Guid characterId, CancellationToken cancellationToken)

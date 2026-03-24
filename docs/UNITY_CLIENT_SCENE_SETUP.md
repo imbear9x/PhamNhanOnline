@@ -462,6 +462,142 @@ Checklist:
 - Tooltip của item trong balo và item đang mặc dùng chung `InventoryItemTooltipView`.
 - Grid balo chỉ hiện item chưa mặc; item đang mặc sẽ xuất hiện ở 4 ô trang bị cố định.
 
+### 3.4. Potential panel checklist
+
+Mục tiêu:
+- dùng `StatsPanel` hiện tại làm panel tiềm năng
+- không sinh UI gameplay bằng code runtime
+- controller chỉ bind data, xử lý hover lựa chọn nâng cấp và gửi packet
+
+Hierarchy gợi ý bên trong `StatsPanel`:
+
+```text
+StatsPanel
+  PotentialPanelRoot
+    HeaderSection
+      RealmNameText
+      CultivationProgressText
+      UnallocatedPotentialText
+      StatusText
+    BreakthroughSection
+      BreakthroughChanceText
+      BreakthroughButton
+        BreakthroughButtonText
+    PotentialRowsSection
+      PotentialRowsList
+        PotentialRowTemplate
+          Icon
+          NameText
+          ValueText
+          HoverHighlight
+    PotentialOptionsPopup
+      PopupFrame
+      PopupTitleText
+      OptionsRoot
+        OptionButtonTemplate
+          OptionLabelText
+```
+
+Checklist:
+
+1. Root controller
+- Gắn `WorldPotentialPanelController` lên `PotentialPanelRoot` hoặc ngay trên `StatsPanel`.
+- Trong `WorldMenuController`, tab `stats` nên để:
+- `Content Root` -> `StatsPanel`
+- `Content Text` -> để trống nếu `StatsPanel` đã có `WorldPotentialPanelController`
+
+2. Header
+- `Realm Name Text` -> `RealmNameText`
+- `Cultivation Progress Text` -> `CultivationProgressText`
+- `Unallocated Potential Text` -> `UnallocatedPotentialText`
+- `Status Text` -> `StatusText`
+- `CultivationProgressText` sẽ hiện dạng `xxx/xxxx`
+
+3. Khu vực đột phá
+- `Breakthrough Root` -> `BreakthroughSection`
+- `Breakthrough Chance Text` -> `BreakthroughChanceText`
+- `Breakthrough Button` -> `BreakthroughButton`
+- `Breakthrough Button Text` -> `BreakthroughButtonText`
+- `BreakthroughSection` có thể để `active` trong editor cho dễ chỉnh; lúc Play controller sẽ tự bật/tắt theo trạng thái viên mãn cảnh giới
+
+4. Danh sách row chỉ số
+- Tạo `PotentialRowsList`, gắn `PotentialUpgradeRowListView`
+- Trong `PotentialRowsList` tạo `PotentialRowTemplate`, gắn `PotentialUpgradeRowView`
+- Kéo ref trên `PotentialUpgradeRowView`:
+- `Icon Image` -> `Icon`
+- `Name Text` -> `NameText`
+- `Value Text` -> `ValueText`
+- `Hover Highlight Root` -> `HoverHighlight`
+- Kéo ref trên `PotentialUpgradeRowListView`:
+- `Content Root` -> `PotentialRowsList`
+- `Item Template` -> `PotentialRowTemplate`
+- giữ `Hide Template Object` bật
+
+5. Popup lựa chọn nâng cấp
+- Tạo `PotentialOptionsPopup`, gắn `PotentialUpgradeOptionsPopupView`
+- Tạo `OptionButtonTemplate`, gắn `PotentialUpgradeOptionButtonView`
+- Kéo ref trên `PotentialUpgradeOptionsPopupView`:
+- `Panel Root` -> `PotentialOptionsPopup`
+- `Panel Transform` -> `PotentialOptionsPopup`
+- `Title Text` -> `PopupTitleText`
+- `Options Root` -> `OptionsRoot`
+- `Option Template` -> `OptionButtonTemplate`
+- Kéo ref trên `PotentialUpgradeOptionButtonView`:
+- `Button` -> `OptionButtonTemplate`
+- `Label Text` -> `OptionLabelText`
+- `PotentialOptionsPopup` nên có `Image` hoặc `Graphic` ở root nếu bạn muốn nó bắt được raycast ổn định khi rê chuột vào popup
+
+6. Catalog icon/tên stat
+- Tạo asset:
+- `Create > PhamNhanOnline > UI > Potential Stat Presentation Catalog`
+- path gợi ý:
+- `Assets/Game/Content/ScriptableObjects/UI/PotentialStatPresentationCatalog.asset`
+- Với từng stat, điền:
+- `Target`
+- `Display Name`
+- `Icon Sprite`
+- `Value Format`
+- `Gain Format`
+- Mapping tối thiểu nên có:
+- `BaseHp`
+- `BaseMp`
+- `BaseAttack`
+- `BaseSpeed`
+- `BaseFortune`
+- `BaseSpiritualSense`
+
+7. Wiring cuối cùng trên `WorldPotentialPanelController`
+- `Realm Name Text` -> `RealmNameText`
+- `Cultivation Progress Text` -> `CultivationProgressText`
+- `Unallocated Potential Text` -> `UnallocatedPotentialText`
+- `Status Text` -> `StatusText`
+- `Breakthrough Root` -> `BreakthroughSection`
+- `Breakthrough Chance Text` -> `BreakthroughChanceText`
+- `Breakthrough Button` -> `BreakthroughButton`
+- `Breakthrough Button Text` -> `BreakthroughButtonText`
+- `Row List View` -> `PotentialRowsList`
+- `Options Popup View` -> `PotentialOptionsPopup`
+- `Presentation Catalog` -> `PotentialStatPresentationCatalog.asset`
+- `Max Visible Upgrade Options` -> `3` nếu muốn đúng phase hiện tại
+
+8. Hành vi hiện tại của panel
+- Header lấy từ server:
+- tên cảnh giới hiện tại
+- tu vi hiện tại
+- tu vi tối đa của cảnh giới
+- tỉ lệ đột phá
+- cờ còn cảnh giới kế tiếp hay không
+- Hover vào một row sẽ hiện tối đa `3` lựa chọn nâng cấp lớn nhất từ cao xuống thấp
+- Click một lựa chọn sẽ gọi `AllocatePotentialPacket`
+- Nếu đang viên mãn cảnh giới và còn cảnh giới kế tiếp, panel sẽ hiện nút đột phá
+- Click nút đột phá sẽ gọi `BreakthroughPacket`
+- Thành công hay thất bại đều tự refresh lại UI theo packet server trả về
+
+9. Gợi ý raycast
+- `PotentialRowTemplate` root nên có `Image` hoặc `Button` với `Raycast Target = true`
+- `HoverHighlight`, icon trang trí, background trang trí không cần bắt chuột thì nên tắt `Raycast Target`
+- popup root và nút lựa chọn nên bắt raycast để người chơi di chuột từ row sang popup mà không bị mất lựa chọn ngay
+
 ## Naming rules
 
 Use clear scene roots so another developer can understand quickly:
