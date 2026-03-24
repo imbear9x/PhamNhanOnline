@@ -355,7 +355,10 @@ public sealed class MapInstance
             if (resolvedReward.IsDestroyed)
             {
                 GroundRewards.Remove(resolvedReward);
-                _pendingGroundRewardDespawns.Enqueue(new GroundRewardDespawnRuntimeEvent(resolvedReward.Id));
+                _pendingGroundRewardDespawns.Enqueue(new GroundRewardDespawnRuntimeEvent(
+                    resolvedReward.Id,
+                    resolvedReward.GetPlayerItemIds(),
+                    DestroyItems: true));
                 failureCode = MessageCode.GroundRewardExpired;
                 return false;
             }
@@ -368,7 +371,10 @@ public sealed class MapInstance
             }
 
             GroundRewards.Remove(resolvedReward);
-            _pendingGroundRewardDespawns.Enqueue(new GroundRewardDespawnRuntimeEvent(resolvedReward.Id));
+            _pendingGroundRewardDespawns.Enqueue(new GroundRewardDespawnRuntimeEvent(
+                resolvedReward.Id,
+                resolvedReward.GetPlayerItemIds(),
+                DestroyItems: false));
             reward = resolvedReward;
             return true;
         }
@@ -561,7 +567,10 @@ public sealed class MapInstance
             if (reward.IsDestroyed)
             {
                 GroundRewards.RemoveAt(index);
-                _pendingGroundRewardDespawns.Enqueue(new GroundRewardDespawnRuntimeEvent(reward.Id));
+                _pendingGroundRewardDespawns.Enqueue(new GroundRewardDespawnRuntimeEvent(
+                    reward.Id,
+                    reward.GetPlayerItemIds(),
+                    DestroyItems: true));
             }
         }
 
@@ -679,7 +688,10 @@ public readonly record struct EnemyHpChangedRuntimeEvent(
 
 public sealed record GroundRewardSpawnRuntimeEvent(GroundRewardEntity Reward);
 
-public readonly record struct GroundRewardDespawnRuntimeEvent(int RewardId);
+public readonly record struct GroundRewardDespawnRuntimeEvent(
+    int RewardId,
+    IReadOnlyList<long> PlayerItemIds,
+    bool DestroyItems);
 
 public readonly record struct PlayerDamageRuntimeEvent(
     Guid TargetPlayerId,

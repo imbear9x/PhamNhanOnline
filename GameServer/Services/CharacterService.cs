@@ -38,7 +38,6 @@ public sealed class CharacterService
     private readonly RealmTemplateRepository _realmTemplates;
     private readonly GameTimeService _gameTimeService;
     private readonly MapCatalog _mapCatalog;
-    private readonly CharacterBaseStatsComposer _baseStatsComposer;
     private readonly PotentialStatCatalog _potentialStatCatalog;
 
     public CharacterService(
@@ -51,7 +50,6 @@ public sealed class CharacterService
         RealmTemplateRepository realmTemplates,
         GameTimeService gameTimeService,
         MapCatalog mapCatalog,
-        CharacterBaseStatsComposer baseStatsComposer,
         PotentialStatCatalog potentialStatCatalog)
     {
         _db = db;
@@ -63,7 +61,6 @@ public sealed class CharacterService
         _realmTemplates = realmTemplates;
         _gameTimeService = gameTimeService;
         _mapCatalog = mapCatalog;
-        _baseStatsComposer = baseStatsComposer;
         _potentialStatCatalog = potentialStatCatalog;
     }
 
@@ -121,7 +118,7 @@ public sealed class CharacterService
         await EnsureHomeCaveAsync(character.Id, cancellationToken);
         await tx.CommitAsync(cancellationToken);
 
-        var baseStatsDto = AttachPotentialPreviews(_baseStatsComposer.Compose(CharacterBaseStatsDto.FromEntity(baseStat, realmLifespan)));
+        var baseStatsDto = AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(baseStat, realmLifespan));
         return new CharacterSnapshotDto(
             CharacterDto.FromEntity(character),
             baseStatsDto,
@@ -148,7 +145,7 @@ public sealed class CharacterService
             ? null
             : await GetRealmLifespanAsync(row.BaseStats.RealmId, cancellationToken);
         var characterDto = CharacterDto.FromEntity(row.Character);
-        var baseStatsDto = row.BaseStats is null ? null : AttachPotentialPreviews(_baseStatsComposer.Compose(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan)));
+        var baseStatsDto = row.BaseStats is null ? null : AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan));
         var currentStateDto = row.CurrentState is null ? null : CharacterCurrentStateDto.FromEntity(row.CurrentState);
         return new CharacterSnapshotDto(characterDto, baseStatsDto, currentStateDto);
     }
@@ -170,7 +167,7 @@ public sealed class CharacterService
             ? null
             : await GetRealmLifespanAsync(row.BaseStats.RealmId, cancellationToken);
         var characterDto = CharacterDto.FromEntity(row.Character);
-        var baseStatsDto = row.BaseStats is null ? null : AttachPotentialPreviews(_baseStatsComposer.Compose(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan)));
+        var baseStatsDto = row.BaseStats is null ? null : AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan));
         var currentStateDto = row.CurrentState is null ? null : CharacterCurrentStateDto.FromEntity(row.CurrentState);
         return new CharacterSnapshotDto(characterDto, baseStatsDto, currentStateDto);
     }
@@ -198,7 +195,7 @@ public sealed class CharacterService
                 ? null
                 : await GetRealmLifespanAsync(row.BaseStats.RealmId, cancellationToken);
             var characterDto = CharacterDto.FromEntity(row.Character);
-            var baseStatsDto = row.BaseStats is null ? null : AttachPotentialPreviews(_baseStatsComposer.Compose(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan)));
+            var baseStatsDto = row.BaseStats is null ? null : AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(row.BaseStats, realmLifespan));
             var currentStateDto = row.CurrentState is null ? null : CharacterCurrentStateDto.FromEntity(row.CurrentState);
             result.Add(new CharacterSnapshotDto(characterDto, baseStatsDto, currentStateDto));
         }
@@ -251,14 +248,14 @@ public sealed class CharacterService
         if (existing is not null)
         {
             var existingRealmLifespan = await GetRealmLifespanAsync(existing.RealmId, cancellationToken);
-            return AttachPotentialPreviews(_baseStatsComposer.Compose(CharacterBaseStatsDto.FromEntity(existing, existingRealmLifespan)));
+            return AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(existing, existingRealmLifespan));
         }
 
         var entity = BuildDefaultCharacterBaseStats(characterId);
 
         await _baseStats.CreateAsync(entity, cancellationToken);
         var realmLifespan = await GetRealmLifespanAsync(entity.RealmId, cancellationToken);
-        return AttachPotentialPreviews(_baseStatsComposer.Compose(CharacterBaseStatsDto.FromEntity(entity, realmLifespan)));
+        return AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(entity, realmLifespan));
     }
 
     public async Task<CharacterBaseStatsDto> UpdateCharacterBaseStatsAsync(
@@ -271,22 +268,16 @@ public sealed class CharacterService
 
         existing.RealmId = stats.RealmTemplateId;
         existing.Cultivation = stats.Cultivation;
-        existing.BaseHp = stats.RawBaseHp ?? stats.BaseHp;
-        existing.BaseMp = stats.RawBaseMp ?? stats.BaseMp;
-        existing.BaseAttack = stats.RawBaseAttack ?? stats.BaseAttack;
-        existing.BaseSpeed = stats.RawBaseSpeed ?? stats.BaseSpeed;
-        existing.BaseSpiritualSense = stats.RawBaseSpiritualSense ?? stats.BaseSpiritualSense;
-        existing.BaseStamina = stats.RawBaseStamina ?? stats.BaseStamina;
+        existing.BaseHp = stats.BaseHp;
+        existing.BaseMp = stats.BaseMp;
+        existing.BaseAttack = stats.BaseAttack;
+        existing.BaseSpeed = stats.BaseSpeed;
+        existing.BaseSpiritualSense = stats.BaseSpiritualSense;
+        existing.BaseStamina = stats.BaseStamina;
         existing.LifespanBonus = stats.LifespanBonus;
-        existing.BaseFortune = stats.RawBaseFortune ?? stats.BaseFortune;
+        existing.BaseFortune = stats.BaseFortune;
         existing.BasePotential = stats.BasePotential;
         existing.UnallocatedPotential = stats.UnallocatedPotential;
-        existing.BonusHp = stats.BonusHp;
-        existing.BonusMp = stats.BonusMp;
-        existing.BonusAttack = stats.BonusAttack;
-        existing.BonusSpeed = stats.BonusSpeed;
-        existing.BonusSpiritualSense = stats.BonusSpiritualSense;
-        existing.BonusFortune = stats.BonusFortune;
         existing.HpUpgradeCount = stats.HpUpgradeCount;
         existing.MpUpgradeCount = stats.MpUpgradeCount;
         existing.AttackUpgradeCount = stats.AttackUpgradeCount;
@@ -299,7 +290,7 @@ public sealed class CharacterService
 
         await _baseStats.UpdateAsync(existing, cancellationToken);
         var realmLifespan = await GetRealmLifespanAsync(existing.RealmId, cancellationToken);
-        return AttachPotentialPreviews(_baseStatsComposer.Compose(CharacterBaseStatsDto.FromEntity(existing, realmLifespan)));
+        return AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(existing, realmLifespan));
     }
 
     public async Task<CharacterCurrentStateDto?> GetCharacterCurrentStateAsync(
@@ -364,6 +355,14 @@ public sealed class CharacterService
         CharacterCurrentStateDto currentState,
         CancellationToken cancellationToken = default)
     {
+        return await UpdateCharacterRuntimeSnapshotAsync(baseStats, currentState, cancellationToken);
+    }
+
+    public async Task<CharacterSnapshotDto> UpdateCharacterRuntimeSnapshotAsync(
+        CharacterBaseStatsDto baseStats,
+        CharacterCurrentStateDto currentState,
+        CancellationToken cancellationToken = default)
+    {
         await using var tx = await _db.BeginTransactionAsync(cancellationToken);
         var updatedBaseStats = await UpdateCharacterBaseStatsAsync(baseStats, cancellationToken);
         var updatedCurrentState = await UpdateCharacterCurrentStateAsync(currentState, cancellationToken);
@@ -386,9 +385,9 @@ public sealed class CharacterService
         int? realmLifespan,
         GameTimeSnapshot gameTime)
     {
-        var effectiveBaseStats = AttachPotentialPreviews(_baseStatsComposer.Compose(CharacterBaseStatsDto.FromEntity(
+        var effectiveBaseStats = AttachPotentialPreviews(CharacterBaseStatsDto.FromEntity(
             baseStat ?? BuildDefaultCharacterBaseStats(characterId),
-            realmLifespan ?? DefaultRealmLifespan)));
+            realmLifespan ?? DefaultRealmLifespan));
         var lifespanEndGameMinute = CharacterLifespanRules.CreateLifespanEndGameMinute(
             effectiveBaseStats,
             gameTime,
@@ -398,9 +397,9 @@ public sealed class CharacterService
         return new CharacterCurrentState
         {
             CharacterId = characterId,
-            CurrentHp = effectiveBaseStats.BaseHp ?? DefaultBaseHp,
-            CurrentMp = effectiveBaseStats.BaseMp ?? DefaultBaseMp,
-            CurrentStamina = effectiveBaseStats.BaseStamina ?? DefaultBaseStamina,
+            CurrentHp = effectiveBaseStats.GetEffectiveHp(),
+            CurrentMp = effectiveBaseStats.GetEffectiveMp(),
+            CurrentStamina = effectiveBaseStats.GetEffectiveStamina(),
             LifespanEndGameMinute = lifespanEndGameMinute,
             CurrentMapId = homeDefinition.MapId,
             CurrentZoneIndex = homeDefinition.DefaultZoneIndex,
@@ -431,12 +430,6 @@ public sealed class CharacterService
             BaseFortune = DefaultBaseFortune,
             BasePotential = DefaultBasePotential,
             UnallocatedPotential = DefaultUnallocatedPotential,
-            BonusHp = 0,
-            BonusMp = 0,
-            BonusAttack = 0,
-            BonusSpeed = 0,
-            BonusSpiritualSense = 0,
-            BonusFortune = 0,
             HpUpgradeCount = 0,
             MpUpgradeCount = 0,
             AttackUpgradeCount = 0,

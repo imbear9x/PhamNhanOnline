@@ -65,13 +65,7 @@ public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewar
         }
 
         foreach (var item in reward.Items)
-        {
-            await _itemService.AddItemAsync(
-                player.CharacterData.CharacterId,
-                item.ItemTemplateId,
-                item.Quantity,
-                item.IsBound);
-        }
+            await _itemService.MoveGroundItemToInventoryAsync(player.CharacterData.CharacterId, item.PlayerItemId, CancellationToken.None);
 
         _network.Send(session.ConnectionId, new PickupGroundRewardResultPacket
         {

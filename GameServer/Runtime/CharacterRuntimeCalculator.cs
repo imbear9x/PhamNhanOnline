@@ -19,8 +19,8 @@ public sealed class CharacterRuntimeCalculator
             CurrentHp = hpAfter,
             IsDead = isDead,
             CurrentState = isDead ? CharacterRuntimeStateCodes.Dead : currentState.CurrentState,
-            CurrentMp = Clamp(currentState.CurrentMp, 0, baseStats.BaseMp ?? currentState.CurrentMp),
-            CurrentStamina = Clamp(currentState.CurrentStamina, 0, baseStats.BaseStamina ?? currentState.CurrentStamina),
+            CurrentMp = Clamp(currentState.CurrentMp, 0, baseStats.GetEffectiveMp()),
+            CurrentStamina = Clamp(currentState.CurrentStamina, 0, baseStats.GetEffectiveStamina()),
         };
     }
 
@@ -30,9 +30,9 @@ public sealed class CharacterRuntimeCalculator
         int hpDelta,
         int mpDelta)
     {
-        var maxHp = baseStats.BaseHp ?? currentState.CurrentHp;
-        var maxMp = baseStats.BaseMp ?? currentState.CurrentMp;
-        var maxStamina = baseStats.BaseStamina ?? currentState.CurrentStamina;
+        var maxHp = baseStats.GetEffectiveHp();
+        var maxMp = baseStats.GetEffectiveMp();
+        var maxStamina = baseStats.GetEffectiveStamina();
         var hp = Clamp(currentState.CurrentHp + hpDelta, 0, maxHp);
         var mp = Clamp(currentState.CurrentMp + mpDelta, 0, maxMp);
         var stamina = Clamp(currentState.CurrentStamina, 0, maxStamina);
@@ -52,9 +52,9 @@ public sealed class CharacterRuntimeCalculator
         CharacterBaseStatsDto baseStats,
         CharacterCurrentStateDto currentState)
     {
-        var maxHp = baseStats.BaseHp ?? currentState.CurrentHp;
-        var maxMp = baseStats.BaseMp ?? currentState.CurrentMp;
-        var maxStamina = baseStats.BaseStamina ?? currentState.CurrentStamina;
+        var maxHp = baseStats.GetEffectiveHp();
+        var maxMp = baseStats.GetEffectiveMp();
+        var maxStamina = baseStats.GetEffectiveStamina();
         var hp = Clamp(currentState.CurrentHp, 0, maxHp);
         var mp = Clamp(currentState.CurrentMp, 0, maxMp);
         var stamina = Clamp(currentState.CurrentStamina, 0, maxStamina);

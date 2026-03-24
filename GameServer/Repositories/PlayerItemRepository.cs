@@ -1,4 +1,5 @@
 using GameServer.Entities;
+using GameServer.Runtime;
 using LinqToDB;
 using LinqToDB.Async;
 
@@ -15,7 +16,7 @@ public sealed class PlayerItemRepository
 
     public Task<List<PlayerItemEntity>> ListByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken = default) =>
         _db.GetTable<PlayerItemEntity>()
-            .Where(x => x.PlayerId == playerId)
+            .Where(x => x.PlayerId == playerId && x.LocationType == (int)ItemLocationType.Inventory)
             .OrderBy(x => x.AcquiredAt)
             .ThenBy(x => x.Id)
             .ToListAsync(cancellationToken);
@@ -35,7 +36,34 @@ public sealed class PlayerItemRepository
 
     public Task<List<PlayerItemEntity>> ListByTemplateIdAsync(Guid playerId, int itemTemplateId, CancellationToken cancellationToken = default) =>
         _db.GetTable<PlayerItemEntity>()
-            .Where(x => x.PlayerId == playerId && x.ItemTemplateId == itemTemplateId)
+            .Where(x => x.PlayerId == playerId && x.LocationType == (int)ItemLocationType.Inventory && x.ItemTemplateId == itemTemplateId)
+            .OrderBy(x => x.AcquiredAt)
+            .ThenBy(x => x.Id)
+            .ToListAsync(cancellationToken);
+
+    public Task<List<PlayerItemEntity>> ListByTemplateAndLocationAsync(
+        Guid? playerId,
+        int itemTemplateId,
+        ItemLocationType locationType,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _db.GetTable<PlayerItemEntity>()
+            .Where(x => x.LocationType == (int)locationType && x.ItemTemplateId == itemTemplateId);
+
+        if (playerId.HasValue)
+            query = query.Where(x => x.PlayerId == playerId.Value);
+        else
+            query = query.Where(x => x.PlayerId == null);
+
+        return query
+            .OrderBy(x => x.AcquiredAt)
+            .ThenBy(x => x.Id)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<List<PlayerItemEntity>> ListByLocationAsync(ItemLocationType locationType, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerItemEntity>()
+            .Where(x => x.LocationType == (int)locationType)
             .OrderBy(x => x.AcquiredAt)
             .ThenBy(x => x.Id)
             .ToListAsync(cancellationToken);

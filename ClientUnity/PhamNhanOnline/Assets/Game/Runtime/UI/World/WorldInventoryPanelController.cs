@@ -160,19 +160,19 @@ namespace PhamNhanOnline.Client.UI.World
             var stats = baseStats.Value;
             var hpValue = useCurrentValuesForHpMp && currentState.HasValue
                 ? currentState.Value.CurrentHp
-                : stats.BaseHp;
+                : GetTotalHp(stats);
             var mpValue = useCurrentValuesForHpMp && currentState.HasValue
                 ? currentState.Value.CurrentMp
-                : stats.BaseMp;
+                : GetTotalMp(stats);
 
             var entries = new[]
             {
                 new StatLineListView.Entry("HP", hpValue.ToString(CultureInfo.InvariantCulture)),
                 new StatLineListView.Entry("MP", mpValue.ToString(CultureInfo.InvariantCulture)),
-                new StatLineListView.Entry("ATK", stats.BaseAttack.ToString(CultureInfo.InvariantCulture)),
-                new StatLineListView.Entry("Speed", stats.BaseSpeed.ToString(CultureInfo.InvariantCulture)),
-                new StatLineListView.Entry("Co duyen", stats.BaseFortune.ToString("0.##", CultureInfo.InvariantCulture)),
-                new StatLineListView.Entry("Than thuc", stats.BaseSpiritualSense.ToString(CultureInfo.InvariantCulture)),
+                new StatLineListView.Entry("ATK", GetTotalAttack(stats).ToString(CultureInfo.InvariantCulture)),
+                new StatLineListView.Entry("Speed", GetTotalSpeed(stats).ToString(CultureInfo.InvariantCulture)),
+                new StatLineListView.Entry("Co duyen", GetTotalFortune(stats).ToString("0.##", CultureInfo.InvariantCulture)),
+                new StatLineListView.Entry("Than thuc", GetTotalSpiritualSense(stats).ToString(CultureInfo.InvariantCulture)),
             };
 
             ApplyStatEntries(entries, force);
@@ -515,6 +515,36 @@ namespace PhamNhanOnline.Client.UI.World
         private static string ResolveCharacterName(string rawName)
         {
             return string.IsNullOrWhiteSpace(rawName) ? "-" : rawName.Trim();
+        }
+
+        private static int GetTotalHp(CharacterBaseStatsModel stats)
+        {
+            return stats.FinalHp;
+        }
+
+        private static int GetTotalMp(CharacterBaseStatsModel stats)
+        {
+            return stats.FinalMp;
+        }
+
+        private static int GetTotalAttack(CharacterBaseStatsModel stats)
+        {
+            return stats.FinalAttack;
+        }
+
+        private static int GetTotalSpeed(CharacterBaseStatsModel stats)
+        {
+            return stats.FinalSpeed;
+        }
+
+        private static int GetTotalSpiritualSense(CharacterBaseStatsModel stats)
+        {
+            return stats.FinalSpiritualSense;
+        }
+
+        private static double GetTotalFortune(CharacterBaseStatsModel stats)
+        {
+            return stats.FinalFortune;
         }
 
         private static string BuildStatSnapshot(IReadOnlyList<StatLineListView.Entry> entries)

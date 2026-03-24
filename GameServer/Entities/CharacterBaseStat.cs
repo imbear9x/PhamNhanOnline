@@ -29,12 +29,6 @@ namespace GameServer.Entities
 		[Column("base_fortune"                             )] public double? BaseFortune          { get; set; } // double precision
 		[Column("base_potential"                           )] public int?    BasePotential        { get; set; } // integer
 		[Column("unallocated_potential"                    )] public int?    UnallocatedPotential { get; set; } // integer
-		[Column("bonus_hp"                                 )] public int?    BonusHp              { get; set; } // integer
-		[Column("bonus_mp"                                 )] public int?    BonusMp              { get; set; } // integer
-		[Column("bonus_attack"                             )] public int?    BonusAttack          { get; set; } // integer
-		[Column("bonus_speed"                              )] public int?    BonusSpeed           { get; set; } // integer
-		[Column("bonus_spiritual_sense"                    )] public int?    BonusSpiritualSense  { get; set; } // integer
-		[Column("bonus_fortune"                            )] public double? BonusFortune         { get; set; } // double precision
 		[Column("hp_upgrade_count"                         )] public int?    HpUpgradeCount       { get; set; } // integer
 		[Column("mp_upgrade_count"                         )] public int?    MpUpgradeCount       { get; set; } // integer
 		[Column("attack_upgrade_count"                     )] public int?    AttackUpgradeCount   { get; set; } // integer

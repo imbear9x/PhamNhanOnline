@@ -11,16 +11,16 @@ namespace GameServer.Network.Handlers;
 public sealed class SetActiveMartialArtHandler : IPacketHandler<SetActiveMartialArtPacket>
 {
     private readonly MartialArtService _martialArtService;
-    private readonly CharacterRuntimeNotifier _notifier;
+    private readonly CharacterFinalStatService _characterFinalStatService;
     private readonly INetworkSender _network;
 
     public SetActiveMartialArtHandler(
         MartialArtService martialArtService,
-        CharacterRuntimeNotifier notifier,
+        CharacterFinalStatService characterFinalStatService,
         INetworkSender network)
     {
         _martialArtService = martialArtService;
-        _notifier = notifier;
+        _characterFinalStatService = characterFinalStatService;
         _network = network;
     }
 
@@ -43,13 +43,13 @@ public sealed class SetActiveMartialArtHandler : IPacketHandler<SetActiveMartial
                 packet.MartialArtId!.Value);
 
             session.Player.RuntimeState.UpdateBaseStats(_ => updatedBaseStats);
-            _notifier.NotifyBaseStatsChanged(session.Player, updatedBaseStats);
+            var runtimeSnapshot = await _characterFinalStatService.ApplyAuthoritativeFinalStatsAsync(session.Player);
 
             _network.Send(session.ConnectionId, new SetActiveMartialArtResultPacket
             {
                 Success = true,
                 Code = MessageCode.None,
-                BaseStats = updatedBaseStats.ToModel()
+                BaseStats = runtimeSnapshot.BaseStats.ToModel()
             });
         }
         catch (GameException ex)

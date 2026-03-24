@@ -11,6 +11,7 @@ namespace GameServer.Network.Handlers;
 public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPacket>
 {
     private readonly CharacterService _characterService;
+    private readonly CharacterFinalStatService _characterFinalStatService;
     private readonly CharacterLifecycleService _lifecycleService;
     private readonly CharacterCultivationService _cultivationService;
     private readonly INetworkSender _server;
@@ -18,12 +19,14 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
 
     public GetCharacterDataHandler(
         CharacterService characterService,
+        CharacterFinalStatService characterFinalStatService,
         CharacterLifecycleService lifecycleService,
         CharacterCultivationService cultivationService,
         INetworkSender server,
         GameTimeService gameTimeService)
     {
         _characterService = characterService;
+        _characterFinalStatService = characterFinalStatService;
         _lifecycleService = lifecycleService;
         _cultivationService = cultivationService;
         _server = server;
@@ -51,6 +54,7 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
             var cultivationSettlement = await _cultivationService.SettleSnapshotAsync(data);
             data = cultivationSettlement.Snapshot;
             data = await _lifecycleService.PrepareSnapshotForWorldEntryAsync(data);
+            data = await _characterFinalStatService.ApplyFinalStatsToSnapshotAsync(data);
             var isLifespanExpired = _lifecycleService.IsLifespanExpired(data.CurrentState);
 
             _server.Send(session.ConnectionId, new GetCharacterDataResultPacket

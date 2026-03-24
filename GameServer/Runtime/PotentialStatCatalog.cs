@@ -108,6 +108,18 @@ public sealed class PotentialStatCatalog
         return null;
     }
 
+    public FlatStatBonusBundle ResolveAllocatedBonuses(CharacterBaseStatsDto baseStats)
+    {
+        var total = FlatStatBonusBundle.Empty;
+        total = total with { Hp = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseHp) };
+        total = total with { Mp = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseMp) };
+        total = total with { Attack = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseAttack) };
+        total = total with { Speed = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseSpeed) };
+        total = total with { SpiritualSense = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseSpiritualSense) };
+        total = total with { Fortune = ResolveAllocatedFortuneBonus(baseStats) };
+        return total;
+    }
+
     public readonly record struct PotentialStatUpgradeTier(
         PotentialAllocationTarget Target,
         int TierIndex,
@@ -127,5 +139,48 @@ public sealed class PotentialStatCatalog
             PotentialAllocationTarget.BaseFortune => baseStats.FortuneUpgradeCount ?? 0,
             _ => 0
         };
+    }
+
+    private int ResolveAllocatedIntBonus(CharacterBaseStatsDto baseStats, PotentialAllocationTarget target)
+    {
+        var totalGain = ResolveAllocatedGain(baseStats, target);
+        return decimal.ToInt32(decimal.Truncate(totalGain));
+    }
+
+    private double ResolveAllocatedFortuneBonus(CharacterBaseStatsDto baseStats)
+    {
+        return (double)ResolveAllocatedGain(baseStats, PotentialAllocationTarget.BaseFortune);
+    }
+
+    private decimal ResolveAllocatedGain(CharacterBaseStatsDto baseStats, PotentialAllocationTarget target)
+    {
+        if (!_tiersByTarget.TryGetValue(target, out var tiers) || tiers.Count == 0)
+            return 0m;
+
+        var appliedUpgrades = GetUpgradeCount(baseStats, target);
+        if (appliedUpgrades <= 0)
+            return 0m;
+
+        decimal totalGain = 0m;
+        var remainingUpgrades = appliedUpgrades;
+        var previousTierMax = 0;
+
+        for (var i = 0; i < tiers.Count && remainingUpgrades > 0; i++)
+        {
+            var tier = tiers[i];
+            var tierCapacity = Math.Max(0, tier.MaxUpgradeCount - previousTierMax);
+            if (tierCapacity <= 0)
+            {
+                previousTierMax = tier.MaxUpgradeCount;
+                continue;
+            }
+
+            var appliedInTier = Math.Min(remainingUpgrades, tierCapacity);
+            totalGain += tier.StatGainPerUpgrade * appliedInTier;
+            remainingUpgrades -= appliedInTier;
+            previousTierMax = tier.MaxUpgradeCount;
+        }
+
+        return totalGain;
     }
 }

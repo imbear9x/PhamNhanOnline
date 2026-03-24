@@ -234,23 +234,33 @@ internal sealed class TableEditorControl : UserControl
     public bool TryGetSelectedInt(string columnName, out int value)
     {
         value = default;
+        if (!TryGetSelectedRow(out var row))
+            return false;
+
+        if (!_table?.Columns.Contains(columnName) ?? true)
+            return false;
+
+        var rawValue = row[columnName];
+        if (rawValue == DBNull.Value)
+            return false;
+
+        value = Convert.ToInt32(rawValue);
+        return true;
+    }
+
+    public bool TryGetSelectedRow(out DataRow row)
+    {
+        row = null!;
         if (_grid.CurrentRow is not DataGridViewRow currentRow || !currentRow.Visible)
             return false;
 
         if (currentRow.DataBoundItem is not DataRowView rowView)
             return false;
 
-        if (!_table?.Columns.Contains(columnName) ?? true)
-            return false;
-
         if (!ReferenceEquals(rowView.Row.Table, _table) || rowView.Row.RowState == DataRowState.Deleted)
             return false;
 
-        var rawValue = rowView.Row[columnName];
-        if (rawValue == DBNull.Value)
-            return false;
-
-        value = Convert.ToInt32(rawValue);
+        row = rowView.Row;
         return true;
     }
 

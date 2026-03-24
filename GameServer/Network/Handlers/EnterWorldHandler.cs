@@ -13,6 +13,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
 {
     private readonly CharacterService _characterService;
     private readonly CharacterRuntimeService _runtimeService;
+    private readonly CharacterFinalStatService _characterFinalStatService;
     private readonly CharacterLifecycleService _lifecycleService;
     private readonly CharacterCultivationService _cultivationService;
     private readonly WorldInterestService _interestService;
@@ -22,6 +23,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
     public EnterWorldHandler(
         CharacterService characterService,
         CharacterRuntimeService runtimeService,
+        CharacterFinalStatService characterFinalStatService,
         CharacterLifecycleService lifecycleService,
         CharacterCultivationService cultivationService,
         WorldInterestService interestService,
@@ -30,6 +32,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
     {
         _characterService = characterService;
         _runtimeService = runtimeService;
+        _characterFinalStatService = characterFinalStatService;
         _lifecycleService = lifecycleService;
         _cultivationService = cultivationService;
         _interestService = interestService;
@@ -69,7 +72,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
                 session.AreCharacterActionsRestricted = true;
             }
 
-            var runtimeSnapshot = player.RuntimeState.CaptureSnapshot();
+            var runtimeSnapshot = await _characterFinalStatService.ApplyAuthoritativeFinalStatsAsync(player);
 
             _server.Send(session.ConnectionId, new EnterWorldResultPacket
             {

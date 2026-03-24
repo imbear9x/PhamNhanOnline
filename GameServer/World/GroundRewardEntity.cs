@@ -43,4 +43,9 @@ public sealed class GroundRewardEntity
         if (utcNow >= DestroyAtUtc)
             IsDestroyed = true;
     }
+
+    public IReadOnlyList<long> GetPlayerItemIds()
+    {
+        return Items.Select(static x => x.PlayerItemId).ToArray();
+    }
 }

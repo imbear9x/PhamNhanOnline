@@ -74,6 +74,23 @@ internal static class AdminDependencyCatalog
             [
                 Check("Equipment template", "select count(*) from public.equipment_templates;", "Can tao it nhat 1 Equipment Template truoc khi them Equipment Template Stats.")
             ],
+            ["player_items"] =
+            [
+                Check("Character", "select count(*) from public.characters;", "Can tao it nhat 1 Character truoc khi them Player Items."),
+                Check("Item template", "select count(*) from public.item_templates;", "Can tao it nhat 1 Item Template truoc khi them Player Items.")
+            ],
+            ["player_equipments"] =
+            [
+                Check("Equipment item instance", """
+                    select count(*)
+                    from public.player_items pi
+                    inner join public.equipment_templates et on et.item_template_id = pi.item_template_id;
+                    """, "Can tao it nhat 1 Player Item co item_template la Equipment truoc khi them Player Equipments.")
+            ],
+            ["player_equipment_stat_bonuses"] =
+            [
+                Check("Player equipment", "select count(*) from public.player_equipments;", "Can tao it nhat 1 Player Equipment truoc khi them Player Equipment Stat Bonuses.")
+            ],
             ["martial_art_book_templates"] =
             [
                 Check("Martial art book item", "select count(*) from public.item_templates where item_type = 5;", "Can tao it nhat 1 Item Template co loai MartialArtBook truoc khi them Martial Art Books."),

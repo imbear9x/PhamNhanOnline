@@ -267,10 +267,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private int ResolveBaseSpeedPercent()
         {
             var baseStats = ClientRuntime.Character.BaseStats;
-            if (!baseStats.HasValue || baseStats.Value.BaseSpeed <= 0)
+            if (!baseStats.HasValue)
                 return 100;
 
-            return baseStats.Value.BaseSpeed;
+            var totalSpeed = baseStats.Value.FinalSpeed;
+            if (totalSpeed <= 0)
+                return 100;
+
+            return totalSpeed;
         }
 
         private const int CultivatingStateCode = 3;

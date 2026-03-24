@@ -12,17 +12,20 @@ namespace GameServer.Network.Handlers;
 public sealed class EquipInventoryItemHandler : IPacketHandler<EquipInventoryItemPacket>
 {
     private readonly EquipmentService _equipmentService;
+    private readonly CharacterFinalStatService _characterFinalStatService;
     private readonly ItemService _itemService;
     private readonly GameTimeService _gameTimeService;
     private readonly INetworkSender _network;
 
     public EquipInventoryItemHandler(
         EquipmentService equipmentService,
+        CharacterFinalStatService characterFinalStatService,
         ItemService itemService,
         GameTimeService gameTimeService,
         INetworkSender network)
     {
         _equipmentService = equipmentService;
+        _characterFinalStatService = characterFinalStatService;
         _itemService = itemService;
         _gameTimeService = gameTimeService;
         _network = network;
@@ -54,16 +57,16 @@ public sealed class EquipInventoryItemHandler : IPacketHandler<EquipInventoryIte
 
             var slot = (EquipmentSlot)packet.Slot!.Value;
             await _equipmentService.EquipItemAsync(session.Player.CharacterData.CharacterId, packet.PlayerItemId!.Value, slot);
+            var runtimeSnapshot = await _characterFinalStatService.ApplyAuthoritativeFinalStatsAsync(session.Player);
             var items = await _itemService.GetInventoryAsync(session.Player.CharacterData.CharacterId);
-            var snapshot = session.Player.RuntimeState.CaptureSnapshot();
 
             _network.Send(session.ConnectionId, new EquipInventoryItemResultPacket
             {
                 Success = true,
                 Code = MessageCode.None,
                 Items = items.Select(x => x.ToModel()).ToList(),
-                BaseStats = snapshot.BaseStats.ToModel(),
-                CurrentState = snapshot.CurrentState.ToModel(_gameTimeService.GetCurrentSnapshot())
+                BaseStats = runtimeSnapshot.BaseStats.ToModel(),
+                CurrentState = runtimeSnapshot.CurrentState.ToModel(_gameTimeService.GetCurrentSnapshot())
             });
         }
         catch (GameException ex)

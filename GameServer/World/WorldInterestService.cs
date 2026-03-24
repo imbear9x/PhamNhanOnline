@@ -156,8 +156,8 @@ public sealed class WorldInterestService
     public void NotifyCurrentStateChanged(PlayerSession player, CharacterCurrentStateDto currentState)
     {
         var snapshot = player.RuntimeState.CaptureSnapshot();
-        var maxHp = snapshot.BaseStats.BaseHp ?? 0;
-        var maxMp = snapshot.BaseStats.BaseMp ?? 0;
+        var maxHp = snapshot.BaseStats.GetEffectiveHp();
+        var maxMp = snapshot.BaseStats.GetEffectiveMp();
 
         foreach (var observer in GetVisiblePlayers(player))
         {

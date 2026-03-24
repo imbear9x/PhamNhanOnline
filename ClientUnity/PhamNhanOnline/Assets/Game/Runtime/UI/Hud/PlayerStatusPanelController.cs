@@ -58,10 +58,10 @@ namespace PhamNhanOnline.Client.UI.Hud
                 : defaultCharacterName;
 
             var maxHp = baseStats.HasValue
-                ? Mathf.Max(0, baseStats.Value.BaseHp)
+                ? Mathf.Max(0, baseStats.Value.FinalHp)
                 : 0;
             var maxMp = baseStats.HasValue
-                ? Mathf.Max(0, baseStats.Value.BaseMp)
+                ? Mathf.Max(0, baseStats.Value.FinalMp)
                 : 0;
 
             var currentHp = currentState.HasValue ? currentState.Value.CurrentHp : maxHp;

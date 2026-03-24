@@ -39,6 +39,7 @@ class Program
         var server = provider.GetRequiredService<NetworkServer>();
         var gameLoop = provider.GetRequiredService<GameLoop>();
         var maintenance = provider.GetRequiredService<RuntimeMaintenanceService>();
+        var groundItemRuntimeService = provider.GetRequiredService<GroundItemRuntimeService>();
         var metricsLogger = provider.GetRequiredService<ServerMetricsLoggerService>();
         using var shutdownCts = new CancellationTokenSource();
 
@@ -52,6 +53,7 @@ class Program
         try
         {
             Logger.Info("NetworkServer resolved.");
+            groundItemRuntimeService.CleanupResidualGroundItemsOnStartup();
             server.Start();
             gameLoop.Start();
             maintenance.Start();

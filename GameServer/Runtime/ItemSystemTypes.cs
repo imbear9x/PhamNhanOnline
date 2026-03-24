@@ -16,6 +16,15 @@ public enum ItemType
     HerbPlant = 12
 }
 
+public enum ItemLocationType
+{
+    Inventory = 1,
+    Ground = 2,
+    TradeHold = 3,
+    Mail = 4,
+    Storage = 5
+}
+
 public enum ItemRarity
 {
     Common = 1,

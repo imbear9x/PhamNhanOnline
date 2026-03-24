@@ -39,7 +39,20 @@ public sealed class EquipmentService
         var equipmentRows = await _playerEquipments.ListByPlayerItemIdsAsync(inventory.Select(x => x.Id).ToArray(), cancellationToken);
         var equipmentByItemId = equipmentRows.ToDictionary(x => x.PlayerItemId);
         if (!equipmentByItemId.TryGetValue(playerItemId, out var equipmentEntity))
-            return EquipmentValidationResult.Failed(GameShared.Messages.MessageCode.InventoryItemInvalid, "Trang bi chua duoc khoi tao instance equipment.");
+        {
+            equipmentEntity = new PlayerEquipmentEntity
+            {
+                PlayerItemId = playerItemId,
+                EquippedSlot = null,
+                EnhanceLevel = 0,
+                Durability = null,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _playerEquipments.CreateAsync(equipmentEntity, cancellationToken);
+            equipmentByItemId[playerItemId] = equipmentEntity;
+            equipmentRows.Add(equipmentEntity);
+        }
 
         var occupied = equipmentRows.FirstOrDefault(x => x.PlayerItemId != playerItemId && x.EquippedSlot == (int)requestedSlot);
 

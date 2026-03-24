@@ -1,4 +1,5 @@
 using GameServer.Entities;
+using GameServer.DTO;
 using GameServer.Randomness;
 using GameServer.Repositories;
 using GameServer.Services;
@@ -19,7 +20,6 @@ public sealed class EnemyRewardRuntimeService
     private readonly WorldManager _worldManager;
     private readonly CharacterRuntimeService _runtimeService;
     private readonly CharacterCultivationService _cultivationService;
-    private readonly CharacterBaseStatsComposer _baseStatsComposer;
     private readonly PotentialStatCatalog _potentialStatCatalog;
     private readonly IReadOnlyDictionary<int, RealmTemplate> _realmsById;
 
@@ -30,7 +30,6 @@ public sealed class EnemyRewardRuntimeService
         WorldManager worldManager,
         CharacterRuntimeService runtimeService,
         CharacterCultivationService cultivationService,
-        CharacterBaseStatsComposer baseStatsComposer,
         PotentialStatCatalog potentialStatCatalog)
     {
         _scopeFactory = scopeFactory;
@@ -39,7 +38,6 @@ public sealed class EnemyRewardRuntimeService
         _worldManager = worldManager;
         _runtimeService = runtimeService;
         _cultivationService = cultivationService;
-        _baseStatsComposer = baseStatsComposer;
         _potentialStatCatalog = potentialStatCatalog;
 
         using var scope = scopeFactory.CreateScope();
@@ -93,10 +91,10 @@ public sealed class EnemyRewardRuntimeService
 
                 foreach (var target in targets)
                 {
-                    var rolledItems = new List<GroundRewardItem>();
+                    var rolledItems = new List<RewardItemSeed>();
                     for (var rollIndex = 0; rollIndex < rewardRule.RollCount; rollIndex++)
                     {
-                        var fortune = target.Player.RuntimeState.CaptureSnapshot().BaseStats.BaseFortune;
+                        var fortune = target.Player.RuntimeState.CaptureSnapshot().BaseStats.GetEffectiveFortune();
                         GameRandomRollResult rollResult;
                         try
                         {
@@ -138,11 +136,7 @@ public sealed class EnemyRewardRuntimeService
                     if (rewardRule.DeliveryType != RewardDeliveryType.GroundDrop || rolledItems.Count == 0)
                         continue;
 
-                    var aggregatedItems = rolledItems
-                        .GroupBy(x => new { x.ItemTemplateId, x.IsBound })
-                        .Select(g => new GroundRewardItem(g.Key.ItemTemplateId, g.Sum(x => x.Quantity), g.Key.IsBound))
-                        .OrderBy(x => x.ItemTemplateId)
-                        .ToArray();
+                    var createdGroundItems = await CreateGroundRewardItemsAsync(itemService, rolledItems, cancellationToken);
 
                     var ownerCharacterId = rewardRule.OwnershipDurationSeconds is > 0
                         ? target.Player.CharacterData.CharacterId
@@ -156,7 +150,7 @@ public sealed class EnemyRewardRuntimeService
                         instance.AllocateGroundRewardId(),
                         ownerCharacterId,
                         death.Position,
-                        aggregatedItems,
+                        createdGroundItems,
                         utcNow,
                         freeAtUtc,
                         destroyAtUtc));
@@ -208,7 +202,7 @@ public sealed class EnemyRewardRuntimeService
                 PotentialRewardLocked = reachedCap || snapshot.BaseStats.PotentialRewardLocked == true
             };
 
-            var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(_baseStatsComposer.Compose(updatedBaseStats));
+            var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(updatedBaseStats);
             _runtimeService.ApplyBaseStatsMutation(target.Player, _ => effectiveBaseStats);
         }
     }
@@ -266,7 +260,7 @@ public sealed class EnemyRewardRuntimeService
         return targets;
     }
 
-    private bool TryResolveRewardItem(string entryId, out GroundRewardItem rewardItem)
+    private bool TryResolveRewardItem(string entryId, out RewardItemSeed rewardItem)
     {
         rewardItem = default!;
         if (string.IsNullOrWhiteSpace(entryId))
@@ -277,7 +271,7 @@ public sealed class EnemyRewardRuntimeService
 
         if (_itemDefinitions.TryGetItemByCode(entryId, out var directCodeDefinition))
         {
-            rewardItem = new GroundRewardItem(directCodeDefinition.Id, 1, false);
+            rewardItem = new RewardItemSeed(directCodeDefinition.Id, 1, false);
             return true;
         }
 
@@ -286,7 +280,7 @@ public sealed class EnemyRewardRuntimeService
             var trimmedCode = entryId[(entryId.IndexOf('.') + 1)..];
             if (_itemDefinitions.TryGetItemByCode(trimmedCode, out var dottedDefinition))
             {
-                rewardItem = new GroundRewardItem(dottedDefinition.Id, 1, false);
+                rewardItem = new RewardItemSeed(dottedDefinition.Id, 1, false);
                 return true;
             }
         }
@@ -294,7 +288,7 @@ public sealed class EnemyRewardRuntimeService
         return false;
     }
 
-    private bool TryResolvePrefixedItemEntry(string entryId, out GroundRewardItem rewardItem)
+    private bool TryResolvePrefixedItemEntry(string entryId, out RewardItemSeed rewardItem)
     {
         rewardItem = default!;
         var parts = entryId.Split(':', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
@@ -310,13 +304,13 @@ public sealed class EnemyRewardRuntimeService
             if (int.TryParse(parts[1], out var itemTemplateId) &&
                 _itemDefinitions.TryGetItem(itemTemplateId, out _))
             {
-                rewardItem = new GroundRewardItem(itemTemplateId, quantity, false);
+                rewardItem = new RewardItemSeed(itemTemplateId, quantity, false);
                 return true;
             }
 
             if (_itemDefinitions.TryGetItemByCode(parts[1], out var definitionByCode))
             {
-                rewardItem = new GroundRewardItem(definitionByCode.Id, quantity, false);
+                rewardItem = new RewardItemSeed(definitionByCode.Id, quantity, false);
                 return true;
             }
         }
@@ -325,11 +319,44 @@ public sealed class EnemyRewardRuntimeService
              parts[0].Equals("currency", StringComparison.OrdinalIgnoreCase)) &&
             _itemDefinitions.TryGetItemByCode(parts[1], out var itemByCode))
         {
-            rewardItem = new GroundRewardItem(itemByCode.Id, quantity, false);
+            rewardItem = new RewardItemSeed(itemByCode.Id, quantity, false);
             return true;
         }
 
         return false;
+    }
+
+    private async Task<IReadOnlyList<GroundRewardItem>> CreateGroundRewardItemsAsync(
+        ItemService itemService,
+        IReadOnlyList<RewardItemSeed> rolledItems,
+        CancellationToken cancellationToken)
+    {
+        var result = new List<GroundRewardItem>();
+        foreach (var group in rolledItems
+                     .GroupBy(x => new { x.ItemTemplateId, x.IsBound })
+                     .OrderBy(x => x.Key.ItemTemplateId))
+        {
+            if (!_itemDefinitions.TryGetItem(group.Key.ItemTemplateId, out _))
+                throw new InvalidOperationException($"Reward item template {group.Key.ItemTemplateId} was not found.");
+
+            var totalQuantity = group.Sum(x => x.Quantity);
+            var created = await itemService.CreateGroundItemInstancesAsync(
+                group.Key.ItemTemplateId,
+                totalQuantity,
+                group.Key.IsBound,
+                cancellationToken: cancellationToken);
+
+            foreach (var item in created.OrderBy(x => x.Id))
+            {
+                result.Add(new GroundRewardItem(
+                    item.Id,
+                    item.ItemTemplateId,
+                    item.Quantity,
+                    item.IsBound));
+            }
+        }
+
+        return result;
     }
 
     private static Dictionary<Guid, long> AllocateLongByDamage(
@@ -409,4 +436,9 @@ public sealed class EnemyRewardRuntimeService
     private readonly record struct ResolvedRewardTarget(
         PlayerSession Player,
         RewardTargetSnapshot Snapshot);
+
+    private readonly record struct RewardItemSeed(
+        int ItemTemplateId,
+        int Quantity,
+        bool IsBound);
 }

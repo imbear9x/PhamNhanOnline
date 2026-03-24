@@ -12,7 +12,8 @@ internal enum AdminEditorKind
     PillWorkspace = 7,
     GameRandomWorkspace = 8,
     EnemyWorkspace = 9,
-    EnemySpawnWorkspace = 10
+    EnemySpawnWorkspace = 10,
+    PlayerInventoryWorkspace = 11
 }
 
 internal enum CharacterStatType
@@ -126,6 +127,15 @@ internal enum ItemType
     HerbPlant = 12
 }
 
+internal enum ItemLocationType
+{
+    Inventory = 1,
+    Ground = 2,
+    TradeHold = 3,
+    Mail = 4,
+    Storage = 5
+}
+
 internal enum ItemRarity
 {
     Common = 1,
@@ -150,6 +160,15 @@ internal enum EquipmentType
     Armor = 3,
     Pants = 4,
     Shoes = 5
+}
+
+internal enum EquipmentBonusSourceType
+{
+    DropBonus = 1,
+    CraftBonus = 2,
+    MutationBonus = 3,
+    RefineBonus = 4,
+    EventBonus = 5
 }
 
 internal enum CraftConsumeMode

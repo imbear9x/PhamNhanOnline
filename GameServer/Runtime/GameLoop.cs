@@ -12,6 +12,7 @@ public sealed class GameLoop
     private readonly WorldManager _worldManager;
     private readonly EnemyRewardRuntimeService _enemyRewardRuntimeService;
     private readonly CharacterRuntimeService _characterRuntimeService;
+    private readonly GroundItemRuntimeService _groundItemRuntimeService;
     private readonly WorldInterestService _interestService;
     private readonly MapInstanceLifecycleService _instanceLifecycleService;
     private readonly ServerMetricsService _metrics;
@@ -23,6 +24,7 @@ public sealed class GameLoop
         WorldManager worldManager,
         EnemyRewardRuntimeService enemyRewardRuntimeService,
         CharacterRuntimeService characterRuntimeService,
+        GroundItemRuntimeService groundItemRuntimeService,
         WorldInterestService interestService,
         MapInstanceLifecycleService instanceLifecycleService,
         ServerMetricsService metrics)
@@ -30,6 +32,7 @@ public sealed class GameLoop
         _worldManager = worldManager;
         _enemyRewardRuntimeService = enemyRewardRuntimeService;
         _characterRuntimeService = characterRuntimeService;
+        _groundItemRuntimeService = groundItemRuntimeService;
         _interestService = interestService;
         _instanceLifecycleService = instanceLifecycleService;
         _metrics = metrics;
@@ -118,6 +121,9 @@ public sealed class GameLoop
 
     private void PublishRuntimeEvents(MapInstance instance)
     {
+        var groundDespawns = instance.DequeuePendingGroundRewardDespawns();
+        _groundItemRuntimeService.ProcessDespawnedRewards(groundDespawns);
+
         foreach (var spawn in instance.DequeuePendingEnemySpawns())
             _interestService.NotifyEnemySpawned(instance, spawn.Enemy);
 
@@ -130,7 +136,7 @@ public sealed class GameLoop
         foreach (var spawn in instance.DequeuePendingGroundRewardSpawns())
             _interestService.NotifyGroundRewardSpawned(instance, spawn.Reward);
 
-        foreach (var despawn in instance.DequeuePendingGroundRewardDespawns())
+        foreach (var despawn in groundDespawns)
             _interestService.NotifyGroundRewardDespawned(instance, despawn.RewardId);
     }
 }

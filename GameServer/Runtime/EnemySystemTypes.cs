@@ -148,6 +148,7 @@ public readonly record struct RewardTargetSnapshot(
     DateTime LastHitAtUtc);
 
 public sealed record GroundRewardItem(
+    long PlayerItemId,
     int ItemTemplateId,
     int Quantity,
     bool IsBound);

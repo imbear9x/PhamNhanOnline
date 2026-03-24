@@ -433,7 +433,10 @@ public sealed class HerbService
 
         if (playerItem.Quantity == 1)
         {
-            await _itemService.RemovePlayerItemAsync(playerItem.PlayerId, playerItem.Id, cancellationToken);
+            if (!playerItem.PlayerId.HasValue)
+                throw new InvalidOperationException($"Player item {playerItem.Id} does not have an owner.");
+
+            await _itemService.RemovePlayerItemAsync(playerItem.PlayerId.Value, playerItem.Id, cancellationToken);
             return;
         }
 

@@ -72,6 +72,8 @@ internal static class AdminFieldHelpCatalog
             "game_random_entry_id" => "Ý nghĩa: trỏ đến entry random cha.",
             "map_template_id" => "Ý nghĩa: trỏ đến Map Template cha.",
             "spiritual_energy_template_id" => "Ý nghĩa: trỏ đến template linh khí dùng cho map hoặc zone.",
+            "player_id" => "Ý nghĩa: nhân vật sở hữu item instance này. Nếu item đang ở dưới đất thì trường này thường để trống.",
+            "player_item_id" => "Ý nghĩa: mã của item instance thật. Các bảng equipment instance và bonus stat riêng đều phải bám theo player_item_id này.",
             "table_id" => "Ý nghĩa: mã bảng random mà runtime sẽ gọi tới. Nên đặt có namespace rõ ràng. Ví dụ: `monster.drop.demo_slime`.",
             "entry_id" => "Ý nghĩa: mã entry trong một bảng random. Nên ổn định, không trùng trong cùng bảng. Ví dụ: `item.demo_herb`.",
             "order_index" => "Ý nghĩa: thứ tự hiển thị hoặc thứ tự xử lý. Nên đánh tăng dần. Ví dụ: `1`, `2`, `3`.",
@@ -96,6 +98,9 @@ internal static class AdminFieldHelpCatalog
             "cooldown_ms" => "Ý nghĩa: thời gian hồi chiêu tính bằng mili giây. Ví dụ: `1500` là 1,5 giây.",
             "cast_range" => "Ý nghĩa: tầm thi triển thực tế của skill để client và AI biết cần đứng gần tới đâu mới dùng được. Ví dụ: `1.5` cho cận chiến, `6.0` cho chưởng tầm trung, `10.0` cho bắn xa.",
             "max_stack" => "Ý nghĩa: số lượng tối đa trong một stack item. Ví dụ: `1` với trang bị, `99` với nguyên liệu.",
+            "location_type" => "Ý nghĩa: item instance hiện đang ở ngữ cảnh nào như Inventory, Ground, Mail hay Storage.",
+            "equipped_slot" => "Ý nghĩa: ô trang bị đang mặc của item equipment. Nếu để trống thì món đó chỉ đang nằm trong túi.",
+            "source_type" => "Ý nghĩa: nguồn gốc của bonus stat riêng theo từng món, ví dụ drop bonus, craft bonus, mutation bonus hay refine bonus.",
             _ => "Hãy nhập giá trị đúng theo nghiệp vụ của bảng này. Nếu đây là trường liên kết thì ưu tiên chọn từ dropdown thay vì gõ tay ID."
         };
     }
@@ -115,6 +120,26 @@ internal static class AdminFieldHelpCatalog
             ["item_templates.is_tradeable"] = "Có cho phép giao dịch giữa người chơi hay không.\nVí dụ: bật nếu item được phép mua bán.",
             ["item_templates.is_droppable"] = "Có cho phép ném hoặc rơi ra thế giới hay không.",
             ["item_templates.is_destroyable"] = "Có cho phép hủy item khỏi inventory hay không.",
+
+            ["characters.account_id"] = "Tài khoản sở hữu nhân vật này.\nTrong tool đã có lookup sang tên đăng nhập hoặc credential để dễ đọc hơn UUID gốc.",
+
+            ["player_items.player_id"] = "Nhân vật sở hữu item instance này.\nNếu item đang ở túi hoặc đang mặc thì phải trỏ tới đúng character.\nNếu item đang ở dưới đất thì thường để trống.",
+            ["player_items.item_template_id"] = "Template gốc của item instance.\nVí dụ: cùng là `Kim Huyền Kiếm` thì nhiều player_item khác nhau vẫn có thể cùng trỏ về một item_template_id.",
+            ["player_items.location_type"] = "Vị trí logic hiện tại của item instance.\nDùng `Inventory` cho item trong túi, `Ground` cho item đang nằm dưới đất, các loại khác dành cho phase sau như mail hoặc storage.",
+            ["player_items.quantity"] = "Số lượng của item instance.\nVới equipment thường là `1`.\nVới item stackable như linh thạch hay nguyên liệu có thể lớn hơn 1.",
+            ["player_items.is_bound"] = "Đánh dấu item có khóa giao dịch hay không.\nNếu bật thì về sau có thể bị chặn trade hoặc mail tùy luật runtime.",
+            ["player_items.expire_at"] = "Thời điểm item tự hết hạn nếu có.\nĐể trống nếu item tồn tại vĩnh viễn.",
+
+            ["player_equipments.player_item_id"] = "Chọn đúng player_item là equipment để gắn dữ liệu instance.\nMột món equipment trong túi hoặc đang mặc đều nên có tối đa một dòng ở bảng này.",
+            ["player_equipments.equipped_slot"] = "Ô đang mặc của món đồ.\nĐể trống nếu đồ chỉ đang nằm trong túi.\nĐiền `Weapon`, `Armor`, `Pants`, `Shoes` nếu muốn seed sẵn trạng thái đang mặc.",
+            ["player_equipments.enhance_level"] = "Mức cường hóa hiện tại của món đồ.\nVí dụ: `0` là chưa cường hóa, `5` là +5.",
+            ["player_equipments.durability"] = "Độ bền hiện tại của món đồ nếu game design muốn test UI hoặc logic hao mòn.\nCó thể để trống nếu phase hiện tại chưa dùng.",
+
+            ["player_equipment_stat_bonuses.player_item_id"] = "Item instance nhận bonus stat riêng.\nĐây là chìa khóa để hai món cùng template vẫn có stat khác nhau.",
+            ["player_equipment_stat_bonuses.stat_type"] = "Loại chỉ số được cộng riêng cho món này.\nVí dụ: `Attack`, `Hp`, `Speed`.",
+            ["player_equipment_stat_bonuses.value"] = "Giá trị bonus riêng của món.\nVí dụ: `10` nếu muốn cộng thêm 10 Attack khi value_type là Flat.",
+            ["player_equipment_stat_bonuses.value_type"] = "Cách hiểu giá trị bonus.\nĐể test nhanh, nên dùng `Flat` trước cho dễ kiểm tra trên UI và runtime.",
+            ["player_equipment_stat_bonuses.source_type"] = "Nguồn của bonus riêng.\nVí dụ: `DropBonus` cho đồ rơi biến dị, `CraftBonus` cho đồ chế tạo, `RefineBonus` cho luyện hóa.",
 
             ["pill_templates.item_template_id"] = "Chọn item đại diện cho viên đan này.\nVí dụ: chọn Item Template `hoi_linh_dan`.\nĐiều kiện: trước đó phải có Item Template phù hợp, thường là loại `Consumable`.",
             ["pill_templates.pill_category"] = "Nhóm đan dược.\nVí dụ: `Recovery` cho đan hồi phục, `Buff` cho đan tăng chỉ số, `Breakthrough` cho đan hỗ trợ đột phá.",

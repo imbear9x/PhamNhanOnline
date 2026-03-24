@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<EquipmentService>();
         services.AddScoped<CraftService>();
         services.AddScoped<EquipmentStatService>();
+        services.AddScoped<CharacterFinalStatService>();
         services.AddScoped<PillRecipeService>();
         services.AddScoped<AlchemyService>();
         services.AddScoped<HerbService>();
@@ -137,7 +138,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<EnemyDefinitionCatalog>();
         services.AddSingleton<IRandomNumberProvider, CryptoRandomNumberProvider>();
         services.AddSingleton<IGameRandomService, GameRandomService>();
-        services.AddSingleton<CharacterBaseStatsComposer>();
         services.AddSingleton<MartialArtProgressionService>();
         services.AddSingleton<SkillRuntimeBuilder>();
         services.AddSingleton<MapManager>();
@@ -146,6 +146,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CharacterRuntimeCalculator>();
         services.AddSingleton<CharacterRuntimeNotifier>();
         services.AddSingleton<CharacterRuntimeService>();
+        services.AddSingleton<GroundItemRuntimeService>();
         services.AddSingleton<CharacterRuntimeSaveService>();
         services.AddSingleton<CharacterLifecycleService>();
         services.AddSingleton<CharacterCultivationService>();

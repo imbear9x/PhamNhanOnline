@@ -1,5 +1,6 @@
 using GameServer.Network.Interface;
 using GameServer.Runtime;
+using GameServer.DTO;
 using GameServer.World;
 using GameShared.Messages;
 using GameShared.Packets;
@@ -59,7 +60,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
         }
 
         var snapshot = player.RuntimeState.CaptureSnapshot();
-        var damage = Math.Max(1, snapshot.BaseStats.BaseAttack ?? 1);
+        var damage = Math.Max(1, snapshot.BaseStats.GetEffectiveAttack());
         var result = instance.ApplyEnemyDamage(player, packet.EnemyRuntimeId!.Value, damage, DateTime.UtcNow);
 
         _network.Send(session.ConnectionId, new AttackEnemyResultPacket

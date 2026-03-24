@@ -27,7 +27,6 @@ public sealed class CharacterCultivationService
     private readonly INetworkSender _network;
     private readonly MapCatalog _mapCatalog;
     private readonly CombatDefinitionCatalog _combatDefinitions;
-    private readonly CharacterBaseStatsComposer _baseStatsComposer;
     private readonly PotentialStatCatalog _potentialStatCatalog;
     private readonly IGameRandomService _gameRandomService;
 
@@ -39,7 +38,6 @@ public sealed class CharacterCultivationService
         INetworkSender network,
         MapCatalog mapCatalog,
         CombatDefinitionCatalog combatDefinitions,
-        CharacterBaseStatsComposer baseStatsComposer,
         PotentialStatCatalog potentialStatCatalog,
         IGameRandomService gameRandomService)
     {
@@ -50,7 +48,6 @@ public sealed class CharacterCultivationService
         _network = network;
         _mapCatalog = mapCatalog;
         _combatDefinitions = combatDefinitions;
-        _baseStatsComposer = baseStatsComposer;
         _potentialStatCatalog = potentialStatCatalog;
         _gameRandomService = gameRandomService;
     }
@@ -155,7 +152,7 @@ public sealed class CharacterCultivationService
         if (!chanceCheck.Success)
         {
             var penalizedBaseStats = ApplyBreakthroughFailurePenalty(snapshot.BaseStats, currentRealm);
-            var failedBaseStats = _potentialStatCatalog.AttachPreviews(_baseStatsComposer.Compose(penalizedBaseStats));
+            var failedBaseStats = _potentialStatCatalog.AttachPreviews(penalizedBaseStats);
             player.RuntimeState.UpdateBaseStats(_ => failedBaseStats);
             _notifier.NotifyBaseStatsChanged(player, failedBaseStats);
             var failedSnapshot = player.RuntimeState.CaptureSnapshot();
@@ -171,7 +168,7 @@ public sealed class CharacterCultivationService
             PotentialRewardLocked = false
         };
 
-        var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(_baseStatsComposer.Compose(updatedBaseStats));
+        var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(updatedBaseStats);
         player.RuntimeState.UpdateBaseStats(_ => effectiveBaseStats);
         _notifier.NotifyBaseStatsChanged(player, effectiveBaseStats);
         var updatedSnapshot = player.RuntimeState.CaptureSnapshot();
@@ -202,7 +199,7 @@ public sealed class CharacterCultivationService
         if (updatedBaseStats == snapshot.BaseStats)
             return CultivationActionResult.Failed(MessageCode.PotentialAllocationInvalid);
 
-        var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(_baseStatsComposer.Compose(updatedBaseStats));
+        var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(updatedBaseStats);
         player.RuntimeState.UpdateBaseStats(_ => effectiveBaseStats);
         _notifier.NotifyBaseStatsChanged(player, effectiveBaseStats);
         var updatedSnapshot = player.RuntimeState.CaptureSnapshot();
@@ -413,37 +410,31 @@ public sealed class CharacterCultivationService
         {
             PotentialAllocationTarget.BaseHp => baseStats with
             {
-                BonusHp = checked((baseStats.BonusHp ?? 0) + DecimalToIntGain(plan.StatGain)),
                 HpUpgradeCount = checked((baseStats.HpUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseMp => baseStats with
             {
-                BonusMp = checked((baseStats.BonusMp ?? 0) + DecimalToIntGain(plan.StatGain)),
                 MpUpgradeCount = checked((baseStats.MpUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseAttack => baseStats with
             {
-                BonusAttack = checked((baseStats.BonusAttack ?? 0) + DecimalToIntGain(plan.StatGain)),
                 AttackUpgradeCount = checked((baseStats.AttackUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseSpeed => baseStats with
             {
-                BonusSpeed = checked((baseStats.BonusSpeed ?? 0) + DecimalToIntGain(plan.StatGain)),
                 SpeedUpgradeCount = checked((baseStats.SpeedUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseSpiritualSense => baseStats with
             {
-                BonusSpiritualSense = checked((baseStats.BonusSpiritualSense ?? 0) + DecimalToIntGain(plan.StatGain)),
                 SpiritualSenseUpgradeCount = checked((baseStats.SpiritualSenseUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             PotentialAllocationTarget.BaseFortune => baseStats with
             {
-                BonusFortune = (baseStats.BonusFortune ?? 0d) + (double)plan.StatGain,
                 FortuneUpgradeCount = checked((baseStats.FortuneUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },

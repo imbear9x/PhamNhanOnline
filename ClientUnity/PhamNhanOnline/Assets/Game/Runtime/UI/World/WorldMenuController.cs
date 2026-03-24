@@ -301,8 +301,8 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             var stats = baseStats.Value;
-            var currentHp = currentState.HasValue ? currentState.Value.CurrentHp : stats.BaseHp;
-            var currentMp = currentState.HasValue ? currentState.Value.CurrentMp : stats.BaseMp;
+            var currentHp = currentState.HasValue ? currentState.Value.CurrentHp : GetTotalHp(stats);
+            var currentMp = currentState.HasValue ? currentState.Value.CurrentMp : GetTotalMp(stats);
             var currentStamina = currentState.HasValue ? currentState.Value.CurrentStamina : stats.BaseStamina;
 
             return string.Format(
@@ -312,16 +312,46 @@ namespace PhamNhanOnline.Client.UI.World
                 mapName,
                 ClientRuntime.World.CurrentZoneIndex.HasValue ? ClientRuntime.World.CurrentZoneIndex.Value.ToString(CultureInfo.InvariantCulture) : "-",
                 currentHp,
-                stats.BaseHp,
+                GetTotalHp(stats),
                 currentMp,
-                stats.BaseMp,
+                GetTotalMp(stats),
                 currentStamina,
                 stats.BaseStamina,
-                stats.BaseAttack,
-                stats.BaseSpeed,
-                stats.BaseSpiritualSense,
-                stats.BaseFortune,
+                GetTotalAttack(stats),
+                GetTotalSpeed(stats),
+                GetTotalSpiritualSense(stats),
+                GetTotalFortune(stats),
                 stats.UnallocatedPotential);
+        }
+
+        private static int GetTotalHp(GameShared.Models.CharacterBaseStatsModel stats)
+        {
+            return stats.FinalHp;
+        }
+
+        private static int GetTotalMp(GameShared.Models.CharacterBaseStatsModel stats)
+        {
+            return stats.FinalMp;
+        }
+
+        private static int GetTotalAttack(GameShared.Models.CharacterBaseStatsModel stats)
+        {
+            return stats.FinalAttack;
+        }
+
+        private static int GetTotalSpeed(GameShared.Models.CharacterBaseStatsModel stats)
+        {
+            return stats.FinalSpeed;
+        }
+
+        private static int GetTotalSpiritualSense(GameShared.Models.CharacterBaseStatsModel stats)
+        {
+            return stats.FinalSpiritualSense;
+        }
+
+        private static double GetTotalFortune(GameShared.Models.CharacterBaseStatsModel stats)
+        {
+            return stats.FinalFortune;
         }
 
         private static void ApplyTabButtonVisual(WorldMenuTabBinding tab, bool isActive)

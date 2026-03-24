@@ -605,9 +605,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return "Chua co du lieu chi so nhan vat.";
 
             var stats = baseStats.Value;
-            var currentHp = currentState.HasValue ? currentState.Value.CurrentHp : stats.BaseHp;
-            var currentMp = currentState.HasValue ? currentState.Value.CurrentMp : stats.BaseMp;
-            var currentStamina = currentState.HasValue ? currentState.Value.CurrentStamina : stats.BaseStamina;
+            var currentHp = currentState.HasValue ? currentState.Value.CurrentHp : stats.FinalHp;
+            var currentMp = currentState.HasValue ? currentState.Value.CurrentMp : stats.FinalMp;
+            var currentStamina = currentState.HasValue ? currentState.Value.CurrentStamina : stats.FinalStamina;
             var hpPreview = GetPreview(stats, PotentialAllocationTarget.BaseHp);
             var mpPreview = GetPreview(stats, PotentialAllocationTarget.BaseMp);
             var attackPreview = GetPreview(stats, PotentialAllocationTarget.BaseAttack);
@@ -617,36 +617,36 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "Tiem nang chua dung: {0}\nHP: {1}/{2} (bonus {3}, bac {4}) | next {5}\nMP: {6}/{7} (bonus {8}, bac {9}) | next {10}\nTan cong: {11} (bonus {12}, bac {13}) | next {14}\nToc do: {15} (bonus {16}, bac {17}) | next {18}\nThan thuc: {19} (bonus {20}, bac {21}) | next {22}\nCo duyen: {23:0.##} (bonus {24:0.##}, bac {25}) | next {26}\nThe luc hien tai/max: {27}/{28}",
+                "Tiem nang chua dung: {0}\nHP: {1}/{2} | goc {3}, bac {4} | next {5}\nMP: {6}/{7} | goc {8}, bac {9} | next {10}\nTan cong: {11} | goc {12}, bac {13} | next {14}\nToc do: {15} | goc {16}, bac {17} | next {18}\nThan thuc: {19} | goc {20}, bac {21} | next {22}\nCo duyen: {23:0.##} | goc {24:0.##}, bac {25} | next {26}\nThe luc hien tai/max: {27}/{28}",
                 stats.UnallocatedPotential,
                 currentHp,
+                stats.FinalHp,
                 stats.BaseHp,
-                stats.BonusHp,
                 stats.HpUpgradeCount,
                 FormatPreview(hpPreview),
                 currentMp,
+                stats.FinalMp,
                 stats.BaseMp,
-                stats.BonusMp,
                 stats.MpUpgradeCount,
                 FormatPreview(mpPreview),
+                stats.FinalAttack,
                 stats.BaseAttack,
-                stats.BonusAttack,
                 stats.AttackUpgradeCount,
                 FormatPreview(attackPreview),
+                stats.FinalSpeed,
                 stats.BaseSpeed,
-                stats.BonusSpeed,
                 stats.SpeedUpgradeCount,
                 FormatPreview(speedPreview),
+                stats.FinalSpiritualSense,
                 stats.BaseSpiritualSense,
-                stats.BonusSpiritualSense,
                 stats.SpiritualSenseUpgradeCount,
                 FormatPreview(spiritualSensePreview),
+                stats.FinalFortune,
                 stats.BaseFortune,
-                stats.BonusFortune,
                 stats.FortuneUpgradeCount,
                 FormatPreview(fortunePreview),
                 currentStamina,
-                stats.BaseStamina)
+                stats.FinalStamina)
                 + BuildExternalCharacterStatsDebugSuffix();
         }
 

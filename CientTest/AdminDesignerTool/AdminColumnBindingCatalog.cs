@@ -124,6 +124,34 @@ internal static class AdminColumnBindingCatalog
             order by id;
             """;
 
+        const string accountLookupSql = """
+            select a.id as value,
+                   coalesce(cred.provider_user_id, '(khong co credential)') as display
+            from public.accounts a
+            left join lateral (
+                select ac.provider_user_id
+                from public.account_credentials ac
+                where ac.account_id = a.id
+                order by ac.created_at nulls first, ac.id
+                limit 1
+            ) cred on true
+            order by display, a.id;
+            """;
+
+        const string characterLookupSql = """
+            select c.id as value,
+                   c.name || ' - ' || coalesce(cred.provider_user_id, '(khong co credential)') as display
+            from public.characters c
+            left join lateral (
+                select ac.provider_user_id
+                from public.account_credentials ac
+                where ac.account_id = c.account_id
+                order by ac.created_at nulls first, ac.id
+                limit 1
+            ) cred on true
+            order by c.name, c.id;
+            """;
+
         const string equipmentItemTemplateLookupSql = """
             select id as value, code || ' - ' || name as display
             from public.item_templates
@@ -171,6 +199,16 @@ internal static class AdminColumnBindingCatalog
             from public.equipment_templates et
             inner join public.item_templates it on it.id = et.item_template_id
             order by et.item_template_id;
+            """;
+
+        const string playerEquipmentItemLookupSql = """
+            select pi.id as value,
+                   '[' || pi.id || '] ' || coalesce(c.name, '(ground)') || ' - ' || it.name as display
+            from public.player_items pi
+            inner join public.item_templates it on it.id = pi.item_template_id
+            inner join public.equipment_templates et on et.item_template_id = pi.item_template_id
+            left join public.characters c on c.id = pi.player_id
+            order by pi.id desc;
             """;
 
         const string craftRecipeLookupSql = """
@@ -265,6 +303,8 @@ internal static class AdminColumnBindingCatalog
         Add("item_templates", "item_type", enumType: typeof(ItemType));
         Add("item_templates", "rarity", enumType: typeof(ItemRarity));
 
+        Add("characters", "account_id", headerText: "Tai Khoan", lookupSql: accountLookupSql);
+
         Add("equipment_templates", "item_template_id", lookupSql: equipmentItemTemplateLookupSql);
         Add("equipment_templates", "slot_type", enumType: typeof(EquipmentSlot));
         Add("equipment_templates", "equipment_type", enumType: typeof(EquipmentType));
@@ -339,6 +379,18 @@ internal static class AdminColumnBindingCatalog
         Add("herb_harvest_outputs", "result_item_template_id", lookupSql: itemTemplateLookupSql);
 
         Add("potential_stat_upgrade_tiers", "target_stat", enumType: typeof(PotentialAllocationTarget));
+
+        Add("player_items", "player_id", headerText: "Nhan Vat", lookupSql: characterLookupSql);
+        Add("player_items", "item_template_id", headerText: "Item Template", lookupSql: itemTemplateLookupSql);
+        Add("player_items", "location_type", headerText: "Vi Tri Item", enumType: typeof(ItemLocationType));
+
+        Add("player_equipments", "player_item_id", headerText: "Item Instance", lookupSql: playerEquipmentItemLookupSql);
+        Add("player_equipments", "equipped_slot", headerText: "Dang Mac O", enumType: typeof(EquipmentSlot));
+
+        Add("player_equipment_stat_bonuses", "player_item_id", headerText: "Item Instance", lookupSql: playerEquipmentItemLookupSql);
+        Add("player_equipment_stat_bonuses", "stat_type", headerText: "Chi So", enumType: typeof(CharacterStatType));
+        Add("player_equipment_stat_bonuses", "value_type", headerText: "Kieu Gia Tri", enumType: typeof(CombatValueType));
+        Add("player_equipment_stat_bonuses", "source_type", headerText: "Nguon Bonus", enumType: typeof(EquipmentBonusSourceType));
 
         return result;
     }
