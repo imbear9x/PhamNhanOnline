@@ -168,6 +168,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<GetCharacterDataPacket>, GetCharacterDataHandler>();
         services.AddScoped<IPacketHandler<EnterWorldPacket>, EnterWorldHandler>();
         services.AddScoped<IPacketHandler<GetInventoryPacket>, GetInventoryHandler>();
+        services.AddScoped<IPacketHandler<EquipInventoryItemPacket>, EquipInventoryItemHandler>();
+        services.AddScoped<IPacketHandler<UnequipInventoryItemPacket>, UnequipInventoryItemHandler>();
         services.AddScoped<IPacketHandler<TravelToMapPacket>, TravelToMapHandler>();
         services.AddScoped<IPacketHandler<GetMapZonesPacket>, GetMapZonesHandler>();
         services.AddScoped<IPacketHandler<SwitchMapZonePacket>, SwitchMapZoneHandler>();

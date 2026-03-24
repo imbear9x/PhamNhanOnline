@@ -279,3 +279,52 @@ public partial class GetInventoryResultPacket : IPacket
     public MessageCode? Code { get; set; }
     public List<InventoryItemModel>? Items { get; set; }
 }
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class EquipInventoryItemPacket : IPacket
+{
+    [ValidationCode(MessageCode.InventoryItemInvalid)]
+    [Required]
+    [Range(1, long.MaxValue)]
+    public long? PlayerItemId { get; set; }
+
+    [ValidationCode(MessageCode.EquipmentSlotInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? Slot { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class EquipInventoryItemResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public List<InventoryItemModel>? Items { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
+}
+
+[Packet]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class UnequipInventoryItemPacket : IPacket
+{
+    [ValidationCode(MessageCode.EquipmentSlotInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? Slot { get; set; }
+}
+
+[Packet]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class UnequipInventoryItemResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public List<InventoryItemModel>? Items { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
+}

@@ -330,6 +330,138 @@ Checklist:
 - Hover hoặc click vào một item slot:
 - icon, tên, rarity/type, description, quantity, equipped state sẽ hiện trong tooltip.
 
+### 3.3. Equipment slots checklist
+
+Mục tiêu:
+- phần `ô trang bị` là UI cố định, tự dựng bằng scene hoặc prefab cho đẹp
+- phần data bind, tooltip và drag/drop do code xử lý
+- mở tab `Kho đồ` sẽ thấy cả item trong balo và 4 ô đang mặc
+
+Hierarchy gợi ý bên trong `InventoryPanel`:
+
+```text
+InventoryPanel
+  CharacterNameText
+  StatsRow
+    StatsList
+      StatLineTemplate
+  EquipmentSection
+    EquipmentSlotsRoot
+      WeaponSlot
+        Background
+        Icon
+        EmptyStateRoot
+          SlotLabelText
+        OccupiedStateRoot
+          EnhanceRoot
+            EnhanceText
+        SelectedHighlight
+      ArmorSlot
+        Background
+        Icon
+        EmptyStateRoot
+          SlotLabelText
+        OccupiedStateRoot
+          EnhanceRoot
+            EnhanceText
+        SelectedHighlight
+      PantsSlot
+        Background
+        Icon
+        EmptyStateRoot
+          SlotLabelText
+        OccupiedStateRoot
+          EnhanceRoot
+            EnhanceText
+        SelectedHighlight
+      ShoesSlot
+        Background
+        Icon
+        EmptyStateRoot
+          SlotLabelText
+        OccupiedStateRoot
+          EnhanceRoot
+            EnhanceText
+        SelectedHighlight
+  InventoryStatusText
+  InventoryGrid
+    Viewport
+      Content
+        InventoryItemTemplate
+          Background
+          Icon
+          QuantityRoot
+            QuantityText
+          EquippedMarker
+          EnhanceRoot
+            EnhanceText
+          SelectedHighlight
+  InventoryDropZone
+  ItemTooltipPanel
+    TooltipBackground
+    TooltipIcon
+    TooltipNameText
+    TooltipMetaText
+    TooltipDescriptionText
+    TooltipQuantityText
+```
+
+Checklist:
+
+1. Root ô trang bị
+- Tạo `EquipmentSlotsRoot`.
+- Gắn `EquipmentSlotsPanelView` lên object này.
+- Trong `slots`, khai báo đủ 4 binding:
+- `Weapon -> WeaponSlot`
+- `Armor -> ArmorSlot`
+- `Pants -> PantsSlot`
+- `Shoes -> ShoesSlot`
+- Kéo `Equipment Slots View` trên `WorldInventoryPanelController` tới `EquipmentSlotsRoot`.
+
+2. Từng ô trang bị cố định
+- Gắn `EquipmentSlotView` lên từng root slot như `WeaponSlot`, `ArmorSlot`, `PantsSlot`, `ShoesSlot`.
+- `Slot Type` phải đúng với ô:
+- `WeaponSlot` -> `Weapon`
+- `ArmorSlot` -> `Armor`
+- `PantsSlot` -> `Pants`
+- `ShoesSlot` -> `Shoes`
+- Kéo ref:
+- `Background Image` -> `Background`
+- `Icon Image` -> `Icon`
+- `Slot Label Text` -> `SlotLabelText` nếu bạn muốn hiện chữ tên ô
+- `Empty State Root` -> `EmptyStateRoot`
+- `Occupied State Root` -> `OccupiedStateRoot`
+- `Enhance Root` -> `EnhanceRoot`
+- `Enhance Level Text` -> `EnhanceText`
+- `Selected Highlight Root` -> `SelectedHighlight`
+
+3. Vùng thả để gỡ đồ về balo
+- Tạo `InventoryDropZone` phủ lên khu vực lưới item hoặc toàn bộ khung balo bên phải.
+- Gắn `InventoryDropZoneView` lên object này.
+- Kéo `Inventory Drop Zone View` trên `WorldInventoryPanelController` tới `InventoryDropZone`.
+- Khi kéo item từ ô trang bị và thả vào đây, client sẽ gọi `UnequipInventoryItemPacket`.
+
+4. Hành vi drag/drop hiện tại
+- Kéo item từ balo sang đúng ô -> client gửi `EquipInventoryItemPacket`.
+- Kéo item từ balo sang ô sai loại -> không gửi packet, item trở về chỗ cũ.
+- Kéo item từ ô trang bị sang vùng `InventoryDropZone` hoặc thả lên một ô item trong grid -> client gửi `UnequipInventoryItemPacket`.
+- Nếu slot đã có đồ và bạn kéo item đúng loại vào -> server sẽ tự thay thế món cũ.
+
+5. Dữ liệu item cần có từ server
+- `InventoryItemModel.EquipmentSlotType`
+- `InventoryItemModel.EquipmentType`
+- `InventoryItemModel.LevelRequirement`
+- `InventoryItemModel.IsEquipped`
+- `InventoryItemModel.EquippedSlot`
+- `InventoryItemModel.EnhanceLevel`
+- `InventoryItemModel.Durability`
+
+6. Ghi chú phase hiện tại
+- Phase này chỉ check `đúng slot`.
+- Chưa validate `level_requirement` theo `realm_id`.
+- Tooltip của item trong balo và item đang mặc dùng chung `InventoryItemTooltipView`.
+- Grid balo chỉ hiện item chưa mặc; item đang mặc sẽ xuất hiện ở 4 ô trang bị cố định.
+
 ## Naming rules
 
 Use clear scene roots so another developer can understand quickly:

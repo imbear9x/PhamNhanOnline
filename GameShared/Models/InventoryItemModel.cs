@@ -20,6 +20,9 @@ public struct InventoryItemModel
     public string? Icon;
     public string? BackgroundIcon;
     public string? Description;
+    public int? EquipmentSlotType;
+    public int? EquipmentType;
+    public int? LevelRequirement;
     public bool IsEquipped;
     public int? EquippedSlot;
     public int EnhanceLevel;

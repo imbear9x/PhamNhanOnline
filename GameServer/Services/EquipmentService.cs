@@ -1,4 +1,5 @@
 using GameServer.Entities;
+using GameServer.Exceptions;
 using GameServer.Repositories;
 using GameServer.Runtime;
 
@@ -23,42 +24,47 @@ public sealed class EquipmentService
     public async Task<EquipmentValidationResult> ValidateEquipAsync(
         Guid playerId,
         long playerItemId,
+        EquipmentSlot requestedSlot,
         CancellationToken cancellationToken = default)
     {
         var playerItem = await _playerItems.GetByIdAsync(playerItemId, cancellationToken);
         if (playerItem is null || playerItem.PlayerId != playerId)
-            return EquipmentValidationResult.Failed("Item khong ton tai trong tui do cua player.");
+            return EquipmentValidationResult.Failed(GameShared.Messages.MessageCode.InventoryItemInvalid, "Item khong ton tai trong tui do cua player.");
         if (!_definitions.TryGetItem(playerItem.ItemTemplateId, out var itemDefinition) || itemDefinition.Equipment is null)
-            return EquipmentValidationResult.Failed("Item nay khong phai trang bi.");
+            return EquipmentValidationResult.Failed(GameShared.Messages.MessageCode.InventoryItemInvalid, "Item nay khong phai trang bi.");
+        if (itemDefinition.Equipment.SlotType != requestedSlot)
+            return EquipmentValidationResult.Failed(GameShared.Messages.MessageCode.EquipmentSlotMismatch, "Item khong thuoc slot dang yeu cau.");
 
         var inventory = await _playerItems.ListByPlayerIdAsync(playerId, cancellationToken);
         var equipmentRows = await _playerEquipments.ListByPlayerItemIdsAsync(inventory.Select(x => x.Id).ToArray(), cancellationToken);
         var equipmentByItemId = equipmentRows.ToDictionary(x => x.PlayerItemId);
         if (!equipmentByItemId.TryGetValue(playerItemId, out var equipmentEntity))
-            return EquipmentValidationResult.Failed("Trang bi chua duoc khoi tao instance equipment.");
+            return EquipmentValidationResult.Failed(GameShared.Messages.MessageCode.InventoryItemInvalid, "Trang bi chua duoc khoi tao instance equipment.");
 
-        var occupied = equipmentRows
-            .Where(x => x.PlayerItemId != playerItemId && x.EquippedSlot == (int)itemDefinition.Equipment.SlotType)
-            .Join(inventory, equipment => equipment.PlayerItemId, item => item.Id, (equipment, item) => item)
-            .Any(item => item.PlayerId == playerId);
+        var occupied = equipmentRows.FirstOrDefault(x => x.PlayerItemId != playerItemId && x.EquippedSlot == (int)requestedSlot);
 
-        if (occupied)
-            return EquipmentValidationResult.Failed($"Slot {itemDefinition.Equipment.SlotType} dang co trang bi khac.");
-
-        return EquipmentValidationResult.Succeeded(playerItem, itemDefinition, equipmentEntity);
+        return EquipmentValidationResult.Succeeded(playerItem, itemDefinition, equipmentEntity, occupied);
     }
 
     public async Task<EquippedItemView> EquipItemAsync(
         Guid playerId,
         long playerItemId,
+        EquipmentSlot requestedSlot,
         CancellationToken cancellationToken = default)
     {
-        var validation = await ValidateEquipAsync(playerId, playerItemId, cancellationToken);
+        var validation = await ValidateEquipAsync(playerId, playerItemId, requestedSlot, cancellationToken);
         if (!validation.Success || validation.PlayerItem is null || validation.ItemDefinition?.Equipment is null || validation.PlayerEquipment is null)
-            throw new InvalidOperationException(validation.FailureReason ?? "Khong the trang bi item.");
+            throw new GameException(validation.FailureCode ?? GameShared.Messages.MessageCode.UnknownError, validation.FailureReason ?? "Khong the trang bi item.");
+
+        if (validation.OccupiedEquipment is not null)
+        {
+            validation.OccupiedEquipment.EquippedSlot = null;
+            validation.OccupiedEquipment.UpdatedAt = DateTime.UtcNow;
+            await _playerEquipments.UpdateAsync(validation.OccupiedEquipment, cancellationToken);
+        }
 
         var equipmentEntity = validation.PlayerEquipment;
-        equipmentEntity.EquippedSlot = (int)validation.ItemDefinition.Equipment.SlotType;
+        equipmentEntity.EquippedSlot = (int)requestedSlot;
         equipmentEntity.UpdatedAt = DateTime.UtcNow;
         await _playerEquipments.UpdateAsync(equipmentEntity, cancellationToken);
 
@@ -66,7 +72,7 @@ public sealed class EquipmentService
             validation.PlayerItem.Id,
             validation.ItemDefinition,
             validation.ItemDefinition.Equipment,
-            validation.ItemDefinition.Equipment.SlotType,
+            requestedSlot,
             equipmentEntity.EnhanceLevel,
             equipmentEntity.Durability);
     }
@@ -117,16 +123,20 @@ public sealed class EquipmentService
 
 public sealed record EquipmentValidationResult(
     bool Success,
+    GameShared.Messages.MessageCode? FailureCode,
     string? FailureReason,
     PlayerItemEntity? PlayerItem,
     ItemDefinition? ItemDefinition,
-    PlayerEquipmentEntity? PlayerEquipment)
+    PlayerEquipmentEntity? PlayerEquipment,
+    PlayerEquipmentEntity? OccupiedEquipment)
 {
-    public static EquipmentValidationResult Failed(string reason) => new(false, reason, null, null, null);
+    public static EquipmentValidationResult Failed(GameShared.Messages.MessageCode code, string reason) =>
+        new(false, code, reason, null, null, null, null);
 
     public static EquipmentValidationResult Succeeded(
         PlayerItemEntity playerItem,
         ItemDefinition itemDefinition,
-        PlayerEquipmentEntity playerEquipment) =>
-        new(true, null, playerItem, itemDefinition, playerEquipment);
+        PlayerEquipmentEntity playerEquipment,
+        PlayerEquipmentEntity? occupiedEquipment) =>
+        new(true, null, null, playerItem, itemDefinition, playerEquipment, occupiedEquipment);
 }

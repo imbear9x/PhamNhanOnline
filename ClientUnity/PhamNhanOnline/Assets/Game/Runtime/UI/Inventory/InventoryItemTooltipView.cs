@@ -82,7 +82,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             builder.Append(" | ");
             builder.Append(InventoryItemPresentationCatalog.GetItemTypeLabel(item.ItemType));
 
-            var slotLabel = InventoryItemPresentationCatalog.GetEquipmentSlotLabel(item.EquippedSlot);
+            var slotLabel = InventoryItemPresentationCatalog.GetEquipmentSlotLabel(item.EquippedSlot ?? item.EquipmentSlotType);
             if (!string.IsNullOrWhiteSpace(slotLabel))
             {
                 builder.AppendLine();

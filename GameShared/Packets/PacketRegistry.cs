@@ -102,6 +102,18 @@ public static class PacketRegistry
             case GetInventoryResultPacket:
                 id = 59;
                 return true;
+            case EquipInventoryItemPacket:
+                id = 60;
+                return true;
+            case EquipInventoryItemResultPacket:
+                id = 61;
+                return true;
+            case UnequipInventoryItemPacket:
+                id = 62;
+                return true;
+            case UnequipInventoryItemResultPacket:
+                id = 63;
+                return true;
         }
 
         return PacketGeneratedRegistry.TryGetId(packet, out id);
@@ -175,6 +187,14 @@ public static class PacketRegistry
                 return new GetInventoryPacket();
             case 59:
                 return new GetInventoryResultPacket();
+            case 60:
+                return new EquipInventoryItemPacket();
+            case 61:
+                return new EquipInventoryItemResultPacket();
+            case 62:
+                return new UnequipInventoryItemPacket();
+            case 63:
+                return new UnequipInventoryItemResultPacket();
         }
 
         return PacketGeneratedRegistry.Create(id);

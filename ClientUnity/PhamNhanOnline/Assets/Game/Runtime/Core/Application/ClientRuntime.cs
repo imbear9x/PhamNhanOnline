@@ -56,7 +56,7 @@ namespace PhamNhanOnline.Client.Core.Application
             UiScreens = new UiScreenService();
             AuthService = new ClientAuthService(Connection, Auth);
             CharacterService = new ClientCharacterService(Connection, Character);
-            InventoryService = new ClientInventoryService(Connection, Inventory);
+            InventoryService = new ClientInventoryService(Connection, Character, Inventory);
             WorldService = new ClientWorldService(Connection, World, Character, Target);
             WorldTravelService = new ClientWorldTravelService(Connection);
             LoginFlow = new ClientLoginFlowService(Connection, AuthService, CharacterService, SceneFlow, settings);

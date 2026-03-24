@@ -25,7 +25,9 @@ with seeded_templates as (
             (910006, 'truong_xuan_tam_phap_tan_ban', 'Truong Xuan Tam Phap - Tan Ban', 5, 3, 1, false, false, true, 'item_truong_xuan_tam_phap', 'bg_item_rare', 'Cong phap tan ban danh cho de tu moi nhap mon. Dung de test item loai Cong phap.'),
             (910007, 'ha_pham_linh_thach', 'Ha Pham Linh Thach', 6, 1, 9999, true, true, true, 'item_ha_pham_linh_thach', 'bg_item_common', 'Don vi tien te co ban trong gioi tu chan. Dung de test item stack lon.'),
             (910008, 'huyet_tinh_thao', 'Huyet Tinh Thao', 3, 2, 999, true, true, true, 'item_huyet_tinh_thao', 'bg_item_uncommon', 'Nguyen lieu duoc tinh co the dung cho luyen dan hoac che tao.'),
-            (910009, 'thanh_moc_phu', 'Thanh Moc Phu', 4, 4, 1, true, true, true, 'item_thanh_moc_phu', 'bg_item_epic', 'Phap bao dang phu luu chuyen moc linh khi. Dung de test item loai Phap bao.')
+            (910009, 'thanh_moc_phu', 'Thanh Moc Phu', 4, 4, 1, true, true, true, 'item_thanh_moc_phu', 'bg_item_epic', 'Phap bao dang phu luu chuyen moc linh khi. Dung de test item loai Phap bao.'),
+            (910010, 'xich_van_kiem', 'Xich Van Kiem', 1, 4, 1, true, true, true, 'item_xich_van_kiem', 'bg_item_epic', 'Kiem du phong de test keo tha thay the vu khi dang mac.'),
+            (910011, 'bach_ngan_phap_y', 'Bach Ngan Phap Y', 1, 3, 1, true, true, true, 'item_bach_ngan_phap_y', 'bg_item_rare', 'Phap y du phong de test keo sai slot va thay the trang bi giap.')
     ) as v(id, code, name, item_type, rarity, max_stack, is_tradeable, is_droppable, is_destroyable, icon, background_icon, description)
 ),
 upsert_item_templates as (
@@ -85,7 +87,9 @@ upsert_equipment_templates as (
         (910001, 1, 1, 12),
         (910002, 2, 3, 10),
         (910003, 3, 4, 8),
-        (910004, 4, 5, 8)
+        (910004, 4, 5, 8),
+        (910010, 1, 1, 18),
+        (910011, 2, 3, 16)
     on conflict (item_template_id) do update
     set
         slot_type = excluded.slot_type,
@@ -129,7 +133,9 @@ seeded_inventory_rows as (
             (910006, 1, true),
             (910007, 128, false),
             (910008, 36, false),
-            (910009, 1, false)
+            (910009, 1, false),
+            (910010, 1, false),
+            (910011, 1, false)
     ) as v(item_template_id, quantity, is_bound)
 ),
 inserted_player_items as (
@@ -163,18 +169,20 @@ insert into public.player_equipments (
 )
 select
     ipi.id,
-    null,
+    details.equipped_slot,
     details.enhance_level,
     details.durability,
     timezone('utc', now())
 from inserted_player_items ipi
 join (
-    values
-        (910001, 3, 82),
-        (910002, 1, 55),
-        (910003, 0, 41),
-        (910004, 2, 63)
-) as details(item_template_id, enhance_level, durability) on details.item_template_id = ipi.item_template_id
+        values
+            (910001, 1, 3, 82),
+            (910002, 2, 1, 55),
+            (910003, 3, 0, 41),
+            (910004, 4, 2, 63),
+            (910010, null, 5, 97),
+            (910011, null, 2, 88)
+) as details(item_template_id, equipped_slot, enhance_level, durability) on details.item_template_id = ipi.item_template_id
 on conflict (player_item_id) do update
 set
     equipped_slot = excluded.equipped_slot,

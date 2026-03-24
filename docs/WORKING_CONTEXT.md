@@ -589,6 +589,32 @@ Cuối mỗi buổi, nên bổ sung:
 - Build verify:
   - `dotnet build GameServer/GameServer.csproj` pass
 
+## Session update 2026-03-24 equipment slots foundation
+
+- Da them foundation equip/unequip cho inventory theo huong scene-driven:
+  - `EquipInventoryItemPacket`
+  - `UnequipInventoryItemPacket`
+  - result packet tra lai inventory snapshot moi
+- `InventoryItemModel` da co them:
+  - `EquipmentSlotType`
+  - `EquipmentType`
+  - `LevelRequirement`
+- Phase hien tai chi validate `dung slot`, chua validate `level_requirement` / `realm_id`.
+- Client inventory UI da co nen cho:
+  - grid item trong balo
+  - 4 o trang bi co dinh
+  - tooltip dung chung cho item trong balo va item dang mac
+  - drag/drop tu balo sang o trang bi va nguoc lai
+- Server da support:
+  - equip item vao dung slot
+  - replace item cu trong cung slot
+  - unequip theo slot
+  - tra lai inventory snapshot moi sau thao tac
+- Seed `admin02` da duoc mo rong:
+  - 4 mon dang mac san
+  - item du phong trong balo de test thay the
+  - consumable/material/talisman/currency de test tooltip va keo sai slot
+
 ## Session update 2026-03-24 inventory UI foundation
 
 - Da them client-side inventory runtime:

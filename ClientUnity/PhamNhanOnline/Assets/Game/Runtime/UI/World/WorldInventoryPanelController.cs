@@ -23,6 +23,8 @@ namespace PhamNhanOnline.Client.UI.World
         [Header("Inventory References")]
         [SerializeField] private TMP_Text inventoryStatusText;
         [SerializeField] private InventoryItemGridView inventoryGridView;
+        [SerializeField] private EquipmentSlotsPanelView equipmentSlotsView;
+        [SerializeField] private InventoryDropZoneView inventoryDropZoneView;
         [SerializeField] private InventoryItemTooltipView itemTooltipView;
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
 
@@ -35,6 +37,7 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private string inventoryNotLoadedText = "Kho do chua duoc tai.";
         [SerializeField] private string inventoryLoadingText = "Dang tai kho do...";
         [SerializeField] private string emptyInventoryText = "Kho do dang trong.";
+        [SerializeField] private string inventoryActionInProgressText = "Dang cap nhat trang bi...";
 
         [Header("Character Reload")]
         [SerializeField] private bool autoLoadMissingCharacterData = true;
@@ -54,8 +57,8 @@ namespace PhamNhanOnline.Client.UI.World
         private bool inventoryReloadInFlight;
         private string lastInventorySnapshot = string.Empty;
         private string lastInventoryStatus = string.Empty;
-        private long? selectedPlayerItemId;
         private long? previewPlayerItemId;
+        private bool inventoryActionInFlight;
 
         private void Awake()
         {
@@ -64,6 +67,20 @@ namespace PhamNhanOnline.Client.UI.World
                 inventoryGridView.ItemClicked += HandleInventoryItemClicked;
                 inventoryGridView.ItemHovered += HandleInventoryItemHovered;
                 inventoryGridView.ItemHoverExited += HandleInventoryItemHoverExited;
+                inventoryGridView.EquippedItemDropped += HandleEquippedItemDroppedOnInventory;
+            }
+
+            if (equipmentSlotsView != null)
+            {
+                equipmentSlotsView.ItemClicked += HandleInventoryItemClicked;
+                equipmentSlotsView.ItemHovered += HandleInventoryItemHovered;
+                equipmentSlotsView.ItemHoverExited += HandleInventoryItemHoverExited;
+                equipmentSlotsView.InventoryItemDroppedOnSlot += HandleInventoryItemDroppedOnEquipmentSlot;
+            }
+
+            if (inventoryDropZoneView != null)
+            {
+                inventoryDropZoneView.EquippedItemDropped += HandleEquippedItemDroppedOnInventory;
             }
         }
 
@@ -97,6 +114,20 @@ namespace PhamNhanOnline.Client.UI.World
                 inventoryGridView.ItemClicked -= HandleInventoryItemClicked;
                 inventoryGridView.ItemHovered -= HandleInventoryItemHovered;
                 inventoryGridView.ItemHoverExited -= HandleInventoryItemHoverExited;
+                inventoryGridView.EquippedItemDropped -= HandleEquippedItemDroppedOnInventory;
+            }
+
+            if (equipmentSlotsView != null)
+            {
+                equipmentSlotsView.ItemClicked -= HandleInventoryItemClicked;
+                equipmentSlotsView.ItemHovered -= HandleInventoryItemHovered;
+                equipmentSlotsView.ItemHoverExited -= HandleInventoryItemHoverExited;
+                equipmentSlotsView.InventoryItemDroppedOnSlot -= HandleInventoryItemDroppedOnEquipmentSlot;
+            }
+
+            if (inventoryDropZoneView != null)
+            {
+                inventoryDropZoneView.EquippedItemDropped -= HandleEquippedItemDroppedOnInventory;
             }
         }
 
@@ -157,9 +188,11 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             var inventoryState = ClientRuntime.Inventory;
-            var items = SortInventoryItems(inventoryState.Items);
-            var status = ResolveInventoryStatus(inventoryState, items.Count);
-            var snapshot = BuildInventorySnapshot(inventoryState, items);
+            var allItems = SortInventoryItems(inventoryState.Items);
+            var equippedItems = allItems.Where(x => x.IsEquipped).OrderBy(x => x.EquippedSlot ?? int.MaxValue).ThenBy(x => x.Name ?? string.Empty, StringComparer.OrdinalIgnoreCase).ToList();
+            var bagItems = allItems.Where(x => !x.IsEquipped).ToList();
+            var status = ResolveInventoryStatus(inventoryState, bagItems.Count, equippedItems.Count);
+            var snapshot = BuildInventorySnapshot(inventoryState, allItems, inventoryActionInFlight);
 
             if (!force &&
                 string.Equals(lastInventorySnapshot, snapshot, StringComparison.Ordinal) &&
@@ -177,20 +210,17 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
             }
 
-            if (items.Count == 0)
-            {
-                ClearInventoryVisuals(force: true);
-                return;
-            }
-
             if (inventoryGridView != null)
             {
-                inventoryGridView.SetItems(items, itemPresentationCatalog, force: true);
-                inventoryGridView.SetSelectedItem(selectedPlayerItemId, force: true);
+                inventoryGridView.SetItems(bagItems, itemPresentationCatalog, force: true);
+                inventoryGridView.SetSelectedItem(previewPlayerItemId, force: true);
             }
 
+            if (equipmentSlotsView != null)
+                equipmentSlotsView.SetItems(equippedItems, itemPresentationCatalog, previewPlayerItemId, force: true);
+
             InventoryItemModel activeTooltipItem;
-            if (TryResolveActiveTooltipItem(items, out activeTooltipItem))
+            if (TryResolveActiveTooltipItem(allItems, out activeTooltipItem))
                 ShowTooltip(activeTooltipItem, force: true);
             else if (itemTooltipView != null)
                 itemTooltipView.Hide(force: true);
@@ -325,6 +355,9 @@ namespace PhamNhanOnline.Client.UI.World
             if (inventoryGridView != null)
                 inventoryGridView.Clear(force: true);
 
+            if (equipmentSlotsView != null)
+                equipmentSlotsView.Clear(force: true);
+
             if (itemTooltipView != null)
                 itemTooltipView.Hide(force: true);
         }
@@ -342,9 +375,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void HandleInventoryItemClicked(InventoryItemModel item)
         {
-            selectedPlayerItemId = item.PlayerItemId;
-            previewPlayerItemId = item.PlayerItemId;
-            RefreshInventory(force: true);
+            // Tooltip/highlight are hover-only in this phase.
         }
 
         private void HandleInventoryItemHovered(InventoryItemModel item)
@@ -359,37 +390,101 @@ namespace PhamNhanOnline.Client.UI.World
             RefreshInventory(force: true);
         }
 
+        private async void HandleInventoryItemDroppedOnEquipmentSlot(InventoryEquipmentSlot slot, InventoryItemModel item)
+        {
+            if (inventoryActionInFlight || !ClientRuntime.IsInitialized)
+                return;
+
+            if (item.EquipmentSlotType != (int)slot)
+                return;
+
+            inventoryActionInFlight = true;
+            ApplyInventoryStatus(inventoryActionInProgressText, force: true);
+
+            try
+            {
+                var result = await ClientRuntime.InventoryService.EquipItemAsync(item.PlayerItemId, (int)slot);
+                if (!result.Success)
+                    ClientLog.Warn($"WorldInventoryPanelController failed to equip item: {result.Message}");
+
+                previewPlayerItemId = null;
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Warn($"WorldInventoryPanelController equip exception: {ex.Message}");
+            }
+            finally
+            {
+                inventoryActionInFlight = false;
+                RefreshFromRuntime(force: true);
+                RefreshInventory(force: true);
+            }
+        }
+
+        private async void HandleEquippedItemDroppedOnInventory(InventoryEquipmentSlot slot)
+        {
+            if (inventoryActionInFlight || !ClientRuntime.IsInitialized)
+                return;
+
+            inventoryActionInFlight = true;
+            ApplyInventoryStatus(inventoryActionInProgressText, force: true);
+
+            try
+            {
+                var result = await ClientRuntime.InventoryService.UnequipItemAsync((int)slot);
+                if (!result.Success)
+                    ClientLog.Warn($"WorldInventoryPanelController failed to unequip item: {result.Message}");
+
+                previewPlayerItemId = null;
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Warn($"WorldInventoryPanelController unequip exception: {ex.Message}");
+            }
+            finally
+            {
+                inventoryActionInFlight = false;
+                RefreshFromRuntime(force: true);
+                RefreshInventory(force: true);
+            }
+        }
+
         private static List<InventoryItemModel> SortInventoryItems(IReadOnlyList<InventoryItemModel> items)
         {
             if (items == null || items.Count == 0)
                 return new List<InventoryItemModel>(0);
 
             return items
-                .OrderByDescending(x => x.IsEquipped)
-                .ThenByDescending(x => x.Rarity)
+                .OrderByDescending(x => x.Rarity)
                 .ThenBy(x => x.ItemType)
                 .ThenBy(x => x.Name ?? string.Empty, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(x => x.PlayerItemId)
                 .ToList();
         }
 
-        private string ResolveInventoryStatus(ClientInventoryState inventoryState, int itemCount)
+        private string ResolveInventoryStatus(ClientInventoryState inventoryState, int bagItemCount, int equippedItemCount)
         {
+            if (inventoryActionInFlight)
+                return inventoryActionInProgressText;
+
             if (!inventoryState.HasLoadedInventory)
                 return inventoryState.IsLoading || inventoryReloadInFlight ? inventoryLoadingText : inventoryNotLoadedText;
 
-            if (itemCount <= 0)
+            if (bagItemCount <= 0 && equippedItemCount <= 0)
                 return emptyInventoryText;
 
-            return string.Format(CultureInfo.InvariantCulture, "{0} vat pham", itemCount);
+            if (bagItemCount <= 0)
+                return string.Format(CultureInfo.InvariantCulture, "Balo dang trong | {0} trang bi dang mac", equippedItemCount);
+
+            if (equippedItemCount <= 0)
+                return string.Format(CultureInfo.InvariantCulture, "{0} vat pham", bagItemCount);
+
+            return string.Format(CultureInfo.InvariantCulture, "{0} vat pham | {1} trang bi dang mac", bagItemCount, equippedItemCount);
         }
 
         private bool TryResolveActiveTooltipItem(IReadOnlyList<InventoryItemModel> items, out InventoryItemModel item)
         {
             if (TryFindInventoryItemById(items, previewPlayerItemId, out item))
-                return true;
-
-            if (TryFindInventoryItemById(items, selectedPlayerItemId, out item))
                 return true;
 
             item = default;
@@ -434,12 +529,13 @@ namespace PhamNhanOnline.Client.UI.World
             return string.Join("|", parts);
         }
 
-        private static string BuildInventorySnapshot(ClientInventoryState inventoryState, IReadOnlyList<InventoryItemModel> items)
+        private static string BuildInventorySnapshot(ClientInventoryState inventoryState, IReadOnlyList<InventoryItemModel> items, bool inventoryActionInFlight)
         {
             var parts = new List<string>(items.Count + 3)
             {
                 inventoryState.HasLoadedInventory ? "loaded" : "not-loaded",
                 inventoryState.IsLoading ? "loading" : "idle",
+                inventoryActionInFlight ? "action" : "stable",
                 inventoryState.LastStatusMessage ?? string.Empty
             };
 

@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using GameShared.Models;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace PhamNhanOnline.Client.UI.Inventory
 {
-    public sealed class InventoryItemGridView : MonoBehaviour
+    public sealed class InventoryItemGridView : MonoBehaviour, IDropHandler
     {
         [Header("References")]
         [SerializeField] private Transform contentRoot;
@@ -22,6 +23,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
         public event Action<InventoryItemModel> ItemClicked;
         public event Action<InventoryItemModel> ItemHovered;
         public event Action ItemHoverExited;
+        public event Action<InventoryEquipmentSlot> EquippedItemDropped;
 
         private void Awake()
         {
@@ -118,6 +120,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 instance.Clicked += HandleSlotClicked;
                 instance.Hovered += HandleSlotHovered;
                 instance.HoverExited += HandleSlotHoverExited;
+                instance.EquippedItemDroppedOnInventory += HandleEquippedItemDroppedOnInventory;
                 spawnedItems.Add(instance);
             }
         }
@@ -163,6 +166,25 @@ namespace PhamNhanOnline.Client.UI.Inventory
             var handler = ItemHoverExited;
             if (handler != null)
                 handler();
+        }
+
+        private void HandleEquippedItemDroppedOnInventory(InventoryEquipmentSlot slot)
+        {
+            var handler = EquippedItemDropped;
+            if (handler != null)
+                handler(slot);
+        }
+
+        public void OnDrop(PointerEventData eventData)
+        {
+            var equipmentSlotView = eventData.pointerDrag != null
+                ? eventData.pointerDrag.GetComponent<EquipmentSlotView>()
+                : null;
+
+            if (equipmentSlotView == null || !equipmentSlotView.HasItem)
+                return;
+
+            HandleEquippedItemDroppedOnInventory(equipmentSlotView.SlotType);
         }
 
         private static string BuildSnapshot(IReadOnlyList<InventoryItemModel> items)

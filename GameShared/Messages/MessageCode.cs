@@ -60,6 +60,10 @@ public enum MessageCode : int
     MartialArtNotLearned = 3022,
     CultivationRequiresActiveMartialArt = 3023,
     ActiveMartialArtInvalid = 3024,
+    InventoryItemInvalid = 3025,
+    EquipmentSlotInvalid = 3026,
+    EquipmentSlotMismatch = 3027,
+    EquipmentSlotEmpty = 3028,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001,
