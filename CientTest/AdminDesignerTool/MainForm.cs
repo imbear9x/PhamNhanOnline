@@ -8,6 +8,8 @@ internal sealed class MainForm : Form
     private readonly TableEditorControl? _genericEditorControl;
     private readonly MasterDetailWorkspaceControl? _workspaceEditorControl;
     private readonly CharacterMartialArtWorkspaceControl? _characterMartialArtWorkspaceControl;
+    private readonly CharacterItemWorkspaceControl? _characterItemWorkspaceControl;
+    private readonly CharacterSkillWorkspaceControl? _characterSkillWorkspaceControl;
     private readonly Label _connectionInfoLabel;
     private readonly IReadOnlyDictionary<string, AdminResourceDefinition> _resourcesByKey;
 
@@ -88,10 +90,22 @@ internal sealed class MainForm : Form
                 Dock = DockStyle.Fill,
                 Visible = false
             };
+            _characterItemWorkspaceControl = new CharacterItemWorkspaceControl(connectionString)
+            {
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
+            _characterSkillWorkspaceControl = new CharacterSkillWorkspaceControl(connectionString)
+            {
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
 
             _editorHostPanel.Controls.Add(_genericEditorControl);
             _editorHostPanel.Controls.Add(_workspaceEditorControl);
             _editorHostPanel.Controls.Add(_characterMartialArtWorkspaceControl);
+            _editorHostPanel.Controls.Add(_characterItemWorkspaceControl);
+            _editorHostPanel.Controls.Add(_characterSkillWorkspaceControl);
         }
         else
         {
@@ -145,6 +159,26 @@ internal sealed class MainForm : Form
 
             ShowEditor(_characterMartialArtWorkspaceControl);
             await _characterMartialArtWorkspaceControl.LoadWorkspaceAsync(resource);
+            return;
+        }
+
+        if (resource.EditorKind == AdminEditorKind.CharacterItemWorkspace)
+        {
+            if (_characterItemWorkspaceControl is null)
+                return;
+
+            ShowEditor(_characterItemWorkspaceControl);
+            await _characterItemWorkspaceControl.LoadWorkspaceAsync(resource);
+            return;
+        }
+
+        if (resource.EditorKind == AdminEditorKind.CharacterSkillWorkspace)
+        {
+            if (_characterSkillWorkspaceControl is null)
+                return;
+
+            ShowEditor(_characterSkillWorkspaceControl);
+            await _characterSkillWorkspaceControl.LoadWorkspaceAsync(resource);
             return;
         }
 

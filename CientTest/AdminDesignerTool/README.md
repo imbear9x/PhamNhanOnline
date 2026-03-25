@@ -43,6 +43,8 @@ Tool se tu tim `GameServer/Config/dbConfig.json` tu thu muc hien tai di nguoc le
   - `Equipment Workspace`
   - `Player Inventory Workspace`
   - `Character Martial Arts Workspace`
+  - `Character Items Workspace`
+  - `Character Skills Workspace`
 
 ## Gioi han phase nay
 

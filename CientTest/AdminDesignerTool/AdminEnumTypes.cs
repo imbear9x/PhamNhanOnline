@@ -14,7 +14,9 @@ internal enum AdminEditorKind
     EnemyWorkspace = 9,
     EnemySpawnWorkspace = 10,
     PlayerInventoryWorkspace = 11,
-    CharacterMartialArtWorkspace = 12
+    CharacterMartialArtWorkspace = 12,
+    CharacterItemWorkspace = 13,
+    CharacterSkillWorkspace = 14
 }
 
 internal enum CharacterStatType
