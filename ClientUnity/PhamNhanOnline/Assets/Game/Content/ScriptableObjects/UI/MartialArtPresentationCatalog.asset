@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a21cc572bb8cd2459b19fb6dae83e7e, type: 3}
+  m_Name: MartialArtPresentationCatalog
+  m_EditorClassIdentifier: 
+  defaultIconSprite: {fileID: 21300000, guid: 03647f418a018a0468d0086079280a6c, type: 3}
+  iconEntries:
+  - key: truong_xuan_cong
+    sprite: {fileID: 21300000, guid: ef0a86972142618488d8e09cd26fc64b, type: 3}
+  - key: linh_xa_quyet
+    sprite: {fileID: 21300000, guid: 23606820f828dd44186b3610b52edb5c, type: 3}
+  - key: gongphap03
+    sprite: {fileID: 21300000, guid: 9c05a00c8751c044aad399759e978e18, type: 3}
+  martialArtOverrides: []
