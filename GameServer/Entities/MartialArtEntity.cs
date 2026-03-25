@@ -8,6 +8,7 @@ public sealed class MartialArtEntity
     [Column("id"), PrimaryKey] public int Id { get; set; }
     [Column("code"), NotNull] public string Code { get; set; } = string.Empty;
     [Column("name"), NotNull] public string Name { get; set; } = string.Empty;
+    [Column("icon")] public string? Icon { get; set; }
     [Column("quality"), NotNull] public int Quality { get; set; }
     [Column("category")] public string? Category { get; set; }
     [Column("description")] public string? Description { get; set; }

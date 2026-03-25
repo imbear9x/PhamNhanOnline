@@ -299,6 +299,44 @@ public sealed class CharacterCultivationService
         return player.RuntimeState.CaptureSnapshot().CurrentState.CurrentState == CharacterRuntimeStateCodes.Cultivating;
     }
 
+    public async Task<CultivationPreviewDto?> BuildCultivationPreviewAsync(
+        CharacterBaseStatsDto baseStats,
+        CancellationToken cancellationToken = default)
+    {
+        if (!baseStats.ActiveMartialArtId.HasValue || baseStats.ActiveMartialArtId.Value <= 0)
+            return null;
+
+        var realms = await LoadRealmTemplatesAsync(cancellationToken);
+        if (!baseStats.RealmTemplateId.HasValue ||
+            !realms.TryGetValue(baseStats.RealmTemplateId.Value, out var realm))
+        {
+            return null;
+        }
+
+        if (!TryResolveQiAbsorptionRate(baseStats, out var qiAbsorptionRate))
+            return null;
+
+        var homeDefinition = _mapCatalog.ResolveHomeDefinition();
+        var spiritualEnergyPerMinute = homeDefinition.SpiritualEnergyPerMinute;
+        var estimatedCultivationPerMinute = CalculateCultivationGain(
+            TimeSpan.FromMinutes(1),
+            realm,
+            spiritualEnergyPerMinute,
+            qiAbsorptionRate);
+        var estimatedPotentialPerMinute = IsPotentialRewardLocked(baseStats, realm)
+            ? 0m
+            : estimatedCultivationPerMinute * PotentialPerCultivationPoint;
+
+        return new CultivationPreviewDto(
+            baseStats.ActiveMartialArtId.Value,
+            qiAbsorptionRate,
+            spiritualEnergyPerMinute,
+            realm.AbsorptionMultiplier ?? 1m,
+            estimatedCultivationPerMinute,
+            estimatedPotentialPerMinute,
+            MessageCode.None);
+    }
+
     private async Task<OnlineSettlementResult> SettleOnlinePlayerAsync(
         PlayerSession player,
         bool isOfflineSettlement,
@@ -323,9 +361,14 @@ public sealed class CharacterCultivationService
             return OnlineSettlementResult.None;
 
         var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(grant.UpdatedBaseStats);
+        var previousCurrentState = snapshot.CurrentState;
         player.RuntimeState.UpdateBaseStats(_ => effectiveBaseStats);
         player.RuntimeState.UpdateCurrentState(_ => grant.UpdatedCurrentState);
         player.SynchronizeFromCurrentState(grant.UpdatedCurrentState);
+
+        var currentStateChanged = previousCurrentState != grant.UpdatedCurrentState;
+        if (currentStateChanged)
+            _notifier.NotifyCurrentStateChanged(player, grant.UpdatedCurrentState);
 
         if (grant.HasReward)
         {
@@ -474,9 +517,11 @@ public sealed class CharacterCultivationService
         var currentProgress = baseStats.CultivationProgress ?? 0m;
         if (currentCultivation >= maxCultivation)
         {
-            if (currentState.LastCultivationRewardedAtUtc.HasValue &&
-                currentState.LastCultivationRewardedAtUtc.Value >= utcNow &&
-                currentProgress == 0m)
+            var alreadyStoppedAtRealmCap = currentState.CurrentState == CharacterRuntimeStateCodes.Idle &&
+                                           !currentState.CultivationStartedAtUtc.HasValue &&
+                                           !currentState.LastCultivationRewardedAtUtc.HasValue &&
+                                           currentProgress == 0m;
+            if (alreadyStoppedAtRealmCap)
             {
                 return CultivationGrant.None(baseStats, currentState);
             }
@@ -486,11 +531,7 @@ public sealed class CharacterCultivationService
                 {
                     CultivationProgress = 0m
                 },
-                currentState with
-                {
-                    LastCultivationRewardedAtUtc = utcNow,
-                    LastSavedAt = utcNow
-                },
+                BuildStoppedCultivationState(currentState, utcNow),
                 0,
                 0,
                 rewardedFrom,
@@ -528,7 +569,9 @@ public sealed class CharacterCultivationService
         };
         var updatedCurrentState = currentState with
         {
-            LastCultivationRewardedAtUtc = utcNow,
+            CurrentState = reachedRealmCap ? CharacterRuntimeStateCodes.Idle : currentState.CurrentState,
+            CultivationStartedAtUtc = reachedRealmCap ? null : currentState.CultivationStartedAtUtc,
+            LastCultivationRewardedAtUtc = reachedRealmCap ? null : utcNow,
             LastSavedAt = utcNow
         };
 
@@ -665,6 +708,17 @@ public sealed class CharacterCultivationService
             Cultivation = Math.Max(0L, updatedCultivation),
             CultivationProgress = 0m,
             PotentialRewardLocked = true
+        };
+    }
+
+    private static CharacterCurrentStateDto BuildStoppedCultivationState(CharacterCurrentStateDto currentState, DateTime utcNow)
+    {
+        return currentState with
+        {
+            CurrentState = CharacterRuntimeStateCodes.Idle,
+            CultivationStartedAtUtc = null,
+            LastCultivationRewardedAtUtc = null,
+            LastSavedAt = utcNow
         };
     }
 

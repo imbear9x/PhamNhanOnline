@@ -150,6 +150,7 @@ public sealed class CombatDefinitionCatalog
                 martialArt.Id,
                 martialArt.Code,
                 martialArt.Name,
+                ResolveMartialArtIconKey(martialArt),
                 martialArt.Quality,
                 martialArt.Category,
                 martialArt.Description,
@@ -201,5 +202,13 @@ public sealed class CombatDefinitionCatalog
             entity.BaseValue,
             entity.PerStageValue,
             entity.ValueType.HasValue ? (CombatValueType)entity.ValueType.Value : null);
+    }
+
+    private static string ResolveMartialArtIconKey(MartialArtEntity entity)
+    {
+        if (!string.IsNullOrWhiteSpace(entity.Icon))
+            return entity.Icon.Trim();
+
+        return entity.Code;
     }
 }

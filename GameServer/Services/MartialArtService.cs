@@ -77,6 +77,7 @@ public sealed class MartialArtService
                 martialArtDefinition.Id,
                 martialArtDefinition.Code,
                 martialArtDefinition.Name,
+                martialArtDefinition.Icon,
                 martialArtDefinition.Quality,
                 martialArtDefinition.Category,
                 learned.CurrentStage,
@@ -88,14 +89,24 @@ public sealed class MartialArtService
 
     public async Task<CharacterBaseStatsDto> SetActiveMartialArtAsync(Guid playerId, int martialArtId, CancellationToken cancellationToken = default)
     {
-        if (martialArtId <= 0 || !_combatDefinitions.TryGetMartialArt(martialArtId, out _))
+        var baseStats = await _characterService.InitializeCharacterBaseStatsAsync(playerId, cancellationToken);
+        if (martialArtId <= 0)
+        {
+            var cleared = baseStats with
+            {
+                ActiveMartialArtId = null
+            };
+
+            return await _characterService.UpdateCharacterBaseStatsAsync(cleared, cancellationToken);
+        }
+
+        if (!_combatDefinitions.TryGetMartialArt(martialArtId, out _))
             throw new GameException(MessageCode.ActiveMartialArtInvalid);
 
         var owned = await _playerMartialArts.GetByPlayerAndMartialArtAsync(playerId, martialArtId, cancellationToken);
         if (owned is null)
             throw new GameException(MessageCode.MartialArtNotLearned);
 
-        var baseStats = await _characterService.InitializeCharacterBaseStatsAsync(playerId, cancellationToken);
         var updated = baseStats with
         {
             ActiveMartialArtId = martialArtId
@@ -118,6 +129,7 @@ public sealed class MartialArtService
                     definition.Id,
                     definition.Code,
                     definition.Name,
+                    definition.Icon,
                     definition.Quality,
                     definition.Category,
                     progress.CurrentStage,

@@ -1,5 +1,6 @@
 using GameServer.DTO;
 using GameServer.Network.Interface;
+using GameServer.Runtime;
 using GameServer.Services;
 using GameShared.Packets;
 
@@ -8,13 +9,16 @@ namespace GameServer.Network.Handlers;
 public sealed class GetOwnedMartialArtsHandler : IPacketHandler<GetOwnedMartialArtsPacket>
 {
     private readonly MartialArtService _martialArtService;
+    private readonly CharacterCultivationService _cultivationService;
     private readonly INetworkSender _network;
 
     public GetOwnedMartialArtsHandler(
         MartialArtService martialArtService,
+        CharacterCultivationService cultivationService,
         INetworkSender network)
     {
         _martialArtService = martialArtService;
+        _cultivationService = cultivationService;
         _network = network;
     }
 
@@ -34,13 +38,15 @@ public sealed class GetOwnedMartialArtsHandler : IPacketHandler<GetOwnedMartialA
         var martialArts = await _martialArtService.GetOwnedMartialArtsAsync(
             session.Player.CharacterData.CharacterId,
             snapshot.BaseStats.ActiveMartialArtId);
+        var cultivationPreview = await _cultivationService.BuildCultivationPreviewAsync(snapshot.BaseStats);
 
         _network.Send(session.ConnectionId, new GetOwnedMartialArtsResultPacket
         {
             Success = true,
             Code = GameShared.Messages.MessageCode.None,
             ActiveMartialArtId = snapshot.BaseStats.ActiveMartialArtId,
-            MartialArts = martialArts.Select(static x => x.ToModel()).ToList()
+            MartialArts = martialArts.Select(static x => x.ToModel()).ToList(),
+            CultivationPreview = cultivationPreview?.ToModel()
         });
     }
 }

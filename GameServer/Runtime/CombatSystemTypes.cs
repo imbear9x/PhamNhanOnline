@@ -160,6 +160,7 @@ public sealed record MartialArtDefinition(
     int Id,
     string Code,
     string Name,
+    string? Icon,
     int Quality,
     string? Category,
     string? Description,

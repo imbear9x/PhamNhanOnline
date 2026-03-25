@@ -7,6 +7,7 @@ public struct PlayerMartialArtModel
 {
     public int MartialArtId;
     public string? Code;
+    public string? Icon;
     public string? Name;
     public int Quality;
     public string? Category;

@@ -479,10 +479,6 @@ StatsPanel
       CultivationProgressText
       UnallocatedPotentialText
       StatusText
-    BreakthroughSection
-      BreakthroughChanceText
-      BreakthroughButton
-        BreakthroughButtonText
     PotentialRowsSection
       PotentialRowsList
         PotentialRowTemplate
@@ -513,14 +509,7 @@ Checklist:
 - `Status Text` -> `StatusText`
 - `CultivationProgressText` sẽ hiện dạng `xxx/xxxx`
 
-3. Khu vực đột phá
-- `Breakthrough Root` -> `BreakthroughSection`
-- `Breakthrough Chance Text` -> `BreakthroughChanceText`
-- `Breakthrough Button` -> `BreakthroughButton`
-- `Breakthrough Button Text` -> `BreakthroughButtonText`
-- `BreakthroughSection` có thể để `active` trong editor cho dễ chỉnh; lúc Play controller sẽ tự bật/tắt theo trạng thái viên mãn cảnh giới
-
-4. Danh sách row chỉ số
+3. Danh sách row chỉ số
 - Tạo `PotentialRowsList`, gắn `PotentialUpgradeRowListView`
 - Trong `PotentialRowsList` tạo `PotentialRowTemplate`, gắn `PotentialUpgradeRowView`
 - Kéo ref trên `PotentialUpgradeRowView`:
@@ -533,7 +522,7 @@ Checklist:
 - `Item Template` -> `PotentialRowTemplate`
 - giữ `Hide Template Object` bật
 
-5. Popup lựa chọn nâng cấp
+4. Popup lựa chọn nâng cấp
 - Tạo `PotentialOptionsPopup`, gắn `PotentialUpgradeOptionsPopupView`
 - Tạo `OptionButtonTemplate`, gắn `PotentialUpgradeOptionButtonView`
 - Kéo ref trên `PotentialUpgradeOptionsPopupView`:
@@ -547,7 +536,7 @@ Checklist:
 - `Label Text` -> `OptionLabelText`
 - `PotentialOptionsPopup` nên có `Image` hoặc `Graphic` ở root nếu bạn muốn nó bắt được raycast ổn định khi rê chuột vào popup
 
-6. Catalog icon/tên stat
+5. Catalog icon/tên stat
 - Tạo asset:
 - `Create > PhamNhanOnline > UI > Potential Stat Presentation Catalog`
 - path gợi ý:
@@ -566,37 +555,177 @@ Checklist:
 - `BaseFortune`
 - `BaseSpiritualSense`
 
-7. Wiring cuối cùng trên `WorldPotentialPanelController`
+6. Wiring cuối cùng trên `WorldPotentialPanelController`
 - `Realm Name Text` -> `RealmNameText`
 - `Cultivation Progress Text` -> `CultivationProgressText`
 - `Unallocated Potential Text` -> `UnallocatedPotentialText`
 - `Status Text` -> `StatusText`
-- `Breakthrough Root` -> `BreakthroughSection`
-- `Breakthrough Chance Text` -> `BreakthroughChanceText`
-- `Breakthrough Button` -> `BreakthroughButton`
-- `Breakthrough Button Text` -> `BreakthroughButtonText`
 - `Row List View` -> `PotentialRowsList`
 - `Options Popup View` -> `PotentialOptionsPopup`
 - `Presentation Catalog` -> `PotentialStatPresentationCatalog.asset`
 - `Max Visible Upgrade Options` -> `3` nếu muốn đúng phase hiện tại
 
-8. Hành vi hiện tại của panel
+7. Hành vi hiện tại của panel
 - Header lấy từ server:
 - tên cảnh giới hiện tại
 - tu vi hiện tại
 - tu vi tối đa của cảnh giới
-- tỉ lệ đột phá
-- cờ còn cảnh giới kế tiếp hay không
 - Hover vào một row sẽ hiện tối đa `3` lựa chọn nâng cấp lớn nhất từ cao xuống thấp
 - Click một lựa chọn sẽ gọi `AllocatePotentialPacket`
-- Nếu đang viên mãn cảnh giới và còn cảnh giới kế tiếp, panel sẽ hiện nút đột phá
-- Click nút đột phá sẽ gọi `BreakthroughPacket`
-- Thành công hay thất bại đều tự refresh lại UI theo packet server trả về
 
-9. Gợi ý raycast
+8. Gợi ý raycast
 - `PotentialRowTemplate` root nên có `Image` hoặc `Button` với `Raycast Target = true`
 - `HoverHighlight`, icon trang trí, background trang trí không cần bắt chuột thì nên tắt `Raycast Target`
 - popup root và nút lựa chọn nên bắt raycast để người chơi di chuột từ row sang popup mà không bị mất lựa chọn ngay
+
+### 3.5. Martial art and cultivation panel checklist
+
+Mục tiêu:
+- hiện danh sách công pháp đã học
+- có 1 ô `chủ tu` để kéo thả 1 công pháp vào
+- server trả về `ước tính tu vi / tiềm năng` theo công pháp chủ tu hiện tại
+- chỉ hiện estimate + nút `Tu luyện` khi đã có công pháp chủ tu
+- panel này là panel riêng, không nằm chung trong `StatsPanel`
+
+Hierarchy gợi ý cho panel riêng này:
+
+```text
+MartialArtPanelRoot
+  HeaderRow
+    OwnedCountText
+    MartialArtStatusText
+  ActiveMartialArtSection
+    ActiveMartialArtSlot
+      FrameBackground
+      MartialArtIcon
+  EstimateSection
+    CultivationProgressBar
+      Fill
+    CultivationProgressText
+    EstimateText
+    EstimateDetailText
+    StartCultivationButton
+      StartCultivationButtonText
+  OwnedMartialArtList
+    Viewport
+      Content
+        MartialArtItemTemplate
+          NameText
+          DetailText
+          QiRateText
+          ActiveBadge
+          SelectedHighlight
+```
+
+Checklist:
+
+1. Root controller
+- Gắn `WorldMartialArtPanelController` lên `MartialArtPanelRoot`.
+- Panel này có thể đặt trong một tab riêng của `WorldMenuController`, ví dụ `martial-art`.
+- Nếu bạn tạo tab riêng trong menu:
+- `Content Root` -> panel chứa `MartialArtPanelRoot`
+- `Content Text` -> để trống vì panel dùng controller thật
+- Không cần đặt chung trong `StatsPanel` nữa.
+
+2. Header
+- `Owned Count Text` -> `OwnedCountText`
+- `Status Text` -> `MartialArtStatusText`
+- `MartialArtStatusText` dùng để hiện:
+- đang tải danh sách công pháp
+- chưa có công pháp chủ tu
+- phải về `Home` mới bấm `Tu luyện`
+- đang gửi packet đổi công pháp / bắt đầu tu luyện
+
+3. Ô công pháp chủ tu
+- Tạo object `ActiveMartialArtSlot`, gắn `ActiveMartialArtSlotView`.
+- Wiring trên `ActiveMartialArtSlotView`:
+- `Icon Image` -> `MartialArtIcon`
+- Root `ActiveMartialArtSlot` nên có `Image` hoặc `Graphic` để nhận `Drop`.
+- `MartialArtIcon` là `Image` con nằm trên 1 frame background cố định.
+- Khi chưa có công pháp chủ tu, controller sẽ tự `SetActive(false)` cho `MartialArtIcon`.
+- Khi có công pháp chủ tu, controller sẽ tự `SetActive(true)` cho `MartialArtIcon`.
+- Sprite của `MartialArtIcon` sẽ được lấy từ `MartialArtPresentationCatalog`.
+- Khi kéo 1 item công pháp từ list vào đây, client sẽ gọi `SetActiveMartialArtPacket`.
+
+4. Vùng estimate và nút tu luyện
+- `Presentation Catalog` -> tạo asset `MartialArtPresentationCatalog` rồi gắn vào `WorldMartialArtPanelController`
+- Trong catalog này, map `icon key` của công pháp sang sprite. Server trả `PlayerMartialArtModel.Icon`; nếu trống thì client fallback sang `PlayerMartialArtModel.Code`.
+- `Estimate Root` -> `EstimateSection`
+- `Cultivation Progress Fill Image` -> object `Fill` dùng `Image` với `Fill Method`
+- `Cultivation Progress Text` -> `CultivationProgressText`
+- `Estimate Text` -> `EstimateText`
+- `Estimate Detail Text` -> `EstimateDetailText`
+- `Start Cultivation Button` -> `StartCultivationButton`
+- `Start Cultivation Button Text` -> `StartCultivationButtonText`
+- `EstimateSection` có thể để active trong editor; lúc Play controller sẽ tự bật/tắt theo dữ liệu server.
+- `CultivationProgressText` sẽ hiện dạng `tu_vi_hien_tai/tu_vi_toi_da`
+- `Fill.fillAmount` sẽ tự được controller cập nhật theo `Cultivation / RealmMaxCultivation`
+- Estimate hiện tại gồm:
+- `ước tính tu vi / phút`
+- `ước tính tiềm năng / phút`
+- `Qi rate` của công pháp
+- `linh khí động phủ` đang dùng để tính preview
+
+5. Danh sách công pháp đã học
+- Tạo `OwnedMartialArtList`, gắn `MartialArtListView`.
+- Trong `Content`, tạo `MartialArtItemTemplate`, gắn `MartialArtListItemView`.
+- Wiring trên `MartialArtListItemView`:
+- `Icon Image` -> `IconImage` nếu item row của bạn có icon công pháp
+- `Name Text` -> `NameText`
+- `Detail Text` -> `DetailText`
+- `Qi Rate Text` -> `QiRateText`
+- `Active Badge Root` -> `ActiveBadge`
+- `Selected Highlight Root` -> `SelectedHighlight`
+- Wiring trên `MartialArtListView`:
+- `Content Root` -> `Content`
+- `Item Template` -> `MartialArtItemTemplate`
+- giữ `Hide Template Object` bật
+
+6. Hành vi drag/drop hiện tại
+- Kéo item công pháp từ list vào `ActiveMartialArtSlot` -> client gửi `SetActiveMartialArtPacket`
+- Nếu thả lại đúng công pháp đang active -> client bỏ qua, không gửi packet
+- Sau khi server set active thành công:
+- `ClientRuntime.MartialArts` cập nhật active
+- server trả luôn `CultivationPreview`
+- panel tự refresh estimate và trạng thái nút `Tu luyện`
+
+7. Dữ liệu server mà panel đang dùng
+- `GetOwnedMartialArtsResultPacket`
+- `SetActiveMartialArtResultPacket`
+- `UseMartialArtBookResultPacket`
+- `StartCultivationResultPacket`
+- `PlayerMartialArtModel`
+- `CultivationPreviewModel`
+
+8. Rule hiển thị hiện tại
+- Nếu chưa có công pháp chủ tu:
+- ẩn estimate
+- ẩn nút `Tu luyện`
+- hiện status hướng dẫn kéo công pháp vào ô chủ tu
+- Nếu đã có công pháp chủ tu:
+- hiện estimate
+- hiện nút `Tu luyện`
+- nút chỉ bấm được khi nhân vật đang ở `Home` private map và không ở trạng thái bị khóa hành động
+
+9. Gợi ý raycast
+- `MartialArtItemTemplate` root nên có `Image` hoặc `Button` với `Raycast Target = true`
+- `SelectedHighlight`, `ActiveBadge` và các object trang trí không cần bắt chuột thì nên tắt `Raycast Target`
+- `ActiveMartialArtSlot` root nên có `Image` hoặc `Graphic` để nhận `IDropHandler`
+
+10. Update for active-slot / breakthrough flow
+- Add `BreakthroughSection` under `EstimateSection`.
+- Wiring on `WorldMartialArtPanelController`:
+- `Breakthrough Root` -> `BreakthroughSection`
+- `Breakthrough Chance Text` -> `BreakthroughChanceText`
+- `Breakthrough Button` -> `BreakthroughButton`
+- `Breakthrough Button Text` -> `BreakthroughButtonText`
+- The active martial art is shown only in `ActiveMartialArtSlot`; it is hidden from `OwnedMartialArtList`.
+- While character state is `Idle`, you can drag the active martial art from slot back into the list area to unequip.
+- After unequip, the martial art returns to the list and `Tu luyen` becomes disabled.
+- While character state is `Cultivating`, the controller blocks equip/unequip changes.
+- While character state is `Cultivating`, `StartCultivationButtonText` changes to `Dung tu luyen`.
+- When cultivation reaches realm cap, the server now auto-switches state back to idle.
+- When realm cap is reached, hide `StartCultivationButton` and show `BreakthroughSection` instead.
 
 ## Naming rules
 

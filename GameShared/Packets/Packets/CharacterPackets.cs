@@ -221,6 +221,7 @@ public partial class GetOwnedMartialArtsResultPacket : IPacket
     public MessageCode? Code { get; set; }
     public List<PlayerMartialArtModel>? MartialArts { get; set; }
     public int? ActiveMartialArtId { get; set; }
+    public CultivationPreviewModel? CultivationPreview { get; set; }
 }
 
 [Packet]
@@ -242,6 +243,7 @@ public partial class UseMartialArtBookResultPacket : IPacket
     public MessageCode? Code { get; set; }
     public CharacterBaseStatsModel? BaseStats { get; set; }
     public PlayerMartialArtModel? LearnedMartialArt { get; set; }
+    public CultivationPreviewModel? CultivationPreview { get; set; }
 }
 
 [Packet]
@@ -251,7 +253,7 @@ public partial class SetActiveMartialArtPacket : IPacket
 {
     [ValidationCode(MessageCode.ActiveMartialArtInvalid)]
     [Required]
-    [Range(1, int.MaxValue)]
+    [Range(0, int.MaxValue)]
     public int? MartialArtId { get; set; }
 }
 
@@ -262,6 +264,7 @@ public partial class SetActiveMartialArtResultPacket : IPacket
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
     public CharacterBaseStatsModel? BaseStats { get; set; }
+    public CultivationPreviewModel? CultivationPreview { get; set; }
 }
 
 [Packet]

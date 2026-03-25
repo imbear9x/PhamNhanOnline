@@ -93,6 +93,7 @@ public static class NetworkModelMapper
             MartialArtId = dto.MartialArtId,
             Code = dto.Code,
             Name = dto.Name,
+            Icon = dto.Icon,
             Quality = dto.Quality,
             Category = dto.Category,
             CurrentStage = dto.CurrentStage,
@@ -100,6 +101,20 @@ public static class NetworkModelMapper
             MaxStage = dto.MaxStage,
             QiAbsorptionRate = (double)dto.QiAbsorptionRate,
             IsActive = dto.IsActive
+        };
+    }
+
+    public static CultivationPreviewModel ToModel(this CultivationPreviewDto dto)
+    {
+        return new CultivationPreviewModel
+        {
+            ActiveMartialArtId = dto.ActiveMartialArtId,
+            QiAbsorptionRate = (double)dto.QiAbsorptionRate,
+            SpiritualEnergyPerMinute = (double)dto.SpiritualEnergyPerMinute,
+            RealmAbsorptionMultiplier = (double)dto.RealmAbsorptionMultiplier,
+            EstimatedCultivationPerMinute = (double)dto.EstimatedCultivationPerMinute,
+            EstimatedPotentialPerMinute = (double)dto.EstimatedPotentialPerMinute,
+            BlockedReason = dto.BlockedReason
         };
     }
 

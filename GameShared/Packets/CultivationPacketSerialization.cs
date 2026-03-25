@@ -311,6 +311,7 @@ public partial class GetOwnedMartialArtsResultPacket
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
         if (!global::System.Collections.Generic.EqualityComparer<global::System.Collections.Generic.List<global::GameShared.Models.PlayerMartialArtModel>?>.Default.Equals(MartialArts, default!)) mask |= 1UL << 2;
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(ActiveMartialArtId, default!)) mask |= 1UL << 3;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CultivationPreviewModel?>.Default.Equals(CultivationPreview, default!)) mask |= 1UL << 4;
 
         writer.Write(mask);
 
@@ -322,6 +323,8 @@ public partial class GetOwnedMartialArtsResultPacket
             global::GameShared.Packets.PacketModelSerializer.WriteList(writer, MartialArts);
         if ((mask & (1UL << 3)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, ActiveMartialArtId.Value);
+        if ((mask & (1UL << 4)) != 0)
+            global::GameShared.Packets.PacketModelSerializer.Write(writer, CultivationPreview.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -336,6 +339,8 @@ public partial class GetOwnedMartialArtsResultPacket
             MartialArts = global::GameShared.Packets.PacketModelSerializer.ReadList<global::GameShared.Models.PlayerMartialArtModel>(reader);
         if ((_mask & (1UL << 3)) != 0)
             ActiveMartialArtId = (int?)global::GameShared.Packets.PacketReader.ReadInt(reader);
+        if ((_mask & (1UL << 4)) != 0)
+            CultivationPreview = (global::GameShared.Models.CultivationPreviewModel?)global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CultivationPreviewModel>(reader);
     }
 }
 
@@ -374,6 +379,7 @@ public partial class UseMartialArtBookResultPacket
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterBaseStatsModel?>.Default.Equals(BaseStats, default!)) mask |= 1UL << 2;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.PlayerMartialArtModel?>.Default.Equals(LearnedMartialArt, default!)) mask |= 1UL << 3;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CultivationPreviewModel?>.Default.Equals(CultivationPreview, default!)) mask |= 1UL << 4;
 
         writer.Write(mask);
 
@@ -385,6 +391,8 @@ public partial class UseMartialArtBookResultPacket
             global::GameShared.Packets.PacketModelSerializer.Write(writer, BaseStats.Value);
         if ((mask & (1UL << 3)) != 0)
             global::GameShared.Packets.PacketModelSerializer.Write(writer, LearnedMartialArt.Value);
+        if ((mask & (1UL << 4)) != 0)
+            global::GameShared.Packets.PacketModelSerializer.Write(writer, CultivationPreview.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -399,6 +407,8 @@ public partial class UseMartialArtBookResultPacket
             BaseStats = (global::GameShared.Models.CharacterBaseStatsModel?)global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterBaseStatsModel>(reader);
         if ((_mask & (1UL << 3)) != 0)
             LearnedMartialArt = (global::GameShared.Models.PlayerMartialArtModel?)global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.PlayerMartialArtModel>(reader);
+        if ((_mask & (1UL << 4)) != 0)
+            CultivationPreview = (global::GameShared.Models.CultivationPreviewModel?)global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CultivationPreviewModel>(reader);
     }
 }
 
@@ -436,6 +446,7 @@ public partial class SetActiveMartialArtResultPacket
         if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterBaseStatsModel?>.Default.Equals(BaseStats, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CultivationPreviewModel?>.Default.Equals(CultivationPreview, default!)) mask |= 1UL << 3;
 
         writer.Write(mask);
 
@@ -445,6 +456,8 @@ public partial class SetActiveMartialArtResultPacket
             global::GameShared.Packets.PacketWriter.Write(writer, (int)Code.Value);
         if ((mask & (1UL << 2)) != 0)
             global::GameShared.Packets.PacketModelSerializer.Write(writer, BaseStats.Value);
+        if ((mask & (1UL << 3)) != 0)
+            global::GameShared.Packets.PacketModelSerializer.Write(writer, CultivationPreview.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -457,5 +470,7 @@ public partial class SetActiveMartialArtResultPacket
             Code = (global::GameShared.Messages.MessageCode?)global::GameShared.Packets.PacketReader.ReadInt(reader);
         if ((_mask & (1UL << 2)) != 0)
             BaseStats = (global::GameShared.Models.CharacterBaseStatsModel?)global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterBaseStatsModel>(reader);
+        if ((_mask & (1UL << 3)) != 0)
+            CultivationPreview = (global::GameShared.Models.CultivationPreviewModel?)global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CultivationPreviewModel>(reader);
     }
 }

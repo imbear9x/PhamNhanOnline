@@ -398,6 +398,7 @@ CREATE TABLE IF NOT EXISTS public.martial_arts (
     id integer NOT NULL,
     code character varying(50) NOT NULL,
     name character varying(100) NOT NULL,
+    icon character varying(100) NULL,
     quality integer NOT NULL DEFAULT 1,
     category character varying(50) NULL,
     description text NULL,
@@ -407,6 +408,13 @@ CREATE TABLE IF NOT EXISTS public.martial_arts (
     CONSTRAINT martial_arts_pkey PRIMARY KEY (id),
     CONSTRAINT martial_arts_code_key UNIQUE (code)
 );
+
+ALTER TABLE public.martial_arts
+    ADD COLUMN IF NOT EXISTS icon character varying(100) NULL;
+
+UPDATE public.martial_arts
+SET icon = code
+WHERE icon IS NULL OR btrim(icon) = '';
 
 ALTER TABLE public.martial_arts
     ADD COLUMN IF NOT EXISTS qi_absorption_rate numeric(10,4) NOT NULL DEFAULT 1.0;

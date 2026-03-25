@@ -37,10 +37,12 @@ Tool se tu tim `GameServer/Config/dbConfig.json` tu thu muc hien tai di nguoc le
   - `Xoa Dong`
   - `Luu Thay Doi`
   - `Loc nhanh`
-- Co them 3 workspace chuyen biet:
+- Co them cac workspace chuyen biet:
   - `Martial Art Workspace`
   - `Craft Recipe Workspace`
   - `Equipment Workspace`
+  - `Player Inventory Workspace`
+  - `Character Martial Arts Workspace`
 
 ## Gioi han phase nay
 

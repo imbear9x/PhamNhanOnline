@@ -4,6 +4,7 @@ public sealed record PlayerMartialArtDto(
     int MartialArtId,
     string Code,
     string Name,
+    string? Icon,
     int Quality,
     string? Category,
     int CurrentStage,

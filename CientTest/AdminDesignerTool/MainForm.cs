@@ -7,6 +7,7 @@ internal sealed class MainForm : Form
     private readonly Panel _editorHostPanel;
     private readonly TableEditorControl? _genericEditorControl;
     private readonly MasterDetailWorkspaceControl? _workspaceEditorControl;
+    private readonly CharacterMartialArtWorkspaceControl? _characterMartialArtWorkspaceControl;
     private readonly Label _connectionInfoLabel;
     private readonly IReadOnlyDictionary<string, AdminResourceDefinition> _resourcesByKey;
 
@@ -82,9 +83,15 @@ internal sealed class MainForm : Form
                 Dock = DockStyle.Fill,
                 Visible = false
             };
+            _characterMartialArtWorkspaceControl = new CharacterMartialArtWorkspaceControl(connectionString)
+            {
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
 
             _editorHostPanel.Controls.Add(_genericEditorControl);
             _editorHostPanel.Controls.Add(_workspaceEditorControl);
+            _editorHostPanel.Controls.Add(_characterMartialArtWorkspaceControl);
         }
         else
         {
@@ -128,6 +135,16 @@ internal sealed class MainForm : Form
 
             ShowEditor(_genericEditorControl);
             await _genericEditorControl.LoadResourceAsync(resource);
+            return;
+        }
+
+        if (resource.EditorKind == AdminEditorKind.CharacterMartialArtWorkspace)
+        {
+            if (_characterMartialArtWorkspaceControl is null)
+                return;
+
+            ShowEditor(_characterMartialArtWorkspaceControl);
+            await _characterMartialArtWorkspaceControl.LoadWorkspaceAsync(resource);
             return;
         }
 

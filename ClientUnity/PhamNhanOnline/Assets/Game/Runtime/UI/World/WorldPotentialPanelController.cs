@@ -11,7 +11,6 @@ using PhamNhanOnline.Client.UI.Potential;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.World
 {
@@ -33,12 +32,6 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private TMP_Text unallocatedPotentialText;
         [SerializeField] private TMP_Text statusText;
 
-        [Header("Breakthrough")]
-        [SerializeField] private GameObject breakthroughRoot;
-        [SerializeField] private TMP_Text breakthroughChanceText;
-        [SerializeField] private Button breakthroughButton;
-        [SerializeField] private TMP_Text breakthroughButtonText;
-
         [Header("Potential Rows")]
         [SerializeField] private RectTransform statsPanelBounds;
         [SerializeField] private PotentialUpgradeRowListView rowListView;
@@ -54,8 +47,6 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private string missingRealmName = "Chua co canh gioi";
         [SerializeField] private string missingCultivationText = "0/0";
         [SerializeField] private string missingUnallocatedPotentialText = "Tiem nang: 0";
-        [SerializeField] private string breakthroughButtonIdleText = "Dot pha";
-        [SerializeField] private string breakthroughButtonInFlightText = "Dang dot pha...";
 
         private Guid? lastRequestedCharacterId;
         private float lastReloadAttemptTime = float.NegativeInfinity;
@@ -67,12 +58,6 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void Awake()
         {
-            if (breakthroughButton != null)
-            {
-                breakthroughButton.onClick.RemoveListener(HandleBreakthroughButtonClicked);
-                breakthroughButton.onClick.AddListener(HandleBreakthroughButtonClicked);
-            }
-
             if (rowListView != null)
             {
                 rowListView.RowClicked += HandleRowClicked;
@@ -102,9 +87,6 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void OnDestroy()
         {
-            if (breakthroughButton != null)
-                breakthroughButton.onClick.RemoveListener(HandleBreakthroughButtonClicked);
-
             if (rowListView != null)
             {
                 rowListView.RowClicked -= HandleRowClicked;
@@ -143,24 +125,6 @@ namespace PhamNhanOnline.Client.UI.World
                 force: true);
             ApplyText(statusText, lastStatusMessage, force: true);
 
-            var canAttemptBreakthrough = CanAttemptBreakthrough(stats);
-            if (breakthroughRoot != null)
-                breakthroughRoot.SetActive(canAttemptBreakthrough);
-
-            if (breakthroughChanceText != null)
-            {
-                breakthroughChanceText.text = string.Format(
-                    CultureInfo.InvariantCulture,
-                    "Ti le dot pha: {0:0.##}%",
-                    Math.Max(0d, stats.BreakthroughChancePercent));
-            }
-
-            if (breakthroughButton != null)
-                breakthroughButton.interactable = canAttemptBreakthrough && !actionInFlight;
-
-            if (breakthroughButtonText != null)
-                breakthroughButtonText.text = actionInFlight ? breakthroughButtonInFlightText : breakthroughButtonIdleText;
-
             if (rowListView != null)
                 rowListView.SetEntries(BuildRowEntries(stats), force: true);
 
@@ -174,9 +138,6 @@ namespace PhamNhanOnline.Client.UI.World
             ApplyText(cultivationProgressText, missingCultivationText, force);
             ApplyText(unallocatedPotentialText, missingUnallocatedPotentialText, force);
             ApplyText(statusText, lastStatusMessage, force);
-
-            if (breakthroughRoot != null)
-                breakthroughRoot.SetActive(false);
 
             if (rowListView != null)
                 rowListView.Clear(force: true);
@@ -382,48 +343,6 @@ namespace PhamNhanOnline.Client.UI.World
             }
         }
 
-        private void HandleBreakthroughButtonClicked()
-        {
-            _ = BreakthroughAsync();
-        }
-
-        private async System.Threading.Tasks.Task BreakthroughAsync()
-        {
-            if (actionInFlight || !ClientRuntime.IsInitialized)
-                return;
-
-            var stats = ClientRuntime.Character.BaseStats;
-            if (!stats.HasValue || !CanAttemptBreakthrough(stats.Value))
-                return;
-
-            actionInFlight = true;
-            HideOptionsPopup(force: true);
-
-            lastStatusMessage = "Dang thu dot pha...";
-            RefreshPanel(force: true);
-
-            try
-            {
-                var result = await ClientRuntime.CharacterService.BreakthroughAsync();
-                lastStatusMessage = result.Success
-                    ? "Dot pha thanh cong."
-                    : string.Format(CultureInfo.InvariantCulture, "Dot pha that bai: {0}", result.Code ?? MessageCode.UnknownError);
-
-                if (!result.Success)
-                    ClientLog.Warn($"WorldPotentialPanelController breakthrough failed: {result.Message}");
-            }
-            catch (Exception ex)
-            {
-                lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi dot pha: {0}", ex.Message);
-                ClientLog.Warn($"WorldPotentialPanelController breakthrough exception: {ex.Message}");
-            }
-            finally
-            {
-                actionInFlight = false;
-                RefreshPanel(force: true);
-            }
-        }
-
         private PotentialUpgradeRowListView.Entry[] BuildRowEntries(CharacterBaseStatsModel stats)
         {
             var entries = new PotentialUpgradeRowListView.Entry[SupportedTargets.Length];
@@ -467,13 +386,6 @@ namespace PhamNhanOnline.Client.UI.World
             var maxCultivation = Math.Max(0L, stats.RealmMaxCultivation);
             var currentCultivation = Math.Max(0L, stats.Cultivation);
             return string.Format(CultureInfo.InvariantCulture, "{0}/{1}", currentCultivation, maxCultivation);
-        }
-
-        private static bool CanAttemptBreakthrough(CharacterBaseStatsModel stats)
-        {
-            return stats.HasNextRealm &&
-                   stats.RealmMaxCultivation > 0 &&
-                   stats.Cultivation >= stats.RealmMaxCultivation;
         }
 
         private static PotentialUpgradePreviewModel? GetPreview(CharacterBaseStatsModel stats, PotentialAllocationTarget target)
@@ -555,8 +467,6 @@ namespace PhamNhanOnline.Client.UI.World
                 ResolveRealmDisplayName(stats),
                 stats.RealmMaxCultivation.ToString(CultureInfo.InvariantCulture),
                 stats.Cultivation.ToString(CultureInfo.InvariantCulture),
-                stats.BreakthroughChancePercent.ToString("0.####", CultureInfo.InvariantCulture),
-                stats.HasNextRealm ? "1" : "0",
                 stats.UnallocatedPotential.ToString(CultureInfo.InvariantCulture),
                 stats.PotentialHpBonus.ToString(CultureInfo.InvariantCulture),
                 stats.PotentialMpBonus.ToString(CultureInfo.InvariantCulture),
