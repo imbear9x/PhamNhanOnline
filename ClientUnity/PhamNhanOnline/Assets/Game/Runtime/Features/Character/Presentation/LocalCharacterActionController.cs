@@ -82,6 +82,8 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         private bool hasFallingState;
         private bool hasMoveSpeedParameter;
         private bool isInputBlockedExternally;
+        private bool hasExternalMoveOverride;
+        private Vector2 externalMoveOverride;
 
         public bool IsFacingLeft => facingLeft;
 
@@ -130,9 +132,23 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             {
                 horizontalInput = 0f;
                 verticalInput = 0f;
+                hasExternalMoveOverride = false;
+                externalMoveOverride = Vector2.zero;
                 if (body != null)
                     body.velocity = Vector2.zero;
             }
+        }
+
+        public void SetExternalMoveOverride(Vector2 moveInputOverride)
+        {
+            hasExternalMoveOverride = true;
+            externalMoveOverride = Vector2.ClampMagnitude(moveInputOverride, 1f);
+        }
+
+        public void ClearExternalMoveOverride()
+        {
+            hasExternalMoveOverride = false;
+            externalMoveOverride = Vector2.zero;
         }
 
         public bool ShouldApplyAuthoritativeWorldPosition(Vector2 worldPosition, bool forceSnap, float teleportDistanceThreshold)
@@ -184,8 +200,16 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
                 return;
 
             var inputState = isInputBlockedExternally ? default : ReadInputState();
-            horizontalInput = inputState.Horizontal;
-            verticalInput = inputState.Vertical;
+            if (hasExternalMoveOverride)
+            {
+                horizontalInput = externalMoveOverride.x;
+                verticalInput = externalMoveOverride.y;
+            }
+            else
+            {
+                horizontalInput = inputState.Horizontal;
+                verticalInput = inputState.Vertical;
+            }
 
             if (inputState.AttackPressed && attackCooldownTimer <= 0f)
                 StartAttack();

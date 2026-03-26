@@ -947,7 +947,78 @@ Checklist:
 - neu skill dang cooldown -> nut bi khoa va `CooldownFill.fillAmount` giam dan den 0
 
 5. Packet/client state da co san
-- Client gui `AttackEnemyPacket` voi `SkillSlotIndex` va `EnemyRuntimeId`
+- Client gui `AttackEnemyPacket` voi `SkillSlotIndex` va `CombatTarget`
+
+### 3.8. Target selection checklist
+
+Muc tieu:
+- di gan doi tuong trong ban kinh thi tu dong tro vao muc tieu phu hop
+- co the bam nut UI de doi muc tieu lan luot
+- co the ghim muc tieu de auto-target khong tu nhay sang doi tuong khac
+- panel target hien duoc player, quai, boss va NPC
+
+Root/controller:
+- `WorldSceneController` tren `WorldRoot` se tu dam bao co `WorldClickTargetSelectionController`.
+- Khong dung `OnClick()` tren `Button`.
+- UI se theo rule chung cua project: controller giu ref `Button` va tu `AddListener`.
+
+Priority rule mac dinh cua auto-target:
+- `Npc`
+- `Boss`
+- `Enemy`
+- `Player`
+
+Ban co the doi priority ngay tren component `WorldClickTargetSelectionController` neu muon.
+
+Hierarchy goi y cho HUD target:
+
+```text
+TargetHudRoot
+  TargetStatusPanel
+  NextTargetButton
+```
+
+Checklist:
+
+1. Target status panel
+- Gan `TargetStatusPanelController` len `TargetStatusPanel`.
+- Gan them `TargetHudController` len `TargetStatusPanel` hoac `TargetHudRoot`.
+- Wiring toi thieu:
+- `Content Root` -> root hien thi thong tin target
+- `Avatar Image` -> anh dai dien muc tieu
+- `Name Text` -> ten muc tieu
+- `Primary Bar Root` + `Primary Bar`
+- `Secondary Bar Root` + `Secondary Bar` neu muon hien them mana/resource
+- Tren `TargetHudController`:
+- `World Scene Controller` -> `WorldRoot`
+- `Target Status Panel` -> `TargetStatusPanel`
+- Neu co nut target HUD, keo vao `TargetHudController`:
+- `Next Target Button`
+
+2. Nut doi muc tieu
+- Khong gan `OnClick` trong Inspector.
+- Keo `NextTargetButton` vao field `Next Target Button` cua `TargetHudController`.
+- Nut nay se doi sang muc tieu tiep theo trong tap candidate gan nhat, het vong moi quay lai muc dau.
+
+3. Hanh vi click tren world
+- Click 1 lan vao target = chon target do.
+- Double click vao cung target = thu basic skill slot 1 tren target do.
+- Click vao khoang trong = clear target.
+
+4. Doi tuong trong world
+- Player khac: `RemoteCharacterPresenter` da tu gan `WorldTargetable`.
+- NPC: gan `WorldTargetable` thu cong len object NPC, chon dung `Target Kind = Npc` va `Target Id`.
+- Quai/Boss:
+- auto-target da doc tu `ClientWorldState.Enemies`, nen khong can collider de van co the tu dong tro vao muc tieu gan nhat.
+- neu muon click truc tiep tren world vao quai/boss sau nay, presenter/prefab cua no cung nen co `WorldTargetable`.
+
+5. Hanh vi hien tai
+- Auto-target chi chay trong ban kinh cau hinh tren `WorldClickTargetSelectionController`.
+- Local player bi loai khoi danh sach candidate.
+- Neu `Keep Current Target While Still Nearby` dang bat, target hien tai se duoc giu nguyen de tranh nhay lien tuc.
+- Khi target dang bi ghim, auto-target se khong tu doi muc tieu.
+- Neu khong co muc tieu nao khac trong tap candidate, nut `Doi muc tieu` se giu nguyen target hien tai.
+- Khi target roi world / despawn / khong con resolve duoc, pin se duoc go va target co the duoc chon lai theo auto-target.
 - Client dung `AttackEnemyResultPacket` de lay:
 - `CooldownMs`
 - `CooldownEndsUnixMs`
@@ -959,11 +1030,86 @@ Checklist:
 - local cast time
 - cooldown theo `playerSkillId`
 
+6. Mui ten target tren dau doi tuong
+- Neu muon hien marker tren dau target dang chon, gan `WorldTargetSelectionIndicatorController` len `WorldRoot`.
+- Wiring:
+- `World Map Presenter` -> object dang gan `WorldMapPresenter`
+- `White Indicator` -> object mui ten trang trong world
+- `Red Indicator` -> object mui ten do trong world
+- Rule hien tai:
+- `Enemy/Boss` -> mui ten do
+- `Player/Npc` -> mui ten trang
+- Khi target mat khoi world hoac bi clear, ca hai marker se tu an
+- `WorldTargetable` da co san helper lay vi tri neo tren dau collider/renderer, nen marker se bam theo target dang chon
+
 6. Luu y layout
 - Khong can radial layout dong o phase nay.
 - Dat san 4 nut skill phu quanh nut basic bang tay trong Unity la on nhat.
 - Co equip thi bat nut.
 - Unequip thi tat nut.
+
+### 3.9. Home wood doll checklist
+
+Muc tieu:
+- trong `Player Home` private se tu spawn 1 `wood_doll`
+- `wood_doll` dung yen, khong tan cong, co `1000 HP`
+- chet xong `2s` se respawn lai
+- player thay duoc no trong scene, click/target duoc no, va co the dung no de test damage / VFX / popup
+
+Server/config da san sang:
+- DB da co `enemy_templates.code = wood_doll`
+- DB da co `map_enemy_spawn_groups.code = home_wood_doll_spawn`
+- spawn group nay chi dung cho map `Player Home` private, vi tri tam thoi o giua chieu ngang map (`x = 500`, `y = 125`)
+- `wood_doll` duoc cau hinh `base_attack = 0`, `patrol_radius = 0`, `detection_radius = 0`, `combat_radius = 0`, nen no dung yen va khong danh
+
+Client scene/prefab can them:
+
+```text
+WorldRoot
+  WorldEnemiesPresenter (component)
+
+Assets/Game/Content/Prefabs/World/WoodDoll.prefab
+Assets/Game/Content/ScriptableObjects/World/EnemyPresentationCatalog.asset
+```
+
+Checklist:
+
+1. Tao prefab `WoodDoll`
+- Tao prefab world 2D don gian, root dat ten `WoodDoll`.
+- Them visual tuy y (`SpriteRenderer`, child art, shadow...).
+- Gan `EnemyPresenter` len root prefab.
+- Khong can viet script AI rieng cho `wood_doll`.
+- Neu prefab chua co `WorldTargetable`, `EnemyPresenter` se tu them vao runtime.
+- Neu prefab chua co collider, `WorldTargetable` se tu tao `BoxCollider2D` tu bounds cua renderer de click/target.
+
+2. Tao `EnemyPresentationCatalog`
+- `Create > PhamNhanOnline > World > Enemy Presentation Catalog`
+- Trong asset nay, them entry:
+- `Code` -> `wood_doll`
+- `Prefab` -> `WoodDoll.prefab`
+- Co the gan `Default Enemy Prefab` neu muon dung chung cho enemy khac ve sau.
+
+3. Gan `WorldEnemiesPresenter`
+- Gan `WorldEnemiesPresenter` len `WorldRoot` hoac mot object world controller trong scene.
+- Wiring:
+- `Presentation Catalog` -> `EnemyPresentationCatalog.asset`
+- `Enemies Root` -> `EntitiesRoot`
+- `World Map Presenter` -> object dang gan `WorldMapPresenter`
+
+4. Behavior hien tai cua `EnemyPresenter`
+- Doc runtime state cua enemy tu server.
+- Map `PosX/PosY` sang toa do Unity qua `WorldMapPresenter`.
+- Tu cau hinh `WorldTargetable` voi `runtimeId` cua enemy.
+- Khi enemy chet:
+- target/click vao no se bi khoa
+- neu `Hide When Dead` bat, visual root se an trong 2s cho den luc respawn
+- neu `Hide When Dead` tat, ban van thay visual xac trong 2s do
+
+5. Luu y khi test
+- Sau khi seed DB xong, hay restart `GameServer` de `EnemyDefinitionCatalog` nap lai template/spawn group moi.
+- Sau khi restart server, vao lai `Player Home` de instance private moi duoc tao voi spawn group `wood_doll`.
+- `wood_doll` hien dang dat tam o `x = 500`, `y = 125` theo he toa do server cua map home.
+- Sau khi ban chot prefab/home layout, ta se tinh tiep vi tri chinh xac trong map.
 
 ## Naming rules
 
@@ -974,6 +1120,39 @@ Use clear scene roots so another developer can understand quickly:
 - `MapRoot`: loaded map visuals go here
 - `EntitiesRoot`: player, monster, npc instances go here
 - `WorldUiRoot`: HUD, nameplates, floating labels
+
+## Layer va sorting layer goi y
+
+Project da duoc them san cac `Unity Layer`:
+- `WorldMap`: collider/background map
+- `WorldEntity`: root entity tong quat neu can dung chung
+- `Targetable`: collider de click/chon target
+- `GroundReward`: vat pham roi tren dat
+- `WorldIndicator`: mui ten target, vong chan, marker
+- `WorldTrigger`: portal, vung trigger map
+- `LocalPlayer`: local player
+- `RemotePlayer`: player khac
+- `Enemy`: quai, boss, hinh nom
+- `Npc`: NPC tuong tac
+
+`WorldClickTargetSelectionController` da duoc chinh de neu co layer `Targetable` thi mac dinh chi raycast vao layer nay.
+
+Sorting layer da duoc them san:
+- `Background`
+- `MapBack`
+- `Ground`
+- `Characters`
+- `Effects`
+- `TargetIndicator`
+- `WorldUi`
+- `Foreground`
+
+Goi y nhanh:
+- map/background -> `Background`, `MapBack`, `Ground`
+- player/quai/NPC -> `Characters`
+- VFX skill, hit flash -> `Effects`
+- mui ten target trang/do -> `TargetIndicator`
+- world-space label, marker UI -> `WorldUi`
 
 ## Important note
 

@@ -48,6 +48,18 @@ public sealed class SwitchMapZoneHandler : IPacketHandler<SwitchMapZonePacket>
 
         var player = session.Player;
         var currentState = player.RuntimeState.CaptureSnapshot().CurrentState.CurrentState;
+        if (player.IsStunned(DateTime.UtcNow))
+        {
+            _server.Send(session.ConnectionId, new SwitchMapZoneResultPacket
+            {
+                Success = false,
+                Code = MessageCode.CharacterCannotActWhileStunned,
+                MapId = packet.MapId,
+                ZoneIndex = packet.TargetZoneIndex
+            });
+            return Task.CompletedTask;
+        }
+
         if (_cultivationService.IsCultivating(player))
         {
             _server.Send(session.ConnectionId, new SwitchMapZoneResultPacket

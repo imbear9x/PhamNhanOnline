@@ -1,5 +1,6 @@
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
+using PhamNhanOnline.Client.Features.World.Presentation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -44,38 +45,17 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (contentCanvasGroup == null && contentRoot == null)
                 contentCanvasGroup = GetComponent<CanvasGroup>();
 
-            Refresh(force: true);
+            ShowNoTarget(force: true);
         }
 
-        private void Update()
+        public void ShowSnapshot(WorldTargetSnapshot snapshot, bool force = false)
         {
-            Refresh(force: false);
-        }
-
-        public void Refresh(bool force)
-        {
-            if (!ClientRuntime.IsInitialized)
-            {
-                ApplyNoTarget(force);
-                return;
-            }
-
-            var currentTarget = ClientRuntime.Target.CurrentTarget;
-            if (!currentTarget.HasValue)
-            {
-                ApplyNoTarget(force);
-                return;
-            }
-
-            WorldTargetSnapshot snapshot;
-            if (!ClientRuntime.World.TryBuildTargetSnapshot(currentTarget.Value, out snapshot))
-            {
-                ClientRuntime.Target.Clear();
-                ApplyNoTarget(force: true);
-                return;
-            }
-
             ApplySnapshot(snapshot, force);
+        }
+
+        public void ShowNoTarget(bool force = false)
+        {
+            ApplyNoTarget(force);
         }
 
         private void ApplySnapshot(WorldTargetSnapshot snapshot, bool force)
@@ -205,4 +185,5 @@ namespace PhamNhanOnline.Client.UI.Hud
             }
         }
     }
+
 }

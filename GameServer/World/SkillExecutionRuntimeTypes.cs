@@ -1,7 +1,62 @@
 using System.Numerics;
 using GameShared.Messages;
+using GameServer.Runtime;
+using GameShared.Enums;
+using GameShared.Models;
 
 namespace GameServer.World;
+
+public readonly record struct CombatTargetReference(
+    CombatTargetKind Kind,
+    Guid? CharacterId,
+    int? RuntimeId,
+    Vector2? GroundPosition)
+{
+    public bool IsValid
+    {
+        get
+        {
+            return Kind switch
+            {
+                CombatTargetKind.None => false,
+                CombatTargetKind.Character => CharacterId.HasValue,
+                CombatTargetKind.Enemy or CombatTargetKind.Boss or CombatTargetKind.Dummy or CombatTargetKind.Npc => RuntimeId.HasValue && RuntimeId.Value > 0,
+                CombatTargetKind.GroundPoint => GroundPosition.HasValue,
+                _ => false
+            };
+        }
+    }
+
+    public CombatTargetModel ToModel()
+    {
+        return new CombatTargetModel
+        {
+            Kind = Kind,
+            CharacterId = CharacterId,
+            RuntimeId = RuntimeId,
+            GroundPosX = GroundPosition?.X,
+            GroundPosY = GroundPosition?.Y
+        };
+    }
+
+    public static bool TryFromModel(CombatTargetModel? model, out CombatTargetReference target)
+    {
+        target = default;
+        if (model is null || !model.Kind.HasValue)
+            return false;
+
+        Vector2? groundPosition = null;
+        if (model.GroundPosX.HasValue && model.GroundPosY.HasValue)
+            groundPosition = new Vector2(model.GroundPosX.Value, model.GroundPosY.Value);
+
+        target = new CombatTargetReference(
+            model.Kind.Value,
+            model.CharacterId,
+            model.RuntimeId,
+            groundPosition);
+        return target.IsValid;
+    }
+}
 
 public sealed class PendingSkillExecution
 {
@@ -12,8 +67,9 @@ public sealed class PendingSkillExecution
         long playerSkillId,
         int skillId,
         int skillSlotIndex,
-        int enemyRuntimeId,
-        int damage,
+        SkillTargetType targetType,
+        CombatStatSnapshot casterStats,
+        CombatTargetReference? target,
         int castTimeMs,
         int travelTimeMs,
         DateTime castStartedAtUtc,
@@ -26,8 +82,9 @@ public sealed class PendingSkillExecution
         PlayerSkillId = playerSkillId;
         SkillId = skillId;
         SkillSlotIndex = skillSlotIndex;
-        EnemyRuntimeId = enemyRuntimeId;
-        Damage = damage;
+        TargetType = targetType;
+        CasterStats = casterStats;
+        Target = target;
         CastTimeMs = castTimeMs;
         TravelTimeMs = travelTimeMs;
         CastStartedAtUtc = castStartedAtUtc;
@@ -41,8 +98,9 @@ public sealed class PendingSkillExecution
     public long PlayerSkillId { get; }
     public int SkillId { get; }
     public int SkillSlotIndex { get; }
-    public int EnemyRuntimeId { get; }
-    public int Damage { get; }
+    public SkillTargetType TargetType { get; }
+    public CombatStatSnapshot CasterStats { get; }
+    public CombatTargetReference? Target { get; }
     public int CastTimeMs { get; }
     public int TravelTimeMs { get; }
     public DateTime CastStartedAtUtc { get; }
@@ -61,20 +119,29 @@ public readonly record struct EnemyTargetSnapshot(
     Vector2 Position,
     bool IsAlive);
 
+public readonly record struct CombatTargetSnapshot(
+    CombatTargetKind Kind,
+    Guid? CharacterId,
+    int? RuntimeId,
+    Vector2 Position,
+    bool IsAlive);
+
 public readonly record struct SkillCastReleaseRuntimeEvent(
-    Guid CasterPlayerId,
-    int ExecutionId);
+    PendingSkillExecution Execution);
+
+public readonly record struct SkillImpactDueRuntimeEvent(
+    PendingSkillExecution Execution);
 
 public readonly record struct SkillImpactResolvedRuntimeEvent(
     Guid CasterPlayerId,
     Guid CasterCharacterId,
-    int EnemyRuntimeId,
+    CombatTargetReference? Target,
     int SkillSlotIndex,
     long PlayerSkillId,
     int SkillId,
     bool Applied,
     MessageCode Code,
     int DamageApplied,
-    int RemainingHp,
+    int? RemainingHp,
     bool IsKilled,
     DateTime ResolvedAtUtc);

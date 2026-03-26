@@ -3,6 +3,13 @@ using System.Globalization;
 
 namespace PhamNhanOnline.Client.Features.Targeting.Application
 {
+    public enum TargetPinMode
+    {
+        None = 0,
+        Manual = 1,
+        CombatLocked = 2
+    }
+
     public enum WorldTargetKind
     {
         None = 0,
@@ -97,8 +104,12 @@ namespace PhamNhanOnline.Client.Features.Targeting.Application
     public sealed class ClientTargetState
     {
         public event Action CurrentTargetChanged;
+        public event Action PinStateChanged;
 
         public WorldTargetHandle? CurrentTarget { get; private set; }
+        public TargetPinMode PinMode { get; private set; }
+        public bool HasPinnedTarget { get { return PinMode != TargetPinMode.None && CurrentTarget.HasValue; } }
+        public bool IsManualSelection { get; private set; }
 
         public void Select(WorldTargetHandle handle)
         {
@@ -111,17 +122,66 @@ namespace PhamNhanOnline.Client.Features.Targeting.Application
             if (CurrentTarget.HasValue && CurrentTarget.Value.Equals(handle))
                 return;
 
+            var pinChanged = PinMode != TargetPinMode.None;
             CurrentTarget = handle;
+            PinMode = TargetPinMode.None;
+            IsManualSelection = true;
+            NotifyChanged();
+            if (pinChanged)
+                NotifyPinChanged();
+        }
+
+        public void SelectAuto(WorldTargetHandle handle)
+        {
+            if (!handle.IsValid)
+                return;
+
+            if (HasPinnedTarget)
+                return;
+
+            if (CurrentTarget.HasValue && CurrentTarget.Value.Equals(handle))
+                return;
+
+            CurrentTarget = handle;
+            IsManualSelection = false;
             NotifyChanged();
         }
 
         public void Clear()
         {
-            if (!CurrentTarget.HasValue)
+            if (!CurrentTarget.HasValue && PinMode == TargetPinMode.None)
                 return;
 
             CurrentTarget = null;
+            var pinChanged = PinMode != TargetPinMode.None;
+            PinMode = TargetPinMode.None;
+            IsManualSelection = false;
             NotifyChanged();
+            if (pinChanged)
+                NotifyPinChanged();
+        }
+
+        public bool PinCurrent(TargetPinMode pinMode)
+        {
+            if (!CurrentTarget.HasValue || pinMode == TargetPinMode.None)
+                return false;
+
+            if (PinMode == pinMode)
+                return true;
+
+            PinMode = pinMode;
+            NotifyPinChanged();
+            return true;
+        }
+
+        public bool ClearPin()
+        {
+            if (PinMode == TargetPinMode.None)
+                return false;
+
+            PinMode = TargetPinMode.None;
+            NotifyPinChanged();
+            return true;
         }
 
         public bool IsSelectedObservedCharacter(Guid characterId)
@@ -149,6 +209,13 @@ namespace PhamNhanOnline.Client.Features.Targeting.Application
         private void NotifyChanged()
         {
             var handler = CurrentTargetChanged;
+            if (handler != null)
+                handler();
+        }
+
+        private void NotifyPinChanged()
+        {
+            var handler = PinStateChanged;
             if (handler != null)
                 handler();
         }

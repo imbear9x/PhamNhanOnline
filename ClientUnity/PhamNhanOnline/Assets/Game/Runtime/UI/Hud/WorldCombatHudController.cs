@@ -16,6 +16,7 @@ namespace PhamNhanOnline.Client.UI.Hud
     public sealed class WorldCombatHudController : MonoBehaviour
     {
         private const int BasicSkillSlotIndex = 1;
+        private const int SelfSkillTargetType = 1;
 
         [Header("References")]
         [SerializeField] private SkillPresentationCatalog presentationCatalog;
@@ -221,36 +222,63 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (!ClientRuntime.IsInitialized || slotIndex <= 0)
                 return;
 
-            int enemyRuntimeId;
-            if (!TryResolveSelectedEnemyRuntimeId(out enemyRuntimeId))
+            PlayerSkillModel skill;
+            if (!ClientRuntime.Skills.TryGetLoadoutSkill(slotIndex, out skill))
                 return;
 
-            if (!ClientRuntime.CombatService.TryUseSkillOnEnemy(slotIndex, enemyRuntimeId))
+            if (skill.TargetType == SelfSkillTargetType)
+            {
+                if (!ClientRuntime.CombatService.TryUseSkill(slotIndex))
+                    return;
+
+                Refresh(force: true);
+                return;
+            }
+
+            WorldTargetHandle targetHandle;
+            if (!TryResolveSelectedTarget(out targetHandle))
+                return;
+
+            if (!ClientRuntime.CombatService.TryUseSkillOnTarget(slotIndex, targetHandle))
                 return;
 
             Refresh(force: true);
         }
 
-        private bool TryResolveSelectedEnemyRuntimeId(out int enemyRuntimeId)
+        private bool TryResolveSelectedTarget(out WorldTargetHandle targetHandle)
         {
-            enemyRuntimeId = 0;
+            targetHandle = default;
 
             var currentTarget = ClientRuntime.Target.CurrentTarget;
             if (!currentTarget.HasValue)
                 return false;
 
             var kind = currentTarget.Value.Kind;
-            if (kind != WorldTargetKind.Enemy && kind != WorldTargetKind.Boss)
-                return false;
+            switch (kind)
+            {
+                case WorldTargetKind.Player:
+                    targetHandle = currentTarget.Value;
+                    return true;
 
-            if (!int.TryParse(currentTarget.Value.TargetId, NumberStyles.Integer, CultureInfo.InvariantCulture, out enemyRuntimeId))
-                return false;
+                case WorldTargetKind.Enemy:
+                case WorldTargetKind.Boss:
+                    int enemyRuntimeId;
+                    if (!int.TryParse(currentTarget.Value.TargetId, NumberStyles.Integer, CultureInfo.InvariantCulture, out enemyRuntimeId))
+                        return false;
 
-            EnemyRuntimeModel enemy;
-            if (!ClientRuntime.World.TryGetEnemy(enemyRuntimeId, out enemy))
-                return false;
+                    EnemyRuntimeModel enemy;
+                    if (!ClientRuntime.World.TryGetEnemy(enemyRuntimeId, out enemy))
+                        return false;
 
-            return enemy.CurrentHp > 0;
+                    if (enemy.CurrentHp <= 0)
+                        return false;
+
+                    targetHandle = currentTarget.Value;
+                    return true;
+
+                default:
+                    return false;
+            }
         }
 
         private void TryReloadSkillsOnOpen()

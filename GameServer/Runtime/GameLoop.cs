@@ -12,6 +12,7 @@ public sealed class GameLoop
     private readonly WorldManager _worldManager;
     private readonly EnemyRewardRuntimeService _enemyRewardRuntimeService;
     private readonly CharacterRuntimeService _characterRuntimeService;
+    private readonly SkillExecutionService _skillExecutionService;
     private readonly GroundItemRuntimeService _groundItemRuntimeService;
     private readonly WorldInterestService _interestService;
     private readonly MapInstanceLifecycleService _instanceLifecycleService;
@@ -24,6 +25,7 @@ public sealed class GameLoop
         WorldManager worldManager,
         EnemyRewardRuntimeService enemyRewardRuntimeService,
         CharacterRuntimeService characterRuntimeService,
+        SkillExecutionService skillExecutionService,
         GroundItemRuntimeService groundItemRuntimeService,
         WorldInterestService interestService,
         MapInstanceLifecycleService instanceLifecycleService,
@@ -32,6 +34,7 @@ public sealed class GameLoop
         _worldManager = worldManager;
         _enemyRewardRuntimeService = enemyRewardRuntimeService;
         _characterRuntimeService = characterRuntimeService;
+        _skillExecutionService = skillExecutionService;
         _groundItemRuntimeService = groundItemRuntimeService;
         _interestService = interestService;
         _instanceLifecycleService = instanceLifecycleService;
@@ -96,7 +99,8 @@ public sealed class GameLoop
         foreach (var instance in instances)
         {
             instance.Update(utcNow);
-            ApplyPendingSkillCastReleases(instance);
+            ApplyPendingSkillCastReleases(instance, utcNow);
+            ApplyPendingSkillImpacts(instance, utcNow);
             ApplyPendingPlayerDamage(instance);
             _enemyRewardRuntimeService.ProcessPendingEvents(instance, utcNow);
             PublishRuntimeEvents(instance);
@@ -120,17 +124,19 @@ public sealed class GameLoop
         }
     }
 
-    private void ApplyPendingSkillCastReleases(MapInstance instance)
+    private void ApplyPendingSkillCastReleases(MapInstance instance, DateTime utcNow)
     {
         foreach (var releaseEvent in instance.DequeuePendingSkillCastReleases())
         {
-            if (!_worldManager.TryGetPlayer(releaseEvent.CasterPlayerId, out var caster))
+            var execution = releaseEvent.Execution;
+            if (!_worldManager.TryGetPlayer(execution.CasterPlayerId, out var caster))
                 continue;
 
             if (caster.MapId != instance.MapId || caster.InstanceId != instance.InstanceId)
                 continue;
 
-            caster.CompleteSkillCast(releaseEvent.ExecutionId);
+            _skillExecutionService.ResolveCastRelease(instance, execution, utcNow);
+            caster.CompleteSkillCast(execution.ExecutionId);
             var currentState = caster.RuntimeState.CaptureSnapshot().CurrentState;
             if (currentState.CurrentState != CharacterRuntimeStateCodes.Casting)
                 continue;
@@ -139,6 +145,15 @@ public sealed class GameLoop
                 caster,
                 state => state with { CurrentState = CharacterRuntimeStateCodes.Idle },
                 persist: false);
+        }
+    }
+
+    private void ApplyPendingSkillImpacts(MapInstance instance, DateTime utcNow)
+    {
+        foreach (var impactEvent in instance.DequeuePendingSkillImpactDues())
+        {
+            var resolvedImpact = _skillExecutionService.ResolveImpact(instance, impactEvent.Execution, utcNow);
+            instance.EnqueueSkillImpactResolved(resolvedImpact);
         }
     }
 

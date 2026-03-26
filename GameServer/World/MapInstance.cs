@@ -20,6 +20,7 @@ public sealed class MapInstance
     private readonly Queue<EnemyHpChangedRuntimeEvent> _pendingEnemyHpChanges = new();
     private readonly Queue<PlayerDamageRuntimeEvent> _pendingPlayerDamages = new();
     private readonly Queue<SkillCastReleaseRuntimeEvent> _pendingSkillCastReleases = new();
+    private readonly Queue<SkillImpactDueRuntimeEvent> _pendingSkillImpactDues = new();
     private readonly Queue<SkillImpactResolvedRuntimeEvent> _pendingSkillImpactResolutions = new();
     private readonly Queue<GroundRewardSpawnRuntimeEvent> _pendingGroundRewardSpawns = new();
     private readonly Queue<GroundRewardDespawnRuntimeEvent> _pendingGroundRewardDespawns = new();
@@ -223,7 +224,7 @@ public sealed class MapInstance
         {
             var enemy = Monsters.FirstOrDefault(x => x.Id == enemyRuntimeId);
             if (enemy is null)
-                return new EnemyDamageApplicationResult(false, false, 0, MessageCode.EnemyNotFound);
+                return new EnemyDamageApplicationResult(false, false, 0, 0, MessageCode.EnemyNotFound);
 
             var result = enemy.ApplyDamage(attacker.PlayerId, damage, utcNow);
             if (result.Applied)
@@ -272,14 +273,74 @@ public sealed class MapInstance
         }
     }
 
+    public bool TryGetCombatTargetSnapshot(CombatTargetReference target, out CombatTargetSnapshot snapshot)
+    {
+        lock (_sync)
+        {
+            switch (target.Kind)
+            {
+                case GameShared.Enums.CombatTargetKind.Character:
+                    if (!target.CharacterId.HasValue)
+                        break;
+
+                    var targetPlayer = Players.FirstOrDefault(x => x.CharacterData.CharacterId == target.CharacterId.Value);
+                    if (targetPlayer is null || !targetPlayer.IsConnected)
+                        break;
+
+                    snapshot = new CombatTargetSnapshot(
+                        target.Kind,
+                        target.CharacterId,
+                        null,
+                        targetPlayer.Position,
+                        !targetPlayer.RuntimeState.CaptureSnapshot().CurrentState.IsDead);
+                    return true;
+
+                case GameShared.Enums.CombatTargetKind.Enemy:
+                case GameShared.Enums.CombatTargetKind.Boss:
+                case GameShared.Enums.CombatTargetKind.Dummy:
+                case GameShared.Enums.CombatTargetKind.Npc:
+                    if (!target.RuntimeId.HasValue)
+                        break;
+
+                    var enemy = Monsters.FirstOrDefault(x => x.Id == target.RuntimeId.Value);
+                    if (enemy is null)
+                        break;
+
+                    snapshot = new CombatTargetSnapshot(
+                        enemy.Definition.Kind == EnemyKind.Boss ? GameShared.Enums.CombatTargetKind.Boss : target.Kind,
+                        null,
+                        enemy.Id,
+                        enemy.Position,
+                        enemy.IsAlive);
+                    return true;
+
+                case GameShared.Enums.CombatTargetKind.GroundPoint:
+                    if (!target.GroundPosition.HasValue)
+                        break;
+
+                    snapshot = new CombatTargetSnapshot(
+                        target.Kind,
+                        null,
+                        null,
+                        Definition.ClampPosition(target.GroundPosition.Value),
+                        true);
+                    return true;
+            }
+
+            snapshot = default;
+            return false;
+        }
+    }
+
     public PendingSkillExecution EnqueueSkillExecution(
         Guid casterPlayerId,
         Guid casterCharacterId,
         long playerSkillId,
         int skillId,
         int skillSlotIndex,
-        int enemyRuntimeId,
-        int damage,
+        SkillTargetType targetType,
+        CombatStatSnapshot casterStats,
+        CombatTargetReference? target,
         int castTimeMs,
         int travelTimeMs,
         DateTime utcNow)
@@ -296,8 +357,9 @@ public sealed class MapInstance
                 playerSkillId,
                 skillId,
                 skillSlotIndex,
-                enemyRuntimeId,
-                damage,
+                targetType,
+                casterStats,
+                target,
                 Math.Max(0, castTimeMs),
                 Math.Max(0, travelTimeMs),
                 castStartedAtUtc,
@@ -402,6 +464,89 @@ public sealed class MapInstance
         lock (_sync)
         {
             return DrainQueueUnsafe(_pendingSkillImpactResolutions);
+        }
+    }
+
+    public IReadOnlyCollection<SkillImpactDueRuntimeEvent> DequeuePendingSkillImpactDues()
+    {
+        lock (_sync)
+        {
+            return DrainQueueUnsafe(_pendingSkillImpactDues);
+        }
+    }
+
+    public void EnqueueSkillImpactResolved(SkillImpactResolvedRuntimeEvent impact)
+    {
+        lock (_sync)
+        {
+            _pendingSkillImpactResolutions.Enqueue(impact);
+        }
+    }
+
+    public EnemyHealingApplicationResult ApplyEnemyHealing(int enemyRuntimeId, int healing, DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            var enemy = Monsters.FirstOrDefault(x => x.Id == enemyRuntimeId);
+            if (enemy is null)
+                return new EnemyHealingApplicationResult(false, 0, 0, MessageCode.EnemyNotFound);
+
+            var result = enemy.RestoreHp(healing, utcNow);
+            if (result.Applied)
+            {
+                _pendingEnemyHpChanges.Enqueue(new EnemyHpChangedRuntimeEvent(
+                    enemy.Id,
+                    enemy.Hp,
+                    enemy.MaxHp,
+                    enemy.State));
+            }
+
+            return result;
+        }
+    }
+
+    public bool TryApplyEnemyShield(int enemyRuntimeId, int amount, int? durationMs, DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            var enemy = Monsters.FirstOrDefault(x => x.Id == enemyRuntimeId);
+            if (enemy is null)
+                return false;
+
+            enemy.ApplyShield(amount, durationMs, utcNow);
+            return true;
+        }
+    }
+
+    public bool TryApplyEnemyStun(int enemyRuntimeId, int durationMs, DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            var enemy = Monsters.FirstOrDefault(x => x.Id == enemyRuntimeId);
+            if (enemy is null)
+                return false;
+
+            enemy.ApplyStun(durationMs, utcNow);
+            return true;
+        }
+    }
+
+    public bool TryApplyEnemyStatModifier(
+        int enemyRuntimeId,
+        CharacterStatType statType,
+        decimal value,
+        CombatValueType valueType,
+        int? durationMs,
+        DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            var enemy = Monsters.FirstOrDefault(x => x.Id == enemyRuntimeId);
+            if (enemy is null)
+                return false;
+
+            enemy.ApplyStatModifier(statType, value, valueType, durationMs, utcNow);
+            return true;
         }
     }
 
@@ -527,7 +672,7 @@ public sealed class MapInstance
                     _pendingPlayerDamages.Enqueue(new PlayerDamageRuntimeEvent(
                         targetPlayer.PlayerId,
                         monster.Id,
-                        Math.Max(1, monster.Definition.BaseAttack)));
+                        Math.Max(1, monster.GetEffectiveAttack(utcNow))));
                 }
             }
 
@@ -566,53 +711,13 @@ public sealed class MapInstance
             if (!execution.CastReleased && utcNow >= execution.CastCompletedAtUtc)
             {
                 execution.MarkCastReleased();
-                _pendingSkillCastReleases.Enqueue(new SkillCastReleaseRuntimeEvent(
-                    execution.CasterPlayerId,
-                    execution.ExecutionId));
+                _pendingSkillCastReleases.Enqueue(new SkillCastReleaseRuntimeEvent(execution));
             }
 
             if (utcNow < execution.ImpactAtUtc)
                 continue;
 
-            SkillImpactResolvedRuntimeEvent impactEvent;
-            if (!_playersById.TryGetValue(execution.CasterPlayerId, out var attacker) ||
-                !attacker.IsConnected ||
-                attacker.MapId != MapId ||
-                attacker.InstanceId != InstanceId)
-            {
-                impactEvent = new SkillImpactResolvedRuntimeEvent(
-                    execution.CasterPlayerId,
-                    execution.CasterCharacterId,
-                    execution.EnemyRuntimeId,
-                    execution.SkillSlotIndex,
-                    execution.PlayerSkillId,
-                    execution.SkillId,
-                    false,
-                    MessageCode.CharacterNotInWorldInstance,
-                    0,
-                    0,
-                    false,
-                    utcNow);
-            }
-            else
-            {
-                var result = ApplyEnemyDamage(attacker, execution.EnemyRuntimeId, execution.Damage, utcNow);
-                impactEvent = new SkillImpactResolvedRuntimeEvent(
-                    execution.CasterPlayerId,
-                    execution.CasterCharacterId,
-                    execution.EnemyRuntimeId,
-                    execution.SkillSlotIndex,
-                    execution.PlayerSkillId,
-                    execution.SkillId,
-                    result.Applied,
-                    result.Code,
-                    result.Applied ? execution.Damage : 0,
-                    result.RemainingHp,
-                    result.IsKilled,
-                    utcNow);
-            }
-
-            _pendingSkillImpactResolutions.Enqueue(impactEvent);
+            _pendingSkillImpactDues.Enqueue(new SkillImpactDueRuntimeEvent(execution));
             _pendingSkillExecutions.RemoveAt(index);
         }
     }

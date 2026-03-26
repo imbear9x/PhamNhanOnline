@@ -7,6 +7,7 @@ public enum CharacterStatType
     None = 0,
     Hp = 1,
     Mp = 2,
+    Stamina = 3,
     Attack = 4,
     Speed = 5,
     SpiritualSense = 6,
@@ -49,7 +50,8 @@ public enum SkillEffectType
     BuffStat = 4,
     DebuffStat = 5,
     Stun = 6,
-    Shield = 7
+    Shield = 7,
+    ResourceRestore = 8
 }
 
 public enum SkillFormulaType

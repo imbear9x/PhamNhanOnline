@@ -140,6 +140,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IGameRandomService, GameRandomService>();
         services.AddSingleton<MartialArtProgressionService>();
         services.AddSingleton<SkillRuntimeBuilder>();
+        services.AddSingleton<SkillExecutionService>();
         services.AddSingleton<MapManager>();
         services.AddSingleton<WorldManager>();
         services.AddSingleton<WorldInterestService>();

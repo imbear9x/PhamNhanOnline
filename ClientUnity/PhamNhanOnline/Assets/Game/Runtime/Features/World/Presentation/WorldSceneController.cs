@@ -24,9 +24,51 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             EnsureRuntimeInitialized();
             EnsureWorldTargetSelectionController();
+            EnsureWorldTargetActionController();
 
             if (mapRoot == null || entitiesRoot == null || worldUiRoot == null)
                 Debug.LogWarning("WorldSceneController is missing one or more scene roots.");
+        }
+
+        public void CycleNearbyTarget()
+        {
+            var controller = EnsureWorldTargetSelectionController();
+            if (controller != null)
+                controller.CycleNearbyTarget();
+        }
+
+        public void ClearSelectedTarget()
+        {
+            var controller = EnsureWorldTargetSelectionController();
+            if (controller != null)
+                controller.ClearSelectedTarget();
+        }
+
+        public void PinCurrentTargetForCombat()
+        {
+            var controller = EnsureWorldTargetSelectionController();
+            if (controller != null)
+                controller.PinCurrentTargetForCombat();
+        }
+
+        public void PinCurrentTargetManually()
+        {
+            var controller = EnsureWorldTargetSelectionController();
+            if (controller != null)
+                controller.PinCurrentTargetManually();
+        }
+
+        public void ClearPinnedTarget()
+        {
+            var controller = EnsureWorldTargetSelectionController();
+            if (controller != null)
+                controller.ClearPinnedTarget();
+        }
+
+        public bool RequestPrimaryTargetAction(PhamNhanOnline.Client.Features.Targeting.Application.WorldTargetHandle target)
+        {
+            var controller = EnsureWorldTargetActionController();
+            return controller != null && controller.RequestPrimaryAction(target);
         }
 
         private void EnsureRuntimeInitialized()
@@ -42,13 +84,23 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ClientLog.Info($"Client runtime auto-initialized from World scene using {settings.name}.");
         }
 
-        private void EnsureWorldTargetSelectionController()
+        private WorldClickTargetSelectionController EnsureWorldTargetSelectionController()
         {
             var controller = GetComponent<WorldClickTargetSelectionController>();
             if (controller == null)
                 controller = gameObject.AddComponent<WorldClickTargetSelectionController>();
 
-            controller.Initialize(worldCamera);
+            controller.Initialize(worldCamera, GetComponentInChildren<WorldMapPresenter>());
+            return controller;
+        }
+
+        private WorldTargetActionController EnsureWorldTargetActionController()
+        {
+            var controller = GetComponent<WorldTargetActionController>();
+            if (controller == null)
+                controller = gameObject.AddComponent<WorldTargetActionController>();
+
+            return controller;
         }
     }
 }

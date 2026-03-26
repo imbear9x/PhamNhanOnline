@@ -1,10 +1,10 @@
 using System.Numerics;
-using GameServer.DTO;
 using GameServer.Exceptions;
 using GameServer.Network.Interface;
 using GameServer.Runtime;
 using GameServer.Services;
 using GameServer.World;
+using GameShared.Enums;
 using GameShared.Messages;
 using GameShared.Packets;
 
@@ -14,6 +14,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
 {
     private readonly CharacterCultivationService _cultivationService;
     private readonly CharacterRuntimeService _characterRuntimeService;
+    private readonly SkillExecutionService _skillExecutionService;
     private readonly SkillService _skillService;
     private readonly INetworkSender _network;
     private readonly WorldManager _worldManager;
@@ -22,6 +23,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
     public AttackEnemyHandler(
         CharacterCultivationService cultivationService,
         CharacterRuntimeService characterRuntimeService,
+        SkillExecutionService skillExecutionService,
         SkillService skillService,
         INetworkSender network,
         WorldManager worldManager,
@@ -29,6 +31,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
     {
         _cultivationService = cultivationService;
         _characterRuntimeService = characterRuntimeService;
+        _skillExecutionService = skillExecutionService;
         _skillService = skillService;
         _network = network;
         _worldManager = worldManager;
@@ -37,39 +40,52 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
 
     public async Task HandleAsync(ConnectionSession session, AttackEnemyPacket packet)
     {
-        if (session.Player is null || !packet.EnemyRuntimeId.HasValue || !packet.SkillSlotIndex.HasValue)
+        if (session.Player is null || !packet.SkillSlotIndex.HasValue)
         {
             _network.Send(session.ConnectionId, new AttackEnemyResultPacket
             {
                 Success = false,
                 Code = MessageCode.CharacterMustEnterWorld,
-                EnemyRuntimeId = packet.EnemyRuntimeId,
+                Target = packet.Target,
                 SkillSlotIndex = packet.SkillSlotIndex
             });
             return;
         }
 
         var player = session.Player;
+        var utcNow = DateTime.UtcNow;
         if (_cultivationService.IsCultivating(player))
         {
             _network.Send(session.ConnectionId, new AttackEnemyResultPacket
             {
                 Success = false,
                 Code = MessageCode.CharacterCannotMoveWhileCultivating,
-                EnemyRuntimeId = packet.EnemyRuntimeId,
+                Target = packet.Target,
                 SkillSlotIndex = packet.SkillSlotIndex
             });
             return;
         }
 
         var runtimeSnapshot = player.RuntimeState.CaptureSnapshot();
+        if (player.IsStunned(utcNow))
+        {
+            _network.Send(session.ConnectionId, new AttackEnemyResultPacket
+            {
+                Success = false,
+                Code = MessageCode.CharacterCannotActWhileStunned,
+                Target = packet.Target,
+                SkillSlotIndex = packet.SkillSlotIndex
+            });
+            return;
+        }
+
         if (runtimeSnapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.Casting || player.IsCastingSkill)
         {
             _network.Send(session.ConnectionId, new AttackEnemyResultPacket
             {
                 Success = false,
                 Code = MessageCode.SkillAlreadyCasting,
-                EnemyRuntimeId = packet.EnemyRuntimeId,
+                Target = packet.Target,
                 SkillSlotIndex = packet.SkillSlotIndex
             });
             return;
@@ -81,7 +97,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
             {
                 Success = false,
                 Code = MessageCode.CharacterNotInWorldInstance,
-                EnemyRuntimeId = packet.EnemyRuntimeId,
+                Target = packet.Target,
                 SkillSlotIndex = packet.SkillSlotIndex
             });
             return;
@@ -93,14 +109,16 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                 player.CharacterData.CharacterId,
                 packet.SkillSlotIndex.Value);
 
-            var utcNow = DateTime.UtcNow;
+            var hasTarget = CombatTargetReference.TryFromModel(packet.Target, out var requestedTarget);
+            CombatTargetSnapshot targetSnapshot = default;
+
             if (player.IsSkillOnCooldown(castContext.PlayerSkillId, utcNow, out var cooldownUntilUtc))
             {
                 _network.Send(session.ConnectionId, new AttackEnemyResultPacket
                 {
                     Success = false,
                     Code = MessageCode.SkillOnCooldown,
-                    EnemyRuntimeId = packet.EnemyRuntimeId,
+                    Target = packet.Target,
                     SkillSlotIndex = packet.SkillSlotIndex,
                     PlayerSkillId = castContext.PlayerSkillId,
                     SkillId = castContext.SkillId,
@@ -110,13 +128,13 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                 return;
             }
 
-            if (!instance.TryGetEnemySnapshot(packet.EnemyRuntimeId.Value, out var enemySnapshot) || !enemySnapshot.IsAlive)
+            if (castContext.Skill.TargetType is SkillTargetType.EnemyArea or SkillTargetType.AllyArea or SkillTargetType.GroundArea)
             {
                 _network.Send(session.ConnectionId, new AttackEnemyResultPacket
                 {
                     Success = false,
-                    Code = MessageCode.EnemyNotFound,
-                    EnemyRuntimeId = packet.EnemyRuntimeId,
+                    Code = MessageCode.SkillTargetTypeNotSupported,
+                    Target = packet.Target,
                     SkillSlotIndex = packet.SkillSlotIndex,
                     PlayerSkillId = castContext.PlayerSkillId,
                     SkillId = castContext.SkillId
@@ -124,23 +142,73 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                 return;
             }
 
-            var castRange = Math.Max(0f, castContext.Skill.CastRange);
-            if (castRange > 0f &&
-                Vector2.DistanceSquared(player.Position, enemySnapshot.Position) > castRange * castRange)
+            switch (castContext.Skill.TargetType)
             {
-                _network.Send(session.ConnectionId, new AttackEnemyResultPacket
-                {
-                    Success = false,
-                    Code = MessageCode.SkillTargetOutOfRange,
-                    EnemyRuntimeId = packet.EnemyRuntimeId,
-                    SkillSlotIndex = packet.SkillSlotIndex,
-                    PlayerSkillId = castContext.PlayerSkillId,
-                    SkillId = castContext.SkillId
-                });
-                return;
+                case SkillTargetType.Self:
+                    break;
+
+                case SkillTargetType.EnemySingle:
+                case SkillTargetType.AllySingle:
+                    if (!hasTarget)
+                    {
+                        _network.Send(session.ConnectionId, new AttackEnemyResultPacket
+                        {
+                            Success = false,
+                            Code = MessageCode.SkillTargetRequired,
+                            Target = packet.Target,
+                            SkillSlotIndex = packet.SkillSlotIndex,
+                            PlayerSkillId = castContext.PlayerSkillId,
+                            SkillId = castContext.SkillId
+                        });
+                        return;
+                    }
+
+                    if (!instance.TryGetCombatTargetSnapshot(requestedTarget, out targetSnapshot) || !targetSnapshot.IsAlive)
+                    {
+                        _network.Send(session.ConnectionId, new AttackEnemyResultPacket
+                        {
+                            Success = false,
+                            Code = MessageCode.SkillTargetInvalid,
+                            Target = packet.Target,
+                            SkillSlotIndex = packet.SkillSlotIndex,
+                            PlayerSkillId = castContext.PlayerSkillId,
+                            SkillId = castContext.SkillId
+                        });
+                        return;
+                    }
+
+                    if (!IsTargetCompatible(player, castContext.Skill.TargetType, requestedTarget, targetSnapshot))
+                    {
+                        _network.Send(session.ConnectionId, new AttackEnemyResultPacket
+                        {
+                            Success = false,
+                            Code = MessageCode.SkillTargetInvalid,
+                            Target = packet.Target,
+                            SkillSlotIndex = packet.SkillSlotIndex,
+                            PlayerSkillId = castContext.PlayerSkillId,
+                            SkillId = castContext.SkillId
+                        });
+                        return;
+                    }
+
+                    var castRange = Math.Max(0f, castContext.Skill.CastRange);
+                    if (castRange > 0f &&
+                        Vector2.DistanceSquared(player.Position, targetSnapshot.Position) > castRange * castRange)
+                    {
+                        _network.Send(session.ConnectionId, new AttackEnemyResultPacket
+                        {
+                            Success = false,
+                            Code = MessageCode.SkillTargetOutOfRange,
+                            Target = packet.Target,
+                            SkillSlotIndex = packet.SkillSlotIndex,
+                            PlayerSkillId = castContext.PlayerSkillId,
+                            SkillId = castContext.SkillId
+                        });
+                        return;
+                    }
+                    break;
             }
 
-            var damage = Math.Max(1, runtimeSnapshot.BaseStats.GetEffectiveAttack());
             var cooldownEndsAtUtc = utcNow.AddMilliseconds(Math.Max(0, castContext.Skill.CooldownMs));
             var execution = instance.EnqueueSkillExecution(
                 player.PlayerId,
@@ -148,8 +216,9 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                 castContext.PlayerSkillId,
                 castContext.SkillId,
                 castContext.SkillSlotIndex,
-                packet.EnemyRuntimeId.Value,
-                damage,
+                castContext.Skill.TargetType,
+                _skillExecutionService.CaptureCasterStats(player, utcNow),
+                hasTarget ? requestedTarget : null,
                 castContext.Skill.CastTimeMs,
                 castContext.Skill.TravelTimeMs,
                 utcNow);
@@ -164,7 +233,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                 {
                     Success = false,
                     Code = MessageCode.SkillAlreadyCasting,
-                    EnemyRuntimeId = packet.EnemyRuntimeId,
+                    Target = packet.Target,
                     SkillSlotIndex = packet.SkillSlotIndex,
                     PlayerSkillId = castContext.PlayerSkillId,
                     SkillId = castContext.SkillId
@@ -185,7 +254,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
             {
                 Success = true,
                 Code = MessageCode.None,
-                EnemyRuntimeId = packet.EnemyRuntimeId,
+                Target = packet.Target,
                 SkillSlotIndex = packet.SkillSlotIndex,
                 PlayerSkillId = castContext.PlayerSkillId,
                 SkillId = castContext.SkillId,
@@ -195,7 +264,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                 CastCompletedUnixMs = ToUnixMs(execution.CastCompletedAtUtc),
                 ImpactUnixMs = ToUnixMs(execution.ImpactAtUtc),
                 DamageApplied = 0,
-                RemainingHp = enemySnapshot.IsAlive ? null : 0,
+                RemainingHp = null,
                 IsKilled = false
             });
         }
@@ -205,10 +274,41 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
             {
                 Success = false,
                 Code = ex.Code,
-                EnemyRuntimeId = packet.EnemyRuntimeId,
+                Target = packet.Target,
                 SkillSlotIndex = packet.SkillSlotIndex
             });
         }
+    }
+
+    private static bool IsTargetCompatible(
+        PlayerSession caster,
+        SkillTargetType targetType,
+        CombatTargetReference requestedTarget,
+        CombatTargetSnapshot snapshot)
+    {
+        var isSelfCharacter = snapshot.Kind == CombatTargetKind.Character &&
+                              snapshot.CharacterId.HasValue &&
+                              snapshot.CharacterId.Value == caster.CharacterData.CharacterId;
+
+        return targetType switch
+        {
+            SkillTargetType.Self => isSelfCharacter,
+            SkillTargetType.EnemySingle => requestedTarget.Kind switch
+            {
+                CombatTargetKind.Character => !isSelfCharacter,
+                CombatTargetKind.Enemy => true,
+                CombatTargetKind.Boss => true,
+                CombatTargetKind.Dummy => true,
+                _ => false
+            },
+            SkillTargetType.AllySingle => requestedTarget.Kind switch
+            {
+                CombatTargetKind.Character => true,
+                CombatTargetKind.Npc => true,
+                _ => false
+            },
+            _ => false
+        };
     }
 
     private static long ToUnixMs(DateTime utc)

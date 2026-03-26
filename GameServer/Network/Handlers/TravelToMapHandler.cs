@@ -47,6 +47,17 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
         var player = session.Player;
         var targetMapId = packet.TargetMapId.Value;
         var currentState = player.RuntimeState.CaptureSnapshot().CurrentState.CurrentState;
+        if (player.IsStunned(DateTime.UtcNow))
+        {
+            _server.Send(session.ConnectionId, new TravelToMapResultPacket
+            {
+                Success = false,
+                Code = MessageCode.CharacterCannotActWhileStunned,
+                TargetMapId = targetMapId
+            });
+            return Task.CompletedTask;
+        }
+
         if (_cultivationService.IsCultivating(player))
         {
             _server.Send(session.ConnectionId, new TravelToMapResultPacket

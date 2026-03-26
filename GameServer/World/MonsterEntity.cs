@@ -8,6 +8,7 @@ public sealed class MonsterEntity
 {
     private readonly object _sync = new();
     private readonly Dictionary<Guid, DamageContributionState> _contributions = new();
+    private readonly CombatStatusCollection _combatStatuses = new();
 
     public int Id { get; }
     public int SpawnGroupId { get; }
@@ -24,6 +25,7 @@ public sealed class MonsterEntity
     public DateTime? DiedAtUtc { get; private set; }
     public DateTime? LastDamagedAtUtc { get; private set; }
     public DateTime? NextAttackAtUtc { get; private set; }
+    public CombatStatusCollection CombatStatuses => _combatStatuses;
 
     public MonsterEntity(int id, int spawnGroupId, EnemyDefinition definition, Vector2 spawnPosition, DateTime utcNow)
     {
@@ -44,14 +46,17 @@ public sealed class MonsterEntity
     public EnemyDamageApplicationResult ApplyDamage(Guid playerId, int damage, DateTime utcNow)
     {
         if (damage <= 0)
-            return new EnemyDamageApplicationResult(false, false, Hp, MessageCode.EnemyAlreadyDead);
+            return new EnemyDamageApplicationResult(false, false, 0, Hp, MessageCode.EnemyAlreadyDead);
 
         lock (_sync)
         {
             if (State == EnemyRuntimeState.Dead)
-                return new EnemyDamageApplicationResult(false, false, Hp, MessageCode.EnemyAlreadyDead);
+                return new EnemyDamageApplicationResult(false, false, 0, Hp, MessageCode.EnemyAlreadyDead);
 
-            Hp = Math.Max(0, Hp - damage);
+            var previousHp = Hp;
+            var remainingDamage = _combatStatuses.AbsorbIncomingDamage(damage, utcNow, out _);
+            Hp = Math.Max(0, Hp - remainingDamage);
+            var appliedDamage = Math.Max(0, previousHp - Hp);
             State = EnemyRuntimeState.Combat;
             LastHitPlayerId = playerId;
             CombatTargetPlayerId = playerId;
@@ -62,21 +67,98 @@ public sealed class MonsterEntity
             {
                 _contributions[playerId] = existing with
                 {
-                    DamageDealt = existing.DamageDealt + damage,
+                    DamageDealt = existing.DamageDealt + appliedDamage,
                     LastHitAtUtc = utcNow
                 };
             }
             else
             {
-                _contributions[playerId] = new DamageContributionState(playerId, damage, utcNow);
+                _contributions[playerId] = new DamageContributionState(playerId, appliedDamage, utcNow);
             }
 
             if (Hp > 0)
-                return new EnemyDamageApplicationResult(true, false, Hp, MessageCode.None);
+                return new EnemyDamageApplicationResult(appliedDamage > 0, false, appliedDamage, Hp, MessageCode.None);
 
             State = EnemyRuntimeState.Dead;
             DiedAtUtc = utcNow;
-            return new EnemyDamageApplicationResult(true, true, 0, MessageCode.None);
+            return new EnemyDamageApplicationResult(appliedDamage > 0, true, appliedDamage, 0, MessageCode.None);
+        }
+    }
+
+    public EnemyHealingApplicationResult RestoreHp(int amount, DateTime utcNow)
+    {
+        if (amount <= 0)
+            return new EnemyHealingApplicationResult(false, 0, Hp, MessageCode.None);
+
+        lock (_sync)
+        {
+            if (State == EnemyRuntimeState.Dead)
+                return new EnemyHealingApplicationResult(false, 0, Hp, MessageCode.EnemyAlreadyDead);
+
+            var previousHp = Hp;
+            Hp = Math.Clamp(Hp + amount, 0, Definition.MaxHp);
+            LastDamagedAtUtc = utcNow;
+            return new EnemyHealingApplicationResult(Hp != previousHp, Hp - previousHp, Hp, MessageCode.None);
+        }
+    }
+
+    public void ApplyShield(int amount, int? durationMs, DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            if (State == EnemyRuntimeState.Dead)
+                return;
+
+            _combatStatuses.AddShield(amount, ResolveExpiresAtUtc(durationMs, utcNow));
+        }
+    }
+
+    public void ApplyStun(int durationMs, DateTime utcNow)
+    {
+        if (durationMs <= 0)
+            return;
+
+        lock (_sync)
+        {
+            if (State == EnemyRuntimeState.Dead)
+                return;
+
+            _combatStatuses.AddStun(utcNow.AddMilliseconds(durationMs));
+            NextAttackAtUtc = utcNow.AddMilliseconds(durationMs);
+        }
+    }
+
+    public void ApplyStatModifier(
+        CharacterStatType statType,
+        decimal value,
+        CombatValueType valueType,
+        int? durationMs,
+        DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            if (State == EnemyRuntimeState.Dead)
+                return;
+
+            _combatStatuses.AddStatModifier(statType, value, valueType, ResolveExpiresAtUtc(durationMs, utcNow));
+        }
+    }
+
+    public bool IsStunned(DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            return _combatStatuses.IsStunned(utcNow);
+        }
+    }
+
+    public int GetEffectiveAttack(DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            return CombatStatMath.ApplyModifiers(
+                Definition.BaseAttack,
+                _combatStatuses.GetStatModifierAggregate(CharacterStatType.Attack, utcNow));
         }
     }
 
@@ -125,6 +207,9 @@ public sealed class MonsterEntity
             if (State != EnemyRuntimeState.Combat || !CombatTargetPlayerId.HasValue)
                 return false;
 
+            if (_combatStatuses.IsStunned(utcNow))
+                return false;
+
             if (NextAttackAtUtc.HasValue && utcNow < NextAttackAtUtc.Value)
                 return false;
 
@@ -150,10 +235,24 @@ public sealed class MonsterEntity
         Guid PlayerId,
         int DamageDealt,
         DateTime LastHitAtUtc);
+
+    private static DateTime? ResolveExpiresAtUtc(int? durationMs, DateTime utcNow)
+    {
+        return durationMs is > 0
+            ? utcNow.AddMilliseconds(durationMs.Value)
+            : null;
+    }
 }
 
 public readonly record struct EnemyDamageApplicationResult(
     bool Applied,
     bool IsKilled,
+    int AppliedDamage,
     int RemainingHp,
+    MessageCode Code);
+
+public readonly record struct EnemyHealingApplicationResult(
+    bool Applied,
+    int HealingApplied,
+    int CurrentHp,
     MessageCode Code);

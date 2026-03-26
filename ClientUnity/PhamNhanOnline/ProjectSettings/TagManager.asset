@@ -8,13 +8,18 @@ TagManager:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - WorldMap
   - Water
   - UI
-  - 
-  - 
-  - 
-  - 
+  - WorldEntity
+  - Targetable
+  - GroundReward
+  - WorldIndicator
+  - WorldTrigger
+  - LocalPlayer
+  - RemotePlayer
+  - Enemy
+  - Npc
   - 
   - 
   - 
@@ -40,4 +45,28 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Background
+    uniqueID: 112345001
+    locked: 0
+  - name: MapBack
+    uniqueID: 112345002
+    locked: 0
+  - name: Ground
+    uniqueID: 112345003
+    locked: 0
+  - name: Characters
+    uniqueID: 112345004
+    locked: 0
+  - name: Effects
+    uniqueID: 112345005
+    locked: 0
+  - name: TargetIndicator
+    uniqueID: 112345006
+    locked: 0
+  - name: WorldUi
+    uniqueID: 112345007
+    locked: 0
+  - name: Foreground
+    uniqueID: 112345008
     locked: 0

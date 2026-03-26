@@ -74,6 +74,10 @@ public enum MessageCode : int
     SkillAlreadyCasting = 3036,
     SkillOnCooldown = 3037,
     SkillLoadoutSlotEmpty = 3038,
+    CharacterCannotActWhileStunned = 3039,
+    SkillTargetRequired = 3040,
+    SkillTargetTypeNotSupported = 3041,
+    SkillTargetInvalid = 3042,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001,

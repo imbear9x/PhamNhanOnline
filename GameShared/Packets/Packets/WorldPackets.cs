@@ -197,10 +197,7 @@ public partial class GroundRewardDespawnedPacket : IPacket
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.Business, MinIntervalMs = 80)]
 public partial class AttackEnemyPacket : IPacket
 {
-    [ValidationCode(MessageCode.EnemyRuntimeIdInvalid)]
-    [Required]
-    [Range(1, int.MaxValue)]
-    public int? EnemyRuntimeId { get; set; }
+    public CombatTargetModel? Target { get; set; }
 
     [ValidationCode(MessageCode.SkillLoadoutSlotInvalid)]
     [Required]
@@ -214,7 +211,7 @@ public partial class AttackEnemyResultPacket : IPacket
 {
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
-    public int? EnemyRuntimeId { get; set; }
+    public CombatTargetModel? Target { get; set; }
     public int? SkillSlotIndex { get; set; }
     public long? PlayerSkillId { get; set; }
     public int? SkillId { get; set; }
@@ -235,7 +232,7 @@ public partial class SkillCastStartedPacket : IPacket
     public int? MapId { get; set; }
     public int? InstanceId { get; set; }
     public Guid? CasterCharacterId { get; set; }
-    public int? EnemyRuntimeId { get; set; }
+    public CombatTargetModel? Target { get; set; }
     public int? SkillSlotIndex { get; set; }
     public long? PlayerSkillId { get; set; }
     public int? SkillId { get; set; }
@@ -253,7 +250,7 @@ public partial class SkillImpactResolvedPacket : IPacket
     public int? MapId { get; set; }
     public int? InstanceId { get; set; }
     public Guid? CasterCharacterId { get; set; }
-    public int? EnemyRuntimeId { get; set; }
+    public CombatTargetModel? Target { get; set; }
     public int? SkillSlotIndex { get; set; }
     public long? PlayerSkillId { get; set; }
     public int? SkillId { get; set; }

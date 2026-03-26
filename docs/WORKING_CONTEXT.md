@@ -589,6 +589,28 @@ Cuối mỗi buổi, nên bổ sung:
 - Build verify:
   - `dotnet build GameServer/GameServer.csproj` pass
 
+## Session Note 2026-03-26
+- Da on dinh he thong chon doi tuong client:
+  - auto-target theo range + priority
+  - click de chon target
+  - double click de thuc hien primary action
+  - target HUD da tach `TargetHudController` va `TargetStatusPanelController`
+  - target marker do/trang hien theo kha nang tan cong hay chi tuong tac
+- Da them flow `approach then act`:
+  - double click vao enemy/boss -> chay vao tam basic skill roi moi cast
+  - double click vao NPC/player thuong -> chay vao tam tuong tac roi moi xu ly interaction
+- Da seed `wood_doll` vao DB theo huong sach:
+  - dung chung he enemy runtime
+  - HP 1000
+  - chet 2 giay hoi sinh
+  - spawn trong `Player Home` voi `runtime_scope = Private`
+- Da them enemy presentation client de co the render/click target `wood_doll` trong home
+- Da bo sung Unity layers/sorting layers nen cho world target, indicator va characters
+- Buoi sau se tiep tuc:
+  - skill combat client
+  - popup text tru mau
+  - VFX cast/projectile
+
 ## Session update 2026-03-24 equipment slots foundation
 
 - Da them foundation equip/unequip cho inventory theo huong scene-driven:

@@ -30,12 +30,22 @@ public sealed class CharacterRuntimeCalculator
         int hpDelta,
         int mpDelta)
     {
+        return ApplyResourceDelta(baseStats, currentState, hpDelta, mpDelta, 0);
+    }
+
+    public CharacterCurrentStateDto ApplyResourceDelta(
+        CharacterBaseStatsDto baseStats,
+        CharacterCurrentStateDto currentState,
+        int hpDelta,
+        int mpDelta,
+        int staminaDelta)
+    {
         var maxHp = baseStats.GetEffectiveHp();
         var maxMp = baseStats.GetEffectiveMp();
         var maxStamina = baseStats.GetEffectiveStamina();
         var hp = Clamp(currentState.CurrentHp + hpDelta, 0, maxHp);
         var mp = Clamp(currentState.CurrentMp + mpDelta, 0, maxMp);
-        var stamina = Clamp(currentState.CurrentStamina, 0, maxStamina);
+        var stamina = Clamp(currentState.CurrentStamina + staminaDelta, 0, maxStamina);
         var isDead = hp <= 0;
 
         return currentState with
@@ -44,7 +54,7 @@ public sealed class CharacterRuntimeCalculator
             CurrentMp = mp,
             CurrentStamina = stamina,
             IsDead = isDead,
-            CurrentState = isDead ? CharacterRuntimeStateCodes.Dead : CharacterRuntimeStateCodes.Idle,
+            CurrentState = isDead ? CharacterRuntimeStateCodes.Dead : currentState.CurrentState,
         };
     }
 

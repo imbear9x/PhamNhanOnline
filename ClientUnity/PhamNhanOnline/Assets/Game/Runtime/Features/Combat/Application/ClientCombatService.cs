@@ -1,12 +1,16 @@
 using System;
 using GameShared.Packets;
 using PhamNhanOnline.Client.Features.Character.Application;
+using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Network.Session;
+using GameShared.Enums;
+using GameShared.Models;
 
 namespace PhamNhanOnline.Client.Features.Combat.Application
 {
     public sealed class ClientCombatService
     {
+        private const int BasicSkillSlotIndex = 1;
         private readonly ClientConnectionService connection;
         private readonly ClientCombatState combatState;
         private readonly ClientCharacterState characterState;
@@ -26,12 +30,12 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             connection.StateChanged += HandleConnectionStateChanged;
         }
 
-        public bool TryUseSkillOnEnemy(int skillSlotIndex, int enemyRuntimeId)
+        public bool TryUseSkill(int skillSlotIndex)
         {
             if (connection.State != ClientConnectionState.Connected)
                 return false;
 
-            if (skillSlotIndex <= 0 || enemyRuntimeId <= 0)
+            if (skillSlotIndex <= 0)
                 return false;
 
             if (combatState.HasPendingAttackRequest)
@@ -43,10 +47,48 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             combatState.MarkPendingAttackRequest(skillSlotIndex);
             connection.Send(new AttackEnemyPacket
             {
-                EnemyRuntimeId = enemyRuntimeId,
                 SkillSlotIndex = skillSlotIndex
             });
             return true;
+        }
+
+        public bool TryUseSkillOnTarget(int skillSlotIndex, WorldTargetHandle target)
+        {
+            if (connection.State != ClientConnectionState.Connected)
+                return false;
+
+            if (skillSlotIndex <= 0)
+                return false;
+
+            if (combatState.HasPendingAttackRequest)
+                return false;
+
+            if (combatState.IsLocalCastActive(DateTime.UtcNow))
+                return false;
+
+            CombatTargetModel packetTarget;
+            if (!TryBuildCombatTarget(target, out packetTarget))
+                return false;
+
+            combatState.MarkPendingAttackRequest(skillSlotIndex);
+            connection.Send(new AttackEnemyPacket
+            {
+                Target = packetTarget,
+                SkillSlotIndex = skillSlotIndex
+            });
+            return true;
+        }
+
+        public bool TryUseSkillOnEnemy(int skillSlotIndex, int enemyRuntimeId)
+        {
+            return TryUseSkillOnTarget(
+                skillSlotIndex,
+                WorldTargetHandle.CreateEnemy(enemyRuntimeId));
+        }
+
+        public bool TryUseBasicSkillOnTarget(WorldTargetHandle target)
+        {
+            return TryUseSkillOnTarget(BasicSkillSlotIndex, target);
         }
 
         private void HandleAttackEnemyResult(AttackEnemyResultPacket packet)
@@ -112,6 +154,44 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
                 return null;
 
             return DateTimeOffset.FromUnixTimeMilliseconds(unixMs.Value).UtcDateTime;
+        }
+
+        private static bool TryBuildCombatTarget(WorldTargetHandle target, out CombatTargetModel packetTarget)
+        {
+            packetTarget = null!;
+            if (!target.IsValid)
+                return false;
+
+            switch (target.Kind)
+            {
+                case WorldTargetKind.Player:
+                    Guid characterId;
+                    if (!Guid.TryParse(target.TargetId, out characterId))
+                        return false;
+
+                    packetTarget = new CombatTargetModel
+                    {
+                        Kind = CombatTargetKind.Character,
+                        CharacterId = characterId
+                    };
+                    return true;
+
+                case WorldTargetKind.Enemy:
+                case WorldTargetKind.Boss:
+                    int runtimeId;
+                    if (!int.TryParse(target.TargetId, out runtimeId) || runtimeId <= 0)
+                        return false;
+
+                    packetTarget = new CombatTargetModel
+                    {
+                        Kind = target.Kind == WorldTargetKind.Boss ? CombatTargetKind.Boss : CombatTargetKind.Enemy,
+                        RuntimeId = runtimeId
+                    };
+                    return true;
+
+                default:
+                    return false;
+            }
         }
     }
 }

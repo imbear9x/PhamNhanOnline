@@ -22,6 +22,7 @@ public sealed class PlayerSession
     public int MapId { get; internal set; }
     public int InstanceId { get; internal set; }
     public int ZoneIndex { get; internal set; }
+    public CombatStatusCollection CombatStatuses { get; } = new();
 
     public Vector2 Position { get; private set; }
     public bool IsConnected { get; internal set; }
@@ -71,6 +72,22 @@ public sealed class PlayerSession
         IsConnected = true;
         Position = Vector2.Zero;
         SynchronizeFromCurrentState(runtimeState.CaptureSnapshot().CurrentState);
+    }
+
+    public bool IsStunned(DateTime utcNow) => CombatStatuses.IsStunned(utcNow);
+
+    public CombatStatSnapshot CaptureCombatStatsSnapshot(DateTime utcNow)
+    {
+        var snapshot = RuntimeState.CaptureSnapshot();
+        var baseStats = snapshot.BaseStats;
+        return new CombatStatSnapshot(
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveHp(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Hp, utcNow)),
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveMp(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Mp, utcNow)),
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveStamina(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Stamina, utcNow)),
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveAttack(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Attack, utcNow)),
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveSpeed(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Speed, utcNow)),
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveSpiritualSense(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.SpiritualSense, utcNow)),
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveFortune(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Fortune, utcNow)));
     }
 
     public void UpdateConnection(int connectionId)

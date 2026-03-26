@@ -63,9 +63,14 @@ public sealed class CharacterRuntimeService
 
     public CharacterRuntimeSnapshot ApplyDamage(PlayerSession player, int damage)
     {
+        var utcNow = DateTime.UtcNow;
+        var remainingDamage = player.CombatStatuses.AbsorbIncomingDamage(damage, utcNow, out _);
+        if (remainingDamage <= 0)
+            return player.RuntimeState.CaptureSnapshot();
+
         var baseStats = player.RuntimeState.CaptureSnapshot().BaseStats;
         var snapshot = player.RuntimeState.UpdateCurrentState(
-            current => _calculator.ApplyDamage(baseStats, current, damage));
+            current => _calculator.ApplyDamage(baseStats, current, remainingDamage));
 
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
         _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);
@@ -75,9 +80,14 @@ public sealed class CharacterRuntimeService
 
     public CharacterRuntimeSnapshot RestoreResources(PlayerSession player, int hpDelta, int mpDelta)
     {
+        return ApplyResourceDelta(player, hpDelta, mpDelta, 0);
+    }
+
+    public CharacterRuntimeSnapshot ApplyResourceDelta(PlayerSession player, int hpDelta, int mpDelta, int staminaDelta)
+    {
         var baseStats = player.RuntimeState.CaptureSnapshot().BaseStats;
         var snapshot = player.RuntimeState.UpdateCurrentState(
-            current => _calculator.RestoreResources(baseStats, current, hpDelta, mpDelta));
+            current => _calculator.ApplyResourceDelta(baseStats, current, hpDelta, mpDelta, staminaDelta));
 
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
         _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);

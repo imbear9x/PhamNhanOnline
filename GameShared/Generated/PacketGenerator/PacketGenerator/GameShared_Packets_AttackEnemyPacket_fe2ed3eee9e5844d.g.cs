@@ -8,15 +8,7 @@ public partial class AttackEnemyPacket
 {
     private ulong _mask;
 
-    public bool HasEnemyRuntimeId => (_mask & (1UL << 0)) != 0;
-
-    public bool TryGetEnemyRuntimeId(out int? value)
-    {
-        value = EnemyRuntimeId;
-        return HasEnemyRuntimeId;
-    }
-
-    public bool HasSkillSlotIndex => (_mask & (1UL << 1)) != 0;
+    public bool HasSkillSlotIndex => (_mask & (1UL << 0)) != 0;
 
     public bool TryGetSkillSlotIndex(out int? value)
     {
@@ -28,14 +20,11 @@ public partial class AttackEnemyPacket
     {
         ulong mask = 0;
 
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(EnemyRuntimeId, default!)) mask |= 1UL << 0;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillSlotIndex, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillSlotIndex, default!)) mask |= 1UL << 0;
 
         writer.Write(mask);
 
         if ((mask & (1UL << 0)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, EnemyRuntimeId.Value);
-        if ((mask & (1UL << 1)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, SkillSlotIndex.Value);
     }
 
@@ -44,8 +33,6 @@ public partial class AttackEnemyPacket
         _mask = reader.ReadUInt64();
 
         if ((_mask & (1UL << 0)) != 0)
-            EnemyRuntimeId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
-        if ((_mask & (1UL << 1)) != 0)
             SkillSlotIndex = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
     }
 }
