@@ -129,6 +129,8 @@ public sealed record SkillDefinition(
     SkillCategory SkillCategory,
     SkillTargetType TargetType,
     float CastRange,
+    int CastTimeMs,
+    int TravelTimeMs,
     int CooldownMs,
     string? Description,
     IReadOnlyList<SkillEffectDefinition> Effects);
@@ -213,5 +215,7 @@ public sealed record SkillRuntimeDefinition(
     SkillCategory SkillCategory,
     SkillTargetType TargetType,
     float CastRange,
+    int CastTimeMs,
+    int TravelTimeMs,
     int CooldownMs,
     IReadOnlyList<SkillRuntimeEffect> Effects);

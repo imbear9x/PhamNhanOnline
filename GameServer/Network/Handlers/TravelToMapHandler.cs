@@ -46,12 +46,24 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
 
         var player = session.Player;
         var targetMapId = packet.TargetMapId.Value;
+        var currentState = player.RuntimeState.CaptureSnapshot().CurrentState.CurrentState;
         if (_cultivationService.IsCultivating(player))
         {
             _server.Send(session.ConnectionId, new TravelToMapResultPacket
             {
                 Success = false,
                 Code = MessageCode.CharacterCannotMoveWhileCultivating,
+                TargetMapId = targetMapId
+            });
+            return Task.CompletedTask;
+        }
+
+        if (currentState == CharacterRuntimeStateCodes.Casting)
+        {
+            _server.Send(session.ConnectionId, new TravelToMapResultPacket
+            {
+                Success = false,
+                Code = MessageCode.CharacterCannotActWhileCasting,
                 TargetMapId = targetMapId
             });
             return Task.CompletedTask;

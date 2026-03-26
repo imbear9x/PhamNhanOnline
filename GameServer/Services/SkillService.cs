@@ -96,6 +96,36 @@ public sealed class SkillService
         return BuildSnapshot(playerSkills, loadouts);
     }
 
+    public async Task<EquippedSkillCastContextDto> ResolveEquippedSkillForCombatAsync(
+        Guid playerId,
+        int slotIndex,
+        CancellationToken cancellationToken = default)
+    {
+        if (slotIndex < 1 || slotIndex > DefaultMaxLoadoutSlotCount)
+            throw new GameException(MessageCode.SkillLoadoutSlotInvalid);
+
+        IReadOnlyList<PlayerSkillEntity> playerSkills = await _playerSkills.ListByPlayerIdAsync(playerId, cancellationToken);
+        IReadOnlyList<PlayerSkillLoadoutEntity> loadouts = await _playerSkillLoadouts.ListByPlayerIdAsync(playerId, cancellationToken);
+        (playerSkills, loadouts) = await NormalizeLoadoutAsync(playerId, playerSkills, loadouts, cancellationToken);
+
+        var loadout = loadouts.FirstOrDefault(x => x.SlotIndex == slotIndex);
+        if (loadout is null)
+            throw new GameException(MessageCode.SkillLoadoutSlotEmpty);
+
+        var playerSkill = playerSkills.FirstOrDefault(x => x.Id == loadout.PlayerSkillId);
+        if (playerSkill is null)
+            throw new GameException(MessageCode.PlayerSkillInvalid);
+
+        if (!_combatDefinitions.TryGetSkill(playerSkill.SkillId, out var skillDefinition))
+            throw new GameException(MessageCode.SkillNotLearned);
+
+        return new EquippedSkillCastContextDto(
+            playerSkill.Id,
+            playerSkill.SkillId,
+            slotIndex,
+            skillDefinition);
+    }
+
     private OwnedSkillsSnapshotDto BuildSnapshot(
         IReadOnlyList<PlayerSkillEntity> playerSkills,
         IReadOnlyList<PlayerSkillLoadoutEntity> loadouts)
@@ -160,6 +190,8 @@ public sealed class SkillService
             (int)skillDefinition.SkillCategory,
             (int)skillDefinition.TargetType,
             skillDefinition.CastRange,
+            skillDefinition.CastTimeMs,
+            skillDefinition.TravelTimeMs,
             skillDefinition.CooldownMs,
             skillDefinition.Description,
             playerSkill.SourceType,
@@ -323,3 +355,9 @@ public readonly record struct OwnedSkillsSnapshotDto(
     int MaxLoadoutSlotCount,
     IReadOnlyList<PlayerSkillDto> Skills,
     IReadOnlyList<SkillLoadoutSlotDto> LoadoutSlots);
+
+public readonly record struct EquippedSkillCastContextDto(
+    long PlayerSkillId,
+    int SkillId,
+    int SkillSlotIndex,
+    SkillDefinition Skill);

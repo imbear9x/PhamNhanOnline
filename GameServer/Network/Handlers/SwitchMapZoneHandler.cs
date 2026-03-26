@@ -47,12 +47,25 @@ public sealed class SwitchMapZoneHandler : IPacketHandler<SwitchMapZonePacket>
         }
 
         var player = session.Player;
+        var currentState = player.RuntimeState.CaptureSnapshot().CurrentState.CurrentState;
         if (_cultivationService.IsCultivating(player))
         {
             _server.Send(session.ConnectionId, new SwitchMapZoneResultPacket
             {
                 Success = false,
                 Code = MessageCode.CharacterCannotMoveWhileCultivating,
+                MapId = packet.MapId,
+                ZoneIndex = packet.TargetZoneIndex
+            });
+            return Task.CompletedTask;
+        }
+
+        if (currentState == CharacterRuntimeStateCodes.Casting)
+        {
+            _server.Send(session.ConnectionId, new SwitchMapZoneResultPacket
+            {
+                Success = false,
+                Code = MessageCode.CharacterCannotActWhileCasting,
                 MapId = packet.MapId,
                 ZoneIndex = packet.TargetZoneIndex
             });

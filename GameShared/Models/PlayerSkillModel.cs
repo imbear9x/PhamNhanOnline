@@ -15,6 +15,8 @@ public struct PlayerSkillModel
     public int SkillCategory;
     public int TargetType;
     public float CastRange;
+    public int CastTimeMs;
+    public int TravelTimeMs;
     public int CooldownMs;
     public string? Description;
     public int SourceType;

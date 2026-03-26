@@ -28,7 +28,8 @@ public sealed class CharacterPositionSyncHandler : IPacketHandler<CharacterPosit
             return Task.CompletedTask;
 
         var player = session.Player;
-        if (_cultivationService.IsCultivating(player))
+        var currentState = player.RuntimeState.CaptureSnapshot().CurrentState.CurrentState;
+        if (_cultivationService.IsCultivating(player) || currentState == CharacterRuntimeStateCodes.Casting)
             return Task.CompletedTask;
 
         if (!_mapCatalog.TryGet(player.MapId, out var definition))

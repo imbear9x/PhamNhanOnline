@@ -14,6 +14,8 @@ public sealed class SkillEntity
     [Column("skill_category"), NotNull] public int SkillCategory { get; set; }
     [Column("target_type"), NotNull] public int TargetType { get; set; }
     [Column("cast_range"), NotNull] public decimal CastRange { get; set; }
+    [Column("cast_time_ms"), NotNull] public int CastTimeMs { get; set; }
+    [Column("travel_time_ms"), NotNull] public int TravelTimeMs { get; set; }
     [Column("cooldown_ms"), NotNull] public int CooldownMs { get; set; }
     [Column("description")] public string? Description { get; set; }
     [Column("created_at")] public DateTime? CreatedAt { get; set; }

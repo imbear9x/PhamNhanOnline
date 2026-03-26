@@ -164,6 +164,8 @@ internal static class AdminFieldHelpCatalog
             ["pill_recipe_mastery_stages.required_total_craft_count"] = "Tổng số lần luyện cần đạt để mở mốc thông thạo này.\nVí dụ: `10`, `50`, `100`.",
             ["pill_recipe_mastery_stages.success_rate_bonus"] = "Bonus tỷ lệ thành công nhận được khi đạt mốc thông thạo.\nVí dụ: `0.03` để cộng 3%.",
             ["skills.cast_range"] = "Tầm thi triển gốc của skill.\nVí dụ: `1.5` cho đòn chém cận chiến, `4` cho thương pháp tầm ngắn, `8` cho chưởng tầm xa.\nField này chủ yếu để client và AI xử lý khoảng cách hợp lý, server không cần validate quá chặt ở mọi frame.",
+            ["skills.cast_time_ms"] = "Thời gian niệm hoặc gồng trước khi skill được phóng ra.\nVí dụ: `300` nghĩa là mất 0.3 giây để thi triển.\nNếu skill đánh ngay lập tức thì để `0`.",
+            ["skills.travel_time_ms"] = "Thời gian hiệu ứng bay từ lúc phóng tới khi chạm mục tiêu.\nVí dụ: `500` nghĩa là sau 0.5 giây kể từ lúc phóng mới gây sát thương.\nVới skill cận chiến hoặc hit-scan có thể để `0`.",
             ["skills.skill_group_code"] = "Mã nhóm của skill.\nVí dụ: `truong_xuan_chuong`.\nCác row skill cùng nhóm như cấp 1, 2, 3 sẽ dùng chung skill_group_code, khác nhau ở skill_level.",
             ["skills.skill_level"] = "Cấp của skill trong nhóm.\nVí dụ: `1`, `2`, `3`.\nTheo thiết kế mới, mỗi cấp skill là một row riêng trong bảng skills và có effect riêng.",
             ["skills.skill_category"] = "Loại slot của skill.\n`Basic` là skill cơ bản bắt buộc dùng ở ô skill số 1.\n`Normal` và `Special` dùng cho các ô còn lại. Phase hiện tại `Special` có rule loadout giống `Normal`, nhưng sẽ mở rộng riêng sau.",

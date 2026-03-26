@@ -19,11 +19,15 @@ public sealed class MapInstance
     private readonly Queue<EnemyDespawnRuntimeEvent> _pendingEnemyDespawns = new();
     private readonly Queue<EnemyHpChangedRuntimeEvent> _pendingEnemyHpChanges = new();
     private readonly Queue<PlayerDamageRuntimeEvent> _pendingPlayerDamages = new();
+    private readonly Queue<SkillCastReleaseRuntimeEvent> _pendingSkillCastReleases = new();
+    private readonly Queue<SkillImpactResolvedRuntimeEvent> _pendingSkillImpactResolutions = new();
     private readonly Queue<GroundRewardSpawnRuntimeEvent> _pendingGroundRewardSpawns = new();
     private readonly Queue<GroundRewardDespawnRuntimeEvent> _pendingGroundRewardDespawns = new();
+    private readonly List<PendingSkillExecution> _pendingSkillExecutions = new();
     private readonly IRandomNumberProvider _random;
     private int _nextMonsterId = 1;
     private int _nextGroundRewardId = 1;
+    private int _nextSkillExecutionId = 1;
     private DateTime? _completedAtUtc;
 
     public int InstanceId { get; }
@@ -252,6 +256,59 @@ public sealed class MapInstance
         }
     }
 
+    public bool TryGetEnemySnapshot(int enemyRuntimeId, out EnemyTargetSnapshot snapshot)
+    {
+        lock (_sync)
+        {
+            var enemy = Monsters.FirstOrDefault(x => x.Id == enemyRuntimeId);
+            if (enemy is null)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            snapshot = new EnemyTargetSnapshot(enemy.Id, enemy.Position, enemy.IsAlive);
+            return true;
+        }
+    }
+
+    public PendingSkillExecution EnqueueSkillExecution(
+        Guid casterPlayerId,
+        Guid casterCharacterId,
+        long playerSkillId,
+        int skillId,
+        int skillSlotIndex,
+        int enemyRuntimeId,
+        int damage,
+        int castTimeMs,
+        int travelTimeMs,
+        DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            var castStartedAtUtc = utcNow;
+            var castCompletedAtUtc = utcNow.AddMilliseconds(Math.Max(0, castTimeMs));
+            var impactAtUtc = castCompletedAtUtc.AddMilliseconds(Math.Max(0, travelTimeMs));
+            var execution = new PendingSkillExecution(
+                _nextSkillExecutionId++,
+                casterPlayerId,
+                casterCharacterId,
+                playerSkillId,
+                skillId,
+                skillSlotIndex,
+                enemyRuntimeId,
+                damage,
+                Math.Max(0, castTimeMs),
+                Math.Max(0, travelTimeMs),
+                castStartedAtUtc,
+                castCompletedAtUtc,
+                impactAtUtc);
+
+            _pendingSkillExecutions.Add(execution);
+            return execution;
+        }
+    }
+
     public void AddGroundReward(GroundRewardEntity reward)
     {
         lock (_sync)
@@ -332,6 +389,22 @@ public sealed class MapInstance
         }
     }
 
+    public IReadOnlyCollection<SkillCastReleaseRuntimeEvent> DequeuePendingSkillCastReleases()
+    {
+        lock (_sync)
+        {
+            return DrainQueueUnsafe(_pendingSkillCastReleases);
+        }
+    }
+
+    public IReadOnlyCollection<SkillImpactResolvedRuntimeEvent> DequeuePendingSkillImpactResolutions()
+    {
+        lock (_sync)
+        {
+            return DrainQueueUnsafe(_pendingSkillImpactResolutions);
+        }
+    }
+
     public bool TryClaimGroundReward(
         Guid pickerCharacterId,
         int rewardId,
@@ -384,6 +457,7 @@ public sealed class MapInstance
     {
         lock (_sync)
         {
+            UpdateSkillExecutionsUnsafe(utcNow);
             UpdateEnemyStatesUnsafe(utcNow);
             UpdateSpawnGroupsUnsafe(utcNow);
             UpdateGroundRewardsUnsafe(utcNow);
@@ -480,6 +554,66 @@ public sealed class MapInstance
                 monster.Hp,
                 monster.MaxHp,
                 monster.State));
+        }
+    }
+
+    private void UpdateSkillExecutionsUnsafe(DateTime utcNow)
+    {
+        for (var index = _pendingSkillExecutions.Count - 1; index >= 0; index--)
+        {
+            var execution = _pendingSkillExecutions[index];
+
+            if (!execution.CastReleased && utcNow >= execution.CastCompletedAtUtc)
+            {
+                execution.MarkCastReleased();
+                _pendingSkillCastReleases.Enqueue(new SkillCastReleaseRuntimeEvent(
+                    execution.CasterPlayerId,
+                    execution.ExecutionId));
+            }
+
+            if (utcNow < execution.ImpactAtUtc)
+                continue;
+
+            SkillImpactResolvedRuntimeEvent impactEvent;
+            if (!_playersById.TryGetValue(execution.CasterPlayerId, out var attacker) ||
+                !attacker.IsConnected ||
+                attacker.MapId != MapId ||
+                attacker.InstanceId != InstanceId)
+            {
+                impactEvent = new SkillImpactResolvedRuntimeEvent(
+                    execution.CasterPlayerId,
+                    execution.CasterCharacterId,
+                    execution.EnemyRuntimeId,
+                    execution.SkillSlotIndex,
+                    execution.PlayerSkillId,
+                    execution.SkillId,
+                    false,
+                    MessageCode.CharacterNotInWorldInstance,
+                    0,
+                    0,
+                    false,
+                    utcNow);
+            }
+            else
+            {
+                var result = ApplyEnemyDamage(attacker, execution.EnemyRuntimeId, execution.Damage, utcNow);
+                impactEvent = new SkillImpactResolvedRuntimeEvent(
+                    execution.CasterPlayerId,
+                    execution.CasterCharacterId,
+                    execution.EnemyRuntimeId,
+                    execution.SkillSlotIndex,
+                    execution.PlayerSkillId,
+                    execution.SkillId,
+                    result.Applied,
+                    result.Code,
+                    result.Applied ? execution.Damage : 0,
+                    result.RemainingHp,
+                    result.IsKilled,
+                    utcNow);
+            }
+
+            _pendingSkillImpactResolutions.Enqueue(impactEvent);
+            _pendingSkillExecutions.RemoveAt(index);
         }
     }
 

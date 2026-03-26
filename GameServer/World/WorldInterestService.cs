@@ -112,6 +112,45 @@ public sealed class WorldInterestService
         });
     }
 
+    public void NotifySkillCastStarted(MapInstance instance, PendingSkillExecution execution)
+    {
+        BroadcastToInstancePlayers(instance, new SkillCastStartedPacket
+        {
+            MapId = instance.MapId,
+            InstanceId = instance.InstanceId,
+            CasterCharacterId = execution.CasterCharacterId,
+            EnemyRuntimeId = execution.EnemyRuntimeId,
+            SkillSlotIndex = execution.SkillSlotIndex,
+            PlayerSkillId = execution.PlayerSkillId,
+            SkillId = execution.SkillId,
+            CastTimeMs = execution.CastTimeMs,
+            TravelTimeMs = execution.TravelTimeMs,
+            CastStartedUnixMs = ToUnixMs(execution.CastStartedAtUtc),
+            CastCompletedUnixMs = ToUnixMs(execution.CastCompletedAtUtc),
+            ImpactUnixMs = ToUnixMs(execution.ImpactAtUtc)
+        });
+    }
+
+    public void NotifySkillImpactResolved(MapInstance instance, SkillImpactResolvedRuntimeEvent impact)
+    {
+        BroadcastToInstancePlayers(instance, new SkillImpactResolvedPacket
+        {
+            MapId = instance.MapId,
+            InstanceId = instance.InstanceId,
+            CasterCharacterId = impact.CasterCharacterId,
+            EnemyRuntimeId = impact.EnemyRuntimeId,
+            SkillSlotIndex = impact.SkillSlotIndex,
+            PlayerSkillId = impact.PlayerSkillId,
+            SkillId = impact.SkillId,
+            Success = impact.Applied,
+            Code = impact.Code,
+            DamageApplied = impact.DamageApplied,
+            RemainingHp = impact.RemainingHp,
+            IsKilled = impact.IsKilled,
+            ResolvedAtUnixMs = ToUnixMs(impact.ResolvedAtUtc)
+        });
+    }
+
     public void NotifyGroundRewardSpawned(MapInstance instance, GroundRewardEntity reward)
     {
         BroadcastToInstancePlayers(instance, new GroundRewardSpawnedPacket

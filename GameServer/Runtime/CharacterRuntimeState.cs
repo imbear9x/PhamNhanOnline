@@ -42,13 +42,16 @@ public sealed class CharacterRuntimeState
         }
     }
 
-    public CharacterRuntimeSnapshot UpdateCurrentState(Func<CharacterCurrentStateDto, CharacterCurrentStateDto> update)
+    public CharacterRuntimeSnapshot UpdateCurrentState(
+        Func<CharacterCurrentStateDto, CharacterCurrentStateDto> update,
+        bool markDirty = true)
     {
         lock (_sync)
         {
             _currentState = update(_currentState);
             _currentStateVersion++;
-            _dirtyFlags |= CharacterRuntimeDirtyFlags.CurrentState;
+            if (markDirty)
+                _dirtyFlags |= CharacterRuntimeDirtyFlags.CurrentState;
             return CreateSnapshotNoLock();
         }
     }

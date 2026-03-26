@@ -8,9 +8,11 @@ public sealed class PlayerSession
 {
     private readonly object _sync = new();
     private readonly HashSet<Guid> _visibleCharacterIds = new();
+    private readonly Dictionary<long, DateTime> _skillCooldownsByPlayerSkillId = new();
     private int _lastReportedRemainingLifespan = int.MinValue;
     private bool _lifespanExpiredProcessed;
     private bool _characterActionsRestricted;
+    private (int ExecutionId, long PlayerSkillId, DateTime CastCompletedAtUtc)? _activeSkillCast;
 
     public Guid PlayerId { get; }
     public int ConnectionId { get; private set; }
@@ -41,6 +43,17 @@ public sealed class PlayerSession
             lock (_sync)
             {
                 return _characterActionsRestricted;
+            }
+        }
+    }
+
+    public bool IsCastingSkill
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _activeSkillCast is not null;
             }
         }
     }
@@ -160,6 +173,48 @@ public sealed class PlayerSession
         lock (_sync)
         {
             _characterActionsRestricted = restricted;
+        }
+    }
+
+    public bool TryBeginSkillCast(int executionId, long playerSkillId, DateTime castCompletedAtUtc, DateTime cooldownUntilUtc)
+    {
+        lock (_sync)
+        {
+            if (_activeSkillCast is not null)
+                return false;
+
+            _activeSkillCast = (executionId, playerSkillId, castCompletedAtUtc);
+            _skillCooldownsByPlayerSkillId[playerSkillId] = cooldownUntilUtc;
+            return true;
+        }
+    }
+
+    public bool IsSkillOnCooldown(long playerSkillId, DateTime utcNow, out DateTime cooldownUntilUtc)
+    {
+        lock (_sync)
+        {
+            if (!_skillCooldownsByPlayerSkillId.TryGetValue(playerSkillId, out cooldownUntilUtc))
+                return false;
+
+            if (utcNow >= cooldownUntilUtc)
+            {
+                _skillCooldownsByPlayerSkillId.Remove(playerSkillId);
+                cooldownUntilUtc = default;
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    public void CompleteSkillCast(int executionId)
+    {
+        lock (_sync)
+        {
+            if (_activeSkillCast?.ExecutionId != executionId)
+                return;
+
+            _activeSkillCast = null;
         }
     }
 }

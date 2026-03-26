@@ -132,6 +132,8 @@ public static class NetworkModelMapper
             SkillCategory = dto.SkillCategory,
             TargetType = dto.TargetType,
             CastRange = dto.CastRange,
+            CastTimeMs = dto.CastTimeMs,
+            TravelTimeMs = dto.TravelTimeMs,
             CooldownMs = dto.CooldownMs,
             Description = dto.Description,
             SourceType = dto.SourceType,

@@ -202,8 +202,10 @@ public partial class AttackEnemyPacket : IPacket
     [Range(1, int.MaxValue)]
     public int? EnemyRuntimeId { get; set; }
 
+    [ValidationCode(MessageCode.SkillLoadoutSlotInvalid)]
+    [Required]
     [Range(1, int.MaxValue)]
-    public int? MartialArtSkillId { get; set; }
+    public int? SkillSlotIndex { get; set; }
 }
 
 [Packet(54)]
@@ -213,9 +215,54 @@ public partial class AttackEnemyResultPacket : IPacket
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
     public int? EnemyRuntimeId { get; set; }
+    public int? SkillSlotIndex { get; set; }
+    public long? PlayerSkillId { get; set; }
+    public int? SkillId { get; set; }
+    public int? CooldownMs { get; set; }
+    public long? CooldownEndsUnixMs { get; set; }
+    public long? CastStartedUnixMs { get; set; }
+    public long? CastCompletedUnixMs { get; set; }
+    public long? ImpactUnixMs { get; set; }
     public int? DamageApplied { get; set; }
     public int? RemainingHp { get; set; }
     public bool? IsKilled { get; set; }
+}
+
+[Packet(68)]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class SkillCastStartedPacket : IPacket
+{
+    public int? MapId { get; set; }
+    public int? InstanceId { get; set; }
+    public Guid? CasterCharacterId { get; set; }
+    public int? EnemyRuntimeId { get; set; }
+    public int? SkillSlotIndex { get; set; }
+    public long? PlayerSkillId { get; set; }
+    public int? SkillId { get; set; }
+    public int? CastTimeMs { get; set; }
+    public int? TravelTimeMs { get; set; }
+    public long? CastStartedUnixMs { get; set; }
+    public long? CastCompletedUnixMs { get; set; }
+    public long? ImpactUnixMs { get; set; }
+}
+
+[Packet(69)]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class SkillImpactResolvedPacket : IPacket
+{
+    public int? MapId { get; set; }
+    public int? InstanceId { get; set; }
+    public Guid? CasterCharacterId { get; set; }
+    public int? EnemyRuntimeId { get; set; }
+    public int? SkillSlotIndex { get; set; }
+    public long? PlayerSkillId { get; set; }
+    public int? SkillId { get; set; }
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public int? DamageApplied { get; set; }
+    public int? RemainingHp { get; set; }
+    public bool? IsKilled { get; set; }
+    public long? ResolvedAtUnixMs { get; set; }
 }
 
 [Packet(55)]

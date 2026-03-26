@@ -283,6 +283,8 @@ internal static class AdminColumnBindingCatalog
         Add("skills", "skill_group_code", headerText: "Nhom Skill");
         Add("skills", "skill_level", headerText: "Cap Skill");
         Add("skills", "cast_range", headerText: "Tam Xa");
+        Add("skills", "cast_time_ms", headerText: "Thoi Gian Thi Trien");
+        Add("skills", "travel_time_ms", headerText: "Thoi Gian Bay");
 
         Add("skill_effects", "skill_id", lookupSql: skillLookupSql);
         Add("skill_effects", "effect_type", enumType: typeof(SkillEffectType));

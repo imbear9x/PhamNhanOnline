@@ -96,6 +96,7 @@ public sealed class GameLoop
         foreach (var instance in instances)
         {
             instance.Update(utcNow);
+            ApplyPendingSkillCastReleases(instance);
             ApplyPendingPlayerDamage(instance);
             _enemyRewardRuntimeService.ProcessPendingEvents(instance, utcNow);
             PublishRuntimeEvents(instance);
@@ -119,6 +120,28 @@ public sealed class GameLoop
         }
     }
 
+    private void ApplyPendingSkillCastReleases(MapInstance instance)
+    {
+        foreach (var releaseEvent in instance.DequeuePendingSkillCastReleases())
+        {
+            if (!_worldManager.TryGetPlayer(releaseEvent.CasterPlayerId, out var caster))
+                continue;
+
+            if (caster.MapId != instance.MapId || caster.InstanceId != instance.InstanceId)
+                continue;
+
+            caster.CompleteSkillCast(releaseEvent.ExecutionId);
+            var currentState = caster.RuntimeState.CaptureSnapshot().CurrentState;
+            if (currentState.CurrentState != CharacterRuntimeStateCodes.Casting)
+                continue;
+
+            _characterRuntimeService.ApplyCurrentStateMutation(
+                caster,
+                state => state with { CurrentState = CharacterRuntimeStateCodes.Idle },
+                persist: false);
+        }
+    }
+
     private void PublishRuntimeEvents(MapInstance instance)
     {
         var groundDespawns = instance.DequeuePendingGroundRewardDespawns();
@@ -129,6 +152,9 @@ public sealed class GameLoop
 
         foreach (var hpChanged in instance.DequeuePendingEnemyHpChanges())
             _interestService.NotifyEnemyHpChanged(instance, hpChanged);
+
+        foreach (var impact in instance.DequeuePendingSkillImpactResolutions())
+            _interestService.NotifySkillImpactResolved(instance, impact);
 
         foreach (var despawn in instance.DequeuePendingEnemyDespawns())
             _interestService.NotifyEnemyDespawned(instance, despawn.EnemyRuntimeId);

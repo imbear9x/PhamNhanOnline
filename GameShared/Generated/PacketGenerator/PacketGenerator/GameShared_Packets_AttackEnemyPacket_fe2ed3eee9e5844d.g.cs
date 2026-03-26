@@ -16,12 +16,12 @@ public partial class AttackEnemyPacket
         return HasEnemyRuntimeId;
     }
 
-    public bool HasMartialArtSkillId => (_mask & (1UL << 1)) != 0;
+    public bool HasSkillSlotIndex => (_mask & (1UL << 1)) != 0;
 
-    public bool TryGetMartialArtSkillId(out int? value)
+    public bool TryGetSkillSlotIndex(out int? value)
     {
-        value = MartialArtSkillId;
-        return HasMartialArtSkillId;
+        value = SkillSlotIndex;
+        return HasSkillSlotIndex;
     }
 
     public void Serialize(BinaryWriter writer)
@@ -29,14 +29,14 @@ public partial class AttackEnemyPacket
         ulong mask = 0;
 
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(EnemyRuntimeId, default!)) mask |= 1UL << 0;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(MartialArtSkillId, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillSlotIndex, default!)) mask |= 1UL << 1;
 
         writer.Write(mask);
 
         if ((mask & (1UL << 0)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, EnemyRuntimeId.Value);
         if ((mask & (1UL << 1)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, MartialArtSkillId.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, SkillSlotIndex.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -46,6 +46,6 @@ public partial class AttackEnemyPacket
         if ((_mask & (1UL << 0)) != 0)
             EnemyRuntimeId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 1)) != 0)
-            MartialArtSkillId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+            SkillSlotIndex = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
     }
 }

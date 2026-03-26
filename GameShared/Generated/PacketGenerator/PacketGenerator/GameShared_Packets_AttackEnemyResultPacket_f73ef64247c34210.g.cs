@@ -32,7 +32,71 @@ public partial class AttackEnemyResultPacket
         return HasEnemyRuntimeId;
     }
 
-    public bool HasDamageApplied => (_mask & (1UL << 3)) != 0;
+    public bool HasSkillSlotIndex => (_mask & (1UL << 3)) != 0;
+
+    public bool TryGetSkillSlotIndex(out int? value)
+    {
+        value = SkillSlotIndex;
+        return HasSkillSlotIndex;
+    }
+
+    public bool HasPlayerSkillId => (_mask & (1UL << 4)) != 0;
+
+    public bool TryGetPlayerSkillId(out long? value)
+    {
+        value = PlayerSkillId;
+        return HasPlayerSkillId;
+    }
+
+    public bool HasSkillId => (_mask & (1UL << 5)) != 0;
+
+    public bool TryGetSkillId(out int? value)
+    {
+        value = SkillId;
+        return HasSkillId;
+    }
+
+    public bool HasCooldownMs => (_mask & (1UL << 6)) != 0;
+
+    public bool TryGetCooldownMs(out int? value)
+    {
+        value = CooldownMs;
+        return HasCooldownMs;
+    }
+
+    public bool HasCooldownEndsUnixMs => (_mask & (1UL << 7)) != 0;
+
+    public bool TryGetCooldownEndsUnixMs(out long? value)
+    {
+        value = CooldownEndsUnixMs;
+        return HasCooldownEndsUnixMs;
+    }
+
+    public bool HasCastStartedUnixMs => (_mask & (1UL << 8)) != 0;
+
+    public bool TryGetCastStartedUnixMs(out long? value)
+    {
+        value = CastStartedUnixMs;
+        return HasCastStartedUnixMs;
+    }
+
+    public bool HasCastCompletedUnixMs => (_mask & (1UL << 9)) != 0;
+
+    public bool TryGetCastCompletedUnixMs(out long? value)
+    {
+        value = CastCompletedUnixMs;
+        return HasCastCompletedUnixMs;
+    }
+
+    public bool HasImpactUnixMs => (_mask & (1UL << 10)) != 0;
+
+    public bool TryGetImpactUnixMs(out long? value)
+    {
+        value = ImpactUnixMs;
+        return HasImpactUnixMs;
+    }
+
+    public bool HasDamageApplied => (_mask & (1UL << 11)) != 0;
 
     public bool TryGetDamageApplied(out int? value)
     {
@@ -40,7 +104,7 @@ public partial class AttackEnemyResultPacket
         return HasDamageApplied;
     }
 
-    public bool HasRemainingHp => (_mask & (1UL << 4)) != 0;
+    public bool HasRemainingHp => (_mask & (1UL << 12)) != 0;
 
     public bool TryGetRemainingHp(out int? value)
     {
@@ -48,7 +112,7 @@ public partial class AttackEnemyResultPacket
         return HasRemainingHp;
     }
 
-    public bool HasIsKilled => (_mask & (1UL << 5)) != 0;
+    public bool HasIsKilled => (_mask & (1UL << 13)) != 0;
 
     public bool TryGetIsKilled(out bool? value)
     {
@@ -63,9 +127,17 @@ public partial class AttackEnemyResultPacket
         if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(EnemyRuntimeId, default!)) mask |= 1UL << 2;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(DamageApplied, default!)) mask |= 1UL << 3;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(RemainingHp, default!)) mask |= 1UL << 4;
-        if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(IsKilled, default!)) mask |= 1UL << 5;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillSlotIndex, default!)) mask |= 1UL << 3;
+        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(PlayerSkillId, default!)) mask |= 1UL << 4;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillId, default!)) mask |= 1UL << 5;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(CooldownMs, default!)) mask |= 1UL << 6;
+        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(CooldownEndsUnixMs, default!)) mask |= 1UL << 7;
+        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(CastStartedUnixMs, default!)) mask |= 1UL << 8;
+        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(CastCompletedUnixMs, default!)) mask |= 1UL << 9;
+        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(ImpactUnixMs, default!)) mask |= 1UL << 10;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(DamageApplied, default!)) mask |= 1UL << 11;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(RemainingHp, default!)) mask |= 1UL << 12;
+        if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(IsKilled, default!)) mask |= 1UL << 13;
 
         writer.Write(mask);
 
@@ -76,10 +148,26 @@ public partial class AttackEnemyResultPacket
         if ((mask & (1UL << 2)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, EnemyRuntimeId.Value);
         if ((mask & (1UL << 3)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, DamageApplied.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, SkillSlotIndex.Value);
         if ((mask & (1UL << 4)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, RemainingHp.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, PlayerSkillId.Value);
         if ((mask & (1UL << 5)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, SkillId.Value);
+        if ((mask & (1UL << 6)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, CooldownMs.Value);
+        if ((mask & (1UL << 7)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, CooldownEndsUnixMs.Value);
+        if ((mask & (1UL << 8)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, CastStartedUnixMs.Value);
+        if ((mask & (1UL << 9)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, CastCompletedUnixMs.Value);
+        if ((mask & (1UL << 10)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, ImpactUnixMs.Value);
+        if ((mask & (1UL << 11)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, DamageApplied.Value);
+        if ((mask & (1UL << 12)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, RemainingHp.Value);
+        if ((mask & (1UL << 13)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, IsKilled.Value);
     }
 
@@ -94,10 +182,26 @@ public partial class AttackEnemyResultPacket
         if ((_mask & (1UL << 2)) != 0)
             EnemyRuntimeId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 3)) != 0)
-            DamageApplied = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+            SkillSlotIndex = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 4)) != 0)
-            RemainingHp = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+            PlayerSkillId = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
         if ((_mask & (1UL << 5)) != 0)
+            SkillId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 6)) != 0)
+            CooldownMs = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 7)) != 0)
+            CooldownEndsUnixMs = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
+        if ((_mask & (1UL << 8)) != 0)
+            CastStartedUnixMs = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
+        if ((_mask & (1UL << 9)) != 0)
+            CastCompletedUnixMs = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
+        if ((_mask & (1UL << 10)) != 0)
+            ImpactUnixMs = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
+        if ((_mask & (1UL << 11)) != 0)
+            DamageApplied = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 12)) != 0)
+            RemainingHp = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 13)) != 0)
             IsKilled = (bool?)(global::GameShared.Packets.PacketReader.ReadBool(reader));
     }
 }

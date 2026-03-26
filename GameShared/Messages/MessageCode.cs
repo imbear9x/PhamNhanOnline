@@ -70,6 +70,10 @@ public enum MessageCode : int
     SkillLoadoutFirstSlotRequiresBasic = 3032,
     SkillLoadoutBasicSkillRequired = 3033,
     SkillLoadoutBasicOnlyAllowedInFirstSlot = 3034,
+    CharacterCannotActWhileCasting = 3035,
+    SkillAlreadyCasting = 3036,
+    SkillOnCooldown = 3037,
+    SkillLoadoutSlotEmpty = 3038,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001,
@@ -85,5 +89,6 @@ public enum MessageCode : int
     GroundRewardNotOwnedYet = 5005,
     GroundRewardExpired = 5006,
     CharacterNotInWorldInstance = 5007,
-    MapInstanceClosed = 5008
+    MapInstanceClosed = 5008,
+    SkillTargetOutOfRange = 5009
 }

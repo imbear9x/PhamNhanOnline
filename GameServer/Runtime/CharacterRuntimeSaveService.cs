@@ -50,7 +50,13 @@ public sealed class CharacterRuntimeSaveService
         if ((snapshot.DirtyFlags & CharacterRuntimeDirtyFlags.CurrentState) != 0)
         {
             var savedAtUtc = DateTime.UtcNow;
-            var currentStateToPersist = snapshot.CurrentState with { LastSavedAt = savedAtUtc };
+            var currentStateToPersist = snapshot.CurrentState with
+            {
+                CurrentState = snapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.Casting
+                    ? CharacterRuntimeStateCodes.Idle
+                    : snapshot.CurrentState.CurrentState,
+                LastSavedAt = savedAtUtc
+            };
             await characterService.UpdateCharacterCurrentStateAsync(currentStateToPersist, cancellationToken);
             player.RuntimeState.MarkCurrentStatePersisted(snapshot.CurrentStateVersion, savedAtUtc);
             player.SynchronizeFromCurrentState(currentStateToPersist);

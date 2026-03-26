@@ -28,6 +28,8 @@ public sealed class SkillRuntimeBuilder
             unlock.Skill.SkillCategory,
             unlock.Skill.TargetType,
             unlock.Skill.CastRange,
+            unlock.Skill.CastTimeMs,
+            unlock.Skill.TravelTimeMs,
             Math.Max(0, unlock.Skill.CooldownMs),
             unlock.Skill.Effects
                 .Select(effect => new SkillRuntimeEffect(

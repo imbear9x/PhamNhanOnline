@@ -67,6 +67,8 @@ public sealed class CombatDefinitionCatalog
                     : SkillCategory.Normal,
                 (SkillTargetType)skill.TargetType,
                 (float)skill.CastRange,
+                Math.Max(0, skill.CastTimeMs),
+                Math.Max(0, skill.TravelTimeMs),
                 skill.CooldownMs,
                 skill.Description,
                 effectsBySkillId.GetValueOrDefault(skill.Id, Array.Empty<SkillEffectDefinition>()));

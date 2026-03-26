@@ -11,6 +11,8 @@ public sealed record PlayerSkillDto(
     int SkillCategory,
     int TargetType,
     float CastRange,
+    int CastTimeMs,
+    int TravelTimeMs,
     int CooldownMs,
     string? Description,
     int SourceType,

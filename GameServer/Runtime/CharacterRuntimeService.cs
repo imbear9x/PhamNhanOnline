@@ -39,6 +39,8 @@ public sealed class CharacterRuntimeService
         var currentState = snapshot.CurrentState
             ?? throw new InvalidOperationException("Current state must exist before attaching runtime state.");
         var clampedCurrentState = _calculator.ClampCurrentStateToBaseStats(baseStats, currentState);
+        if (clampedCurrentState.CurrentState == CharacterRuntimeStateCodes.Casting)
+            clampedCurrentState = clampedCurrentState with { CurrentState = CharacterRuntimeStateCodes.Idle };
 
         var player = _worldManager.AddOrUpdatePlayer(
             session.PlayerId,
@@ -111,10 +113,11 @@ public sealed class CharacterRuntimeService
     public CharacterRuntimeSnapshot ApplyCurrentStateMutation(
         PlayerSession player,
         Func<CharacterCurrentStateDto, CharacterCurrentStateDto> mutation,
+        bool persist = true,
         bool notifySelf = true,
         bool notifyObservers = true)
     {
-        var snapshot = player.RuntimeState.UpdateCurrentState(mutation);
+        var snapshot = player.RuntimeState.UpdateCurrentState(mutation, markDirty: persist);
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
 
         if (notifySelf)

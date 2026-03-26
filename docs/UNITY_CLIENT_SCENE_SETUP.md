@@ -860,6 +860,111 @@ Checklist:
 - `SelectedHighlight` va object trang tri khong can bat chuot thi nen tat `Raycast Target`
 - Root cua tung `SkillSlot` nen co `Image` hoac `Graphic` de nhan `IDropHandler`
 
+### 3.7. Combat HUD skill buttons checklist
+
+Muc tieu:
+- combat HUD dung du lieu loadout skill hien tai
+- nut basic co dinh map voi `slot 1`
+- 4 nut skill phu dat san vi tri quanh nut basic
+- slot nao trong thi an nut do
+- bam skill khi chua co target hop le thi im lang, khong doi UI
+- khi server chap nhan cast, nut skill vao cooldown va chay `Image.fillAmount` giam dan
+
+Hierarchy goi y:
+
+```text
+CombatHudRoot
+  BasicSkillButton
+    Icon
+    CooldownFill
+    CooldownText
+    DisabledOverlay
+  SkillButton2
+    Icon
+    CooldownFill
+    CooldownText
+    DisabledOverlay
+  SkillButton3
+    Icon
+    CooldownFill
+    CooldownText
+    DisabledOverlay
+  SkillButton4
+    Icon
+    CooldownFill
+    CooldownText
+    DisabledOverlay
+  SkillButton5
+    Icon
+    CooldownFill
+    CooldownText
+    DisabledOverlay
+  CastBarRoot
+    CastBarFill
+    CastBarText
+```
+
+Checklist:
+
+1. Root controller
+- Gan `WorldCombatHudController` len `CombatHudRoot`.
+- Gan `Presentation Catalog` -> `SkillPresentationCatalog.asset`.
+- `Basic Skill Button` -> `BasicSkillButton`.
+- `Additional Skill Buttons` -> `SkillButton2`, `SkillButton3`, `SkillButton4`, `SkillButton5`.
+
+2. Tung nut skill
+- Gan `CombatSkillButtonView` len moi nut.
+- Tren `BasicSkillButton`:
+- `Skill Slot Index` -> `1`
+- `Always Visible` -> bat
+- Tren 4 nut con lai:
+- `Skill Slot Index` -> `2`, `3`, `4`, `5`
+- `Always Visible` -> tat
+- Wiring tren moi `CombatSkillButtonView`:
+- `Content Root` -> root cua nut
+- `Button` -> component `Button` tren root
+- `Icon Image` -> `Icon`
+- `Cooldown Fill Image` -> `CooldownFill` voi `Image Type = Filled`
+- `Cooldown Text` -> `CooldownText`
+- `Disabled State Root` -> `DisabledOverlay`
+- Neu co layout rieng:
+- `Occupied State Root` -> khu icon that su co skill
+- `Empty State Root` -> frame trong, chi can cho nut basic neu muon
+
+3. Cast bar tuy chon
+- Neu muon thay cast time ngay:
+- `Cast Bar Root` -> `CastBarRoot`
+- `Cast Bar Fill Image` -> `CastBarFill`
+- `Cast Bar Text` -> `CastBarText`
+- Neu chua keo cast bar, co the de trong 3 field nay.
+
+4. Rule hien tai cua code
+- Nut `slot 1` luon hien.
+- Nut `slot 2-5` chi hien khi slot do dang equip skill.
+- Bam nut skill:
+- neu chua chon enemy/boss hop le -> khong gui packet, khong doi UI
+- neu dang cast hoac dang cho server xac nhan cast -> cac nut tam thoi khong bam duoc
+- neu skill dang cooldown -> nut bi khoa va `CooldownFill.fillAmount` giam dan den 0
+
+5. Packet/client state da co san
+- Client gui `AttackEnemyPacket` voi `SkillSlotIndex` va `EnemyRuntimeId`
+- Client dung `AttackEnemyResultPacket` de lay:
+- `CooldownMs`
+- `CooldownEndsUnixMs`
+- `CastStartedUnixMs`
+- `CastCompletedUnixMs`
+- `ImpactUnixMs`
+- Client co san `ClientCombatState` / `ClientCombatService` de theo doi:
+- pending cast request
+- local cast time
+- cooldown theo `playerSkillId`
+
+6. Luu y layout
+- Khong can radial layout dong o phase nay.
+- Dat san 4 nut skill phu quanh nut basic bang tay trong Unity la on nhat.
+- Co equip thi bat nut.
+- Unequip thi tat nut.
+
 ## Naming rules
 
 Use clear scene roots so another developer can understand quickly:

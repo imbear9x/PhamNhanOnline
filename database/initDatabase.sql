@@ -460,6 +460,8 @@ CREATE TABLE IF NOT EXISTS public.skills (
     skill_category integer NOT NULL DEFAULT 2,
     target_type integer NOT NULL,
     cast_range numeric(10, 4) NOT NULL DEFAULT 1.0,
+    cast_time_ms integer NOT NULL DEFAULT 0,
+    travel_time_ms integer NOT NULL DEFAULT 0,
     cooldown_ms integer NOT NULL DEFAULT 0,
     description text NULL,
     created_at timestamp without time zone DEFAULT now(),

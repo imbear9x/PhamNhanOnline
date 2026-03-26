@@ -1,5 +1,6 @@
 using System;
 using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.Features.Combat.Application;
 using PhamNhanOnline.Client.Features.Auth.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Inventory.Application;
@@ -33,6 +34,8 @@ namespace PhamNhanOnline.Client.Core.Application
         public static ClientMartialArtService MartialArtService { get; private set; }
         public static ClientSkillState Skills { get; private set; }
         public static ClientSkillService SkillService { get; private set; }
+        public static ClientCombatState Combat { get; private set; }
+        public static ClientCombatService CombatService { get; private set; }
         public static ClientTargetState Target { get; private set; }
         public static ClientWorldState World { get; private set; }
         public static ClientWorldService WorldService { get; private set; }
@@ -59,6 +62,7 @@ namespace PhamNhanOnline.Client.Core.Application
             Inventory = new ClientInventoryState();
             MartialArts = new ClientMartialArtState();
             Skills = new ClientSkillState();
+            Combat = new ClientCombatState();
             Target = new ClientTargetState();
             World = new ClientWorldState();
             UiScreens = new UiScreenService();
@@ -67,6 +71,7 @@ namespace PhamNhanOnline.Client.Core.Application
             InventoryService = new ClientInventoryService(Connection, Character, Inventory);
             MartialArtService = new ClientMartialArtService(Connection, Character, MartialArts);
             SkillService = new ClientSkillService(Connection, Skills);
+            CombatService = new ClientCombatService(Connection, Combat, Character);
             WorldService = new ClientWorldService(Connection, World, Character, Target);
             WorldTravelService = new ClientWorldTravelService(Connection);
             LoginFlow = new ClientLoginFlowService(Connection, AuthService, CharacterService, SceneFlow, settings);
