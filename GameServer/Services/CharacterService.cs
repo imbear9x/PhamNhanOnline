@@ -5,6 +5,7 @@ using GameServer.Repositories;
 using GameServer.Runtime;
 using GameServer.Time;
 using GameServer.World;
+using GameShared.Enums;
 using GameShared.Messages;
 using LinqToDB;
 using LinqToDB.Async;
@@ -28,6 +29,8 @@ public sealed class CharacterService
     private const int DefaultUnallocatedPotential = 0;
     private const int DefaultAppearanceValue = 1;
     private const int DefaultHomeGardenPlotCount = 8;
+    private const int DefaultStarterBasicSkillId = 0;
+    private const int DefaultStarterSkillSlotIndex = 1;
 
     private readonly GameDb _db;
     private readonly CharacterRepository _characters;
@@ -116,6 +119,7 @@ public sealed class CharacterService
         await _baseStats.CreateAsync(baseStat, cancellationToken);
         await _currentStates.CreateAsync(currentState, cancellationToken);
         await EnsureHomeCaveAsync(character.Id, cancellationToken);
+        await InitializeCharacterStarterResourcesAsync(character.Id, cancellationToken);
         await tx.CommitAsync(cancellationToken);
 
         var baseStatsDto = await EnrichBaseStatsAsync(CharacterBaseStatsDto.FromEntity(baseStat, realmLifespan), cancellationToken);
@@ -123,6 +127,13 @@ public sealed class CharacterService
             CharacterDto.FromEntity(character),
             baseStatsDto,
             CharacterCurrentStateDto.FromEntity(currentState));
+    }
+
+    public async Task InitializeCharacterStarterResourcesAsync(
+        Guid characterId,
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureStarterBasicSkillAsync(characterId, cancellationToken);
     }
 
     public async Task<CharacterSnapshotDto?> LoadCharacterSnapshotByAccountAsync(
@@ -591,6 +602,71 @@ public sealed class CharacterService
                 UpdatedAt = DateTime.UtcNow
             }, cancellationToken);
         }
+    }
+
+    private async Task EnsureStarterBasicSkillAsync(Guid characterId, CancellationToken cancellationToken)
+    {
+        var starterSkill = await _db.GetTable<SkillEntity>()
+            .FirstOrDefaultAsync(x => x.Id == DefaultStarterBasicSkillId, cancellationToken);
+
+        if (starterSkill is null)
+            throw new InvalidOperationException(
+                $"Starter basic skill {DefaultStarterBasicSkillId} is missing from public.skills.");
+
+        if (starterSkill.SkillCategory != (int)SkillCategory.Basic)
+            throw new InvalidOperationException(
+                $"Starter skill {DefaultStarterBasicSkillId} must have skill_category = {(int)SkillCategory.Basic}.");
+
+        var playerSkill = await _db.GetTable<PlayerSkillEntity>()
+            .FirstOrDefaultAsync(
+                x => x.PlayerId == characterId && x.SkillGroupCode == starterSkill.SkillGroupCode,
+                cancellationToken);
+
+        if (playerSkill is null)
+        {
+            playerSkill = new PlayerSkillEntity
+            {
+                PlayerId = characterId,
+                SkillId = starterSkill.Id,
+                SkillGroupCode = starterSkill.SkillGroupCode,
+                SourceType = (int)PlayerSkillSourceType.SystemGrant,
+                SourceMartialArtId = null,
+                SourceMartialArtSkillId = null,
+                UnlockedAt = DateTime.UtcNow,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            playerSkill.Id = await _db.InsertEntityWithInt64IdentityAsync(playerSkill, cancellationToken);
+        }
+
+        var slotOneLoadout = await _db.GetTable<PlayerSkillLoadoutEntity>()
+            .FirstOrDefaultAsync(
+                x => x.PlayerId == characterId && x.SlotIndex == DefaultStarterSkillSlotIndex,
+                cancellationToken);
+
+        if (slotOneLoadout is null)
+        {
+            slotOneLoadout = new PlayerSkillLoadoutEntity
+            {
+                PlayerId = characterId,
+                SlotIndex = DefaultStarterSkillSlotIndex,
+                PlayerSkillId = playerSkill.Id,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _db.InsertEntityWithInt64IdentityAsync(slotOneLoadout, cancellationToken);
+            return;
+        }
+
+        if (slotOneLoadout.PlayerSkillId == playerSkill.Id)
+            return;
+
+        slotOneLoadout.PlayerSkillId = playerSkill.Id;
+        slotOneLoadout.UpdatedAt = DateTime.UtcNow;
+        await _db.UpdateAsync(slotOneLoadout, token: cancellationToken);
     }
 }
 

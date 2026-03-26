@@ -1,3 +1,5 @@
+using GameShared.Enums;
+
 namespace GameServer.Runtime;
 
 public enum CharacterStatType
@@ -84,17 +86,6 @@ public enum SkillTriggerTiming
     OnExpire = 3
 }
 
-public enum SkillScalingTarget
-{
-    None = 0,
-    EffectBaseValue = 1,
-    EffectRatioValue = 2,
-    EffectExtraValue = 3,
-    EffectChanceValue = 4,
-    EffectDurationMs = 5,
-    SkillCooldownMs = 6
-}
-
 public sealed record CharacterStatBonusValue(
     int Id,
     CharacterStatType StatType,
@@ -132,29 +123,22 @@ public sealed record SkillDefinition(
     int Id,
     string Code,
     string Name,
+    string GroupCode,
+    int SkillLevel,
     CombatSkillType SkillType,
+    SkillCategory SkillCategory,
     SkillTargetType TargetType,
     float CastRange,
     int CooldownMs,
     string? Description,
     IReadOnlyList<SkillEffectDefinition> Effects);
 
-public sealed record SkillScalingRuleDefinition(
-    int Id,
-    int MartialArtSkillId,
-    int? SkillEffectId,
-    SkillScalingTarget ScalingTarget,
-    decimal BaseValue,
-    decimal PerStageValue,
-    CombatValueType? ValueType);
-
 public sealed record MartialArtSkillUnlockDefinition(
     int Id,
     int MartialArtId,
     int SkillId,
     int UnlockStage,
-    SkillDefinition Skill,
-    IReadOnlyList<SkillScalingRuleDefinition> ScalingRules);
+    SkillDefinition Skill);
 
 public sealed record MartialArtDefinition(
     int Id,
@@ -221,10 +205,12 @@ public sealed record SkillRuntimeDefinition(
     int MartialArtSkillId,
     int UnlockStage,
     int CurrentMartialArtStage,
-    int EffectiveStage,
+    string SkillGroupCode,
+    int SkillLevel,
     string Code,
     string Name,
     CombatSkillType SkillType,
+    SkillCategory SkillCategory,
     SkillTargetType TargetType,
     float CastRange,
     int CooldownMs,

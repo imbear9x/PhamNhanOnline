@@ -19,7 +19,7 @@ namespace PhamNhanOnline.Client.UI.Potential
                 button = GetComponent<Button>();
         }
 
-        public void SetContent(string label, Action onClick, bool force = false)
+        public void SetContent(string label, Action onClick, bool interactable = true, bool force = false)
         {
             label = string.IsNullOrWhiteSpace(label) ? "-" : label.Trim();
             if (force || !string.Equals(lastLabel, label, StringComparison.Ordinal))
@@ -31,8 +31,9 @@ namespace PhamNhanOnline.Client.UI.Potential
 
             if (button != null)
             {
+                button.interactable = interactable;
                 button.onClick.RemoveAllListeners();
-                if (onClick != null)
+                if (interactable && onClick != null)
                     button.onClick.AddListener(() => onClick());
             }
         }

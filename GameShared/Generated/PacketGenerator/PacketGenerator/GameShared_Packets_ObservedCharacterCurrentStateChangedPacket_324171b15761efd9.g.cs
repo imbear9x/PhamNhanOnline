@@ -16,7 +16,23 @@ public partial class ObservedCharacterCurrentStateChangedPacket
         return HasCurrentState;
     }
 
-    public bool HasZoneIndex => (_mask & (1UL << 1)) != 0;
+    public bool HasMaxHp => (_mask & (1UL << 1)) != 0;
+
+    public bool TryGetMaxHp(out int? value)
+    {
+        value = MaxHp;
+        return HasMaxHp;
+    }
+
+    public bool HasMaxMp => (_mask & (1UL << 2)) != 0;
+
+    public bool TryGetMaxMp(out int? value)
+    {
+        value = MaxMp;
+        return HasMaxMp;
+    }
+
+    public bool HasZoneIndex => (_mask & (1UL << 3)) != 0;
 
     public bool TryGetZoneIndex(out int? value)
     {
@@ -29,13 +45,19 @@ public partial class ObservedCharacterCurrentStateChangedPacket
         ulong mask = 0;
 
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterCurrentStateModel?>.Default.Equals(CurrentState, default!)) mask |= 1UL << 0;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(ZoneIndex, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(MaxHp, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(MaxMp, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(ZoneIndex, default!)) mask |= 1UL << 3;
 
         writer.Write(mask);
 
         if ((mask & (1UL << 0)) != 0)
             global::GameShared.Packets.PacketModelSerializer.Write(writer, CurrentState.Value);
         if ((mask & (1UL << 1)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, MaxHp.Value);
+        if ((mask & (1UL << 2)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, MaxMp.Value);
+        if ((mask & (1UL << 3)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, ZoneIndex.Value);
     }
 
@@ -46,6 +68,10 @@ public partial class ObservedCharacterCurrentStateChangedPacket
         if ((_mask & (1UL << 0)) != 0)
             CurrentState = (global::GameShared.Models.CharacterCurrentStateModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterCurrentStateModel>(reader));
         if ((_mask & (1UL << 1)) != 0)
+            MaxHp = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 2)) != 0)
+            MaxMp = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 3)) != 0)
             ZoneIndex = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
     }
 }

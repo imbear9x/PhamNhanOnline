@@ -4,7 +4,7 @@ using GameShared.Messages;
 
 namespace GameShared.Packets;
 
-[Packet]
+[Packet(22)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 500)]
 public partial class ReconnectPacket : IPacket
 {
@@ -14,7 +14,7 @@ public partial class ReconnectPacket : IPacket
     public string? ResumeToken { get; set; }
 }
 
-[Packet]
+[Packet(23)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class ReconnectResultPacket : IPacket
 {

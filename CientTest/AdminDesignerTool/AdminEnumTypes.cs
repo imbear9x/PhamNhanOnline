@@ -16,7 +16,8 @@ internal enum AdminEditorKind
     PlayerInventoryWorkspace = 11,
     CharacterMartialArtWorkspace = 12,
     CharacterItemWorkspace = 13,
-    CharacterSkillWorkspace = 14
+    CharacterSkillWorkspace = 14,
+    SkillWorkspace = 15
 }
 
 internal enum CharacterStatType
@@ -44,6 +45,13 @@ internal enum CombatSkillType
     Active = 1,
     Passive = 2,
     Toggle = 3
+}
+
+internal enum SkillCategory
+{
+    Basic = 1,
+    Normal = 2,
+    Special = 3
 }
 
 internal enum SkillTargetType
@@ -101,17 +109,6 @@ internal enum SkillTriggerTiming
     OnCast = 1,
     OnHit = 2,
     OnExpire = 3
-}
-
-internal enum SkillScalingTarget
-{
-    None = 0,
-    EffectBaseValue = 1,
-    EffectRatioValue = 2,
-    EffectExtraValue = 3,
-    EffectChanceValue = 4,
-    EffectDurationMs = 5,
-    SkillCooldownMs = 6
 }
 
 internal enum ItemType
@@ -281,6 +278,15 @@ internal enum RewardTargetRule
     EligibleAll = 1,
     LastHit = 2,
     TopDamage = 3
+}
+
+internal enum PlayerSkillSourceType
+{
+    Manual = 1,
+    MartialArtUnlock = 2,
+    ItemUse = 3,
+    QuestReward = 4,
+    SystemGrant = 5
 }
 
 internal enum InstanceMode

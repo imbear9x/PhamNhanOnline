@@ -4,7 +4,7 @@ using GameShared.Messages;
 
 namespace GameShared.Packets;
 
-[Packet]
+[Packet(1)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 1000)]
 public partial class ChangePasswordPacket : IPacket
@@ -20,7 +20,7 @@ public partial class ChangePasswordPacket : IPacket
     public string? NewPassword { get; set; }
 }
 
-[Packet]
+[Packet(2)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class ChangePasswordResultPacket : IPacket
 {

@@ -5,7 +5,7 @@ using GameShared.Models;
 
 namespace GameShared.Packets;
 
-[Packet]
+[Packet(7)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 1000)]
 public partial class CreateCharacterPacket : IPacket
@@ -26,7 +26,7 @@ public partial class CreateCharacterPacket : IPacket
     public int? ModelId { get; set; }
 }
 
-[Packet]
+[Packet(8)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class CreateCharacterResultPacket : IPacket
 {
@@ -37,14 +37,14 @@ public partial class CreateCharacterResultPacket : IPacket
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
 
-[Packet]
+[Packet(13)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
 public partial class GetCharacterListPacket : IPacket
 {
 }
 
-[Packet]
+[Packet(14)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class GetCharacterListResultPacket : IPacket
 {
@@ -53,7 +53,7 @@ public partial class GetCharacterListResultPacket : IPacket
     public List<CharacterModel>? Characters { get; set; }
 }
 
-[Packet]
+[Packet(11)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
 public partial class GetCharacterDataPacket : IPacket
@@ -63,7 +63,7 @@ public partial class GetCharacterDataPacket : IPacket
     public Guid? CharacterId { get; set; }
 }
 
-[Packet]
+[Packet(12)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class GetCharacterDataResultPacket : IPacket
 {
@@ -74,7 +74,7 @@ public partial class GetCharacterDataResultPacket : IPacket
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
 
-[Packet]
+[Packet(9)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
 public partial class EnterWorldPacket : IPacket
@@ -84,7 +84,7 @@ public partial class EnterWorldPacket : IPacket
     public Guid? CharacterId { get; set; }
 }
 
-[Packet]
+[Packet(10)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class EnterWorldResultPacket : IPacket
 {
@@ -95,21 +95,21 @@ public partial class EnterWorldResultPacket : IPacket
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
 
-[Packet]
+[Packet(3)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class CharacterBaseStatsChangedPacket : IPacket
 {
     public CharacterBaseStatsModel? BaseStats { get; set; }
 }
 
-[Packet]
+[Packet(4)]
 [PacketTransport(PacketTransportMode.ReliableSequenced, PacketTrafficClass.StateSync)]
 public partial class CharacterCurrentStateChangedPacket : IPacket
 {
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
 
-[Packet]
+[Packet(6)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class CharacterStateTransitionPacket : IPacket
 {
@@ -117,14 +117,14 @@ public partial class CharacterStateTransitionPacket : IPacket
     public int? Reason { get; set; }
 }
 
-[Packet]
+[Packet(28)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 500)]
 public partial class StartCultivationPacket : IPacket
 {
 }
 
-[Packet]
+[Packet(29)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class StartCultivationResultPacket : IPacket
 {
@@ -133,14 +133,14 @@ public partial class StartCultivationResultPacket : IPacket
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
 
-[Packet]
+[Packet(30)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 500)]
 public partial class StopCultivationPacket : IPacket
 {
 }
 
-[Packet]
+[Packet(31)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class StopCultivationResultPacket : IPacket
 {
@@ -149,14 +149,14 @@ public partial class StopCultivationResultPacket : IPacket
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
 
-[Packet]
+[Packet(32)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 500)]
 public partial class BreakthroughPacket : IPacket
 {
 }
 
-[Packet]
+[Packet(33)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class BreakthroughResultPacket : IPacket
 {
@@ -166,7 +166,7 @@ public partial class BreakthroughResultPacket : IPacket
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
 
-[Packet]
+[Packet(34)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
 public partial class AllocatePotentialPacket : IPacket
@@ -180,7 +180,7 @@ public partial class AllocatePotentialPacket : IPacket
     public int? RequestedPotentialAmount { get; set; }
 }
 
-[Packet]
+[Packet(35)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class AllocatePotentialResultPacket : IPacket
 {
@@ -193,7 +193,7 @@ public partial class AllocatePotentialResultPacket : IPacket
     public int? AppliedUpgradeCount { get; set; }
 }
 
-[Packet]
+[Packet(36)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class CultivationRewardsGrantedPacket : IPacket
 {
@@ -206,14 +206,14 @@ public partial class CultivationRewardsGrantedPacket : IPacket
     public long? RewardedToUnixMs { get; set; }
 }
 
-[Packet]
+[Packet(41)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
 public partial class GetOwnedMartialArtsPacket : IPacket
 {
 }
 
-[Packet]
+[Packet(42)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class GetOwnedMartialArtsResultPacket : IPacket
 {
@@ -224,7 +224,7 @@ public partial class GetOwnedMartialArtsResultPacket : IPacket
     public CultivationPreviewModel? CultivationPreview { get; set; }
 }
 
-[Packet]
+[Packet(43)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 300)]
 public partial class UseMartialArtBookPacket : IPacket
@@ -235,7 +235,7 @@ public partial class UseMartialArtBookPacket : IPacket
     public long? PlayerItemId { get; set; }
 }
 
-[Packet]
+[Packet(44)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class UseMartialArtBookResultPacket : IPacket
 {
@@ -246,7 +246,7 @@ public partial class UseMartialArtBookResultPacket : IPacket
     public CultivationPreviewModel? CultivationPreview { get; set; }
 }
 
-[Packet]
+[Packet(45)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 300)]
 public partial class SetActiveMartialArtPacket : IPacket
@@ -257,7 +257,7 @@ public partial class SetActiveMartialArtPacket : IPacket
     public int? MartialArtId { get; set; }
 }
 
-[Packet]
+[Packet(46)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class SetActiveMartialArtResultPacket : IPacket
 {
@@ -267,14 +267,59 @@ public partial class SetActiveMartialArtResultPacket : IPacket
     public CultivationPreviewModel? CultivationPreview { get; set; }
 }
 
-[Packet]
+[Packet(64)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
+public partial class GetOwnedSkillsPacket : IPacket
+{
+}
+
+[Packet(65)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class GetOwnedSkillsResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public int? MaxLoadoutSlotCount { get; set; }
+    public List<PlayerSkillModel>? Skills { get; set; }
+    public List<SkillLoadoutSlotModel>? LoadoutSlots { get; set; }
+}
+
+[Packet(66)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class SetSkillLoadoutSlotPacket : IPacket
+{
+    [ValidationCode(MessageCode.SkillLoadoutSlotInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? SlotIndex { get; set; }
+
+    [ValidationCode(MessageCode.PlayerSkillInvalid)]
+    [Required]
+    [Range(0, long.MaxValue)]
+    public long? PlayerSkillId { get; set; }
+}
+
+[Packet(67)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class SetSkillLoadoutSlotResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public int? MaxLoadoutSlotCount { get; set; }
+    public List<PlayerSkillModel>? Skills { get; set; }
+    public List<SkillLoadoutSlotModel>? LoadoutSlots { get; set; }
+}
+
+[Packet(58)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
 public partial class GetInventoryPacket : IPacket
 {
 }
 
-[Packet]
+[Packet(59)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class GetInventoryResultPacket : IPacket
 {
@@ -283,7 +328,7 @@ public partial class GetInventoryResultPacket : IPacket
     public List<InventoryItemModel>? Items { get; set; }
 }
 
-[Packet]
+[Packet(60)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
 public partial class EquipInventoryItemPacket : IPacket
@@ -299,7 +344,7 @@ public partial class EquipInventoryItemPacket : IPacket
     public int? Slot { get; set; }
 }
 
-[Packet]
+[Packet(61)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class EquipInventoryItemResultPacket : IPacket
 {
@@ -310,7 +355,7 @@ public partial class EquipInventoryItemResultPacket : IPacket
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
 
-[Packet]
+[Packet(62)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
 public partial class UnequipInventoryItemPacket : IPacket
@@ -321,7 +366,7 @@ public partial class UnequipInventoryItemPacket : IPacket
     public int? Slot { get; set; }
 }
 
-[Packet]
+[Packet(63)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class UnequipInventoryItemResultPacket : IPacket
 {

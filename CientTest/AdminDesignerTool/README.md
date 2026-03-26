@@ -48,7 +48,7 @@ Tool se tu tim `GameServer/Config/dbConfig.json` tu thu muc hien tai di nguoc le
 
 ## Gioi han phase nay
 
-- Stage bonus, skill scaling, martial art book va mot so bang balance/world van chu yeu edit theo grid generic.
+- Stage bonus, skill unlock, martial art book va mot so bang balance/world van chu yeu edit theo grid generic.
 - Chua co schema boss/drop that, nen moi dat san diem mo rong trong navigation.
 - Chua co auth/permission; hien la tool local noi thang vao DB.
 - Enum trong admin tool hien duoc mirror local theo schema/runtime hien tai de giu project build doc lap voi `GameServer`.

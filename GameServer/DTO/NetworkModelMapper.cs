@@ -118,6 +118,41 @@ public static class NetworkModelMapper
         };
     }
 
+    public static PlayerSkillModel ToModel(this PlayerSkillDto dto)
+    {
+        return new PlayerSkillModel
+        {
+            PlayerSkillId = dto.PlayerSkillId,
+            SkillId = dto.SkillId,
+            Code = dto.Code,
+            Name = dto.Name,
+            SkillGroupCode = dto.GroupCode,
+            SkillLevel = dto.SkillLevel,
+            SkillType = dto.SkillType,
+            SkillCategory = dto.SkillCategory,
+            TargetType = dto.TargetType,
+            CastRange = dto.CastRange,
+            CooldownMs = dto.CooldownMs,
+            Description = dto.Description,
+            SourceType = dto.SourceType,
+            SourceMartialArtId = dto.SourceMartialArtId,
+            SourceMartialArtName = dto.SourceMartialArtName,
+            UnlockStage = dto.UnlockStage,
+            IsEquipped = dto.IsEquipped,
+            EquippedSlotIndex = dto.EquippedSlotIndex
+        };
+    }
+
+    public static SkillLoadoutSlotModel ToModel(this SkillLoadoutSlotDto dto)
+    {
+        return new SkillLoadoutSlotModel
+        {
+            SlotIndex = dto.SlotIndex,
+            HasSkill = dto.Skill is not null,
+            Skill = dto.Skill?.ToModel()
+        };
+    }
+
     public static CharacterCurrentStateModel ToModel(this CharacterCurrentStateDto dto, GameTimeSnapshot gameTime)
     {
         return new CharacterCurrentStateModel
@@ -260,6 +295,7 @@ public static class NetworkModelMapper
             Icon = view.Definition.Icon,
             BackgroundIcon = view.Definition.BackgroundIcon,
             Description = view.Definition.Description,
+            MartialArtBookMartialArtId = view.Definition.MartialArtBook?.MartialArtId,
             EquipmentSlotType = view.Definition.Equipment is not null ? (int)view.Definition.Equipment.SlotType : null,
             EquipmentType = view.Definition.Equipment is not null ? (int)view.Definition.Equipment.EquipmentType : null,
             LevelRequirement = view.Definition.Equipment?.LevelRequirement,

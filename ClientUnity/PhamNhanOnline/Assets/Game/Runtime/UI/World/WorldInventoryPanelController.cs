@@ -6,11 +6,14 @@ using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Inventory.Application;
+using PhamNhanOnline.Client.Features.MartialArts.Application;
 using PhamNhanOnline.Client.Network.Session;
 using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Inventory;
+using PhamNhanOnline.Client.UI.Potential;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace PhamNhanOnline.Client.UI.World
 {
@@ -21,11 +24,13 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private StatLineListView statListView;
 
         [Header("Inventory References")]
+        [SerializeField] private RectTransform inventoryPanelBounds;
         [SerializeField] private TMP_Text inventoryStatusText;
         [SerializeField] private InventoryItemGridView inventoryGridView;
         [SerializeField] private EquipmentSlotsPanelView equipmentSlotsView;
         [SerializeField] private InventoryDropZoneView inventoryDropZoneView;
         [SerializeField] private InventoryItemTooltipView itemTooltipView;
+        [SerializeField] private PotentialUpgradeOptionsPopupView itemOptionsPopupView;
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
 
         [Header("Character Display")]
@@ -38,6 +43,11 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private string inventoryLoadingText = "Dang tai kho do...";
         [SerializeField] private string emptyInventoryText = "Kho do dang trong.";
         [SerializeField] private string inventoryActionInProgressText = "Dang cap nhat trang bi...";
+        [SerializeField] private string inventoryDropPendingText = "Tinh nang vut item chua duoc bat o phase nay.";
+        [SerializeField] private string inventoryUnsupportedUseText = "Vat pham nay chua co logic su dung o phase nay.";
+        [SerializeField] private string inventoryMartialArtAlreadyLearnedText = "Cong phap nay da hoc roi, khong the dung them sach.";
+        [SerializeField] private string inventoryAlreadyEquippedText = "Trang bi nay dang duoc mac.";
+        [SerializeField] private string inventoryUnequipActionText = "Dang go trang bi...";
 
         [Header("Character Reload")]
         [SerializeField] private bool autoLoadMissingCharacterData = true;
@@ -58,6 +68,8 @@ namespace PhamNhanOnline.Client.UI.World
         private string lastInventorySnapshot = string.Empty;
         private string lastInventoryStatus = string.Empty;
         private long? previewPlayerItemId;
+        private long? popupPlayerItemId;
+        private bool suppressTooltipUntilHoverReset;
         private bool inventoryActionInFlight;
 
         private void Awake()
@@ -82,6 +94,9 @@ namespace PhamNhanOnline.Client.UI.World
             {
                 inventoryDropZoneView.EquippedItemDropped += HandleEquippedItemDroppedOnInventory;
             }
+
+            if (inventoryPanelBounds == null)
+                inventoryPanelBounds = transform as RectTransform;
         }
 
         private void OnEnable()
@@ -105,6 +120,7 @@ namespace PhamNhanOnline.Client.UI.World
             RefreshInventory(force: false);
             TryReloadMissingData();
             TryReloadInventory();
+            UpdateItemPopupVisibility();
         }
 
         private void OnDestroy()
@@ -206,6 +222,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (!inventoryState.HasLoadedInventory)
             {
+                HideItemOptionsPopup(force: true);
                 ClearInventoryVisuals(force: true);
                 return;
             }
@@ -218,6 +235,9 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (equipmentSlotsView != null)
                 equipmentSlotsView.SetItems(equippedItems, itemPresentationCatalog, previewPlayerItemId, force: true);
+
+            if (popupPlayerItemId.HasValue && !TryFindInventoryItemById(allItems, popupPlayerItemId, out _))
+                HideItemOptionsPopup(force: true);
 
             InventoryItemModel activeTooltipItem;
             if (TryResolveActiveTooltipItem(allItems, out activeTooltipItem))
@@ -373,19 +393,56 @@ namespace PhamNhanOnline.Client.UI.World
             itemTooltipView.Show(item, presentation, force);
         }
 
+        private void UpdateItemPopupVisibility()
+        {
+            if (itemOptionsPopupView == null || !itemOptionsPopupView.IsVisible)
+                return;
+
+            if (popupPlayerItemId.HasValue &&
+                (!ClientRuntime.IsInitialized || !ClientRuntime.Inventory.TryGetItem(popupPlayerItemId.Value, out _)))
+            {
+                HideItemOptionsPopup(force: true);
+                return;
+            }
+
+            if (DidClickBlankSpaceInsideInventoryPanel())
+                HideItemOptionsPopup();
+        }
+
         private void HandleInventoryItemClicked(InventoryItemModel item)
         {
-            // Tooltip/highlight are hover-only in this phase.
+            if (inventoryActionInFlight)
+                return;
+
+            previewPlayerItemId = item.PlayerItemId;
+
+            if (itemOptionsPopupView != null && itemOptionsPopupView.IsVisible && popupPlayerItemId == item.PlayerItemId)
+            {
+                HideItemOptionsPopup();
+                RefreshInventory(force: true);
+                return;
+            }
+
+            ShowItemOptions(item);
+            RefreshInventory(force: true);
         }
 
         private void HandleInventoryItemHovered(InventoryItemModel item)
         {
+            if (popupPlayerItemId.HasValue)
+                return;
+
+            suppressTooltipUntilHoverReset = false;
             previewPlayerItemId = item.PlayerItemId;
             RefreshInventory(force: true);
         }
 
         private void HandleInventoryItemHoverExited()
         {
+            if (popupPlayerItemId.HasValue)
+                return;
+
+            suppressTooltipUntilHoverReset = false;
             previewPlayerItemId = null;
             RefreshInventory(force: true);
         }
@@ -416,6 +473,7 @@ namespace PhamNhanOnline.Client.UI.World
             finally
             {
                 inventoryActionInFlight = false;
+                HideItemOptionsPopup(force: true);
                 RefreshFromRuntime(force: true);
                 RefreshInventory(force: true);
             }
@@ -444,9 +502,309 @@ namespace PhamNhanOnline.Client.UI.World
             finally
             {
                 inventoryActionInFlight = false;
+                HideItemOptionsPopup(force: true);
                 RefreshFromRuntime(force: true);
                 RefreshInventory(force: true);
             }
+        }
+
+        private void ShowItemOptions(InventoryItemModel item)
+        {
+            if (itemOptionsPopupView == null)
+                return;
+
+            var options = BuildItemOptions(item);
+            if (options.Count == 0)
+            {
+                HideItemOptionsPopup(force: true);
+                return;
+            }
+
+            popupPlayerItemId = item.PlayerItemId;
+            previewPlayerItemId = item.PlayerItemId;
+            suppressTooltipUntilHoverReset = true;
+            if (itemTooltipView != null)
+                itemTooltipView.Hide(force: true);
+            itemOptionsPopupView.Show(
+                inventoryPanelBounds != null ? inventoryPanelBounds : transform as RectTransform,
+                item.Name,
+                options,
+                force: true);
+        }
+
+        private List<PotentialUpgradeOptionsPopupView.OptionEntry> BuildItemOptions(InventoryItemModel item)
+        {
+            if (item.IsEquipped && item.ItemType == (int)InventoryItemType.Equipment)
+            {
+                return new List<PotentialUpgradeOptionsPopupView.OptionEntry>(1)
+                {
+                    new PotentialUpgradeOptionsPopupView.OptionEntry("Go trang bi", () => _ = UnequipItemAsync(item))
+                };
+            }
+
+            var options = new List<PotentialUpgradeOptionsPopupView.OptionEntry>(2);
+            options.Add(BuildUseOption(item));
+            options.Add(new PotentialUpgradeOptionsPopupView.OptionEntry("Vut ra", HandleDropItemClicked));
+            return options;
+        }
+
+        private PotentialUpgradeOptionsPopupView.OptionEntry BuildUseOption(InventoryItemModel item)
+        {
+            string blockedReason;
+            var canUse = CanUseItem(item, out blockedReason);
+            var label = canUse
+                ? "Su dung"
+                : string.Format(CultureInfo.InvariantCulture, "Su dung ({0})", blockedReason);
+
+            return new PotentialUpgradeOptionsPopupView.OptionEntry(
+                label,
+                () => _ = UseItemAsync(item),
+                canUse);
+        }
+
+        private bool CanUseItem(InventoryItemModel item, out string blockedReason)
+        {
+            if (item.IsEquipped && item.ItemType == (int)InventoryItemType.Equipment)
+            {
+                blockedReason = "dang mac";
+                return false;
+            }
+
+            if (item.ItemType == (int)InventoryItemType.MartialArtBook &&
+                item.MartialArtBookMartialArtId.HasValue &&
+                HasLearnedMartialArt(item.MartialArtBookMartialArtId.Value))
+            {
+                blockedReason = "da hoc";
+                return false;
+            }
+
+            blockedReason = string.Empty;
+            return true;
+        }
+
+        private bool HasLearnedMartialArt(int martialArtId)
+        {
+            var ownedMartialArts = ClientRuntime.IsInitialized
+                ? ClientRuntime.MartialArts.OwnedMartialArts
+                : Array.Empty<PlayerMartialArtModel>();
+
+            for (var i = 0; i < ownedMartialArts.Length; i++)
+            {
+                if (ownedMartialArts[i].MartialArtId == martialArtId)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private async System.Threading.Tasks.Task UseItemAsync(InventoryItemModel item)
+        {
+            if (inventoryActionInFlight || !ClientRuntime.IsInitialized)
+                return;
+
+            inventoryActionInFlight = true;
+            HideItemOptionsPopup(force: true);
+            ApplyInventoryStatus(inventoryActionInProgressText, force: true);
+
+            try
+            {
+                switch ((InventoryItemType)item.ItemType)
+                {
+                    case InventoryItemType.Equipment:
+                        await UseEquipmentItemAsync(item);
+                        break;
+                    case InventoryItemType.MartialArtBook:
+                        await UseMartialArtBookItemAsync(item);
+                        break;
+                    case InventoryItemType.Consumable:
+                        await UseConsumableItemAsync(item);
+                        break;
+                    case InventoryItemType.Talisman:
+                        await UseTalismanItemAsync(item);
+                        break;
+                    case InventoryItemType.PillRecipeBook:
+                        await UseBookItemAsync(item);
+                        break;
+                    default:
+                        ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Warn($"WorldInventoryPanelController use item exception: {ex.Message}");
+                ApplyInventoryStatus(ex.Message, force: true);
+            }
+            finally
+            {
+                inventoryActionInFlight = false;
+                RefreshFromRuntime(force: true);
+                RefreshInventory(force: true);
+            }
+        }
+
+        private async System.Threading.Tasks.Task UnequipItemAsync(InventoryItemModel item)
+        {
+            if (inventoryActionInFlight || !ClientRuntime.IsInitialized)
+                return;
+
+            if (!item.IsEquipped || !item.EquippedSlot.HasValue)
+            {
+                ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+                return;
+            }
+
+            inventoryActionInFlight = true;
+            HideItemOptionsPopup(force: true);
+            ApplyInventoryStatus(inventoryUnequipActionText, force: true);
+
+            try
+            {
+                var result = await ClientRuntime.InventoryService.UnequipItemAsync(item.EquippedSlot.Value);
+                if (!result.Success)
+                {
+                    ClientLog.Warn($"WorldInventoryPanelController failed to unequip item from popup: {result.Message}");
+                    ApplyInventoryStatus(result.Message, force: true);
+                    return;
+                }
+
+                previewPlayerItemId = null;
+                ApplyInventoryStatus("Da go trang bi.", force: true);
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Warn($"WorldInventoryPanelController unequip from popup exception: {ex.Message}");
+                ApplyInventoryStatus(ex.Message, force: true);
+            }
+            finally
+            {
+                inventoryActionInFlight = false;
+                RefreshFromRuntime(force: true);
+                RefreshInventory(force: true);
+            }
+        }
+
+        private async System.Threading.Tasks.Task UseEquipmentItemAsync(InventoryItemModel item)
+        {
+            if (!item.EquipmentSlotType.HasValue)
+            {
+                ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+                return;
+            }
+
+            if (item.IsEquipped)
+            {
+                ApplyInventoryStatus(inventoryAlreadyEquippedText, force: true);
+                return;
+            }
+
+            var result = await ClientRuntime.InventoryService.EquipItemAsync(item.PlayerItemId, item.EquipmentSlotType.Value);
+            if (!result.Success)
+            {
+                ClientLog.Warn($"WorldInventoryPanelController failed to equip item from popup: {result.Message}");
+                ApplyInventoryStatus(result.Message, force: true);
+                return;
+            }
+
+            previewPlayerItemId = null;
+            ApplyInventoryStatus("Da trang bi vat pham.", force: true);
+        }
+
+        private async System.Threading.Tasks.Task UseMartialArtBookItemAsync(InventoryItemModel item)
+        {
+            if (item.MartialArtBookMartialArtId.HasValue && HasLearnedMartialArt(item.MartialArtBookMartialArtId.Value))
+            {
+                ApplyInventoryStatus(inventoryMartialArtAlreadyLearnedText, force: true);
+                return;
+            }
+
+            var result = await ClientRuntime.InventoryService.UseMartialArtBookAsync(item.PlayerItemId);
+            if (!result.Success)
+            {
+                ClientLog.Warn($"WorldInventoryPanelController failed to use martial art book: {result.Message}");
+                ApplyInventoryStatus(result.Message, force: true);
+                return;
+            }
+
+            previewPlayerItemId = null;
+            ApplyInventoryStatus("Da su dung sach cong phap.", force: true);
+        }
+
+        private System.Threading.Tasks.Task UseConsumableItemAsync(InventoryItemModel item)
+        {
+            ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+            return System.Threading.Tasks.Task.CompletedTask;
+        }
+
+        private System.Threading.Tasks.Task UseTalismanItemAsync(InventoryItemModel item)
+        {
+            ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+            return System.Threading.Tasks.Task.CompletedTask;
+        }
+
+        private System.Threading.Tasks.Task UseBookItemAsync(InventoryItemModel item)
+        {
+            ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+            return System.Threading.Tasks.Task.CompletedTask;
+        }
+
+        private void HandleDropItemClicked()
+        {
+            HideItemOptionsPopup(force: true);
+            ApplyInventoryStatus(inventoryDropPendingText, force: true);
+        }
+
+        private void HideItemOptionsPopup(bool force = false)
+        {
+            popupPlayerItemId = null;
+            suppressTooltipUntilHoverReset = true;
+            if (itemOptionsPopupView != null)
+                itemOptionsPopupView.Hide(force);
+            if (itemTooltipView != null)
+                itemTooltipView.Hide(force: true);
+        }
+
+        private bool DidClickBlankSpaceInsideInventoryPanel()
+        {
+            if (!Input.GetMouseButtonDown(0) || inventoryPanelBounds == null)
+                return false;
+
+            var eventSystem = EventSystem.current;
+            if (eventSystem == null)
+                return false;
+
+            var canvas = inventoryPanelBounds.GetComponentInParent<Canvas>();
+            var eventCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? canvas.worldCamera
+                : null;
+
+            if (!RectTransformUtility.RectangleContainsScreenPoint(inventoryPanelBounds, Input.mousePosition, eventCamera))
+                return false;
+
+            var pointerData = new PointerEventData(eventSystem)
+            {
+                position = Input.mousePosition
+            };
+            var results = new List<RaycastResult>(8);
+            eventSystem.RaycastAll(pointerData, results);
+
+            for (var i = 0; i < results.Count; i++)
+            {
+                var hitTransform = results[i].gameObject != null ? results[i].gameObject.transform : null;
+                if (hitTransform == null)
+                    continue;
+
+                if (hitTransform.GetComponentInParent<InventoryItemSlotView>() != null)
+                    return false;
+
+                if (hitTransform.GetComponentInParent<EquipmentSlotView>() != null)
+                    return false;
+
+                if (itemOptionsPopupView != null && hitTransform.IsChildOf(itemOptionsPopupView.transform))
+                    return false;
+            }
+
+            return true;
         }
 
         private static List<InventoryItemModel> SortInventoryItems(IReadOnlyList<InventoryItemModel> items)
@@ -484,6 +842,12 @@ namespace PhamNhanOnline.Client.UI.World
 
         private bool TryResolveActiveTooltipItem(IReadOnlyList<InventoryItemModel> items, out InventoryItemModel item)
         {
+            if (popupPlayerItemId.HasValue || suppressTooltipUntilHoverReset)
+            {
+                item = default;
+                return false;
+            }
+
             if (TryFindInventoryItemById(items, previewPlayerItemId, out item))
                 return true;
 
@@ -584,6 +948,8 @@ namespace PhamNhanOnline.Client.UI.World
                     item.EnhanceLevel.ToString(CultureInfo.InvariantCulture),
                     ":",
                     item.Durability.HasValue ? item.Durability.Value.ToString(CultureInfo.InvariantCulture) : "-",
+                    ":",
+                    item.MartialArtBookMartialArtId.HasValue ? item.MartialArtBookMartialArtId.Value.ToString(CultureInfo.InvariantCulture) : "-",
                     ":",
                     item.Icon ?? string.Empty,
                     ":",

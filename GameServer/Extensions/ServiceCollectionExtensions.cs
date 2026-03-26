@@ -29,6 +29,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CharacterService>();
         services.AddScoped<ItemService>();
         services.AddScoped<MartialArtService>();
+        services.AddScoped<SkillService>();
         services.AddScoped<EquipmentService>();
         services.AddScoped<CraftService>();
         services.AddScoped<EquipmentStatService>();
@@ -66,7 +67,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SkillRepository>();
         services.AddScoped<SkillEffectRepository>();
         services.AddScoped<MartialArtSkillRepository>();
-        services.AddScoped<MartialArtSkillScalingRepository>();
         services.AddScoped<PlayerMartialArtRepository>();
         services.AddScoped<PlayerSkillRepository>();
         services.AddScoped<PlayerSkillLoadoutRepository>();
@@ -182,6 +182,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<GetOwnedMartialArtsPacket>, GetOwnedMartialArtsHandler>();
         services.AddScoped<IPacketHandler<UseMartialArtBookPacket>, UseMartialArtBookHandler>();
         services.AddScoped<IPacketHandler<SetActiveMartialArtPacket>, SetActiveMartialArtHandler>();
+        services.AddScoped<IPacketHandler<GetOwnedSkillsPacket>, GetOwnedSkillsHandler>();
+        services.AddScoped<IPacketHandler<SetSkillLoadoutSlotPacket>, SetSkillLoadoutSlotHandler>();
         services.AddScoped<IPacketHandler<AttackEnemyPacket>, AttackEnemyHandler>();
         services.AddScoped<IPacketHandler<PickupGroundRewardPacket>, PickupGroundRewardHandler>();
 

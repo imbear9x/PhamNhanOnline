@@ -4,7 +4,7 @@ using GameShared.Messages;
 
 namespace GameShared.Packets;
 
-[Packet]
+[Packet(15)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 500)]
 public partial class LoginPacket : IPacket
 {
@@ -19,7 +19,7 @@ public partial class LoginPacket : IPacket
     public string? Password { get; set; }
 }
 
-[Packet]
+[Packet(16)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class LoginResultPacket : IPacket
 {

@@ -280,14 +280,30 @@ Checklist:
 - `Quantity Text` -> `TooltipQuantityText`
 - `Item Tooltip View` on `WorldInventoryPanelController` -> this `InventoryItemTooltipView`
 
-7. Asset presentation catalog
+7. Popup dùng item
+- Reuse popup giống popup tiềm năng, hoặc tạo riêng một object popup có cùng cấu trúc với `PotentialUpgradeOptionsPopupView`.
+- Gợi ý đặt tên: `InventoryItemOptionsPopup`.
+- Gắn `PotentialUpgradeOptionsPopupView` lên popup đó.
+- Cấu trúc con tối thiểu:
+- `Panel Root` -> `InventoryItemOptionsPopup`
+- `Title Text` -> text tiêu đề popup
+- `Options Root` -> root chứa 2 nút
+- `Option Template` -> 1 button template dùng `PotentialUpgradeOptionButtonView`
+- Kéo ref trên `WorldInventoryPanelController`:
+- `Inventory Panel Bounds` -> root `InventoryPanel`
+- `Item Options Popup View` -> `InventoryItemOptionsPopup`
+- Popup này hiện đang dùng cho 2 nút:
+- `Su dung`
+- `Vut ra`
+
+8. Asset presentation catalog
 - Tạo một `ScriptableObject` asset:
 - `Create > PhamNhanOnline > UI > Inventory Item Presentation Catalog`
 - Path gợi ý:
 - `Assets/Game/Content/ScriptableObjects/UI/InventoryItemPresentationCatalog.asset`
 - Kéo asset đó vào `Item Presentation Catalog` trên `WorldInventoryPanelController`
 
-8. Điền mapping icon và background
+9. Điền mapping icon và background
 - Trong catalog, thêm `iconEntries` với key khớp `item_templates.icon` từ DB.
 - Ví dụ key:
 - `item_kiem_sat`
@@ -313,9 +329,11 @@ Checklist:
 10. Wiring cuối cùng trên `WorldInventoryPanelController`
 - `Character Name Text` -> `CharacterNameText`
 - `Stat List View` -> `StatsList`
+- `Inventory Panel Bounds` -> `InventoryPanel`
 - `Inventory Status Text` -> `InventoryStatusText`
 - `Inventory Grid View` -> `InventoryGridView`
 - `Item Tooltip View` -> `InventoryItemTooltipView`
+- `Item Options Popup View` -> `InventoryItemOptionsPopup`
 - `Item Presentation Catalog` -> `InventoryItemPresentationCatalog.asset`
 - Thường nên giữ:
 - `Auto Load Missing Inventory Data` enabled
@@ -726,6 +744,121 @@ Checklist:
 - While character state is `Cultivating`, `StartCultivationButtonText` changes to `Dung tu luyen`.
 - When cultivation reaches realm cap, the server now auto-switches state back to idle.
 - When realm cap is reached, hide `StartCultivationButton` and show `BreakthroughSection` instead.
+
+### 3.6. Skill panel checklist
+
+Muc tieu:
+- panel rieng cho skill, tach khoi `StatsPanel` va `MartialArtPanel`
+- ben trai/phai la danh sach skill so huu va cum o skill de trang bi
+- server tra ve:
+- danh sach skill character dang so huu
+- so o loadout toi da
+- moi o dang gan skill nao hoac de trong
+- phase hien tai server dang tra `5` o, nhung client da dung dong theo `MaxLoadoutSlotCount`
+
+Hierarchy goi y:
+
+```text
+SkillPanelRoot
+  HeaderRow
+    OwnedCountText
+    SkillStatusText
+  SkillLoadoutSection
+    LoadoutSlotsRoot
+      SkillSlotTemplate
+        FrameBackground
+        EmptyStateRoot
+          SlotIndexText
+        OccupiedStateRoot
+        SkillIcon
+  OwnedSkillList
+    Viewport
+      Content
+        SkillItemTemplate
+          Icon
+          NameText
+          DetailText
+          CooldownText
+          SelectedHighlight
+```
+
+Checklist:
+
+1. Root controller
+- Gan `WorldSkillPanelController` len `SkillPanelRoot`.
+- Neu them tab rieng trong `WorldMenuController`, goi y `tab id = skill`.
+- `Content Root` -> panel chua `SkillPanelRoot`
+- `Content Text` -> de trong
+
+2. Header
+- `Owned Count Text` -> `OwnedCountText`
+- `Status Text` -> `SkillStatusText`
+- `OwnedCountText` hien tong so skill dang so huu va so o loadout da dung.
+
+3. Cum loadout slot dong
+- Tao object `LoadoutSlotsRoot`, gan `SkillLoadoutSlotsView`.
+- Ben trong tao 1 object `SkillSlotTemplate`, gan `SkillLoadoutSlotView`.
+- Client se tu instantiate them slot tu template nay theo `MaxLoadoutSlotCount` server tra ve.
+- Wiring tren `SkillLoadoutSlotView`:
+- `Icon Image` -> `SkillIcon`
+- `Slot Label Text` -> `SlotIndexText`
+- `Empty State Root` -> `EmptyStateRoot`
+- `Occupied State Root` -> `OccupiedStateRoot`
+- `Selected Highlight Root` -> `SelectedHighlight` neu co
+- Root cua tung slot nen co `Image` hoac `Graphic` de nhan `Drop`.
+- Wiring tren `SkillLoadoutSlotsView`:
+- `Content Root` -> `LoadoutSlotsRoot`
+- `Slot Template` -> `SkillSlotTemplate`
+- giu `Hide Template Object` bat
+- Tren `WorldSkillPanelController`, keo `Loadout Slots View` -> object `LoadoutSlotsRoot`.
+
+4. Danh sach skill so huu
+- Tao `OwnedSkillList`, gan `SkillListView`.
+- Trong `Content`, tao `SkillItemTemplate`, gan `SkillListItemView`.
+- Wiring tren `SkillListItemView`:
+- `Icon Image` -> `Icon` neu row cua ban co icon
+- `Name Text` -> `NameText`
+- `Detail Text` -> `DetailText`
+- `Cooldown Text` -> `CooldownText`
+- `Selected Highlight Root` -> `SelectedHighlight`
+- Wiring tren `SkillListView`:
+- `Content Root` -> `Content`
+- `Item Template` -> `SkillItemTemplate`
+- giu `Hide Template Object` bat
+
+5. Skill presentation catalog
+- Tao asset:
+- `Create > PhamNhanOnline > UI > Skill Presentation Catalog`
+- path goi y:
+- `Assets/Game/Content/ScriptableObjects/UI/SkillPresentationCatalog.asset`
+- Gan asset nay vao `Presentation Catalog` tren `WorldSkillPanelController`.
+- Catalog map sprite theo:
+- `skill_group_code`
+- hoac fallback theo `skill.code`
+- Neu chua co icon mapping, row va slot van chay, icon se tu an.
+
+6. Hanh vi hien tai
+- Mo panel skill, client gui `GetOwnedSkillsPacket` neu chua co cache.
+- Skill dang duoc trang bi se chi hien trong cac o loadout, khong hien trong list.
+- Keo skill tu list vao 1 o trong -> client gui `SetSkillLoadoutSlotPacket`.
+- Keo skill tu o nay sang o khac -> client gui `SetSkillLoadoutSlotPacket` cho o dich.
+- Keo skill dang equip tu slot tro lai list -> client gui `SetSkillLoadoutSlotPacket` voi `PlayerSkillId = 0` de clear o do.
+- Server hien tai dang tra `5` o loadout, nhung client se render theo `MaxLoadoutSlotCount` thay vi hardcode UI.
+
+7. Wiring cuoi cung tren `WorldSkillPanelController`
+- `Owned Count Text` -> `OwnedCountText`
+- `Status Text` -> `SkillStatusText`
+- `Presentation Catalog` -> `SkillPresentationCatalog.asset`
+- `Skill List View` -> `OwnedSkillList`
+- `Loadout Slots View` -> `LoadoutSlotsRoot`
+- Thuong nen giu:
+- `Auto Load Missing Skills` enabled
+- `Reload Retry Cooldown Seconds` around `2`
+
+8. Goi y raycast
+- `SkillItemTemplate` root nen co `Image` hoac `Button` voi `Raycast Target = true`
+- `SelectedHighlight` va object trang tri khong can bat chuot thi nen tat `Raycast Target`
+- Root cua tung `SkillSlot` nen co `Image` hoac `Graphic` de nhan `IDropHandler`
 
 ## Naming rules
 

@@ -6,6 +6,8 @@ namespace AdminDesignerTool;
 
 internal sealed class CharacterMartialArtWorkspaceControl : UserControl
 {
+    private const int MartialArtUnlockSourceType = 2;
+
     private readonly string _connectionString;
     private readonly Label _titleLabel;
     private readonly Label _descriptionLabel;
@@ -393,6 +395,8 @@ internal sealed class CharacterMartialArtWorkspaceControl : UserControl
                     insert into public.player_skills (
                         player_id,
                         skill_id,
+                        skill_group_code,
+                        source_type,
                         source_martial_art_id,
                         source_martial_art_skill_id,
                         unlocked_at,
@@ -400,9 +404,11 @@ internal sealed class CharacterMartialArtWorkspaceControl : UserControl
                         created_at,
                         updated_at
                     )
-                    select
+                    select distinct on (mas.martial_art_id, s.skill_group_code)
                         @player_id,
                         mas.skill_id,
+                        s.skill_group_code,
+                        @source_type,
                         mas.martial_art_id,
                         mas.id,
                         now(),
@@ -410,51 +416,45 @@ internal sealed class CharacterMartialArtWorkspaceControl : UserControl
                         now(),
                         now()
                     from public.martial_art_skills mas
+                    inner join public.skills s on s.id = mas.skill_id
                     where mas.martial_art_id = @martial_art_id
                       and mas.unlock_stage <= 1
-                    on conflict (player_id, source_martial_art_skill_id) do nothing;
+                    order by
+                        mas.martial_art_id,
+                        s.skill_group_code,
+                        s.skill_level desc,
+                        mas.unlock_stage desc,
+                        mas.id desc
+                    on conflict (player_id, skill_group_code) do update
+                    set skill_id = excluded.skill_id,
+                        source_type = excluded.source_type,
+                        skill_group_code = excluded.skill_group_code,
+                        source_martial_art_id = excluded.source_martial_art_id,
+                        source_martial_art_skill_id = excluded.source_martial_art_skill_id,
+                        unlocked_at = excluded.unlocked_at,
+                        is_active = true,
+                        updated_at = now()
+                    where (
+                        select coalesce(skill_level, 0)
+                        from public.skills
+                        where id = excluded.skill_id
+                    ) > (
+                        select coalesce(skill_level, 0)
+                        from public.skills
+                        where id = public.player_skills.skill_id
+                    );
                     """;
 
                 await using (var command = new NpgsqlCommand(grantStageOneSkillsSql, connection, transaction))
                 {
                     command.Parameters.AddWithValue("player_id", characterId);
                     command.Parameters.AddWithValue("martial_art_id", martialArtId);
+                    command.Parameters.AddWithValue("source_type", MartialArtUnlockSourceType);
                     await command.ExecuteNonQueryAsync();
                 }
             }
             else
             {
-                const string clearLoadoutsSql = """
-                    delete from public.player_skill_loadouts
-                    where player_id = @player_id
-                      and player_skill_id in (
-                          select id
-                          from public.player_skills
-                          where player_id = @player_id
-                            and source_martial_art_id = @martial_art_id
-                      );
-                    """;
-
-                await using (var command = new NpgsqlCommand(clearLoadoutsSql, connection, transaction))
-                {
-                    command.Parameters.AddWithValue("player_id", characterId);
-                    command.Parameters.AddWithValue("martial_art_id", martialArtId);
-                    await command.ExecuteNonQueryAsync();
-                }
-
-                const string clearPlayerSkillsSql = """
-                    delete from public.player_skills
-                    where player_id = @player_id
-                      and source_martial_art_id = @martial_art_id;
-                    """;
-
-                await using (var command = new NpgsqlCommand(clearPlayerSkillsSql, connection, transaction))
-                {
-                    command.Parameters.AddWithValue("player_id", characterId);
-                    command.Parameters.AddWithValue("martial_art_id", martialArtId);
-                    await command.ExecuteNonQueryAsync();
-                }
-
                 const string clearActiveSql = """
                     update public.character_base_stats
                     set active_martial_art_id = null

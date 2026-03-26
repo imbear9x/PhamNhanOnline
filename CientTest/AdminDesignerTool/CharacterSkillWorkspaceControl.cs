@@ -6,6 +6,8 @@ namespace AdminDesignerTool;
 
 internal sealed class CharacterSkillWorkspaceControl : UserControl
 {
+    private const int ManualSourceType = 1;
+
     private readonly string _connectionString;
     private readonly Label _titleLabel;
     private readonly Label _descriptionLabel;
@@ -274,47 +276,53 @@ internal sealed class CharacterSkillWorkspaceControl : UserControl
 
             const string sql = """
                 select
-                    mas.id as martial_art_skill_id,
-                    coalesce(ps.id is not null, false) as is_owned,
+                    coalesce(ps.skill_id = s.id, false) as is_owned,
                     coalesce(ps.is_active, false) as is_active,
                     s.id as skill_id,
                     s.code as skill_code,
                     s.name as skill_name,
-                    ma.id as martial_art_id,
-                    ma.code as martial_art_code,
-                    ma.name as martial_art_name,
-                    mas.unlock_stage,
-                    coalesce(pma.current_stage, 0) as player_martial_art_stage,
+                    s.skill_group_code,
+                    s.skill_level,
+                    s.skill_category,
+                    ps.source_type,
+                    ps.source_martial_art_id,
+                    coalesce(ma.code, '') as source_martial_art_code,
+                    coalesce(ma.name, '') as source_martial_art_name,
+                    coalesce(mas.unlock_stage, 0) as unlock_stage,
                     coalesce(
                         string_agg(psl.slot_index::text, ', ' order by psl.slot_index)
                         filter (where psl.slot_index is not null),
                         ''
                     ) as loadout_slots
-                from public.martial_art_skills mas
-                inner join public.skills s on s.id = mas.skill_id
-                inner join public.martial_arts ma on ma.id = mas.martial_art_id
+                from public.skills s
                 left join public.player_skills ps
                     on ps.player_id = @player_id
-                   and ps.source_martial_art_skill_id = mas.id
-                left join public.player_martial_arts pma
-                    on pma.player_id = @player_id
-                   and pma.martial_art_id = mas.martial_art_id
+                   and ps.skill_id = s.id
+                left join public.martial_arts ma
+                    on ma.id = ps.source_martial_art_id
+                left join public.martial_art_skills mas
+                    on mas.id = ps.source_martial_art_skill_id
                 left join public.player_skill_loadouts psl
                     on psl.player_id = @player_id
                    and psl.player_skill_id = ps.id
                 group by
-                    mas.id,
                     ps.id,
+                    ps.skill_id,
                     ps.is_active,
-                    s.id,
-                    s.code,
-                    s.name,
-                    ma.id,
+                    ps.source_type,
+                    ps.source_martial_art_id,
                     ma.code,
                     ma.name,
                     mas.unlock_stage,
-                    pma.current_stage
-                order by ma.id, mas.unlock_stage, mas.id;
+                    s.id,
+                    s.code,
+                    s.name,
+                    s.skill_group_code,
+                    s.skill_level
+                order by
+                    s.skill_group_code,
+                    s.skill_level,
+                    s.id;
                 """;
 
             await using (var command = new NpgsqlCommand(sql, connection))
@@ -327,7 +335,8 @@ internal sealed class CharacterSkillWorkspaceControl : UserControl
             var table = CreateEditableSkillTable(sourceTable);
             _skillBindingSource.DataSource = table;
             ConfigureSkillGrid();
-            SetStatus($"Da tai {table.Rows.Count} skill source cho nhan vat dang chon.");
+            var ownedCount = table.AsEnumerable().Count(row => row.Field<bool>("is_owned"));
+            SetStatus($"Da tai {table.Rows.Count} skill ({ownedCount} dang so huu) cho nhan vat dang chon.");
         }
         catch (Exception ex)
         {
@@ -363,12 +372,14 @@ internal sealed class CharacterSkillWorkspaceControl : UserControl
         if (row.DataBoundItem is not DataRowView rowView)
             return;
 
-        var martialArtSkillId = Convert.ToInt32(rowView["martial_art_skill_id"], CultureInfo.InvariantCulture);
+        var skillId = Convert.ToInt32(rowView["skill_id"], CultureInfo.InvariantCulture);
+        var skillGroupCode = Convert.ToString(rowView["skill_group_code"], CultureInfo.InvariantCulture) ?? string.Empty;
         var isOwned = Convert.ToBoolean(rowView["is_owned"], CultureInfo.InvariantCulture);
-        await ToggleSkillOwnershipAsync(_selectedCharacterId.Value, martialArtSkillId, isOwned);
+
+        await ToggleSkillOwnershipAsync(_selectedCharacterId.Value, skillId, skillGroupCode, isOwned);
     }
 
-    private async Task ToggleSkillOwnershipAsync(Guid characterId, int martialArtSkillId, bool shouldOwn)
+    private async Task ToggleSkillOwnershipAsync(Guid characterId, int skillId, string skillGroupCode, bool shouldOwn)
     {
         if (_toggleInFlight)
             return;
@@ -387,40 +398,12 @@ internal sealed class CharacterSkillWorkspaceControl : UserControl
 
             if (shouldOwn)
             {
-                const string ensureMartialArtSql = """
-                    insert into public.player_martial_arts (
-                        player_id,
-                        martial_art_id,
-                        current_stage,
-                        current_exp,
-                        created_at,
-                        updated_at
-                    )
-                    select
-                        @player_id,
-                        mas.martial_art_id,
-                        greatest(mas.unlock_stage, 1),
-                        0,
-                        now(),
-                        now()
-                    from public.martial_art_skills mas
-                    where mas.id = @martial_art_skill_id
-                    on conflict (player_id, martial_art_id) do update
-                    set current_stage = greatest(public.player_martial_arts.current_stage, excluded.current_stage),
-                        updated_at = now();
-                    """;
-
-                await using (var command = new NpgsqlCommand(ensureMartialArtSql, connection, transaction))
-                {
-                    command.Parameters.AddWithValue("player_id", characterId);
-                    command.Parameters.AddWithValue("martial_art_skill_id", martialArtSkillId);
-                    await command.ExecuteNonQueryAsync();
-                }
-
                 const string grantSkillSql = """
                     insert into public.player_skills (
                         player_id,
                         skill_id,
+                        skill_group_code,
+                        source_type,
                         source_martial_art_id,
                         source_martial_art_skill_id,
                         unlocked_at,
@@ -430,18 +413,23 @@ internal sealed class CharacterSkillWorkspaceControl : UserControl
                     )
                     select
                         @player_id,
-                        mas.skill_id,
-                        mas.martial_art_id,
-                        mas.id,
+                        s.id,
+                        s.skill_group_code,
+                        @source_type,
+                        null,
+                        null,
                         now(),
                         true,
                         now(),
                         now()
-                    from public.martial_art_skills mas
-                    where mas.id = @martial_art_skill_id
-                    on conflict (player_id, source_martial_art_skill_id) do update
+                    from public.skills s
+                    where s.id = @skill_id
+                    on conflict (player_id, skill_group_code) do update
                     set skill_id = excluded.skill_id,
+                        source_type = excluded.source_type,
                         source_martial_art_id = excluded.source_martial_art_id,
+                        source_martial_art_skill_id = excluded.source_martial_art_skill_id,
+                        unlocked_at = excluded.unlocked_at,
                         is_active = true,
                         updated_at = now();
                     """;
@@ -449,7 +437,8 @@ internal sealed class CharacterSkillWorkspaceControl : UserControl
                 await using (var command = new NpgsqlCommand(grantSkillSql, connection, transaction))
                 {
                     command.Parameters.AddWithValue("player_id", characterId);
-                    command.Parameters.AddWithValue("martial_art_skill_id", martialArtSkillId);
+                    command.Parameters.AddWithValue("skill_id", skillId);
+                    command.Parameters.AddWithValue("source_type", ManualSourceType);
                     await command.ExecuteNonQueryAsync();
                 }
             }
@@ -462,27 +451,27 @@ internal sealed class CharacterSkillWorkspaceControl : UserControl
                           select id
                           from public.player_skills
                           where player_id = @player_id
-                            and source_martial_art_skill_id = @martial_art_skill_id
+                            and skill_group_code = @skill_group_code
                       );
                     """;
 
                 await using (var command = new NpgsqlCommand(clearLoadoutsSql, connection, transaction))
                 {
                     command.Parameters.AddWithValue("player_id", characterId);
-                    command.Parameters.AddWithValue("martial_art_skill_id", martialArtSkillId);
+                    command.Parameters.AddWithValue("skill_group_code", skillGroupCode);
                     await command.ExecuteNonQueryAsync();
                 }
 
                 const string revokeSkillSql = """
                     delete from public.player_skills
                     where player_id = @player_id
-                      and source_martial_art_skill_id = @martial_art_skill_id;
+                      and skill_group_code = @skill_group_code;
                     """;
 
                 await using (var command = new NpgsqlCommand(revokeSkillSql, connection, transaction))
                 {
                     command.Parameters.AddWithValue("player_id", characterId);
-                    command.Parameters.AddWithValue("martial_art_skill_id", martialArtSkillId);
+                    command.Parameters.AddWithValue("skill_group_code", skillGroupCode);
                     await command.ExecuteNonQueryAsync();
                 }
             }
@@ -571,17 +560,19 @@ internal sealed class CharacterSkillWorkspaceControl : UserControl
     private void ConfigureSkillGrid()
     {
         ConfigureSharedGridBehavior(_skillGrid);
-        SetColumn(_skillGrid, "martial_art_skill_id", "Id", width: 60, readOnly: true);
         SetColumn(_skillGrid, "is_owned", "So Huu", width: 70, readOnly: false);
         SetColumn(_skillGrid, "is_active", "Dang Bat", width: 70, readOnly: true);
         SetColumn(_skillGrid, "skill_id", "Skill Id", width: 70, readOnly: true);
-        SetColumn(_skillGrid, "skill_code", "Skill Code", width: 140, readOnly: true);
+        SetColumn(_skillGrid, "skill_code", "Skill Code", width: 150, readOnly: true);
         SetColumn(_skillGrid, "skill_name", "Ten Skill", width: 200, readOnly: true);
-        SetColumn(_skillGrid, "martial_art_id", "Cong Phap Id", width: 90, readOnly: true);
-        SetColumn(_skillGrid, "martial_art_code", "Cong Phap Code", width: 140, readOnly: true);
-        SetColumn(_skillGrid, "martial_art_name", "Ten Cong Phap", width: 200, readOnly: true);
+        SetColumn(_skillGrid, "skill_group_code", "Nhom Skill", width: 150, readOnly: true);
+        SetColumn(_skillGrid, "skill_level", "Cap", width: 60, readOnly: true);
+        SetColumn(_skillGrid, "skill_category", "Loai", width: 70, readOnly: true);
+        SetColumn(_skillGrid, "source_type", "Nguon", width: 70, readOnly: true);
+        SetColumn(_skillGrid, "source_martial_art_id", "Cong Phap Id", width: 90, readOnly: true);
+        SetColumn(_skillGrid, "source_martial_art_code", "Cong Phap Code", width: 140, readOnly: true);
+        SetColumn(_skillGrid, "source_martial_art_name", "Ten Cong Phap", width: 200, readOnly: true);
         SetColumn(_skillGrid, "unlock_stage", "Mo O Tang", width: 80, readOnly: true);
-        SetColumn(_skillGrid, "player_martial_art_stage", "Tang Hien Tai", width: 90, readOnly: true);
         SetColumn(_skillGrid, "loadout_slots", "O Loadout", width: 100, readOnly: true);
     }
 
@@ -640,17 +631,19 @@ internal sealed class CharacterSkillWorkspaceControl : UserControl
     private static DataTable CreateEmptySkillTable()
     {
         var table = new DataTable();
-        table.Columns.Add("martial_art_skill_id", typeof(int));
         table.Columns.Add("is_owned", typeof(bool));
         table.Columns.Add("is_active", typeof(bool));
         table.Columns.Add("skill_id", typeof(int));
         table.Columns.Add("skill_code", typeof(string));
         table.Columns.Add("skill_name", typeof(string));
-        table.Columns.Add("martial_art_id", typeof(int));
-        table.Columns.Add("martial_art_code", typeof(string));
-        table.Columns.Add("martial_art_name", typeof(string));
+        table.Columns.Add("skill_group_code", typeof(string));
+        table.Columns.Add("skill_level", typeof(int));
+        table.Columns.Add("skill_category", typeof(int));
+        table.Columns.Add("source_type", typeof(int));
+        table.Columns.Add("source_martial_art_id", typeof(int));
+        table.Columns.Add("source_martial_art_code", typeof(string));
+        table.Columns.Add("source_martial_art_name", typeof(string));
         table.Columns.Add("unlock_stage", typeof(int));
-        table.Columns.Add("player_martial_art_stage", typeof(int));
         table.Columns.Add("loadout_slots", typeof(string));
         return table;
     }
@@ -664,19 +657,25 @@ internal sealed class CharacterSkillWorkspaceControl : UserControl
         foreach (DataRow sourceRow in sourceTable.Rows)
         {
             var row = table.NewRow();
-            row["martial_art_skill_id"] = Convert.ToInt32(sourceRow["martial_art_skill_id"], CultureInfo.InvariantCulture);
             row["is_owned"] = Convert.ToBoolean(sourceRow["is_owned"], CultureInfo.InvariantCulture);
             row["is_active"] = Convert.ToBoolean(sourceRow["is_active"], CultureInfo.InvariantCulture);
             row["skill_id"] = Convert.ToInt32(sourceRow["skill_id"], CultureInfo.InvariantCulture);
             row["skill_code"] = Convert.ToString(sourceRow["skill_code"], CultureInfo.InvariantCulture) ?? string.Empty;
             row["skill_name"] = Convert.ToString(sourceRow["skill_name"], CultureInfo.InvariantCulture) ?? string.Empty;
-            row["martial_art_id"] = Convert.ToInt32(sourceRow["martial_art_id"], CultureInfo.InvariantCulture);
-            row["martial_art_code"] = Convert.ToString(sourceRow["martial_art_code"], CultureInfo.InvariantCulture) ?? string.Empty;
-            row["martial_art_name"] = Convert.ToString(sourceRow["martial_art_name"], CultureInfo.InvariantCulture) ?? string.Empty;
-            row["unlock_stage"] = Convert.ToInt32(sourceRow["unlock_stage"], CultureInfo.InvariantCulture);
-            row["player_martial_art_stage"] = sourceRow["player_martial_art_stage"] is null or DBNull
+            row["skill_group_code"] = Convert.ToString(sourceRow["skill_group_code"], CultureInfo.InvariantCulture) ?? string.Empty;
+            row["skill_level"] = Convert.ToInt32(sourceRow["skill_level"], CultureInfo.InvariantCulture);
+            row["skill_category"] = Convert.ToInt32(sourceRow["skill_category"], CultureInfo.InvariantCulture);
+            row["source_type"] = sourceRow["source_type"] is DBNull
                 ? 0
-                : Convert.ToInt32(sourceRow["player_martial_art_stage"], CultureInfo.InvariantCulture);
+                : Convert.ToInt32(sourceRow["source_type"], CultureInfo.InvariantCulture);
+            row["source_martial_art_id"] = sourceRow["source_martial_art_id"] is DBNull
+                ? DBNull.Value
+                : Convert.ToInt32(sourceRow["source_martial_art_id"], CultureInfo.InvariantCulture);
+            row["source_martial_art_code"] = Convert.ToString(sourceRow["source_martial_art_code"], CultureInfo.InvariantCulture) ?? string.Empty;
+            row["source_martial_art_name"] = Convert.ToString(sourceRow["source_martial_art_name"], CultureInfo.InvariantCulture) ?? string.Empty;
+            row["unlock_stage"] = sourceRow["unlock_stage"] is DBNull
+                ? 0
+                : Convert.ToInt32(sourceRow["unlock_stage"], CultureInfo.InvariantCulture);
             row["loadout_slots"] = Convert.ToString(sourceRow["loadout_slots"], CultureInfo.InvariantCulture) ?? string.Empty;
             table.Rows.Add(row);
         }

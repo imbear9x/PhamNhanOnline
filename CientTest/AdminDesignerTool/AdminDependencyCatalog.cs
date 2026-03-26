@@ -62,10 +62,6 @@ internal static class AdminDependencyCatalog
                 Check("Cong phap", "select count(*) from public.martial_arts;", "Can tao it nhat 1 Cong Phap truoc khi them Unlock Skill Tu Cong Phap."),
                 Check("Skill", "select count(*) from public.skills;", "Can tao it nhat 1 Skill truoc khi them Unlock Skill Tu Cong Phap.")
             ],
-            ["martial_art_skill_scalings"] =
-            [
-                Check("Unlock skill", "select count(*) from public.martial_art_skills;", "Can tao unlock skill trong Cong Phap truoc khi them Scaling Skill Theo Cong Phap.")
-            ],
             ["equipment_templates"] =
             [
                 Check("Equipment item template", "select count(*) from public.item_templates where item_type = 1;", "Can tao it nhat 1 Item Template co loai Equipment truoc khi them Equipment Templates.")

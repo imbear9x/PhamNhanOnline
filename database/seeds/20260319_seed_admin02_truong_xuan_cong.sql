@@ -36,6 +36,8 @@ upsert_player_skill as (
     insert into public.player_skills (
         player_id,
         skill_id,
+        skill_group_code,
+        source_type,
         source_martial_art_id,
         source_martial_art_skill_id,
         unlocked_at,
@@ -46,6 +48,8 @@ upsert_player_skill as (
     select
         tc.character_id,
         1,
+        'moc_mien_chuong',
+        2,
         1,
         1,
         timezone('utc', now()),
@@ -53,10 +57,13 @@ upsert_player_skill as (
         timezone('utc', now()),
         timezone('utc', now())
     from target_character tc
-    on conflict (player_id, source_martial_art_skill_id) do update
+    on conflict (player_id, skill_group_code) do update
     set
         skill_id = excluded.skill_id,
+        skill_group_code = excluded.skill_group_code,
+        source_type = excluded.source_type,
         source_martial_art_id = excluded.source_martial_art_id,
+        source_martial_art_skill_id = excluded.source_martial_art_skill_id,
         is_active = true,
         updated_at = timezone('utc', now())
     returning id, player_id

@@ -10,14 +10,16 @@ namespace PhamNhanOnline.Client.UI.Potential
     {
         public readonly struct OptionEntry
         {
-            public OptionEntry(string label, Action onClick)
+            public OptionEntry(string label, Action onClick, bool interactable = true)
             {
                 Label = label;
                 OnClick = onClick;
+                Interactable = interactable;
             }
 
             public string Label { get; }
             public Action OnClick { get; }
+            public bool Interactable { get; }
         }
 
         [Header("References")]
@@ -80,7 +82,7 @@ namespace PhamNhanOnline.Client.UI.Potential
                 if (!shouldBeVisible)
                     continue;
 
-                option.SetContent(options[i].Label, options[i].OnClick, force: true);
+                option.SetContent(options[i].Label, options[i].OnClick, options[i].Interactable, force: true);
             }
 
             PositionNearCursor();

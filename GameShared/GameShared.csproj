@@ -16,4 +16,20 @@
     <None Remove="Diagnostics\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Generated\**" />
+    <EmbeddedResource Remove="Generated\**" />
+    <None Remove="Generated\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PacketGenerator\PacketGenerator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <Target Name="VerifyPacketIds" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="powershell -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\scripts\check-packet-ids.ps1&quot;" />
+  </Target>
+
 </Project>

@@ -89,6 +89,126 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.TravelToMapResultPacket:
                 id = 27;
                 return true;
+            case global::GameShared.Packets.StartCultivationPacket:
+                id = 28;
+                return true;
+            case global::GameShared.Packets.StartCultivationResultPacket:
+                id = 29;
+                return true;
+            case global::GameShared.Packets.StopCultivationPacket:
+                id = 30;
+                return true;
+            case global::GameShared.Packets.StopCultivationResultPacket:
+                id = 31;
+                return true;
+            case global::GameShared.Packets.BreakthroughPacket:
+                id = 32;
+                return true;
+            case global::GameShared.Packets.BreakthroughResultPacket:
+                id = 33;
+                return true;
+            case global::GameShared.Packets.AllocatePotentialPacket:
+                id = 34;
+                return true;
+            case global::GameShared.Packets.AllocatePotentialResultPacket:
+                id = 35;
+                return true;
+            case global::GameShared.Packets.CultivationRewardsGrantedPacket:
+                id = 36;
+                return true;
+            case global::GameShared.Packets.GetMapZonesPacket:
+                id = 37;
+                return true;
+            case global::GameShared.Packets.GetMapZonesResultPacket:
+                id = 38;
+                return true;
+            case global::GameShared.Packets.SwitchMapZonePacket:
+                id = 39;
+                return true;
+            case global::GameShared.Packets.SwitchMapZoneResultPacket:
+                id = 40;
+                return true;
+            case global::GameShared.Packets.GetOwnedMartialArtsPacket:
+                id = 41;
+                return true;
+            case global::GameShared.Packets.GetOwnedMartialArtsResultPacket:
+                id = 42;
+                return true;
+            case global::GameShared.Packets.UseMartialArtBookPacket:
+                id = 43;
+                return true;
+            case global::GameShared.Packets.UseMartialArtBookResultPacket:
+                id = 44;
+                return true;
+            case global::GameShared.Packets.SetActiveMartialArtPacket:
+                id = 45;
+                return true;
+            case global::GameShared.Packets.SetActiveMartialArtResultPacket:
+                id = 46;
+                return true;
+            case global::GameShared.Packets.WorldRuntimeSnapshotPacket:
+                id = 47;
+                return true;
+            case global::GameShared.Packets.EnemySpawnedPacket:
+                id = 48;
+                return true;
+            case global::GameShared.Packets.EnemyDespawnedPacket:
+                id = 49;
+                return true;
+            case global::GameShared.Packets.EnemyHpChangedPacket:
+                id = 50;
+                return true;
+            case global::GameShared.Packets.GroundRewardSpawnedPacket:
+                id = 51;
+                return true;
+            case global::GameShared.Packets.GroundRewardDespawnedPacket:
+                id = 52;
+                return true;
+            case global::GameShared.Packets.AttackEnemyPacket:
+                id = 53;
+                return true;
+            case global::GameShared.Packets.AttackEnemyResultPacket:
+                id = 54;
+                return true;
+            case global::GameShared.Packets.PickupGroundRewardPacket:
+                id = 55;
+                return true;
+            case global::GameShared.Packets.PickupGroundRewardResultPacket:
+                id = 56;
+                return true;
+            case global::GameShared.Packets.MapInstanceClosedPacket:
+                id = 57;
+                return true;
+            case global::GameShared.Packets.GetInventoryPacket:
+                id = 58;
+                return true;
+            case global::GameShared.Packets.GetInventoryResultPacket:
+                id = 59;
+                return true;
+            case global::GameShared.Packets.EquipInventoryItemPacket:
+                id = 60;
+                return true;
+            case global::GameShared.Packets.EquipInventoryItemResultPacket:
+                id = 61;
+                return true;
+            case global::GameShared.Packets.UnequipInventoryItemPacket:
+                id = 62;
+                return true;
+            case global::GameShared.Packets.UnequipInventoryItemResultPacket:
+                id = 63;
+                return true;
+            case global::GameShared.Packets.GetOwnedSkillsPacket:
+                id = 64;
+                return true;
+            case global::GameShared.Packets.GetOwnedSkillsResultPacket:
+                id = 65;
+                return true;
+            case global::GameShared.Packets.SetSkillLoadoutSlotPacket:
+                id = 66;
+                return true;
+            case global::GameShared.Packets.SetSkillLoadoutSlotResultPacket:
+                id = 67;
+                return true;
             default:
                 id = default;
                 return false;
@@ -126,6 +246,46 @@ internal static class PacketGeneratedRegistry
             25 => new global::GameShared.Packets.RegisterResultPacket(),
             26 => new global::GameShared.Packets.TravelToMapPacket(),
             27 => new global::GameShared.Packets.TravelToMapResultPacket(),
+            28 => new global::GameShared.Packets.StartCultivationPacket(),
+            29 => new global::GameShared.Packets.StartCultivationResultPacket(),
+            30 => new global::GameShared.Packets.StopCultivationPacket(),
+            31 => new global::GameShared.Packets.StopCultivationResultPacket(),
+            32 => new global::GameShared.Packets.BreakthroughPacket(),
+            33 => new global::GameShared.Packets.BreakthroughResultPacket(),
+            34 => new global::GameShared.Packets.AllocatePotentialPacket(),
+            35 => new global::GameShared.Packets.AllocatePotentialResultPacket(),
+            36 => new global::GameShared.Packets.CultivationRewardsGrantedPacket(),
+            37 => new global::GameShared.Packets.GetMapZonesPacket(),
+            38 => new global::GameShared.Packets.GetMapZonesResultPacket(),
+            39 => new global::GameShared.Packets.SwitchMapZonePacket(),
+            40 => new global::GameShared.Packets.SwitchMapZoneResultPacket(),
+            41 => new global::GameShared.Packets.GetOwnedMartialArtsPacket(),
+            42 => new global::GameShared.Packets.GetOwnedMartialArtsResultPacket(),
+            43 => new global::GameShared.Packets.UseMartialArtBookPacket(),
+            44 => new global::GameShared.Packets.UseMartialArtBookResultPacket(),
+            45 => new global::GameShared.Packets.SetActiveMartialArtPacket(),
+            46 => new global::GameShared.Packets.SetActiveMartialArtResultPacket(),
+            47 => new global::GameShared.Packets.WorldRuntimeSnapshotPacket(),
+            48 => new global::GameShared.Packets.EnemySpawnedPacket(),
+            49 => new global::GameShared.Packets.EnemyDespawnedPacket(),
+            50 => new global::GameShared.Packets.EnemyHpChangedPacket(),
+            51 => new global::GameShared.Packets.GroundRewardSpawnedPacket(),
+            52 => new global::GameShared.Packets.GroundRewardDespawnedPacket(),
+            53 => new global::GameShared.Packets.AttackEnemyPacket(),
+            54 => new global::GameShared.Packets.AttackEnemyResultPacket(),
+            55 => new global::GameShared.Packets.PickupGroundRewardPacket(),
+            56 => new global::GameShared.Packets.PickupGroundRewardResultPacket(),
+            57 => new global::GameShared.Packets.MapInstanceClosedPacket(),
+            58 => new global::GameShared.Packets.GetInventoryPacket(),
+            59 => new global::GameShared.Packets.GetInventoryResultPacket(),
+            60 => new global::GameShared.Packets.EquipInventoryItemPacket(),
+            61 => new global::GameShared.Packets.EquipInventoryItemResultPacket(),
+            62 => new global::GameShared.Packets.UnequipInventoryItemPacket(),
+            63 => new global::GameShared.Packets.UnequipInventoryItemResultPacket(),
+            64 => new global::GameShared.Packets.GetOwnedSkillsPacket(),
+            65 => new global::GameShared.Packets.GetOwnedSkillsResultPacket(),
+            66 => new global::GameShared.Packets.SetSkillLoadoutSlotPacket(),
+            67 => new global::GameShared.Packets.SetSkillLoadoutSlotResultPacket(),
             _ => null
         };
     }

@@ -28,4 +28,7 @@ public sealed class PlayerSkillLoadoutRepository
 
     public Task<int> UpdateAsync(PlayerSkillLoadoutEntity entity, CancellationToken cancellationToken = default) =>
         _db.UpdateEntityAsync(entity, cancellationToken);
+
+    public Task<int> DeleteAsync(PlayerSkillLoadoutEntity entity, CancellationToken cancellationToken = default) =>
+        _db.DeleteAsync(entity, token: cancellationToken);
 }

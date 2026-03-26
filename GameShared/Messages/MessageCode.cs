@@ -64,6 +64,12 @@ public enum MessageCode : int
     EquipmentSlotInvalid = 3026,
     EquipmentSlotMismatch = 3027,
     EquipmentSlotEmpty = 3028,
+    SkillLoadoutSlotInvalid = 3029,
+    PlayerSkillInvalid = 3030,
+    SkillNotLearned = 3031,
+    SkillLoadoutFirstSlotRequiresBasic = 3032,
+    SkillLoadoutBasicSkillRequired = 3033,
+    SkillLoadoutBasicOnlyAllowedInFirstSlot = 3034,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001,

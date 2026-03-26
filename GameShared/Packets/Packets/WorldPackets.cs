@@ -5,7 +5,7 @@ using GameShared.Models;
 
 namespace GameShared.Packets;
 
-[Packet]
+[Packet(17)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class MapJoinedPacket : IPacket
 {
@@ -13,7 +13,7 @@ public partial class MapJoinedPacket : IPacket
     public int? ZoneIndex { get; set; }
 }
 
-[Packet]
+[Packet(26)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
 public partial class TravelToMapPacket : IPacket
@@ -24,7 +24,7 @@ public partial class TravelToMapPacket : IPacket
     public int? TargetMapId { get; set; }
 }
 
-[Packet]
+[Packet(27)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class TravelToMapResultPacket : IPacket
 {
@@ -33,7 +33,7 @@ public partial class TravelToMapResultPacket : IPacket
     public int? TargetMapId { get; set; }
 }
 
-[Packet]
+[Packet(37)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
 public partial class GetMapZonesPacket : IPacket
@@ -44,7 +44,7 @@ public partial class GetMapZonesPacket : IPacket
     public int? MapId { get; set; }
 }
 
-[Packet]
+[Packet(38)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class GetMapZonesResultPacket : IPacket
 {
@@ -57,7 +57,7 @@ public partial class GetMapZonesResultPacket : IPacket
     public List<MapZoneSummaryModel>? Zones { get; set; }
 }
 
-[Packet]
+[Packet(39)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
 public partial class SwitchMapZonePacket : IPacket
@@ -73,7 +73,7 @@ public partial class SwitchMapZonePacket : IPacket
     public int? TargetZoneIndex { get; set; }
 }
 
-[Packet]
+[Packet(40)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class SwitchMapZoneResultPacket : IPacket
 {
@@ -84,7 +84,7 @@ public partial class SwitchMapZoneResultPacket : IPacket
     public MapZoneDetailModel? Zone { get; set; }
 }
 
-[Packet]
+[Packet(5)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.UnreliableSequenced, PacketTrafficClass.RealtimeState, MinIntervalMs = 40)]
 public partial class CharacterPositionSyncPacket : IPacket
@@ -93,14 +93,14 @@ public partial class CharacterPositionSyncPacket : IPacket
     public float? CurrentPosY { get; set; }
 }
 
-[Packet]
+[Packet(21)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class ObservedCharacterSpawnedPacket : IPacket
 {
     public ObservedCharacterModel? Character { get; set; }
 }
 
-[Packet]
+[Packet(19)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class ObservedCharacterDespawnedPacket : IPacket
 {
@@ -109,7 +109,7 @@ public partial class ObservedCharacterDespawnedPacket : IPacket
     public int? ZoneIndex { get; set; }
 }
 
-[Packet]
+[Packet(20)]
 [PacketTransport(PacketTransportMode.UnreliableSequenced, PacketTrafficClass.RealtimeState)]
 public partial class ObservedCharacterMovedPacket : IPacket
 {
@@ -120,7 +120,7 @@ public partial class ObservedCharacterMovedPacket : IPacket
     public float? CurrentPosY { get; set; }
 }
 
-[Packet]
+[Packet(18)]
 [PacketTransport(PacketTransportMode.ReliableSequenced, PacketTrafficClass.StateSync)]
 public partial class ObservedCharacterCurrentStateChangedPacket : IPacket
 {
@@ -130,7 +130,7 @@ public partial class ObservedCharacterCurrentStateChangedPacket : IPacket
     public int? ZoneIndex { get; set; }
 }
 
-[Packet]
+[Packet(47)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class WorldRuntimeSnapshotPacket : IPacket
 {
@@ -144,7 +144,7 @@ public partial class WorldRuntimeSnapshotPacket : IPacket
     public List<GroundRewardModel>? GroundRewards { get; set; }
 }
 
-[Packet]
+[Packet(48)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class EnemySpawnedPacket : IPacket
 {
@@ -153,7 +153,7 @@ public partial class EnemySpawnedPacket : IPacket
     public EnemyRuntimeModel? Enemy { get; set; }
 }
 
-[Packet]
+[Packet(49)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class EnemyDespawnedPacket : IPacket
 {
@@ -162,7 +162,7 @@ public partial class EnemyDespawnedPacket : IPacket
     public int? EnemyRuntimeId { get; set; }
 }
 
-[Packet]
+[Packet(50)]
 [PacketTransport(PacketTransportMode.ReliableSequenced, PacketTrafficClass.StateSync)]
 public partial class EnemyHpChangedPacket : IPacket
 {
@@ -174,7 +174,7 @@ public partial class EnemyHpChangedPacket : IPacket
     public int? RuntimeState { get; set; }
 }
 
-[Packet]
+[Packet(51)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class GroundRewardSpawnedPacket : IPacket
 {
@@ -183,7 +183,7 @@ public partial class GroundRewardSpawnedPacket : IPacket
     public GroundRewardModel? Reward { get; set; }
 }
 
-[Packet]
+[Packet(52)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class GroundRewardDespawnedPacket : IPacket
 {
@@ -192,7 +192,7 @@ public partial class GroundRewardDespawnedPacket : IPacket
     public int? RewardId { get; set; }
 }
 
-[Packet]
+[Packet(53)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.Business, MinIntervalMs = 80)]
 public partial class AttackEnemyPacket : IPacket
@@ -206,7 +206,7 @@ public partial class AttackEnemyPacket : IPacket
     public int? MartialArtSkillId { get; set; }
 }
 
-[Packet]
+[Packet(54)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.Business)]
 public partial class AttackEnemyResultPacket : IPacket
 {
@@ -218,7 +218,7 @@ public partial class AttackEnemyResultPacket : IPacket
     public bool? IsKilled { get; set; }
 }
 
-[Packet]
+[Packet(55)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.Business, MinIntervalMs = 80)]
 public partial class PickupGroundRewardPacket : IPacket
@@ -229,7 +229,7 @@ public partial class PickupGroundRewardPacket : IPacket
     public int? RewardId { get; set; }
 }
 
-[Packet]
+[Packet(56)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.Business)]
 public partial class PickupGroundRewardResultPacket : IPacket
 {
@@ -239,7 +239,7 @@ public partial class PickupGroundRewardResultPacket : IPacket
     public List<GroundRewardItemModel>? GrantedItems { get; set; }
 }
 
-[Packet]
+[Packet(57)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class MapInstanceClosedPacket : IPacket
 {

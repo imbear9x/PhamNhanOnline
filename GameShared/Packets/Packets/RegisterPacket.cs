@@ -4,7 +4,7 @@ using GameShared.Messages;
 
 namespace GameShared.Packets;
 
-[Packet]
+[Packet(24)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 1000)]
 public partial class RegisterPacket : IPacket
 {
@@ -25,7 +25,7 @@ public partial class RegisterPacket : IPacket
     public string? Email { get; set; }
 }
 
-[Packet]
+[Packet(25)]
 [PacketTransport(PacketTransportMode.ReliableOrdered)]
 public partial class RegisterResultPacket : IPacket
 {

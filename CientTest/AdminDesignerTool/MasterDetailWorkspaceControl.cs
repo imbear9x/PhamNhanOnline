@@ -178,6 +178,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                 "map_workspace" => BuildMapWorkspace(resourcesByKey),
                 "pill_recipe_workspace" => BuildPillRecipeWorkspace(resourcesByKey),
                 "pill_workspace" => BuildPillWorkspace(resourcesByKey),
+                "skill_workspace" => BuildSkillWorkspace(resourcesByKey),
                 "herb_workspace" => BuildHerbWorkspace(resourcesByKey),
                 "game_random_workspace" => BuildGameRandomWorkspace(resourcesByKey),
                 "enemy_workspace" => BuildEnemyWorkspace(resourcesByKey),
@@ -515,6 +516,42 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                             });
                         },
                         () => BuildEmptyRequest(effects, "Chọn một pill template ở bảng trên để xem effect.")),
+                ]);
+        }
+
+        private static WorkspaceDefinition BuildSkillWorkspace(
+            IReadOnlyDictionary<string, AdminResourceDefinition> resourcesByKey)
+        {
+            var skills = resourcesByKey["skills"];
+            var effects = resourcesByKey["skill_effects"];
+
+            return new WorkspaceDefinition(
+                new AdminTableLoadRequest(
+                    skills,
+                    TitleOverride: "Danh Sach Skill",
+                    HelpTextOverride: "Bang cha de tao va chon skill. Moi cap skill la mot row rieng trong bang skills va duoc gom bang skill_group_code."),
+                [
+                    new WorkspaceChildDefinition(
+                        "Skill Effects",
+                        parentRow =>
+                        {
+                            var parentId = GetRequiredInt(parentRow, "id");
+                            return new AdminTableLoadRequest(
+                                effects,
+                                SelectSql: $"""
+                                    select *
+                                    from public.skill_effects
+                                    where skill_id = {parentId}
+                                    order by order_index, id;
+                                    """,
+                                DescriptionOverride: $"Chi hien thi effect cua skill id = {parentId}.",
+                                HelpTextOverride: "Khi bam Them Dong, tool se tu dien skill_id theo skill dang chon. Neu skill hien tai chua co effect va co cap truoc cung nhom, tool se tu clone effect cua cap truoc.",
+                                NewRowDefaults: new Dictionary<string, object?>
+                                {
+                                    ["skill_id"] = parentId
+                                });
+                        },
+                        () => BuildEmptyRequest(effects, "Chon mot skill o bang tren de xem effect.")),
                 ]);
         }
 

@@ -98,24 +98,21 @@ internal static class AdminColumnBindingCatalog
             """;
 
         const string skillLookupSql = """
-            select id as value, code || ' - ' || name as display
+            select
+                id as value,
+                code || ' - ' || name || ' [' || skill_group_code || ' Lv.' || skill_level || ']' as display
             from public.skills
             order by id;
             """;
 
-        const string skillEffectLookupSql = """
-            select se.id as value, s.code || ' - Effect ' || se.order_index as display
-            from public.skill_effects se
-            inner join public.skills s on s.id = se.skill_id
-            order by s.id, se.order_index;
-            """;
-
         const string martialArtSkillLookupSql = """
-            select mas.id as value, ma.code || ' -> ' || s.code || ' @Stage ' || mas.unlock_stage as display
+            select
+                mas.id as value,
+                ma.code || ' - T' || mas.unlock_stage || ' -> ' || s.code || ' [' || s.skill_group_code || ' Lv.' || s.skill_level || ']' as display
             from public.martial_art_skills mas
             inner join public.martial_arts ma on ma.id = mas.martial_art_id
             inner join public.skills s on s.id = mas.skill_id
-            order by ma.id, mas.unlock_stage, s.id;
+            order by ma.id, mas.unlock_stage, mas.id;
             """;
 
         const string itemTemplateLookupSql = """
@@ -281,7 +278,10 @@ internal static class AdminColumnBindingCatalog
         Add("martial_art_stage_stat_bonuses", "value_type", enumType: typeof(CombatValueType));
 
         Add("skills", "skill_type", enumType: typeof(CombatSkillType));
+        Add("skills", "skill_category", headerText: "Loai Slot Skill", enumType: typeof(SkillCategory));
         Add("skills", "target_type", enumType: typeof(SkillTargetType));
+        Add("skills", "skill_group_code", headerText: "Nhom Skill");
+        Add("skills", "skill_level", headerText: "Cap Skill");
         Add("skills", "cast_range", headerText: "Tam Xa");
 
         Add("skill_effects", "skill_id", lookupSql: skillLookupSql);
@@ -295,11 +295,11 @@ internal static class AdminColumnBindingCatalog
 
         Add("martial_art_skills", "martial_art_id", lookupSql: martialArtLookupSql);
         Add("martial_art_skills", "skill_id", lookupSql: skillLookupSql);
-
-        Add("martial_art_skill_scalings", "martial_art_skill_id", lookupSql: martialArtSkillLookupSql);
-        Add("martial_art_skill_scalings", "skill_effect_id", lookupSql: skillEffectLookupSql);
-        Add("martial_art_skill_scalings", "scaling_target", enumType: typeof(SkillScalingTarget));
-        Add("martial_art_skill_scalings", "value_type", enumType: typeof(CombatValueType));
+        Add("player_skills", "skill_id", lookupSql: skillLookupSql);
+        Add("player_skills", "skill_group_code", headerText: "Nhom Skill");
+        Add("player_skills", "source_type", headerText: "Nguon Skill", enumType: typeof(PlayerSkillSourceType));
+        Add("player_skills", "source_martial_art_id", headerText: "Cong Phap Nguon", lookupSql: martialArtLookupSql);
+        Add("player_skills", "source_martial_art_skill_id", headerText: "Unlock Skill Nguon", lookupSql: martialArtSkillLookupSql);
 
         Add("item_templates", "item_type", enumType: typeof(ItemType));
         Add("item_templates", "rarity", enumType: typeof(ItemRarity));

@@ -1,5 +1,6 @@
 using GameServer.Entities;
 using GameServer.Repositories;
+using GameShared.Enums;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GameServer.Runtime;
@@ -19,10 +20,9 @@ public sealed class CombatDefinitionCatalog
         var skills = scope.ServiceProvider.GetRequiredService<SkillRepository>().GetAllAsync().GetAwaiter().GetResult();
         var effects = scope.ServiceProvider.GetRequiredService<SkillEffectRepository>().GetAllAsync().GetAwaiter().GetResult();
         var martialArtSkills = scope.ServiceProvider.GetRequiredService<MartialArtSkillRepository>().GetAllAsync().GetAwaiter().GetResult();
-        var scalingRules = scope.ServiceProvider.GetRequiredService<MartialArtSkillScalingRepository>().GetAllAsync().GetAwaiter().GetResult();
 
         _skillsById = BuildSkills(skills, effects);
-        _martialArtSkillsById = BuildMartialArtSkills(martialArtSkills, scalingRules, _skillsById);
+        _martialArtSkillsById = BuildMartialArtSkills(martialArtSkills, _skillsById);
         _martialArtsById = BuildMartialArts(martialArts, stages, bonuses, _martialArtSkillsById);
     }
 
@@ -59,7 +59,12 @@ public sealed class CombatDefinitionCatalog
                 skill.Id,
                 skill.Code,
                 skill.Name,
+                ResolveSkillGroupCode(skill),
+                Math.Max(1, skill.SkillLevel),
                 (CombatSkillType)skill.SkillType,
+                Enum.IsDefined(typeof(SkillCategory), skill.SkillCategory)
+                    ? (SkillCategory)skill.SkillCategory
+                    : SkillCategory.Normal,
                 (SkillTargetType)skill.TargetType,
                 (float)skill.CastRange,
                 skill.CooldownMs,
@@ -72,18 +77,8 @@ public sealed class CombatDefinitionCatalog
 
     private static IReadOnlyDictionary<int, MartialArtSkillUnlockDefinition> BuildMartialArtSkills(
         IReadOnlyCollection<MartialArtSkillEntity> martialArtSkills,
-        IReadOnlyCollection<MartialArtSkillScalingEntity> scalingRules,
         IReadOnlyDictionary<int, SkillDefinition> skillsById)
     {
-        var scalingByMartialArtSkillId = scalingRules
-            .GroupBy(x => x.MartialArtSkillId)
-            .ToDictionary(
-                x => x.Key,
-                x => (IReadOnlyList<SkillScalingRuleDefinition>)x
-                    .OrderBy(rule => rule.Id)
-                    .Select(ToScalingRuleDefinition)
-                    .ToArray());
-
         var result = new Dictionary<int, MartialArtSkillUnlockDefinition>(martialArtSkills.Count);
         foreach (var mapping in martialArtSkills)
         {
@@ -95,8 +90,7 @@ public sealed class CombatDefinitionCatalog
                 mapping.MartialArtId,
                 mapping.SkillId,
                 mapping.UnlockStage,
-                skillDefinition,
-                scalingByMartialArtSkillId.GetValueOrDefault(mapping.Id, Array.Empty<SkillScalingRuleDefinition>()));
+                skillDefinition);
         }
 
         return result;
@@ -192,22 +186,18 @@ public sealed class CombatDefinitionCatalog
             entity.TriggerTiming.HasValue ? (SkillTriggerTiming)entity.TriggerTiming.Value : null);
     }
 
-    private static SkillScalingRuleDefinition ToScalingRuleDefinition(MartialArtSkillScalingEntity entity)
-    {
-        return new SkillScalingRuleDefinition(
-            entity.Id,
-            entity.MartialArtSkillId,
-            entity.SkillEffectId,
-            (SkillScalingTarget)entity.ScalingTarget,
-            entity.BaseValue,
-            entity.PerStageValue,
-            entity.ValueType.HasValue ? (CombatValueType)entity.ValueType.Value : null);
-    }
-
     private static string ResolveMartialArtIconKey(MartialArtEntity entity)
     {
         if (!string.IsNullOrWhiteSpace(entity.Icon))
             return entity.Icon.Trim();
+
+        return entity.Code;
+    }
+
+    private static string ResolveSkillGroupCode(SkillEntity entity)
+    {
+        if (!string.IsNullOrWhiteSpace(entity.SkillGroupCode))
+            return entity.SkillGroupCode.Trim();
 
         return entity.Code;
     }

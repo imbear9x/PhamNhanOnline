@@ -17,6 +17,7 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
         private TaskCompletionSource<InventoryLoadResult> inventoryCompletionSource;
         private TaskCompletionSource<InventoryActionResult> equipCompletionSource;
         private TaskCompletionSource<InventoryActionResult> unequipCompletionSource;
+        private TaskCompletionSource<InventoryActionResult> useMartialArtBookCompletionSource;
 
         public ClientInventoryService(
             ClientConnectionService connection,
@@ -30,6 +31,7 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
             connection.Packets.Subscribe<GetInventoryResultPacket>(HandleGetInventoryResult);
             connection.Packets.Subscribe<EquipInventoryItemResultPacket>(HandleEquipInventoryItemResult);
             connection.Packets.Subscribe<UnequipInventoryItemResultPacket>(HandleUnequipInventoryItemResult);
+            connection.Packets.Subscribe<UseMartialArtBookResultPacket>(HandleUseMartialArtBookResult);
             connection.StateChanged += HandleConnectionStateChanged;
         }
 
@@ -113,6 +115,30 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
             return unequipCompletionSource.Task;
         }
 
+        public Task<InventoryActionResult> UseMartialArtBookAsync(long playerItemId)
+        {
+            if (connection.State != ClientConnectionState.Connected)
+            {
+                return Task.FromResult(new InventoryActionResult(
+                    false,
+                    null,
+                    inventoryState.Items,
+                    characterState.BaseStats,
+                    characterState.CurrentState,
+                    "Not connected to server."));
+            }
+
+            if (useMartialArtBookCompletionSource != null && !useMartialArtBookCompletionSource.Task.IsCompleted)
+                return useMartialArtBookCompletionSource.Task;
+
+            useMartialArtBookCompletionSource = new TaskCompletionSource<InventoryActionResult>();
+            connection.Send(new UseMartialArtBookPacket
+            {
+                PlayerItemId = playerItemId
+            });
+            return useMartialArtBookCompletionSource.Task;
+        }
+
         private void HandleGetInventoryResult(GetInventoryResultPacket packet)
         {
             var items = packet.Items != null ? packet.Items.ToArray() : Array.Empty<InventoryItemModel>();
@@ -164,6 +190,36 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
                 "Failed to unequip item"));
         }
 
+        private async void HandleUseMartialArtBookResult(UseMartialArtBookResultPacket packet)
+        {
+            if (packet.BaseStats.HasValue)
+                characterState.ApplyBaseStats(packet.BaseStats);
+
+            InventoryItemModel[] resolvedItems = inventoryState.Items;
+            if (packet.Success == true)
+            {
+                try
+                {
+                    var reloadResult = await LoadInventoryAsync(forceRefresh: true);
+                    resolvedItems = reloadResult.Success ? reloadResult.Items : inventoryState.Items;
+                }
+                catch
+                {
+                    resolvedItems = inventoryState.Items;
+                }
+            }
+
+            CompletePending(ref useMartialArtBookCompletionSource, new InventoryActionResult(
+                packet.Success == true,
+                packet.Code,
+                resolvedItems,
+                packet.BaseStats,
+                characterState.CurrentState,
+                packet.Success == true
+                    ? "Martial art book used."
+                    : string.Format("Failed to use martial art book: {0}", packet.Code ?? MessageCode.UnknownError)));
+        }
+
         private void HandleConnectionStateChanged(ClientConnectionState state)
         {
             if (state != ClientConnectionState.Disconnected)
@@ -184,6 +240,13 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
                 null,
                 "Connection closed."));
             CompletePending(ref unequipCompletionSource, new InventoryActionResult(
+                false,
+                null,
+                Array.Empty<InventoryItemModel>(),
+                null,
+                null,
+                "Connection closed."));
+            CompletePending(ref useMartialArtBookCompletionSource, new InventoryActionResult(
                 false,
                 null,
                 Array.Empty<InventoryItemModel>(),
