@@ -281,10 +281,10 @@ namespace PhamNhanOnline.Client.UI.Hud
         private void AutoWireReferences()
         {
             if (worldSceneController == null)
-                worldSceneController = GetComponentInParent<WorldSceneController>() ?? FindObjectOfType<WorldSceneController>();
+                worldSceneController = WorldSceneController.Instance;
 
             if (localPlayerPresenter == null && worldSceneController != null)
-                localPlayerPresenter = worldSceneController.GetComponentInChildren<WorldLocalPlayerPresenter>(true);
+                localPlayerPresenter = worldSceneController.WorldLocalPlayerPresenter;
 
             if (popupRoot == null && worldSceneController != null)
                 popupRoot = worldSceneController.WorldUiRoot != null ? worldSceneController.WorldUiRoot : transform;

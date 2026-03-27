@@ -81,7 +81,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (mapPresenter != null)
                 worldMapPresenter = mapPresenter;
             if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = GetComponentInChildren<WorldLocalPlayerPresenter>(true);
+                worldLocalPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
         }
 
         private void Awake()
@@ -90,9 +90,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 worldCamera = Camera.main;
 
             if (worldMapPresenter == null)
-                worldMapPresenter = GetComponentInChildren<WorldMapPresenter>(true);
+                worldMapPresenter = GetComponent<WorldMapPresenter>();
             if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = GetComponentInChildren<WorldLocalPlayerPresenter>(true);
+                worldLocalPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
 
             EnsureSelectableLayersConfigured();
         }
@@ -377,7 +377,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             worldPosition = default;
 
             if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = GetComponentInChildren<WorldLocalPlayerPresenter>(true);
+                worldLocalPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
 
             if (worldLocalPlayerPresenter != null && worldLocalPlayerPresenter.CurrentPlayerTransform != null)
             {
@@ -393,7 +393,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             worldPosition = default;
             if (worldMapPresenter == null)
-                worldMapPresenter = GetComponentInChildren<WorldMapPresenter>(true);
+                worldMapPresenter = GetComponent<WorldMapPresenter>();
 
             if (worldMapPresenter == null)
                 return false;

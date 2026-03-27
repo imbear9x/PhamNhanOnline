@@ -254,8 +254,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private bool TryResolveLocalPlayerWorldPosition(out Vector2 worldPosition)
         {
             worldPosition = default;
-            if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = GetComponentInChildren<WorldLocalPlayerPresenter>(true);
 
             if (worldLocalPlayerPresenter == null || worldLocalPlayerPresenter.CurrentPlayerTransform == null)
                 return false;
@@ -334,9 +332,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private LocalCharacterActionController ResolveLocalActionController()
         {
-            if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = GetComponentInChildren<WorldLocalPlayerPresenter>(true);
-
             return worldLocalPlayerPresenter != null
                 ? worldLocalPlayerPresenter.CurrentLocalActionController
                 : null;
@@ -345,13 +340,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void AutoWireReferences()
         {
             if (worldMapPresenter == null)
-                worldMapPresenter = GetComponentInChildren<WorldMapPresenter>(true);
+                worldMapPresenter = GetComponent<WorldMapPresenter>();
 
             if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = GetComponentInChildren<WorldLocalPlayerPresenter>(true);
+                worldLocalPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
 
             if (worldLocalMovementSyncController == null)
-                worldLocalMovementSyncController = GetComponentInChildren<WorldLocalMovementSyncController>(true);
+                worldLocalMovementSyncController = GetComponent<WorldLocalMovementSyncController>();
         }
 
         private void TryBindRuntimeEvents()

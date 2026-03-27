@@ -8,6 +8,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 {
     public sealed class WorldSceneController : MonoBehaviour
     {
+        public static WorldSceneController Instance { get; private set; }
+
         [Header("Runtime")]
         [SerializeField] private ClientBootstrapSettings runtimeSettingsOverride;
 
@@ -15,14 +17,31 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private Transform entitiesRoot;
         [SerializeField] private Transform worldUiRoot;
         [SerializeField] private Camera worldCamera;
+        [SerializeField] private WorldMapPresenter worldMapPresenter;
+        [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
+        [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
 
         public Transform MapRoot { get { return mapRoot; } }
         public Transform EntitiesRoot { get { return entitiesRoot; } }
         public Transform WorldUiRoot { get { return worldUiRoot; } }
         public Camera WorldCamera { get { return worldCamera; } }
+        public WorldMapPresenter WorldMapPresenter { get { return worldMapPresenter; } }
+        public WorldLocalPlayerPresenter WorldLocalPlayerPresenter { get { return worldLocalPlayerPresenter; } }
+        public WorldLocalMovementSyncController WorldLocalMovementSyncController { get { return worldLocalMovementSyncController; } }
 
         private void Awake()
         {
+            if (Instance != null && Instance != this)
+            {
+                Debug.LogWarning(
+                    $"Duplicate WorldSceneController detected on '{gameObject.name}'. " +
+                    $"Keeping '{Instance.gameObject.name}' and disabling this component.");
+                enabled = false;
+                return;
+            }
+
+            Instance = this;
+            AutoWireReferences();
             EnsureRuntimeInitialized();
             EnsureClientPoolService();
             EnsureWorldTargetSelectionController();
@@ -97,7 +116,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (controller == null)
                 controller = gameObject.AddComponent<WorldClickTargetSelectionController>();
 
-            controller.Initialize(worldCamera, GetComponentInChildren<WorldMapPresenter>());
+            controller.Initialize(worldCamera, worldMapPresenter);
             return controller;
         }
 
@@ -108,6 +127,24 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 controller = gameObject.AddComponent<WorldTargetActionController>();
 
             return controller;
+        }
+
+        private void AutoWireReferences()
+        {
+            if (worldMapPresenter == null)
+                worldMapPresenter = GetComponent<WorldMapPresenter>();
+
+            if (worldLocalPlayerPresenter == null)
+                worldLocalPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
+
+            if (worldLocalMovementSyncController == null)
+                worldLocalMovementSyncController = GetComponent<WorldLocalMovementSyncController>();
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+                Instance = null;
         }
     }
 }

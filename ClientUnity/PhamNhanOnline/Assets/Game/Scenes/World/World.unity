@@ -11909,6 +11909,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   presentationCatalog: {fileID: 11400000, guid: 1001e3abd232f134b9f135f08e0b97ca, type: 2}
+  worldSceneController: {fileID: 0}
   basicSkillButton: {fileID: 1699031996}
   additionalSkillButtons:
   - {fileID: 714470648}
@@ -11930,7 +11931,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 908341668}
-  - component: {fileID: 908341667}
   m_Layer: 0
   m_Name: MapRoot
   m_TagString: Untagged
@@ -11938,23 +11938,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &908341667
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 908341666}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cb8989687274d4c47a91e7ecd65fb6b6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  runtimeSettingsOverride: {fileID: 0}
-  mapRoot: {fileID: 908341668}
-  entitiesRoot: {fileID: 0}
-  worldUiRoot: {fileID: 0}
-  worldCamera: {fileID: 2089833381}
 --- !u!4 &908341668
 Transform:
   m_ObjectHideFlags: 0
@@ -22525,6 +22508,9 @@ MonoBehaviour:
   entitiesRoot: {fileID: 861396238}
   worldUiRoot: {fileID: 1200508312}
   worldCamera: {fileID: 2089833381}
+  worldMapPresenter: {fileID: 0}
+  worldLocalPlayerPresenter: {fileID: 0}
+  worldLocalMovementSyncController: {fileID: 0}
 --- !u!114 &1872203333
 MonoBehaviour:
   m_ObjectHideFlags: 0

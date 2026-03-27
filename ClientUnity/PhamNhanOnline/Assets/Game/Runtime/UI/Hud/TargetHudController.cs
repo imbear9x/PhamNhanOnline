@@ -19,7 +19,7 @@ namespace PhamNhanOnline.Client.UI.Hud
         private void Awake()
         {
             if (worldSceneController == null)
-                worldSceneController = FindObjectOfType<WorldSceneController>();
+                worldSceneController = WorldSceneController.Instance;
 
             if (targetStatusPanel == null)
                 targetStatusPanel = GetComponent<TargetStatusPanelController>();

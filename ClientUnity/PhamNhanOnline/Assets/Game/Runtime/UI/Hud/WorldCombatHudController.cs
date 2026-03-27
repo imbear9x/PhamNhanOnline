@@ -268,7 +268,7 @@ namespace PhamNhanOnline.Client.UI.Hud
         private void AutoWireReferences()
         {
             if (worldSceneController == null)
-                worldSceneController = FindObjectOfType<WorldSceneController>();
+                worldSceneController = WorldSceneController.Instance;
         }
 
         private bool TryResolveSelectedTarget(out WorldTargetHandle targetHandle)
