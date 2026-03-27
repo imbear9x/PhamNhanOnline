@@ -20,4 +20,6 @@ MonoBehaviour:
     sprite: {fileID: 21300000, guid: ac313f09b79801f4c8dd05d940ed30b7, type: 3}
   - key: dam_xa
     sprite: {fileID: 21300000, guid: 525cd5f06d1effc4e98a785e2683fdbc, type: 3}
+  - key: hoa_dan_thuat
+    sprite: {fileID: 21300000, guid: b1ba84cc3f92bc843b134b577b98696e, type: 3}
   skillOverrides: []
