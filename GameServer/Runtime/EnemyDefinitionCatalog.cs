@@ -73,6 +73,8 @@ public sealed class EnemyDefinitionCatalog
                     (float)x.PatrolRadius,
                     (float)x.DetectionRadius,
                     (float)x.CombatRadius,
+                    x.EnableOutOfCombatRestore,
+                    Math.Max(0, x.OutOfCombatRestoreDelaySeconds),
                     Math.Max(0, x.MinimumSkillIntervalMs),
                     Math.Max(0L, x.CultivationRewardTotal),
                     Math.Max(0, x.PotentialRewardTotal),

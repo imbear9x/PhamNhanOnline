@@ -288,12 +288,12 @@ internal static class AdminColumnBindingCatalog
 
         Add("skill_effects", "skill_id", lookupSql: skillLookupSql);
         Add("skill_effects", "effect_type", enumType: typeof(SkillEffectType));
-        Add("skill_effects", "formula_type", enumType: typeof(SkillFormulaType));
-        Add("skill_effects", "value_type", enumType: typeof(CombatValueType));
-        Add("skill_effects", "stat_type", enumType: typeof(CharacterStatType));
-        Add("skill_effects", "resource_type", enumType: typeof(CombatResourceType));
-        Add("skill_effects", "target_scope", enumType: typeof(SkillTargetScope));
-        Add("skill_effects", "trigger_timing", enumType: typeof(SkillTriggerTiming));
+        Add("skill_effects", "formula_type", enumType: typeof(SkillEffectFormulaType));
+        Add("skill_effects", "value_type", enumType: typeof(SkillEffectValueType));
+        Add("skill_effects", "stat_type", enumType: typeof(SkillEffectStatType));
+        Add("skill_effects", "resource_type", enumType: typeof(SkillEffectResourceType));
+        Add("skill_effects", "target_scope", enumType: typeof(SkillEffectTargetScope));
+        Add("skill_effects", "trigger_timing", enumType: typeof(SkillEffectTriggerTiming));
 
         Add("martial_art_skills", "martial_art_id", lookupSql: martialArtLookupSql);
         Add("martial_art_skills", "skill_id", lookupSql: skillLookupSql);
@@ -337,6 +337,8 @@ internal static class AdminColumnBindingCatalog
         Add("game_random_fortune_tags", "game_random_table_id", lookupSql: gameRandomTableLookupSql);
 
         Add("enemy_templates", "kind", enumType: typeof(EnemyKind));
+        Add("enemy_templates", "enable_out_of_combat_restore", headerText: "Tu Hoi Mau Ngoai Combat");
+        Add("enemy_templates", "out_of_combat_restore_delay_seconds", headerText: "Delay Hoi Mau Ngoai Combat");
         Add("enemy_template_skills", "enemy_template_id", lookupSql: enemyTemplateLookupSql);
         Add("enemy_template_skills", "skill_id", lookupSql: skillLookupSql);
         Add("enemy_reward_rules", "enemy_template_id", lookupSql: enemyTemplateLookupSql);

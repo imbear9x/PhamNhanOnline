@@ -162,8 +162,8 @@ Handler hiện làm các việc:
 - check không đang bị stun
 - resolve skill đang equip ở slot
 - check cooldown
-- check target/range nếu là `EnemySingle`
-- check target/range theo `CombatTarget` nếu là `EnemySingle` hoặc `AllySingle`
+- check target/range nếu là `SingleEnemy`
+- check target/range theo `CombatTarget` nếu là `SingleEnemy` hoặc `SingleAlly`
 - tạo `PendingSkillExecution`
 - nếu có `cast_time_ms > 0` thì set state runtime sang `Casting`
 
@@ -178,7 +178,7 @@ Game loop:
 Khi tới `CastCompletedAtUtc`:
 
 - gọi `SkillExecutionService.ResolveCastRelease(...)`
-- áp các effect có `trigger_timing = OnCast`
+- áp các effect có `trigger_timing = OnCastRelease`
 - sau đó clear trạng thái `Casting` của player nếu còn đang là `Casting`
 
 ### Bước 4. GameLoop nhận event impact
@@ -270,8 +270,8 @@ Trong đó `source_stat` phụ thuộc `formula_type`:
 
 - `Flat`: không lấy stat nguồn
 - `AttackRatio`: lấy `caster.Attack`
-- `MaxHpRatio`: lấy `caster.MaxHp`
-- `MaxMpRatio`: lấy `caster.MaxMp`
+- `CasterMaxHpRatio`: lấy `caster.MaxHp`
+- `CasterMaxMpRatio`: lấy `caster.MaxMp`
 
 Sau đó:
 
@@ -283,12 +283,12 @@ Sau đó:
 ### Đã hỗ trợ
 
 - `SkillTargetType.Self`
-- `SkillTargetType.EnemySingle`
+- `SkillTargetType.SingleEnemy`
 
 ### Chưa hỗ trợ, đã chặn rõ bằng code
 
 - `EnemyArea`
-- `AllySingle`
+- `SingleAlly`
 - `AllyArea`
 - `GroundArea`
 
@@ -306,18 +306,18 @@ Khi config các loại này ở phase hiện tại, handler sẽ trả:
 Quy ước:
 
 - với skill `Self`, `Primary` cũng chính là caster
-- với skill `EnemySingle`, `Primary` là enemy target
+- với skill `SingleEnemy`, `Primary` là enemy target
 
 ### Tạm để dành cho phase sau
 
-- `Splash`
-- `All`
+- `AreaAroundPrimary`
+- `AllResolvedTargets`
 
 ## Trigger timing support hiện tại
 
 ### Đã hỗ trợ
 
-- `OnCast`
+- `OnCastRelease`
 - `OnHit`
 
 ### Chưa hỗ trợ
@@ -328,9 +328,66 @@ Quy ước:
 
 ## Quy ước config gợi ý cho game design
 
+### Enum nên dùng ở `skill_effects` trong phase hiện tại
+
+- `effect_type`:
+  - `Damage`
+  - `Heal`
+  - `ResourceReduce`
+  - `ResourceRestore`
+  - `Shield`
+  - `Stun`
+  - `BuffStat`
+  - `DebuffStat`
+- `formula_type`:
+  - `Flat`
+  - `AttackRatio`
+  - `CasterMaxHpRatio`
+  - `CasterMaxMpRatio`
+- `value_type`:
+  - `Flat`
+  - `Ratio`
+  - `Percent`
+  - lưu ý: hiện chỉ có ý nghĩa rõ với `BuffStat` / `DebuffStat`
+- `stat_type`:
+  - `MaxHp`
+  - `MaxMp`
+  - `MaxStamina`
+  - `Attack`
+  - `Speed`
+  - `SpiritualSense`
+  - `Fortune`
+- `resource_type`:
+  - `Hp`
+  - `Mp`
+  - `Stamina`
+- `target_scope`:
+  - `Primary`
+  - `AreaAroundPrimary`
+  - `Self`
+  - `AllResolvedTargets`
+  - `AllEnemiesMap`
+  - `AllAlliesMap`
+  - `AllUnitsMap`
+- `trigger_timing`:
+  - `OnCastRelease`
+  - `OnHit`
+  - `OnExpire`
+  - `OnCastStart`
+  - `OnInterval`
+
+### Field đang gây rối hoặc giá trị thấp
+
+- `extra_value`:
+  - hiện gần như chỉ cộng phẳng giống `base_value`
+  - chưa có semantics riêng đủ mạnh
+- `value_type`:
+  - hiện gần như không tham gia tính toán cho `Damage`, `Heal`, `ResourceReduce`, `ResourceRestore`, `Shield`
+  - hữu ích rõ nhất cho `BuffStat` / `DebuffStat`
+
 ### Ví dụ 1. Đòn đánh thường
 
-- `target_type = EnemySingle`
+- `target_type = SingleEnemy`
 - `cast_time_ms = 0`
 - `travel_time_ms = 0`
 - 1 effect:
@@ -342,7 +399,7 @@ Quy ước:
 
 ### Ví dụ 2. Chưởng có gồng rồi bay
 
-- `target_type = EnemySingle`
+- `target_type = SingleEnemy`
 - `cast_time_ms = 300`
 - `travel_time_ms = 500`
 - 1 effect:
@@ -363,7 +420,7 @@ Quy ước:
   - `base_value = 120`
   - `duration_ms = 5000`
   - `target_scope = Self`
-  - `trigger_timing = OnCast`
+  - `trigger_timing = OnCastRelease`
 
 ### Ví dụ 4. Tự hồi mana
 
@@ -380,7 +437,7 @@ Quy ước:
 
 ### Ví dụ 5. Làm choáng mục tiêu
 
-- `target_type = EnemySingle`
+- `target_type = SingleEnemy`
 - 1 effect:
   - `Stun`
   - `duration_ms = 1500`
@@ -390,7 +447,7 @@ Quy ước:
 
 ### Ví dụ 6. Ăn mòn công kích mục tiêu
 
-- `target_type = EnemySingle`
+- `target_type = SingleEnemy`
 - 1 effect:
   - `DebuffStat`
   - `stat_type = Attack`

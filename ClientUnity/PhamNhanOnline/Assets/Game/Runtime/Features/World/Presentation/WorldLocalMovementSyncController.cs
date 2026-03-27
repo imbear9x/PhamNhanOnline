@@ -151,6 +151,38 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             wasMovingLastFrame = isMoving;
         }
 
+        public bool TryForceSyncCurrentPosition()
+        {
+            if (!ClientRuntime.IsInitialized)
+                return false;
+
+            if (ClientRuntime.Connection.State != PhamNhanOnline.Client.Network.Session.ClientConnectionState.Connected)
+                return false;
+
+            if (localPlayerPresenter == null || worldMapPresenter == null)
+                return false;
+
+            var playerTransform = localPlayerPresenter.CurrentPlayerTransform;
+            if (playerTransform == null)
+                return false;
+
+            Vector2 serverPosition;
+            if (!worldMapPresenter.TryMapWorldPositionToServer(playerTransform.position, out serverPosition))
+                return false;
+
+            var localActionController = localPlayerPresenter.CurrentLocalActionController;
+            var currentFacingLeft = localActionController != null ? localActionController.IsFacingLeft : false;
+            var currentMovementPhase = localActionController != null
+                ? localActionController.CurrentMovementSyncPhase
+                : LocalCharacterActionController.MovementSyncPhase.Grounded;
+
+            lastObservedServerPosition = serverPosition;
+            hasObservedPosition = true;
+            SendPosition(serverPosition, currentFacingLeft, currentMovementPhase);
+            wasMovingLastFrame = false;
+            return true;
+        }
+
         private void HandleMapChanged()
         {
             ResetSyncState();

@@ -59,11 +59,14 @@ internal enum SkillTargetType
 {
     None = 0,
     Self = 1,
-    EnemySingle = 2,
+    SingleEnemy = 2,
     EnemyArea = 3,
-    AllySingle = 4,
+    SingleAlly = 4,
     AllyArea = 5,
-    GroundArea = 6
+    GroundArea = 6,
+    AllEnemiesMap = 7,
+    AllAlliesMap = 8,
+    AllUnitsMap = 9
 }
 
 internal enum SkillEffectType
@@ -79,16 +82,24 @@ internal enum SkillEffectType
     ResourceRestore = 8
 }
 
-internal enum SkillFormulaType
+internal enum SkillEffectFormulaType
 {
     None = 0,
     Flat = 1,
     AttackRatio = 2,
-    MaxHpRatio = 3,
-    MaxMpRatio = 4
+    CasterMaxHpRatio = 3,
+    CasterMaxMpRatio = 4
 }
 
-internal enum CombatResourceType
+internal enum SkillEffectValueType
+{
+    None = 0,
+    Flat = 1,
+    Ratio = 2,
+    Percent = 3
+}
+
+internal enum SkillEffectResourceType
 {
     None = 0,
     Hp = 1,
@@ -96,21 +107,38 @@ internal enum CombatResourceType
     Stamina = 3
 }
 
-internal enum SkillTargetScope
+internal enum SkillEffectStatType
+{
+    None = 0,
+    MaxHp = 1,
+    MaxMp = 2,
+    MaxStamina = 3,
+    Attack = 4,
+    Speed = 5,
+    SpiritualSense = 6,
+    Fortune = 7
+}
+
+internal enum SkillEffectTargetScope
 {
     None = 0,
     Primary = 1,
-    Splash = 2,
+    AreaAroundPrimary = 2,
     Self = 3,
-    All = 4
+    AllResolvedTargets = 4,
+    AllEnemiesMap = 5,
+    AllAlliesMap = 6,
+    AllUnitsMap = 7
 }
 
-internal enum SkillTriggerTiming
+internal enum SkillEffectTriggerTiming
 {
     None = 0,
-    OnCast = 1,
+    OnCastRelease = 1,
     OnHit = 2,
-    OnExpire = 3
+    OnExpire = 3,
+    OnCastStart = 4,
+    OnInterval = 5
 }
 
 internal enum ItemType

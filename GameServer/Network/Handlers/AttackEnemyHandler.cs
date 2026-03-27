@@ -12,6 +12,8 @@ namespace GameServer.Network.Handlers;
 
 public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
 {
+    private const float SkillRangeGraceBufferUnits = 12f;
+
     private readonly CharacterCultivationService _cultivationService;
     private readonly CharacterRuntimeService _characterRuntimeService;
     private readonly SkillExecutionService _skillExecutionService;
@@ -128,7 +130,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                 return;
             }
 
-            if (castContext.Skill.TargetType is SkillTargetType.EnemyArea or SkillTargetType.AllyArea or SkillTargetType.GroundArea)
+            if (castContext.Skill.TargetType is SkillTargetType.EnemyArea or SkillTargetType.AllyArea or SkillTargetType.GroundArea or SkillTargetType.AllEnemiesMap or SkillTargetType.AllAlliesMap or SkillTargetType.AllUnitsMap)
             {
                 _network.Send(session.ConnectionId, new AttackEnemyResultPacket
                 {
@@ -147,8 +149,8 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                 case SkillTargetType.Self:
                     break;
 
-                case SkillTargetType.EnemySingle:
-                case SkillTargetType.AllySingle:
+                case SkillTargetType.SingleEnemy:
+                case SkillTargetType.SingleAlly:
                     if (!hasTarget)
                     {
                         _network.Send(session.ConnectionId, new AttackEnemyResultPacket
@@ -192,8 +194,11 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                     }
 
                     var castRange = Math.Max(0f, castContext.Skill.CastRange);
-                    if (castRange > 0f &&
-                        Vector2.DistanceSquared(player.Position, targetSnapshot.Position) > castRange * castRange)
+                    var effectiveRange = castRange > 0f
+                        ? castRange + SkillRangeGraceBufferUnits
+                        : 0f;
+                    if (effectiveRange > 0f &&
+                        Vector2.DistanceSquared(player.Position, targetSnapshot.Position) > effectiveRange * effectiveRange)
                     {
                         _network.Send(session.ConnectionId, new AttackEnemyResultPacket
                         {
@@ -293,7 +298,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
         return targetType switch
         {
             SkillTargetType.Self => isSelfCharacter,
-            SkillTargetType.EnemySingle => requestedTarget.Kind switch
+            SkillTargetType.SingleEnemy => requestedTarget.Kind switch
             {
                 CombatTargetKind.Character => !isSelfCharacter,
                 CombatTargetKind.Enemy => true,
@@ -301,7 +306,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                 CombatTargetKind.Dummy => true,
                 _ => false
             },
-            SkillTargetType.AllySingle => requestedTarget.Kind switch
+            SkillTargetType.SingleAlly => requestedTarget.Kind switch
             {
                 CombatTargetKind.Character => true,
                 CombatTargetKind.Npc => true,

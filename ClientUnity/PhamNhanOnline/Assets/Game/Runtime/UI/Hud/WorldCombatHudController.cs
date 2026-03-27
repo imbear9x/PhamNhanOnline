@@ -190,7 +190,8 @@ namespace PhamNhanOnline.Client.UI.Hud
             float cooldownFillAmount;
             int remainingMs;
             int durationMs;
-            var hasCooldown = ClientRuntime.Combat.TryGetCooldown(
+            var hasCooldown = ClientRuntime.Combat.TryGetCooldownForSlot(
+                slotIndex,
                 skill.PlayerSkillId,
                 utcNow,
                 out cooldownFillAmount,

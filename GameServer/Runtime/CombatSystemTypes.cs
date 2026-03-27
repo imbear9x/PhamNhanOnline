@@ -34,11 +34,14 @@ public enum SkillTargetType
 {
     None = 0,
     Self = 1,
-    EnemySingle = 2,
+    SingleEnemy = 2,
     EnemyArea = 3,
-    AllySingle = 4,
+    SingleAlly = 4,
     AllyArea = 5,
-    GroundArea = 6
+    GroundArea = 6,
+    AllEnemiesMap = 7,
+    AllAlliesMap = 8,
+    AllUnitsMap = 9
 }
 
 public enum SkillEffectType
@@ -59,8 +62,8 @@ public enum SkillFormulaType
     None = 0,
     Flat = 1,
     AttackRatio = 2,
-    MaxHpRatio = 3,
-    MaxMpRatio = 4
+    CasterMaxHpRatio = 3,
+    CasterMaxMpRatio = 4
 }
 
 public enum CombatResourceType
@@ -75,17 +78,22 @@ public enum SkillTargetScope
 {
     None = 0,
     Primary = 1,
-    Splash = 2,
+    AreaAroundPrimary = 2,
     Self = 3,
-    All = 4
+    AllResolvedTargets = 4,
+    AllEnemiesMap = 5,
+    AllAlliesMap = 6,
+    AllUnitsMap = 7
 }
 
 public enum SkillTriggerTiming
 {
     None = 0,
-    OnCast = 1,
+    OnCastRelease = 1,
     OnHit = 2,
-    OnExpire = 3
+    OnExpire = 3,
+    OnCastStart = 4,
+    OnInterval = 5
 }
 
 public sealed record CharacterStatBonusValue(

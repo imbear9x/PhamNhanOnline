@@ -22,6 +22,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [Header("References")]
         [SerializeField] private WorldMapPresenter worldMapPresenter;
         [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
+        [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
 
         [Header("Ranges")]
         [SerializeField] private float interactionRangeServerUnits = 30f;
@@ -131,6 +132,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (mode == WorldTargetInteractionMode.None)
                 return false;
 
+            if (mode == WorldTargetInteractionMode.HostileAttack && !CanUseBasicSkillNow())
+                return false;
+
             ClientRuntime.Target.Select(target);
             pendingAction = new PendingTargetAction
             {
@@ -152,6 +156,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             switch (action.Mode)
             {
                 case WorldTargetInteractionMode.HostileAttack:
+                    if (!CanUseBasicSkillNow())
+                    {
+                        CompletePendingAction();
+                        return;
+                    }
+
+                    if (worldLocalMovementSyncController != null)
+                        worldLocalMovementSyncController.TryForceSyncCurrentPosition();
+
                     ClientRuntime.CombatService.TryUseBasicSkillOnTarget(action.Target);
                     break;
 
@@ -211,6 +224,31 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             return Mathf.Max(0f, interactionRangeServerUnits);
+        }
+
+        private bool CanUseBasicSkillNow()
+        {
+            if (!ClientRuntime.IsInitialized)
+                return false;
+
+            var utcNow = DateTime.UtcNow;
+            if (ClientRuntime.Combat.HasPendingAttackRequest || ClientRuntime.Combat.IsLocalCastActive(utcNow))
+                return false;
+
+            PlayerSkillModel basicSkill;
+            if (!ClientRuntime.Skills.TryGetLoadoutSkill(BasicSkillSlotIndex, out basicSkill))
+                return false;
+
+            float _;
+            int __;
+            int ___;
+            return !ClientRuntime.Combat.TryGetCooldownForSlot(
+                BasicSkillSlotIndex,
+                basicSkill.PlayerSkillId,
+                utcNow,
+                out _,
+                out __,
+                out ___);
         }
 
         private bool TryResolveLocalPlayerWorldPosition(out Vector2 worldPosition)
@@ -311,6 +349,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (worldLocalPlayerPresenter == null)
                 worldLocalPlayerPresenter = GetComponentInChildren<WorldLocalPlayerPresenter>(true);
+
+            if (worldLocalMovementSyncController == null)
+                worldLocalMovementSyncController = GetComponentInChildren<WorldLocalMovementSyncController>(true);
         }
 
         private void TryBindRuntimeEvents()

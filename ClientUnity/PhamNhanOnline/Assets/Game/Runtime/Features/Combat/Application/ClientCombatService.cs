@@ -119,7 +119,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             ClientLog.Warn(
                 $"AttackEnemy rejected: code={packet.Code}, slot={packet.SkillSlotIndex ?? 0}, " +
                 $"skillId={packet.SkillId ?? 0}, playerSkillId={playerSkillId}.");
-            combatState.ApplyAttackRejected(playerSkillId, cooldownMs, cooldownEndsAtUtc);
+            combatState.ApplyAttackRejected(packet.SkillSlotIndex ?? 0, playerSkillId, cooldownMs, cooldownEndsAtUtc);
         }
 
         private void HandleSkillCastStarted(SkillCastStartedPacket packet)

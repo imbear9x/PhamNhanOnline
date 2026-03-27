@@ -99,6 +99,8 @@ public sealed record EnemyDefinition(
     float PatrolRadius,
     float DetectionRadius,
     float CombatRadius,
+    bool EnableOutOfCombatRestore,
+    int OutOfCombatRestoreDelaySeconds,
     int MinimumSkillIntervalMs,
     long CultivationRewardTotal,
     int PotentialRewardTotal,

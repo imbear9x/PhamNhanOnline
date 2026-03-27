@@ -34,7 +34,7 @@ public sealed class SkillExecutionService
         if (!TryGetCaster(instance, execution.CasterPlayerId, out var caster))
             return;
 
-        ApplyEffects(instance, caster, skillDefinition, execution, SkillTriggerTiming.OnCast, utcNow);
+        ApplyEffects(instance, caster, skillDefinition, execution, SkillTriggerTiming.OnCastRelease, utcNow);
     }
 
     public SkillImpactResolvedRuntimeEvent ResolveImpact(
@@ -407,11 +407,11 @@ public sealed class SkillExecutionService
                 rawValue += casterStats.Attack * ratioValue;
                 break;
 
-            case SkillFormulaType.MaxHpRatio:
+            case SkillFormulaType.CasterMaxHpRatio:
                 rawValue += casterStats.MaxHp * ratioValue;
                 break;
 
-            case SkillFormulaType.MaxMpRatio:
+            case SkillFormulaType.CasterMaxMpRatio:
                 rawValue += casterStats.MaxMp * ratioValue;
                 break;
         }

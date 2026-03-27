@@ -7,8 +7,6 @@ namespace GameServer.World;
 
 public sealed class MapInstance
 {
-    private static readonly TimeSpan EnemyOutOfCombatResetDelay = TimeSpan.FromSeconds(10);
-
     private readonly object _sync = new();
     private readonly Dictionary<(int X, int Y), HashSet<Guid>> _playersByCell = new();
     private readonly Dictionary<Guid, (int X, int Y)> _playerCells = new();
@@ -679,7 +677,14 @@ public sealed class MapInstance
             if (!monster.LastDamagedAtUtc.HasValue)
                 continue;
 
-            if (utcNow - monster.LastDamagedAtUtc.Value < EnemyOutOfCombatResetDelay)
+            if (!monster.Definition.EnableOutOfCombatRestore)
+                continue;
+
+            var restoreDelaySeconds = Math.Max(0, monster.Definition.OutOfCombatRestoreDelaySeconds);
+            if (restoreDelaySeconds <= 0)
+                continue;
+
+            if (utcNow - monster.LastDamagedAtUtc.Value < TimeSpan.FromSeconds(restoreDelaySeconds))
                 continue;
 
             if (monster.Definition.Kind == EnemyKind.Boss)
