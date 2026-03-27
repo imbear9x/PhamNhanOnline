@@ -34,6 +34,27 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             get { return localActionController; }
         }
 
+        public bool TryGetPopupAnchorPosition(float additionalHeight, out Vector2 worldPosition)
+        {
+            if (playerInstance == null)
+            {
+                worldPosition = default;
+                return false;
+            }
+
+            var collider = ResolvePlayerBodyCollider();
+            if (collider != null && collider.enabled)
+            {
+                var bounds = collider.bounds;
+                worldPosition = new Vector2(bounds.center.x, bounds.max.y + Mathf.Max(0f, additionalHeight));
+                return true;
+            }
+
+            var basePosition = (Vector2)playerInstance.transform.position;
+            worldPosition = basePosition + new Vector2(0f, Mathf.Max(DefaultBoundsPadding, additionalHeight));
+            return true;
+        }
+
         private void Start()
         {
             if (!ClientRuntime.IsInitialized)

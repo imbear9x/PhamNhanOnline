@@ -1,7 +1,9 @@
+using GameShared.Attributes;
 using GameShared.Enums;
 
 namespace GameShared.Models;
 
+[PacketModel]
 public sealed class CombatTargetModel
 {
     public CombatTargetKind? Kind { get; set; }

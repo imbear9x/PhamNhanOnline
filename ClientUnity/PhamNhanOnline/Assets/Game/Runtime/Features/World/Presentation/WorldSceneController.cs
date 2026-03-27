@@ -1,6 +1,7 @@
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Infrastructure.Config;
+using PhamNhanOnline.Client.Infrastructure.Pooling;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -23,6 +24,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void Awake()
         {
             EnsureRuntimeInitialized();
+            EnsureClientPoolService();
             EnsureWorldTargetSelectionController();
             EnsureWorldTargetActionController();
 
@@ -82,6 +84,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             ClientRuntime.Initialize(settings);
             ClientLog.Info($"Client runtime auto-initialized from World scene using {settings.name}.");
+        }
+
+        private ClientPoolService EnsureClientPoolService()
+        {
+            return ClientPoolService.Ensure(transform);
         }
 
         private WorldClickTargetSelectionController EnsureWorldTargetSelectionController()

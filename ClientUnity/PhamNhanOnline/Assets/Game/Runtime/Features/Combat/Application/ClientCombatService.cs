@@ -5,6 +5,8 @@ using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Network.Session;
 using GameShared.Enums;
 using GameShared.Models;
+using System.Globalization;
+using PhamNhanOnline.Client.Core.Logging;
 
 namespace PhamNhanOnline.Client.Features.Combat.Application
 {
@@ -99,6 +101,10 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
 
             if (packet.Success == true)
             {
+                ClientLog.Info(
+                    $"AttackEnemy accepted: slot={packet.SkillSlotIndex ?? 0}, " +
+                    $"skillId={packet.SkillId ?? 0}, playerSkillId={playerSkillId}, " +
+                    $"cooldownMs={cooldownMs}, castStart={packet.CastStartedUnixMs}, impact={packet.ImpactUnixMs}.");
                 combatState.ApplyAttackAccepted(
                     packet.SkillSlotIndex ?? 0,
                     playerSkillId,
@@ -110,11 +116,32 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
                 return;
             }
 
+            ClientLog.Warn(
+                $"AttackEnemy rejected: code={packet.Code}, slot={packet.SkillSlotIndex ?? 0}, " +
+                $"skillId={packet.SkillId ?? 0}, playerSkillId={playerSkillId}.");
             combatState.ApplyAttackRejected(playerSkillId, cooldownMs, cooldownEndsAtUtc);
         }
 
         private void HandleSkillCastStarted(SkillCastStartedPacket packet)
         {
+            ClientLog.Info(
+                $"SkillCastStarted: caster={packet.CasterCharacterId}, slot={packet.SkillSlotIndex ?? 0}, " +
+                $"skillId={packet.SkillId ?? 0}, playerSkillId={packet.PlayerSkillId ?? 0}, " +
+                $"castMs={packet.CastTimeMs ?? 0}, travelMs={packet.TravelTimeMs ?? 0}.");
+            combatState.PublishSkillCastStarted(new SkillCastStartedNotice(
+                packet.MapId,
+                packet.InstanceId,
+                packet.CasterCharacterId,
+                TryBuildWorldTargetHandle(packet.Target, out var castTarget) ? castTarget : (WorldTargetHandle?)null,
+                packet.SkillSlotIndex ?? 0,
+                packet.PlayerSkillId ?? 0,
+                packet.SkillId ?? 0,
+                packet.CastTimeMs ?? 0,
+                packet.TravelTimeMs ?? 0,
+                FromUnixMs(packet.CastStartedUnixMs),
+                FromUnixMs(packet.CastCompletedUnixMs),
+                FromUnixMs(packet.ImpactUnixMs)));
+
             var selectedCharacterId = characterState.SelectedCharacterId;
             if (!selectedCharacterId.HasValue || !packet.CasterCharacterId.HasValue)
                 return;
@@ -132,6 +159,26 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
 
         private void HandleSkillImpactResolved(SkillImpactResolvedPacket packet)
         {
+            ClientLog.Info(
+                $"SkillImpactResolved: caster={packet.CasterCharacterId}, slot={packet.SkillSlotIndex ?? 0}, " +
+                $"skillId={packet.SkillId ?? 0}, playerSkillId={packet.PlayerSkillId ?? 0}, " +
+                $"success={packet.Success == true}, code={packet.Code}, damage={packet.DamageApplied ?? 0}, " +
+                $"remainingHp={packet.RemainingHp ?? 0}, killed={packet.IsKilled == true}.");
+            combatState.PublishSkillImpactResolved(new SkillImpactResolvedNotice(
+                packet.MapId,
+                packet.InstanceId,
+                packet.CasterCharacterId,
+                TryBuildWorldTargetHandle(packet.Target, out var impactTarget) ? impactTarget : (WorldTargetHandle?)null,
+                packet.SkillSlotIndex ?? 0,
+                packet.PlayerSkillId ?? 0,
+                packet.SkillId ?? 0,
+                packet.Success == true,
+                packet.Code,
+                packet.DamageApplied ?? 0,
+                packet.RemainingHp ?? 0,
+                packet.IsKilled == true,
+                FromUnixMs(packet.ResolvedAtUnixMs)));
+
             var selectedCharacterId = characterState.SelectedCharacterId;
             if (!selectedCharacterId.HasValue || !packet.CasterCharacterId.HasValue)
                 return;
@@ -187,6 +234,40 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
                         Kind = target.Kind == WorldTargetKind.Boss ? CombatTargetKind.Boss : CombatTargetKind.Enemy,
                         RuntimeId = runtimeId
                     };
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        private static bool TryBuildWorldTargetHandle(CombatTargetModel target, out WorldTargetHandle handle)
+        {
+            handle = default;
+            if (target == null)
+                return false;
+
+            switch (target.Kind)
+            {
+                case CombatTargetKind.Character:
+                    if (!target.CharacterId.HasValue)
+                        return false;
+
+                    handle = WorldTargetHandle.CreateObservedCharacter(target.CharacterId.Value);
+                    return true;
+
+                case CombatTargetKind.Enemy:
+                    if (!target.RuntimeId.HasValue)
+                        return false;
+
+                    handle = WorldTargetHandle.CreateEnemy(target.RuntimeId.Value);
+                    return true;
+
+                case CombatTargetKind.Boss:
+                    if (!target.RuntimeId.HasValue)
+                        return false;
+
+                    handle = WorldTargetHandle.CreateEnemy(target.RuntimeId.Value, isBoss: true);
                     return true;
 
                 default:

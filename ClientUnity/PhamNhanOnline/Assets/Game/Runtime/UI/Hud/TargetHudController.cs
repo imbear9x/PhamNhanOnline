@@ -108,8 +108,12 @@ namespace PhamNhanOnline.Client.UI.Hud
             ClientRuntime.Target.CurrentTargetChanged += HandleTargetChanged;
             ClientRuntime.Target.PinStateChanged += HandleTargetChanged;
             ClientRuntime.World.MapChanged += HandleWorldChanged;
-            ClientRuntime.World.ObservedCharactersChanged += HandleWorldChanged;
-            ClientRuntime.World.EnemiesChanged += HandleWorldChanged;
+            ClientRuntime.World.ObservedCharacterUpserted += HandleObservedCharacterUpserted;
+            ClientRuntime.World.ObservedCharacterRemoved += HandleObservedCharacterRemoved;
+            ClientRuntime.World.ObservedCharacterStateChanged += HandleObservedCharacterStateChanged;
+            ClientRuntime.World.EnemyUpserted += HandleEnemyUpserted;
+            ClientRuntime.World.EnemyRemoved += HandleEnemyRemoved;
+            ClientRuntime.World.EnemyHpChanged += HandleEnemyHpChanged;
             runtimeEventsBound = true;
         }
 
@@ -121,8 +125,12 @@ namespace PhamNhanOnline.Client.UI.Hud
             ClientRuntime.Target.CurrentTargetChanged -= HandleTargetChanged;
             ClientRuntime.Target.PinStateChanged -= HandleTargetChanged;
             ClientRuntime.World.MapChanged -= HandleWorldChanged;
-            ClientRuntime.World.ObservedCharactersChanged -= HandleWorldChanged;
-            ClientRuntime.World.EnemiesChanged -= HandleWorldChanged;
+            ClientRuntime.World.ObservedCharacterUpserted -= HandleObservedCharacterUpserted;
+            ClientRuntime.World.ObservedCharacterRemoved -= HandleObservedCharacterRemoved;
+            ClientRuntime.World.ObservedCharacterStateChanged -= HandleObservedCharacterStateChanged;
+            ClientRuntime.World.EnemyUpserted -= HandleEnemyUpserted;
+            ClientRuntime.World.EnemyRemoved -= HandleEnemyRemoved;
+            ClientRuntime.World.EnemyHpChanged -= HandleEnemyHpChanged;
             runtimeEventsBound = false;
         }
 
@@ -140,6 +148,52 @@ namespace PhamNhanOnline.Client.UI.Hud
         private void HandleWorldChanged()
         {
             Refresh(force: false);
+        }
+
+        private void HandleObservedCharacterUpserted(GameShared.Models.ObservedCharacterModel observedCharacter)
+        {
+            if (IsCurrentObservedCharacter(observedCharacter.Character.CharacterId))
+                Refresh(force: false);
+        }
+
+        private void HandleObservedCharacterRemoved(System.Guid characterId)
+        {
+            if (IsCurrentObservedCharacter(characterId))
+                Refresh(force: false);
+        }
+
+        private void HandleObservedCharacterStateChanged(PhamNhanOnline.Client.Features.World.Application.ObservedCharacterStateChangedNotice notice)
+        {
+            if (IsCurrentObservedCharacter(notice.CharacterId))
+                Refresh(force: false);
+        }
+
+        private void HandleEnemyUpserted(GameShared.Models.EnemyRuntimeModel enemy)
+        {
+            if (IsCurrentEnemy(enemy.RuntimeId))
+                Refresh(force: false);
+        }
+
+        private void HandleEnemyRemoved(int runtimeId)
+        {
+            if (IsCurrentEnemy(runtimeId))
+                Refresh(force: false);
+        }
+
+        private void HandleEnemyHpChanged(PhamNhanOnline.Client.Features.World.Application.EnemyHpChangedNotice notice)
+        {
+            if (IsCurrentEnemy(notice.RuntimeId))
+                Refresh(force: false);
+        }
+
+        private bool IsCurrentObservedCharacter(System.Guid characterId)
+        {
+            return ClientRuntime.IsInitialized && ClientRuntime.Target.IsSelectedObservedCharacter(characterId);
+        }
+
+        private bool IsCurrentEnemy(int runtimeId)
+        {
+            return ClientRuntime.IsInitialized && ClientRuntime.Target.IsSelectedEnemy(runtimeId);
         }
     }
 }

@@ -16,6 +16,13 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public event Action MapChanged;
         public event Action ObservedCharactersChanged;
         public event Action EnemiesChanged;
+        public event Action<ObservedCharacterModel> ObservedCharacterUpserted;
+        public event Action<Guid> ObservedCharacterRemoved;
+        public event Action<ObservedCharacterMovedNotice> ObservedCharacterMoved;
+        public event Action<ObservedCharacterStateChangedNotice> ObservedCharacterStateChanged;
+        public event Action<EnemyRuntimeModel> EnemyUpserted;
+        public event Action<int> EnemyRemoved;
+        public event Action<EnemyHpChangedNotice> EnemyHpChanged;
 
         public int? CurrentMapId { get; private set; }
         public int? CurrentZoneIndex { get; private set; }
@@ -59,6 +66,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public void UpsertObservedCharacter(ObservedCharacterModel observedCharacter)
         {
             observedCharacters[observedCharacter.Character.CharacterId] = observedCharacter;
+            NotifyObservedCharacterUpserted(observedCharacter);
             NotifyObservedCharactersChanged();
         }
 
@@ -67,6 +75,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (!observedCharacters.Remove(characterId))
                 return;
 
+            NotifyObservedCharacterRemoved(characterId);
             NotifyObservedCharactersChanged();
         }
 
@@ -76,9 +85,18 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (!observedCharacters.TryGetValue(characterId, out observedCharacter))
                 return;
 
+            var previousPosX = observedCharacter.CurrentState.CurrentPosX;
+            var previousPosY = observedCharacter.CurrentState.CurrentPosY;
             observedCharacter.CurrentState.CurrentPosX = currentPosX;
             observedCharacter.CurrentState.CurrentPosY = currentPosY;
             observedCharacters[characterId] = observedCharacter;
+            NotifyObservedCharacterMoved(new ObservedCharacterMovedNotice(
+                characterId,
+                observedCharacter,
+                previousPosX,
+                previousPosY,
+                currentPosX,
+                currentPosY));
             NotifyObservedCharactersChanged();
         }
 
@@ -93,12 +111,24 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (!observedCharacters.TryGetValue(currentState.CharacterId, out observedCharacter))
                 return;
 
+            var previousState = observedCharacter.CurrentState;
+            var previousMaxHp = observedCharacter.MaxHp;
+            var previousMaxMp = observedCharacter.MaxMp;
             observedCharacter.CurrentState = currentState;
             if (maxHp.HasValue)
                 observedCharacter.MaxHp = Mathf.Max(0, maxHp.Value);
             if (maxMp.HasValue)
                 observedCharacter.MaxMp = Mathf.Max(0, maxMp.Value);
             observedCharacters[currentState.CharacterId] = observedCharacter;
+            NotifyObservedCharacterStateChanged(new ObservedCharacterStateChangedNotice(
+                currentState.CharacterId,
+                observedCharacter,
+                previousState,
+                currentState,
+                previousMaxHp,
+                observedCharacter.MaxHp,
+                previousMaxMp,
+                observedCharacter.MaxMp));
             NotifyObservedCharactersChanged();
         }
 
@@ -117,6 +147,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public void UpsertEnemy(EnemyRuntimeModel enemy)
         {
             enemies[enemy.RuntimeId] = enemy;
+            NotifyEnemyUpserted(enemy);
             NotifyEnemiesChanged();
         }
 
@@ -125,6 +156,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (!enemies.Remove(runtimeId))
                 return;
 
+            NotifyEnemyRemoved(runtimeId);
             NotifyEnemiesChanged();
         }
 
@@ -134,6 +166,9 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (!enemies.TryGetValue(runtimeId, out enemy))
                 return;
 
+            var previousCurrentHp = enemy.CurrentHp;
+            var previousMaxHp = enemy.MaxHp;
+            var previousRuntimeState = enemy.RuntimeState;
             if (currentHp.HasValue)
                 enemy.CurrentHp = Mathf.Max(0, currentHp.Value);
             if (maxHp.HasValue)
@@ -142,6 +177,15 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 enemy.RuntimeState = runtimeState.Value;
 
             enemies[runtimeId] = enemy;
+            NotifyEnemyHpChanged(new EnemyHpChangedNotice(
+                runtimeId,
+                enemy,
+                previousCurrentHp,
+                enemy.CurrentHp,
+                previousMaxHp,
+                enemy.MaxHp,
+                previousRuntimeState,
+                enemy.RuntimeState));
             NotifyEnemiesChanged();
         }
 
@@ -210,6 +254,55 @@ namespace PhamNhanOnline.Client.Features.World.Application
             var handler = EnemiesChanged;
             if (handler != null)
                 handler();
+        }
+
+        private void NotifyObservedCharacterUpserted(ObservedCharacterModel observedCharacter)
+        {
+            var handler = ObservedCharacterUpserted;
+            if (handler != null)
+                handler(observedCharacter);
+        }
+
+        private void NotifyObservedCharacterRemoved(Guid characterId)
+        {
+            var handler = ObservedCharacterRemoved;
+            if (handler != null)
+                handler(characterId);
+        }
+
+        private void NotifyObservedCharacterMoved(ObservedCharacterMovedNotice notice)
+        {
+            var handler = ObservedCharacterMoved;
+            if (handler != null)
+                handler(notice);
+        }
+
+        private void NotifyObservedCharacterStateChanged(ObservedCharacterStateChangedNotice notice)
+        {
+            var handler = ObservedCharacterStateChanged;
+            if (handler != null)
+                handler(notice);
+        }
+
+        private void NotifyEnemyUpserted(EnemyRuntimeModel enemy)
+        {
+            var handler = EnemyUpserted;
+            if (handler != null)
+                handler(enemy);
+        }
+
+        private void NotifyEnemyRemoved(int runtimeId)
+        {
+            var handler = EnemyRemoved;
+            if (handler != null)
+                handler(runtimeId);
+        }
+
+        private void NotifyEnemyHpChanged(EnemyHpChangedNotice notice)
+        {
+            var handler = EnemyHpChanged;
+            if (handler != null)
+                handler(notice);
         }
 
         private bool TryBuildObservedCharacterTargetSnapshot(string targetId, out WorldTargetSnapshot snapshot)

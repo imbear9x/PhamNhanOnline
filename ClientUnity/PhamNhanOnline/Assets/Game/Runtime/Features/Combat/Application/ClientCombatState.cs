@@ -9,6 +9,8 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             new Dictionary<long, SkillCooldownState>();
 
         public event Action Changed;
+        public event Action<SkillCastStartedNotice> SkillCastStarted;
+        public event Action<SkillImpactResolvedNotice> SkillImpactResolved;
 
         public bool HasPendingAttackRequest { get; private set; }
         public int PendingAttackSlotIndex { get; private set; }
@@ -160,6 +162,20 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             ActiveLocalCast = null;
             cooldownsByPlayerSkillId.Clear();
             NotifyChanged();
+        }
+
+        public void PublishSkillCastStarted(SkillCastStartedNotice notice)
+        {
+            var handler = SkillCastStarted;
+            if (handler != null)
+                handler(notice);
+        }
+
+        public void PublishSkillImpactResolved(SkillImpactResolvedNotice notice)
+        {
+            var handler = SkillImpactResolved;
+            if (handler != null)
+                handler(notice);
         }
 
         private void CleanupTransientState(DateTime utcNow)

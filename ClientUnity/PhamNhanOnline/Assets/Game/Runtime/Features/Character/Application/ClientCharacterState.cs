@@ -7,6 +7,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
     public sealed class ClientCharacterState
     {
         public event Action<CultivationRewardNotice> CultivationRewardGranted;
+        public event Action<CharacterCurrentStateChangeNotice> CurrentStateChanged;
 
         public Guid? SelectedCharacterId { get; private set; }
         public bool HasLoadedCharacterList { get; private set; }
@@ -41,10 +42,12 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             CharacterBaseStatsModel? baseStats,
             CharacterCurrentStateModel? currentState)
         {
+            var previousState = CurrentState;
             SelectedCharacterId = character.CharacterId;
             SelectedCharacter = character;
             BaseStats = baseStats;
             CurrentState = currentState;
+            NotifyCurrentStateChanged(previousState, currentState);
         }
 
         public void ApplyBaseStats(CharacterBaseStatsModel? baseStats)
@@ -54,7 +57,9 @@ namespace PhamNhanOnline.Client.Features.Character.Application
 
         public void ApplyCurrentState(CharacterCurrentStateModel? currentState)
         {
+            var previousState = CurrentState;
             CurrentState = currentState;
+            NotifyCurrentStateChanged(previousState, currentState);
         }
 
         public void ApplyCultivationReward(CultivationRewardNotice notice)
@@ -67,6 +72,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
 
         public void Clear()
         {
+            var previousState = CurrentState;
             SelectedCharacterId = null;
             HasLoadedCharacterList = false;
             CharacterList = Array.Empty<CharacterModel>();
@@ -74,6 +80,14 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             BaseStats = null;
             CurrentState = null;
             LastCultivationReward = null;
+            NotifyCurrentStateChanged(previousState, null);
+        }
+
+        private void NotifyCurrentStateChanged(CharacterCurrentStateModel? previousState, CharacterCurrentStateModel? currentState)
+        {
+            var handler = CurrentStateChanged;
+            if (handler != null)
+                handler(new CharacterCurrentStateChangeNotice(previousState, currentState));
         }
     }
 }

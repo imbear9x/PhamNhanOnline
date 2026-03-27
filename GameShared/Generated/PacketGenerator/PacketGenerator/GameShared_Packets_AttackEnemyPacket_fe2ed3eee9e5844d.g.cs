@@ -8,7 +8,15 @@ public partial class AttackEnemyPacket
 {
     private ulong _mask;
 
-    public bool HasSkillSlotIndex => (_mask & (1UL << 0)) != 0;
+    public bool HasTarget => (_mask & (1UL << 0)) != 0;
+
+    public bool TryGetTarget(out global::GameShared.Models.CombatTargetModel? value)
+    {
+        value = Target;
+        return HasTarget;
+    }
+
+    public bool HasSkillSlotIndex => (_mask & (1UL << 1)) != 0;
 
     public bool TryGetSkillSlotIndex(out int? value)
     {
@@ -20,11 +28,14 @@ public partial class AttackEnemyPacket
     {
         ulong mask = 0;
 
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillSlotIndex, default!)) mask |= 1UL << 0;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CombatTargetModel?>.Default.Equals(Target, default!)) mask |= 1UL << 0;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillSlotIndex, default!)) mask |= 1UL << 1;
 
         writer.Write(mask);
 
         if ((mask & (1UL << 0)) != 0)
+            global::GameShared.Packets.PacketModelSerializer.Write(writer, Target);
+        if ((mask & (1UL << 1)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, SkillSlotIndex.Value);
     }
 
@@ -33,6 +44,8 @@ public partial class AttackEnemyPacket
         _mask = reader.ReadUInt64();
 
         if ((_mask & (1UL << 0)) != 0)
+            Target = global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CombatTargetModel?>(reader);
+        if ((_mask & (1UL << 1)) != 0)
             SkillSlotIndex = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
     }
 }

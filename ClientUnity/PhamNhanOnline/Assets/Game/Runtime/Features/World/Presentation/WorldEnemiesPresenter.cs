@@ -24,7 +24,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             ClientRuntime.World.MapChanged += HandleWorldChanged;
-            ClientRuntime.World.EnemiesChanged += HandleWorldChanged;
+            ClientRuntime.World.EnemyUpserted += HandleEnemyUpserted;
+            ClientRuntime.World.EnemyRemoved += HandleEnemyRemoved;
+            ClientRuntime.World.EnemyHpChanged += HandleEnemyHpChanged;
             SyncEnemies();
         }
 
@@ -33,7 +35,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (ClientRuntime.IsInitialized)
             {
                 ClientRuntime.World.MapChanged -= HandleWorldChanged;
-                ClientRuntime.World.EnemiesChanged -= HandleWorldChanged;
+                ClientRuntime.World.EnemyUpserted -= HandleEnemyUpserted;
+                ClientRuntime.World.EnemyRemoved -= HandleEnemyRemoved;
+                ClientRuntime.World.EnemyHpChanged -= HandleEnemyHpChanged;
             }
 
             ClearEnemies();
@@ -42,6 +46,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void HandleWorldChanged()
         {
             SyncEnemies();
+        }
+
+        private void HandleEnemyUpserted(EnemyRuntimeModel enemy)
+        {
+            UpsertPresenter(enemy);
+        }
+
+        private void HandleEnemyRemoved(int runtimeId)
+        {
+            RemovePresenter(runtimeId);
+        }
+
+        private void HandleEnemyHpChanged(PhamNhanOnline.Client.Features.World.Application.EnemyHpChangedNotice notice)
+        {
+            UpsertPresenter(notice.Enemy);
         }
 
         private void SyncEnemies()
@@ -70,21 +89,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             warnedMissingCatalog = false;
             var activeRuntimeIds = new HashSet<int>();
             foreach (var enemy in ClientRuntime.World.Enemies)
-            {
                 activeRuntimeIds.Add(enemy.RuntimeId);
 
-                EnemyPresenter presenter;
-                if (!enemyPresenters.TryGetValue(enemy.RuntimeId, out presenter) || presenter == null)
-                {
-                    presenter = CreatePresenter(enemy);
-                    if (presenter == null)
-                        continue;
-
-                    enemyPresenters[enemy.RuntimeId] = presenter;
-                }
-
-                presenter.ApplySnapshot(enemy, worldMapPresenter);
-            }
+            foreach (var enemy in ClientRuntime.World.Enemies)
+                UpsertPresenter(enemy);
 
             var removedRuntimeIds = new List<int>();
             foreach (var pair in enemyPresenters)
@@ -115,6 +123,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 presenter = instance.AddComponent<EnemyPresenter>();
 
             return presenter;
+        }
+
+        private void UpsertPresenter(EnemyRuntimeModel enemy)
+        {
+            EnemyPresenter presenter;
+            if (!enemyPresenters.TryGetValue(enemy.RuntimeId, out presenter) || presenter == null)
+            {
+                presenter = CreatePresenter(enemy);
+                if (presenter == null)
+                    return;
+
+                enemyPresenters[enemy.RuntimeId] = presenter;
+            }
+
+            presenter.ApplySnapshot(enemy, worldMapPresenter);
         }
 
         private void RemovePresenter(int runtimeId)

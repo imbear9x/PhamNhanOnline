@@ -26,7 +26,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             ClientRuntime.World.MapChanged += HandleWorldChanged;
-            ClientRuntime.World.ObservedCharactersChanged += HandleWorldChanged;
+            ClientRuntime.World.ObservedCharacterUpserted += HandleObservedCharacterUpserted;
+            ClientRuntime.World.ObservedCharacterRemoved += HandleObservedCharacterRemoved;
+            ClientRuntime.World.ObservedCharacterMoved += HandleObservedCharacterMoved;
+            ClientRuntime.World.ObservedCharacterStateChanged += HandleObservedCharacterStateChanged;
             SyncRemotePlayers();
         }
 
@@ -47,7 +50,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (ClientRuntime.IsInitialized)
             {
                 ClientRuntime.World.MapChanged -= HandleWorldChanged;
-                ClientRuntime.World.ObservedCharactersChanged -= HandleWorldChanged;
+                ClientRuntime.World.ObservedCharacterUpserted -= HandleObservedCharacterUpserted;
+                ClientRuntime.World.ObservedCharacterRemoved -= HandleObservedCharacterRemoved;
+                ClientRuntime.World.ObservedCharacterMoved -= HandleObservedCharacterMoved;
+                ClientRuntime.World.ObservedCharacterStateChanged -= HandleObservedCharacterStateChanged;
             }
 
             ClearRemotePlayers();
@@ -56,6 +62,26 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void HandleWorldChanged()
         {
             SyncRemotePlayers();
+        }
+
+        private void HandleObservedCharacterUpserted(ObservedCharacterModel observedCharacter)
+        {
+            UpsertPresenter(observedCharacter, snap: true);
+        }
+
+        private void HandleObservedCharacterRemoved(Guid characterId)
+        {
+            RemovePresenter(characterId);
+        }
+
+        private void HandleObservedCharacterMoved(PhamNhanOnline.Client.Features.World.Application.ObservedCharacterMovedNotice notice)
+        {
+            UpsertPresenter(notice.Character, snap: false);
+        }
+
+        private void HandleObservedCharacterStateChanged(PhamNhanOnline.Client.Features.World.Application.ObservedCharacterStateChangedNotice notice)
+        {
+            UpsertPresenter(notice.Character, snap: false);
         }
 
         private void SyncRemotePlayers()
@@ -83,24 +109,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             warnedMissingPrefab = false;
             var activeCharacterIds = new HashSet<Guid>();
             foreach (var observedCharacter in ClientRuntime.World.ObservedCharacters)
-            {
-                var characterId = observedCharacter.Character.CharacterId;
-                activeCharacterIds.Add(characterId);
+                activeCharacterIds.Add(observedCharacter.Character.CharacterId);
 
-                RemoteCharacterPresenter presenter;
-                if (!remotePresenters.TryGetValue(characterId, out presenter) || presenter == null)
-                {
-                    presenter = CreatePresenter(observedCharacter);
-                    if (presenter == null)
-                        continue;
-
-                    remotePresenters[characterId] = presenter;
-                    presenter.ApplySnapshot(observedCharacter, worldMapPresenter, snap: true);
-                    continue;
-                }
-
-                presenter.ApplySnapshot(observedCharacter, worldMapPresenter, snap: false);
-            }
+            foreach (var observedCharacter in ClientRuntime.World.ObservedCharacters)
+                UpsertPresenter(observedCharacter, snap: true);
 
             var removedCharacterIds = new List<Guid>();
             foreach (var pair in remotePresenters)
@@ -126,6 +138,24 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             presenter.Initialize(remoteMoveSmoothing);
             ClientLog.Info($"Spawned remote player presenter for {observedCharacter.Character.Name}.");
             return presenter;
+        }
+
+        private void UpsertPresenter(ObservedCharacterModel observedCharacter, bool snap)
+        {
+            var characterId = observedCharacter.Character.CharacterId;
+            RemoteCharacterPresenter presenter;
+            if (!remotePresenters.TryGetValue(characterId, out presenter) || presenter == null)
+            {
+                presenter = CreatePresenter(observedCharacter);
+                if (presenter == null)
+                    return;
+
+                remotePresenters[characterId] = presenter;
+                presenter.ApplySnapshot(observedCharacter, worldMapPresenter, snap: true);
+                return;
+            }
+
+            presenter.ApplySnapshot(observedCharacter, worldMapPresenter, snap);
         }
 
         private void RemovePresenter(Guid characterId)
