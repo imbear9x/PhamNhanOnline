@@ -6,6 +6,7 @@ using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Combat.Application;
 using PhamNhanOnline.Client.Features.Skills.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
+using PhamNhanOnline.Client.Features.World.Presentation;
 using PhamNhanOnline.Client.UI.Skills;
 using TMPro;
 using UnityEngine;
@@ -20,6 +21,7 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         [Header("References")]
         [SerializeField] private SkillPresentationCatalog presentationCatalog;
+        [SerializeField] private WorldSceneController worldSceneController;
         [SerializeField] private CombatSkillButtonView basicSkillButton;
         [SerializeField] private CombatSkillButtonView[] additionalSkillButtons = Array.Empty<CombatSkillButtonView>();
 
@@ -41,6 +43,7 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         private void Awake()
         {
+            AutoWireReferences();
             NormalizeButtonSlotIndices();
             SubscribeButtons();
             ApplyCastBar(false, 0f);
@@ -115,6 +118,8 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         private void Refresh(bool force)
         {
+            AutoWireReferences();
+
             if (!ClientRuntime.IsInitialized)
             {
                 ApplyMissingState();
@@ -223,6 +228,8 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (!ClientRuntime.IsInitialized || slotIndex <= 0)
                 return;
 
+            AutoWireReferences();
+
             PlayerSkillModel skill;
             if (!ClientRuntime.Skills.TryGetLoadoutSkill(slotIndex, out skill))
                 return;
@@ -240,10 +247,28 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (!TryResolveSelectedTarget(out targetHandle))
                 return;
 
+            if (slotIndex == BasicSkillSlotIndex)
+            {
+                if (worldSceneController == null ||
+                    !worldSceneController.RequestPrimaryTargetAction(targetHandle))
+                {
+                    return;
+                }
+
+                Refresh(force: true);
+                return;
+            }
+
             if (!ClientRuntime.CombatService.TryUseSkillOnTarget(slotIndex, targetHandle))
                 return;
 
             Refresh(force: true);
+        }
+
+        private void AutoWireReferences()
+        {
+            if (worldSceneController == null)
+                worldSceneController = FindObjectOfType<WorldSceneController>();
         }
 
         private bool TryResolveSelectedTarget(out WorldTargetHandle targetHandle)
