@@ -204,7 +204,7 @@ Các packet đang dùng:
 - `SkillCastStartedPacket`: client biết lúc nào bắt đầu cast, lúc nào kết thúc cast, lúc nào impact
 - `SkillImpactResolvedPacket`: client biết skill resolve thành công hay thất bại, damage chính là bao nhiêu
 - `EnemyHpChangedPacket`: client cập nhật máu quái
-- `ObservedCharacterCurrentStateChangedPacket`: client cập nhật HP/MP/Stamina của player nếu skill tác động lên player
+- `ObservedCharacterCurrentStateChangedPacket`: client cập nhật HP/MP/Stamina hiện tại của player nếu skill tác động lên player
 
 ## Các effect đã hỗ trợ ngay
 
@@ -221,12 +221,12 @@ Các packet đang dùng:
 
 ### ResourceReduce
 
-- trừ `Hp`, `Mp`, hoặc `Stamina` của player
+- trừ `Hp`, `Mp`, hoặc `Stamina` hiện tại của player
 - với enemy hiện chỉ map `Hp` là có ý nghĩa
 
 ### ResourceRestore
 
-- hồi `Hp`, `Mp`, hoặc `Stamina` cho player
+- hồi `Hp`, `Mp`, hoặc `Stamina` hiện tại cho player
 - với enemy hiện chỉ map `Hp` là có ý nghĩa
 
 ### Shield
@@ -258,7 +258,7 @@ Hiện đã hỗ trợ ổn cho:
 Khuyến nghị hiện tại:
 
 - nếu muốn tăng/giảm HP hoặc MP tức thời, dùng `Heal`, `ResourceReduce`, `ResourceRestore`
-- chưa nên dùng `BuffStat`/`DebuffStat` cho `Hp`, `Mp`, `Stamina` cho tới khi có thêm tầng clamp/max-resource combat đầy đủ
+- `BuffStat`/`DebuffStat` nên dùng cho stat tổng như `MaxHp`, `MaxMp`, `MaxStamina`, `Attack`, `Speed`
 
 ## Công thức tính magnitude
 

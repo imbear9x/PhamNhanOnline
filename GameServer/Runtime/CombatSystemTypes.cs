@@ -5,9 +5,9 @@ namespace GameServer.Runtime;
 public enum CharacterStatType
 {
     None = 0,
-    Hp = 1,
-    Mp = 2,
-    Stamina = 3,
+    MaxHp = 1,
+    MaxMp = 2,
+    MaxStamina = 3,
     Attack = 4,
     Speed = 5,
     SpiritualSense = 6,
@@ -163,8 +163,9 @@ public readonly record struct PlayerMartialArtProgressState(
     long CurrentExp);
 
 public readonly record struct FlatStatBonusBundle(
-    int Hp,
-    int Mp,
+    int MaxHp,
+    int MaxMp,
+    int MaxStamina,
     int Attack,
     int Speed,
     int SpiritualSense,
@@ -176,8 +177,9 @@ public readonly record struct FlatStatBonusBundle(
     {
         return statType switch
         {
-            CharacterStatType.Hp => this with { Hp = checked(Hp + decimal.ToInt32(decimal.Truncate(value))) },
-            CharacterStatType.Mp => this with { Mp = checked(Mp + decimal.ToInt32(decimal.Truncate(value))) },
+            CharacterStatType.MaxHp => this with { MaxHp = checked(MaxHp + decimal.ToInt32(decimal.Truncate(value))) },
+            CharacterStatType.MaxMp => this with { MaxMp = checked(MaxMp + decimal.ToInt32(decimal.Truncate(value))) },
+            CharacterStatType.MaxStamina => this with { MaxStamina = checked(MaxStamina + decimal.ToInt32(decimal.Truncate(value))) },
             CharacterStatType.Attack => this with { Attack = checked(Attack + decimal.ToInt32(decimal.Truncate(value))) },
             CharacterStatType.Speed => this with { Speed = checked(Speed + decimal.ToInt32(decimal.Truncate(value))) },
             CharacterStatType.SpiritualSense => this with { SpiritualSense = checked(SpiritualSense + decimal.ToInt32(decimal.Truncate(value))) },

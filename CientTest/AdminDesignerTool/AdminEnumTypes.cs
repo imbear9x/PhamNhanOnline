@@ -23,9 +23,9 @@ internal enum AdminEditorKind
 internal enum CharacterStatType
 {
     None = 0,
-    Hp = 1,
-    Mp = 2,
-    Stamina = 3,
+    MaxHp = 1,
+    MaxMp = 2,
+    MaxStamina = 3,
     Attack = 4,
     Speed = 5,
     SpiritualSense = 6,

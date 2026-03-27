@@ -86,18 +86,18 @@ public sealed class CharacterFinalStatService
 
         var combinedModifiers = MergeModifierBundles(equipmentModifiers, martialArtModifiers);
 
-        var hp = checked(baseStats.GetRawHp() + potentialBonuses.Hp + ResolvePercentIntBonus(baseStats.GetRawHp(), combinedModifiers, CharacterStatType.Hp) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.Hp));
-        var mp = checked(baseStats.GetRawMp() + potentialBonuses.Mp + ResolvePercentIntBonus(baseStats.GetRawMp(), combinedModifiers, CharacterStatType.Mp) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.Mp));
+        var hp = checked(baseStats.GetRawHp() + potentialBonuses.MaxHp + ResolvePercentIntBonus(baseStats.GetRawHp(), combinedModifiers, CharacterStatType.MaxHp) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.MaxHp));
+        var mp = checked(baseStats.GetRawMp() + potentialBonuses.MaxMp + ResolvePercentIntBonus(baseStats.GetRawMp(), combinedModifiers, CharacterStatType.MaxMp) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.MaxMp));
+        var stamina = checked(baseStats.GetRawStamina() + potentialBonuses.MaxStamina + ResolvePercentIntBonus(baseStats.GetRawStamina(), combinedModifiers, CharacterStatType.MaxStamina) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.MaxStamina));
         var attack = checked(baseStats.GetRawAttack() + potentialBonuses.Attack + ResolvePercentIntBonus(baseStats.GetRawAttack(), combinedModifiers, CharacterStatType.Attack) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.Attack));
         var speed = checked(baseStats.GetRawSpeed() + potentialBonuses.Speed + ResolvePercentIntBonus(baseStats.GetRawSpeed(), combinedModifiers, CharacterStatType.Speed) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.Speed));
         var spiritualSense = checked(baseStats.GetRawSpiritualSense() + potentialBonuses.SpiritualSense + ResolvePercentIntBonus(baseStats.GetRawSpiritualSense(), combinedModifiers, CharacterStatType.SpiritualSense) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.SpiritualSense));
-        var stamina = baseStats.GetRawStamina();
         var fortune = baseStats.GetRawFortune() + potentialBonuses.Fortune + ResolvePercentFortuneBonus(baseStats.GetRawFortune(), combinedModifiers) + ResolveFlatFortuneBonus(combinedModifiers);
 
         return await _characterService.EnrichBaseStatsAsync(baseStats with
         {
-            PotentialHpBonus = potentialBonuses.Hp,
-            PotentialMpBonus = potentialBonuses.Mp,
+            PotentialHpBonus = potentialBonuses.MaxHp,
+            PotentialMpBonus = potentialBonuses.MaxMp,
             PotentialAttackBonus = potentialBonuses.Attack,
             PotentialSpeedBonus = potentialBonuses.Speed,
             PotentialSpiritualSenseBonus = potentialBonuses.SpiritualSense,

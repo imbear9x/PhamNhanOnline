@@ -81,9 +81,9 @@ public sealed class PlayerSession
         var snapshot = RuntimeState.CaptureSnapshot();
         var baseStats = snapshot.BaseStats;
         return new CombatStatSnapshot(
-            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveHp(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Hp, utcNow)),
-            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveMp(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Mp, utcNow)),
-            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveStamina(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Stamina, utcNow)),
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveHp(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.MaxHp, utcNow)),
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveMp(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.MaxMp, utcNow)),
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveStamina(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.MaxStamina, utcNow)),
             CombatStatMath.ApplyModifiers(baseStats.GetEffectiveAttack(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Attack, utcNow)),
             CombatStatMath.ApplyModifiers(baseStats.GetEffectiveSpeed(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Speed, utcNow)),
             CombatStatMath.ApplyModifiers(baseStats.GetEffectiveSpiritualSense(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.SpiritualSense, utcNow)),

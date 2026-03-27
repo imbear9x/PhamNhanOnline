@@ -383,7 +383,7 @@ public sealed class SkillExecutionService
     {
         statType = effect.StatType ?? CharacterStatType.None;
         valueType = effect.ValueType ?? CombatValueType.Flat;
-        if (statType is CharacterStatType.None or CharacterStatType.Hp or CharacterStatType.Mp or CharacterStatType.Stamina)
+        if (statType == CharacterStatType.None)
             return false;
 
         return true;

@@ -111,8 +111,8 @@ public sealed class PotentialStatCatalog
     public FlatStatBonusBundle ResolveAllocatedBonuses(CharacterBaseStatsDto baseStats)
     {
         var total = FlatStatBonusBundle.Empty;
-        total = total with { Hp = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseHp) };
-        total = total with { Mp = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseMp) };
+        total = total with { MaxHp = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseHp) };
+        total = total with { MaxMp = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseMp) };
         total = total with { Attack = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseAttack) };
         total = total with { Speed = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseSpeed) };
         total = total with { SpiritualSense = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseSpiritualSense) };
