@@ -6,6 +6,5 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
     {
         public float Horizontal;
         public float Vertical;
-        public bool AttackPressed;
     }
 }

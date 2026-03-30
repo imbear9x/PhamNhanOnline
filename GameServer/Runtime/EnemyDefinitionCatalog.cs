@@ -70,6 +70,7 @@ public sealed class EnemyDefinitionCatalog
                     (EnemyKind)x.Kind,
                     x.MaxHp,
                     x.BaseAttack,
+                    (float)x.BaseMoveSpeed,
                     (float)x.PatrolRadius,
                     (float)x.DetectionRadius,
                     (float)x.CombatRadius,

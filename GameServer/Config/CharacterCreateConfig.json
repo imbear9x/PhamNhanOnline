@@ -1,0 +1,17 @@
+{
+  "RealmTemplateId": 1,
+  "FallbackRealmLifespan": 120,
+  "Cultivation": 0,
+  "BaseHp": 100,
+  "BaseMp": 100,
+  "BaseAttack": 10,
+  "BaseMoveSpeed": 300.0,
+  "BaseSpeed": 100,
+  "BaseSpiritualSense": 10,
+  "BaseStamina": 100,
+  "LifespanBonus": 0,
+  "BaseFortune": 0.01,
+  "BasePotential": 0,
+  "UnallocatedPotential": 0,
+  "PotentialRewardLocked": false
+}

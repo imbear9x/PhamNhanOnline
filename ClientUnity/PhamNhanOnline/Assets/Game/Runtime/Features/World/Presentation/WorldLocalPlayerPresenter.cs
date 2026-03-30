@@ -263,14 +263,23 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (controller == null)
                 controller = target.AddComponent<LocalCharacterActionController>();
 
-            controller.Initialize(localCharacterActionConfig, ResolveBaseSpeedPercent());
+            controller.Initialize(
+                localCharacterActionConfig,
+                ResolveBaseSpeedPercent(),
+                ResolveBaseMoveSpeedUnitsPerSecond(),
+                ResolveWorldUnitsPerServerUnit());
             return controller;
         }
 
         private void RefreshLocalActionSpeed()
         {
-            if (localActionController != null)
-                localActionController.SetSpeedStatPercent(ResolveBaseSpeedPercent());
+            if (localActionController == null)
+                return;
+
+            localActionController.SetSpeedStatPercent(ResolveBaseSpeedPercent());
+            localActionController.SetMovementProfile(
+                ResolveBaseMoveSpeedUnitsPerSecond(),
+                ResolveWorldUnitsPerServerUnit());
         }
 
         private void SyncInputBlockState()
@@ -296,6 +305,26 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return 100;
 
             return totalSpeed;
+        }
+
+        private float? ResolveBaseMoveSpeedUnitsPerSecond()
+        {
+            var baseStats = ClientRuntime.Character.BaseStats;
+            if (!baseStats.HasValue)
+                return null;
+
+            var baseMoveSpeed = baseStats.Value.BaseMoveSpeed;
+            return baseMoveSpeed > 0f ? baseMoveSpeed : null;
+        }
+
+        private Vector2? ResolveWorldUnitsPerServerUnit()
+        {
+            if (worldMapPresenter == null)
+                return null;
+
+            return worldMapPresenter.TryGetWorldUnitsPerServerUnit(out var worldUnitsPerServerUnit)
+                ? worldUnitsPerServerUnit
+                : null;
         }
 
         private const int CultivatingStateCode = 3;

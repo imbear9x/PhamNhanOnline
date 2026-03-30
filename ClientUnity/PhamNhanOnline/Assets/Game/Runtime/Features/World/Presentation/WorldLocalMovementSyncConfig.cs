@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
@@ -17,14 +18,20 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [Tooltip("Khoang thoi gian toi thieu de gui ngay mot ban dong bo khi co thay doi trang thai quan trong nhu bat dau di, dung lai, doi huong hoac doi phase movement.")]
         [SerializeField] private float immediateStateChangeSyncIntervalSeconds = 0.05f;
 
-        [Tooltip("Quang duong toi thieu trong he toa do server ma nhan vat phai di duoc truoc khi client gui mot ban cap nhat vi tri moi. Tang gia tri nay thi giam packet, giam gia tri nay thi vi tri tren server sat hon.")]
-        [SerializeField] private float syncDistanceThreshold = 10f;
+        [Tooltip("Quang duong toi thieu theo don vi map/server ma nhan vat phai di duoc truoc khi client gui mot ban cap nhat vi tri moi. Vi du map rong 1000 thi gia tri 10 nghia la di duoc 1% be ngang map logic moi gui tiep.")]
+        [FormerlySerializedAs("syncDistanceThreshold")]
+        [SerializeField] private float syncDistanceThresholdMapUnits = 10f;
 
-        [Tooltip("Nguong quang duong toi thieu de client coi nhan vat la dang di chuyen. Dung de tach giua rung nhe/dao dong va di chuyen that.")]
-        [SerializeField] private float movingDetectionThreshold = 0.25f;
+        [Tooltip("Nguong quang duong toi thieu theo don vi map/server de client coi nhan vat la dang di chuyen. Dung de tach giua dao dong nho va di chuyen that trong he quy chieu map logic.")]
+        [FormerlySerializedAs("movingDetectionThreshold")]
+        [SerializeField] private float movingDetectionThresholdMapUnits = 0.25f;
 
-        [Tooltip("Nguong quang duong toi thieu de gui ban cap nhat cuoi cung khi nhan vat vua dung lai. Dung de server chot vi tri cuoi cho on dinh, tranh lech nho luc tha phim.")]
-        [SerializeField] private float finalStopSyncThreshold = 0.5f;
+        [Tooltip("Cua so thoi gian ngan de cong don quang duong di chuyen khi xac dinh nhan vat co dang di chuyen hay khong. Vi du 0.2 giay nghia la client se nhin quang duong tich luy trong 0.2 giay gan nhat.")]
+        [SerializeField] private float movingDetectionWindowSeconds = 0.20f;
+
+        [Tooltip("Nguong quang duong toi thieu theo don vi map/server de gui ban cap nhat cuoi cung khi nhan vat vua dung lai. Dung de server chot vi tri cuoi cho on dinh trong he quy chieu map.")]
+        [FormerlySerializedAs("finalStopSyncThreshold")]
+        [SerializeField] private float finalStopSyncThresholdMapUnits = 0.5f;
 
         public float MinSyncIntervalSeconds => minSyncIntervalSeconds;
 
@@ -32,11 +39,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         public float ImmediateStateChangeSyncIntervalSeconds => immediateStateChangeSyncIntervalSeconds;
 
-        public float SyncDistanceThreshold => syncDistanceThreshold;
+        public float SyncDistanceThresholdMapUnits => syncDistanceThresholdMapUnits;
 
-        public float MovingDetectionThreshold => movingDetectionThreshold;
+        public float MovingDetectionThresholdMapUnits => movingDetectionThresholdMapUnits;
 
-        public float FinalStopSyncThreshold => finalStopSyncThreshold;
+        public float MovingDetectionWindowSeconds => movingDetectionWindowSeconds;
+
+        public float FinalStopSyncThresholdMapUnits => finalStopSyncThresholdMapUnits;
 
         public static WorldLocalMovementSyncConfig CreateRuntimeDefaults()
         {

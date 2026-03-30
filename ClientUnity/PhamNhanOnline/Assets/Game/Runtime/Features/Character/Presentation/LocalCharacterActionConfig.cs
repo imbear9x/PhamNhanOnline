@@ -10,20 +10,19 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
     {
         [Header("Movement")]
         [SerializeField] private float baseMoveSpeed = 4.5f;
+        [SerializeField] private float serverMoveSpeedScale = 1f;
         [FormerlySerializedAs("jumpVelocity")]
-        [SerializeField] private float flyUpSpeed = 7.5f;
+        [FormerlySerializedAs("flyUpSpeed")]
+        [SerializeField] private float flyUpSpeedMultiplier = 1.75f;
         [FormerlySerializedAs("flySpeed")]
-        [SerializeField] private float fallSpeed = 5.5f;
+        [FormerlySerializedAs("fallSpeed")]
+        [SerializeField] private float fallSpeedMultiplier = 2f;
         [SerializeField] private float hoverActivationHeight = 1.5f;
         [SerializeField] private float hoverDuration = 0.35f;
-        [SerializeField] private float verticalVelocityChangeRate = 35f;
+        [FormerlySerializedAs("verticalVelocityChangeRate")]
+        [SerializeField] private float verticalVelocityChangeRateMultiplier = 6f;
         [SerializeField] private int speedStatBaseline = 100;
         [SerializeField] private float movementDeadZone = 0.05f;
-
-        [Header("Combat")]
-        [SerializeField] private float attackDuration = 0.45f;
-        [SerializeField] private float attackCooldown = 0.15f;
-        [SerializeField] private float attackMovementMultiplier = 0.35f;
 
         [Header("Ground Check")]
         [SerializeField] private float groundCheckRadius = 0.15f;
@@ -33,14 +32,19 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             get { return baseMoveSpeed; }
         }
 
-        public float FlyUpSpeed
+        public float ServerMoveSpeedScale
         {
-            get { return flyUpSpeed; }
+            get { return serverMoveSpeedScale; }
         }
 
-        public float FallSpeed
+        public float FlyUpSpeedMultiplier
         {
-            get { return fallSpeed; }
+            get { return flyUpSpeedMultiplier; }
+        }
+
+        public float FallSpeedMultiplier
+        {
+            get { return fallSpeedMultiplier; }
         }
 
         public float HoverActivationHeight
@@ -53,9 +57,9 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             get { return hoverDuration; }
         }
 
-        public float VerticalVelocityChangeRate
+        public float VerticalVelocityChangeRateMultiplier
         {
-            get { return verticalVelocityChangeRate; }
+            get { return verticalVelocityChangeRateMultiplier; }
         }
 
         public int SpeedStatBaseline
@@ -66,21 +70,6 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         public float MovementDeadZone
         {
             get { return movementDeadZone; }
-        }
-
-        public float AttackDuration
-        {
-            get { return attackDuration; }
-        }
-
-        public float AttackCooldown
-        {
-            get { return attackCooldown; }
-        }
-
-        public float AttackMovementMultiplier
-        {
-            get { return attackMovementMultiplier; }
         }
 
         public float GroundCheckRadius

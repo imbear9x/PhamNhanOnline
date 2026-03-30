@@ -110,6 +110,17 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                     ExecutePendingAction(action);
                     return;
                 }
+
+                Vector2 preferredMoveOverride;
+                if (TryResolvePreferredApproachMoveOverride(
+                        playerWorldPosition,
+                        targetWorldPosition,
+                        requiredRange,
+                        out preferredMoveOverride))
+                {
+                    localActionController.SetExternalMoveOverride(preferredMoveOverride);
+                    return;
+                }
             }
 
             var delta = targetWorldPosition - playerWorldPosition;
@@ -327,6 +338,59 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             distanceServerUnits = Vector2.Distance(playerServerPosition, targetServerPosition);
+            return true;
+        }
+
+        private bool TryResolvePreferredApproachMoveOverride(
+            Vector2 playerWorldPosition,
+            Vector2 targetWorldPosition,
+            float requiredRangeServerUnits,
+            out Vector2 moveOverride)
+        {
+            moveOverride = default;
+            if (worldMapPresenter == null)
+                return false;
+
+            Vector2 playerServerPosition;
+            Vector2 targetServerPosition;
+            if (!worldMapPresenter.TryMapWorldPositionToServer(playerWorldPosition, out playerServerPosition) ||
+                !worldMapPresenter.TryMapWorldPositionToServer(targetWorldPosition, out targetServerPosition))
+            {
+                return false;
+            }
+
+            var stopRangeServerUnits = Mathf.Max(0f, requiredRangeServerUnits) + Mathf.Max(0f, actionRangeBufferServerUnits);
+            var deltaServer = targetServerPosition - playerServerPosition;
+
+            if (Mathf.Abs(deltaServer.x) > stopRangeServerUnits)
+                return TryResolveWorldMoveOverrideFromServerDirection(new Vector2(Mathf.Sign(deltaServer.x), 0f), out moveOverride);
+
+            if (Mathf.Abs(deltaServer.y) > Mathf.Epsilon)
+                return TryResolveWorldMoveOverrideFromServerDirection(new Vector2(0f, Mathf.Sign(deltaServer.y)), out moveOverride);
+
+            return false;
+        }
+
+        private bool TryResolveWorldMoveOverrideFromServerDirection(Vector2 serverDirection, out Vector2 moveOverride)
+        {
+            moveOverride = default;
+            if (serverDirection.sqrMagnitude <= Mathf.Epsilon)
+                return false;
+
+            if (worldMapPresenter != null &&
+                worldMapPresenter.TryGetWorldUnitsPerServerUnit(out var worldUnitsPerServerUnit))
+            {
+                var worldDirection = new Vector2(
+                    serverDirection.x * Mathf.Max(worldUnitsPerServerUnit.x, Mathf.Epsilon),
+                    serverDirection.y * Mathf.Max(worldUnitsPerServerUnit.y, Mathf.Epsilon));
+                if (worldDirection.sqrMagnitude <= Mathf.Epsilon)
+                    return false;
+
+                moveOverride = worldDirection.normalized;
+                return true;
+            }
+
+            moveOverride = serverDirection.normalized;
             return true;
         }
 

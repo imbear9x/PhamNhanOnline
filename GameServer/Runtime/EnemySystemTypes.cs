@@ -96,6 +96,7 @@ public sealed record EnemyDefinition(
     EnemyKind Kind,
     int MaxHp,
     int BaseAttack,
+    float BaseMoveSpeed,
     float PatrolRadius,
     float DetectionRadius,
     float CombatRadius,

@@ -66,6 +66,30 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return true;
         }
 
+        public bool TryGetWorldUnitsPerServerUnit(out Vector2 worldUnitsPerServerUnit)
+        {
+            worldUnitsPerServerUnit = default;
+
+            if (!ClientRuntime.IsInitialized)
+                return false;
+
+            var mapWidth = ClientRuntime.World.CurrentMapWidth;
+            var mapHeight = ClientRuntime.World.CurrentMapHeight;
+            if (mapWidth <= 0f || mapHeight <= 0f)
+                return false;
+
+            if (!EnsurePlayableBoundsCached())
+                return false;
+
+            var boundsWidth = cachedPlayableBounds.size.x;
+            var boundsHeight = cachedPlayableBounds.size.y;
+            if (boundsWidth <= Mathf.Epsilon || boundsHeight <= Mathf.Epsilon)
+                return false;
+
+            worldUnitsPerServerUnit = new Vector2(boundsWidth / mapWidth, boundsHeight / mapHeight);
+            return true;
+        }
+
         public bool TryMapServerPositionToWorld(Vector2 serverPosition, out Vector2 worldPosition)
         {
             worldPosition = default;

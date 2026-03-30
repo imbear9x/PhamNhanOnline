@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GameServer.Config;
 using GameServer.Database;
 using GameServer.Diagnostics;
 using GameServer.Network;
@@ -24,6 +25,8 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddGameServices(this IServiceCollection services)
     {
+        services.AddSingleton(BuildCharacterCreateConfig());
+
         // add game services
         services.AddScoped<AccountService>();
         services.AddScoped<CharacterService>();
@@ -218,6 +221,11 @@ public static class ServiceCollectionExtensions
     private static GameTimeConfig BuildGameTimeBootstrapConfig()
     {
         return LoadConfig<GameTimeConfig>("gameTimeConfig.json");
+    }
+
+    private static CharacterCreateConfig BuildCharacterCreateConfig()
+    {
+        return LoadConfig<CharacterCreateConfig>("CharacterCreateConfig.json");
     }
 
     private static GameRandomConfig BuildGameRandomConfigFromDatabase(IServiceProvider rootProvider)

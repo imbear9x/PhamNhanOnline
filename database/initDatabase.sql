@@ -4,6 +4,7 @@ ALTER TABLE public.character_base_stats
     DROP COLUMN IF EXISTS base_physique,
     DROP COLUMN IF EXISTS bonus_physique,
     DROP COLUMN IF EXISTS physique_upgrade_count,
+    ADD COLUMN IF NOT EXISTS base_move_speed numeric(10,4) NOT NULL DEFAULT 100.0,
     ADD COLUMN IF NOT EXISTS unallocated_potential integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS cultivation_progress numeric(18,6) NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS hp_upgrade_count integer NOT NULL DEFAULT 0,
@@ -17,6 +18,7 @@ ALTER TABLE public.character_base_stats
 
 UPDATE public.character_base_stats
 SET
+    base_move_speed = COALESCE(base_move_speed, 100.0),
     unallocated_potential = COALESCE(unallocated_potential, COALESCE(base_potential, 0)),
     cultivation_progress = COALESCE(cultivation_progress, 0),
     potential_reward_locked = COALESCE(potential_reward_locked, false);
@@ -915,6 +917,7 @@ CREATE TABLE IF NOT EXISTS public.enemy_templates (
     kind integer NOT NULL,
     max_hp integer NOT NULL,
     base_attack integer NOT NULL DEFAULT 0,
+    base_move_speed numeric(10, 4) NOT NULL DEFAULT 100.0,
     patrol_radius numeric(10, 4) NOT NULL DEFAULT 0,
     detection_radius numeric(10, 4) NOT NULL DEFAULT 0,
     combat_radius numeric(10, 4) NOT NULL DEFAULT 0,
@@ -930,14 +933,20 @@ CREATE TABLE IF NOT EXISTS public.enemy_templates (
 );
 
 ALTER TABLE public.enemy_templates
+    ADD COLUMN IF NOT EXISTS base_move_speed numeric(10, 4) NOT NULL DEFAULT 100.0,
     ADD COLUMN IF NOT EXISTS enable_out_of_combat_restore boolean NOT NULL DEFAULT true,
     ADD COLUMN IF NOT EXISTS out_of_combat_restore_delay_seconds integer NOT NULL DEFAULT 20;
 
 UPDATE public.enemy_templates
 SET
+    base_move_speed = CASE
+        WHEN code = 'wood_doll' THEN 0
+        ELSE COALESCE(base_move_speed, 100.0)
+    END,
     enable_out_of_combat_restore = COALESCE(enable_out_of_combat_restore, true),
     out_of_combat_restore_delay_seconds = COALESCE(out_of_combat_restore_delay_seconds, 20)
-WHERE enable_out_of_combat_restore IS NULL
+WHERE base_move_speed IS NULL
+   OR enable_out_of_combat_restore IS NULL
    OR out_of_combat_restore_delay_seconds IS NULL;
 
 CREATE TABLE IF NOT EXISTS public.enemy_template_skills (
@@ -1033,6 +1042,7 @@ INSERT INTO public.enemy_templates (
     kind,
     max_hp,
     base_attack,
+    base_move_speed,
     patrol_radius,
     detection_radius,
     combat_radius,
@@ -1052,6 +1062,7 @@ VALUES (
     0,
     0,
     0,
+    0,
     true,
     20,
     1000,
@@ -1064,6 +1075,7 @@ SET
     kind = EXCLUDED.kind,
     max_hp = EXCLUDED.max_hp,
     base_attack = EXCLUDED.base_attack,
+    base_move_speed = EXCLUDED.base_move_speed,
     patrol_radius = EXCLUDED.patrol_radius,
     detection_radius = EXCLUDED.detection_radius,
     combat_radius = EXCLUDED.combat_radius,

@@ -8,6 +8,8 @@ public static class CharacterBaseStatsDtoExtensions
 
     public static int GetRawAttack(this CharacterBaseStatsDto stats) => stats.BaseAttack ?? 0;
 
+    public static float GetRawMoveSpeed(this CharacterBaseStatsDto stats) => stats.BaseMoveSpeed ?? 0f;
+
     public static int GetRawSpeed(this CharacterBaseStatsDto stats) => stats.BaseSpeed ?? 0;
 
     public static int GetRawSpiritualSense(this CharacterBaseStatsDto stats) => stats.BaseSpiritualSense ?? 0;
@@ -21,6 +23,8 @@ public static class CharacterBaseStatsDtoExtensions
     public static int GetEffectiveMp(this CharacterBaseStatsDto stats) => stats.FinalMp ?? stats.GetRawMp();
 
     public static int GetEffectiveAttack(this CharacterBaseStatsDto stats) => stats.FinalAttack ?? stats.GetRawAttack();
+
+    public static float GetEffectiveMoveSpeed(this CharacterBaseStatsDto stats) => stats.BaseMoveSpeed ?? stats.GetRawMoveSpeed();
 
     public static int GetEffectiveSpeed(this CharacterBaseStatsDto stats) => stats.FinalSpeed ?? stats.GetRawSpeed();
 

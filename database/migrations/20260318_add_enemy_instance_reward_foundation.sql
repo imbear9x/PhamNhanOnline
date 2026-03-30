@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS public.enemy_templates (
     kind integer NOT NULL,
     max_hp integer NOT NULL,
     base_attack integer NOT NULL DEFAULT 0,
+    base_move_speed numeric(10, 4) NOT NULL DEFAULT 100.0,
     patrol_radius numeric(10, 4) NOT NULL DEFAULT 0,
     detection_radius numeric(10, 4) NOT NULL DEFAULT 0,
     combat_radius numeric(10, 4) NOT NULL DEFAULT 0,

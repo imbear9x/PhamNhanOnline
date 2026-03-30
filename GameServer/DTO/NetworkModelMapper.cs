@@ -41,6 +41,7 @@ public static class NetworkModelMapper
             BaseHp = dto.BaseHp ?? 0,
             BaseMp = dto.BaseMp ?? 0,
             BaseAttack = dto.BaseAttack ?? 0,
+            BaseMoveSpeed = dto.BaseMoveSpeed ?? 0f,
             BaseSpeed = dto.BaseSpeed ?? 0,
             BaseSpiritualSense = dto.BaseSpiritualSense ?? 0,
             BaseStamina = dto.BaseStamina ?? 0,

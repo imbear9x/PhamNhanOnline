@@ -11,6 +11,7 @@ public sealed class EnemyTemplateEntity
     [Column("kind"), NotNull] public int Kind { get; set; }
     [Column("max_hp"), NotNull] public int MaxHp { get; set; }
     [Column("base_attack"), NotNull] public int BaseAttack { get; set; }
+    [Column("base_move_speed"), NotNull] public decimal BaseMoveSpeed { get; set; }
     [Column("patrol_radius"), NotNull] public decimal PatrolRadius { get; set; }
     [Column("detection_radius"), NotNull] public decimal DetectionRadius { get; set; }
     [Column("combat_radius"), NotNull] public decimal CombatRadius { get; set; }

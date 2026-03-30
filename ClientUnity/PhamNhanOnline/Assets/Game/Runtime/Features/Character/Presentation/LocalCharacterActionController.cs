@@ -14,7 +14,6 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             Falling,
         }
 
-        private static readonly string[] AttackStateNames = { "Attack", "Attack2" };
         private const string MoveSpeedParameterName = "MoveSpeed";
 
         private enum MovementPresentationPhase
@@ -44,21 +43,20 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         [SerializeField] private bool visualFacesLeftByDefault = true;
 
         private readonly Collider2D[] groundHits = new Collider2D[8];
-        private readonly int[] attackStateHashes = new int[AttackStateNames.Length];
-        private readonly bool[] hasAttackState = new bool[AttackStateNames.Length];
 
         private LocalCharacterActionConfig actionConfig;
         private PlayerView playerView;
         private float visualDefaultScaleX = 1f;
         private int speedStatPercent = 100;
+        private bool hasServerBaseMoveSpeed;
+        private float serverBaseMoveSpeed;
+        private bool hasWorldUnitsPerServerUnit;
+        private Vector2 worldUnitsPerServerUnit = Vector2.one;
         private float horizontalInput;
         private float verticalInput;
         private bool isGrounded;
         private bool wasGroundedLastPhysicsStep = true;
         private bool facingLeft = true;
-        private float attackTimer;
-        private float attackCooldownTimer;
-        private int attackVariantIndex;
         private int currentAnimationHash;
         private bool hasCurrentAnimation;
         private bool hasAirborneAnchor;
@@ -101,12 +99,17 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             }
         }
 
-        public void Initialize(LocalCharacterActionConfig config, int baseSpeedPercent)
+        public void Initialize(
+            LocalCharacterActionConfig config,
+            int baseSpeedPercent,
+            float? baseMoveSpeedUnitsPerSecond = null,
+            Vector2? worldUnitsPerServerUnitValue = null)
         {
             actionConfig = config != null ? config : LocalCharacterActionConfig.CreateRuntimeDefaults();
             speedStatPercent = baseSpeedPercent > 0
                 ? baseSpeedPercent
                 : actionConfig.SpeedStatBaseline;
+            SetMovementProfile(baseMoveSpeedUnitsPerSecond, worldUnitsPerServerUnitValue);
             AutoWireMissingReferences();
             ConfigureBodyForLocalSimulation();
             CacheAnimatorStatesIfNeeded(force: true);
@@ -123,6 +126,33 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         {
             if (baseSpeedPercent > 0)
                 speedStatPercent = baseSpeedPercent;
+        }
+
+        public void SetMovementProfile(float? baseMoveSpeedUnitsPerSecond, Vector2? worldUnitsPerServerUnitValue)
+        {
+            if (baseMoveSpeedUnitsPerSecond.HasValue && baseMoveSpeedUnitsPerSecond.Value > 0f)
+            {
+                hasServerBaseMoveSpeed = true;
+                serverBaseMoveSpeed = baseMoveSpeedUnitsPerSecond.Value;
+            }
+            else
+            {
+                hasServerBaseMoveSpeed = false;
+                serverBaseMoveSpeed = 0f;
+            }
+
+            if (worldUnitsPerServerUnitValue.HasValue &&
+                worldUnitsPerServerUnitValue.Value.x > Mathf.Epsilon &&
+                worldUnitsPerServerUnitValue.Value.y > Mathf.Epsilon)
+            {
+                hasWorldUnitsPerServerUnit = true;
+                worldUnitsPerServerUnit = worldUnitsPerServerUnitValue.Value;
+            }
+            else
+            {
+                hasWorldUnitsPerServerUnit = false;
+                worldUnitsPerServerUnit = Vector2.one;
+            }
         }
 
         public void SetInputBlocked(bool blocked)
@@ -211,14 +241,6 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
                 verticalInput = inputState.Vertical;
             }
 
-            if (inputState.AttackPressed && attackCooldownTimer <= 0f)
-                StartAttack();
-
-            if (attackTimer > 0f)
-                attackTimer -= Time.deltaTime;
-            if (attackCooldownTimer > 0f)
-                attackCooldownTimer -= Time.deltaTime;
-
             UpdateFacing(horizontalInput);
             UpdateAnimation();
         }
@@ -233,33 +255,19 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             HandleGroundedTransitions();
 
             var speedMultiplier = Mathf.Max(0.01f, speedStatPercent / Mathf.Max(1f, actionConfig.SpeedStatBaseline));
-            var movementMultiplier = attackTimer > 0f ? actionConfig.AttackMovementMultiplier : 1f;
-            var moveSpeed = actionConfig.BaseMoveSpeed * speedMultiplier * movementMultiplier;
+            var baseWorldMoveSpeed = ResolveBaseWorldMoveSpeed();
 
             UpdateAirborneState();
 
             var velocity = body.velocity;
-            velocity.x = horizontalInput * moveSpeed;
+            velocity.x = horizontalInput * ResolveHorizontalMoveSpeed(baseWorldMoveSpeed, speedMultiplier);
 
-            var targetVerticalVelocity = ResolveVerticalVelocity(speedMultiplier);
-            var verticalChangeRate = Mathf.Max(0.01f, actionConfig.VerticalVelocityChangeRate * speedMultiplier);
+            var targetVerticalVelocity = ResolveVerticalVelocity(baseWorldMoveSpeed, speedMultiplier);
+            var verticalChangeRate = ResolveVerticalChangeRate(baseWorldMoveSpeed, speedMultiplier);
             velocity.y = Mathf.MoveTowards(velocity.y, targetVerticalVelocity, verticalChangeRate * Time.fixedDeltaTime);
 
             body.gravityScale = 0f;
             body.velocity = velocity;
-        }
-
-        private void StartAttack()
-        {
-            attackCooldownTimer = actionConfig != null ? actionConfig.AttackCooldown : 0.15f;
-            attackTimer = actionConfig != null ? actionConfig.AttackDuration : 0.45f;
-
-            if (hasAttackState[attackVariantIndex % AttackStateNames.Length])
-            {
-                var attackIndex = attackVariantIndex % AttackStateNames.Length;
-                attackVariantIndex++;
-                PlayCachedAnimation(attackStateHashes[attackIndex], true, hasAttackState[attackIndex]);
-            }
         }
 
         private void HandleGroundedTransitions()
@@ -306,7 +314,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
                 return;
 
             var climbedHeight = body.position.y - airborneStartY;
-            if (climbedHeight < actionConfig.HoverActivationHeight)
+            if (climbedHeight < ResolveHoverActivationHeightWorldUnits())
                 return;
 
             if (CanUseFlight())
@@ -321,7 +329,12 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             EnterFallingPresentation();
         }
 
-        private float ResolveVerticalVelocity(float speedMultiplier)
+        private float ResolveHorizontalMoveSpeed(float baseWorldMoveSpeed, float speedMultiplier)
+        {
+            return Mathf.Max(0f, baseWorldMoveSpeed * speedMultiplier);
+        }
+
+        private float ResolveVerticalVelocity(float baseWorldMoveSpeed, float speedMultiplier)
         {
             if (actionConfig == null)
                 return 0f;
@@ -335,10 +348,10 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             if (!mustLandBeforeFlyingAgain && pressingUp)
             {
                 if (canUseFlight)
-                    return actionConfig.FlyUpSpeed * speedMultiplier;
+                    return ResolveFlyUpSpeed(baseWorldMoveSpeed, speedMultiplier);
 
                 if (!hasAirborneAnchor || !hoverTriggeredForCurrentFlight)
-                    return actionConfig.FlyUpSpeed * speedMultiplier;
+                    return ResolveFlyUpSpeed(baseWorldMoveSpeed, speedMultiplier);
             }
 
             if (isGrounded)
@@ -349,7 +362,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
                 hoverTimer = 0f;
                 wasMovingHorizontallyInFlightLastPhysicsStep = false;
                 EnterFallingPresentation();
-                return -actionConfig.FallSpeed * speedMultiplier;
+                return -ResolveFallSpeed(baseWorldMoveSpeed, speedMultiplier);
             }
 
             if (canUseFlight && movementPresentationPhase == MovementPresentationPhase.Flight)
@@ -375,7 +388,48 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             }
 
             EnterFallingPresentation();
-            return -actionConfig.FallSpeed * speedMultiplier;
+            return -ResolveFallSpeed(baseWorldMoveSpeed, speedMultiplier);
+        }
+
+        private float ResolveFlyUpSpeed(float baseWorldMoveSpeed, float speedMultiplier)
+        {
+            return Mathf.Max(0f, baseWorldMoveSpeed * actionConfig.FlyUpSpeedMultiplier * speedMultiplier);
+        }
+
+        private float ResolveFallSpeed(float baseWorldMoveSpeed, float speedMultiplier)
+        {
+            return Mathf.Max(0f, baseWorldMoveSpeed * actionConfig.FallSpeedMultiplier * speedMultiplier);
+        }
+
+        private float ResolveVerticalChangeRate(float baseWorldMoveSpeed, float speedMultiplier)
+        {
+            return Mathf.Max(0.01f, baseWorldMoveSpeed * actionConfig.VerticalVelocityChangeRateMultiplier * speedMultiplier);
+        }
+
+        private float ResolveBaseWorldMoveSpeed()
+        {
+            if (actionConfig == null)
+                return 0f;
+
+            if (hasServerBaseMoveSpeed && hasWorldUnitsPerServerUnit)
+            {
+                return Mathf.Max(0f, serverBaseMoveSpeed)
+                    * worldUnitsPerServerUnit.x
+                    * Mathf.Max(0f, actionConfig.ServerMoveSpeedScale);
+            }
+
+            return Mathf.Max(0f, actionConfig.BaseMoveSpeed);
+        }
+
+        private float ResolveHoverActivationHeightWorldUnits()
+        {
+            if (actionConfig == null)
+                return 0f;
+
+            if (hasWorldUnitsPerServerUnit)
+                return Mathf.Max(0f, actionConfig.HoverActivationHeight * worldUnitsPerServerUnit.y);
+
+            return Mathf.Max(0f, actionConfig.HoverActivationHeight);
         }
 
         private bool CanUseFlight()
@@ -447,9 +501,6 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         private void UpdateAnimation()
         {
             if (animator == null || actionConfig == null)
-                return;
-
-            if (attackTimer > 0f)
                 return;
 
             var hasHorizontalInput = Mathf.Abs(horizontalInput) > actionConfig.MovementDeadZone;
@@ -580,9 +631,6 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             CacheAnimatorState(takeoffStateName, out takeoffStateHash, out hasTakeoffState, false);
             CacheAnimatorState(flightStateName, out flightStateHash, out hasFlightState, false);
             CacheAnimatorState(fallingStateName, out fallingStateHash, out hasFallingState, false);
-
-            for (var i = 0; i < AttackStateNames.Length; i++)
-                CacheAnimatorState(AttackStateNames[i], out attackStateHashes[i], out hasAttackState[i], true);
         }
 
         private bool HasAnimatorParameter(string parameterName, AnimatorControllerParameterType expectedType)
@@ -632,12 +680,6 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             hasMoveSpeedParameter = false;
             hasCurrentAnimation = false;
             currentAnimationHash = 0;
-
-            for (var i = 0; i < AttackStateNames.Length; i++)
-            {
-                attackStateHashes[i] = 0;
-                hasAttackState[i] = false;
-            }
         }
 
         private void PlayOptionalCachedAnimation(int stateHash, bool hasState, bool restart)
@@ -746,6 +788,3 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         }
     }
 }
-
-
-

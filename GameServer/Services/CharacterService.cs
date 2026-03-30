@@ -1,3 +1,4 @@
+using GameServer.Config;
 using GameServer.DTO;
 using GameServer.Entities;
 using GameServer.Exceptions;
@@ -14,19 +15,7 @@ namespace GameServer.Services;
 
 public sealed class CharacterService
 {
-    private const int DefaultRealmTemplateId = 1;
     private const int DefaultCurrentStateCode = 0;
-    private const int DefaultRealmLifespan = 120;
-    private const int DefaultBaseHp = 100;
-    private const int DefaultBaseMp = 100;
-    private const int DefaultBaseAttack = 10;
-    private const int DefaultBaseSpeed = 10;
-    private const int DefaultBaseSpiritualSense = 10;
-    private const int DefaultBaseStamina = 100;
-    private const int DefaultLifespanBonus = 0;
-    private const double DefaultBaseFortune = 0.01;
-    private const int DefaultBasePotential = 0;
-    private const int DefaultUnallocatedPotential = 0;
     private const int DefaultAppearanceValue = 1;
     private const int DefaultHomeGardenPlotCount = 8;
     private const int DefaultStarterBasicSkillId = 0;
@@ -36,6 +25,7 @@ public sealed class CharacterService
     private readonly CharacterRepository _characters;
     private readonly CharacterBaseStatRepository _baseStats;
     private readonly CharacterCurrentStateRepository _currentStates;
+    private readonly CharacterCreateConfig _characterCreateConfig;
     private readonly PlayerCaveRepository _playerCaves;
     private readonly PlayerGardenPlotRepository _playerGardenPlots;
     private readonly RealmTemplateRepository _realmTemplates;
@@ -48,6 +38,7 @@ public sealed class CharacterService
         CharacterRepository characters,
         CharacterBaseStatRepository baseStats,
         CharacterCurrentStateRepository currentStates,
+        CharacterCreateConfig characterCreateConfig,
         PlayerCaveRepository playerCaves,
         PlayerGardenPlotRepository playerGardenPlots,
         RealmTemplateRepository realmTemplates,
@@ -59,6 +50,7 @@ public sealed class CharacterService
         _characters = characters;
         _baseStats = baseStats;
         _currentStates = currentStates;
+        _characterCreateConfig = characterCreateConfig;
         _playerCaves = playerCaves;
         _playerGardenPlots = playerGardenPlots;
         _realmTemplates = realmTemplates;
@@ -288,6 +280,7 @@ public sealed class CharacterService
         existing.BaseHp = stats.BaseHp;
         existing.BaseMp = stats.BaseMp;
         existing.BaseAttack = stats.BaseAttack;
+        existing.BaseMoveSpeed = stats.BaseMoveSpeed.HasValue ? (decimal)stats.BaseMoveSpeed.Value : null;
         existing.BaseSpeed = stats.BaseSpeed;
         existing.BaseSpiritualSense = stats.BaseSpiritualSense;
         existing.BaseStamina = stats.BaseStamina;
@@ -404,11 +397,11 @@ public sealed class CharacterService
     {
         var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(CharacterBaseStatsDto.FromEntity(
             baseStat ?? BuildDefaultCharacterBaseStats(characterId),
-            realmLifespan ?? DefaultRealmLifespan));
+            realmLifespan ?? _characterCreateConfig.FallbackRealmLifespan));
         var lifespanEndGameMinute = CharacterLifespanRules.CreateLifespanEndGameMinute(
             effectiveBaseStats,
             gameTime,
-            DefaultRealmLifespan);
+            _characterCreateConfig.FallbackRealmLifespan);
         var homeDefinition = _mapCatalog.ResolveHomeDefinition();
 
         return new CharacterCurrentState
@@ -430,23 +423,24 @@ public sealed class CharacterService
         };
     }
 
-    private static CharacterBaseStat BuildDefaultCharacterBaseStats(Guid characterId)
+    private CharacterBaseStat BuildDefaultCharacterBaseStats(Guid characterId)
     {
         return new CharacterBaseStat
         {
             CharacterId = characterId,
-            RealmId = DefaultRealmTemplateId,
-            Cultivation = 0,
-            BaseHp = DefaultBaseHp,
-            BaseMp = DefaultBaseMp,
-            BaseAttack = DefaultBaseAttack,
-            BaseSpeed = DefaultBaseSpeed,
-            BaseSpiritualSense = DefaultBaseSpiritualSense,
-            BaseStamina = DefaultBaseStamina,
-            LifespanBonus = DefaultLifespanBonus,
-            BaseFortune = DefaultBaseFortune,
-            BasePotential = DefaultBasePotential,
-            UnallocatedPotential = DefaultUnallocatedPotential,
+            RealmId = _characterCreateConfig.RealmTemplateId,
+            Cultivation = _characterCreateConfig.Cultivation,
+            BaseHp = _characterCreateConfig.BaseHp,
+            BaseMp = _characterCreateConfig.BaseMp,
+            BaseAttack = _characterCreateConfig.BaseAttack,
+            BaseMoveSpeed = _characterCreateConfig.BaseMoveSpeed,
+            BaseSpeed = _characterCreateConfig.BaseSpeed,
+            BaseSpiritualSense = _characterCreateConfig.BaseSpiritualSense,
+            BaseStamina = _characterCreateConfig.BaseStamina,
+            LifespanBonus = _characterCreateConfig.LifespanBonus,
+            BaseFortune = _characterCreateConfig.BaseFortune,
+            BasePotential = _characterCreateConfig.BasePotential,
+            UnallocatedPotential = _characterCreateConfig.UnallocatedPotential,
             HpUpgradeCount = 0,
             MpUpgradeCount = 0,
             AttackUpgradeCount = 0,
@@ -455,7 +449,7 @@ public sealed class CharacterService
             FortuneUpgradeCount = 0,
             ActiveMartialArtId = null,
             CultivationProgress = 0m,
-            PotentialRewardLocked = false
+            PotentialRewardLocked = _characterCreateConfig.PotentialRewardLocked
         };
     }
 

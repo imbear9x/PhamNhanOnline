@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using GameShared.Packets;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
@@ -12,9 +13,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private WorldMapPresenter worldMapPresenter;
         [SerializeField] private WorldLocalMovementSyncConfig syncConfig;
 
-        private Vector2 lastObservedServerPosition;
         private Vector2 lastSentServerPosition;
-        private bool hasObservedPosition;
         private bool hasSentPosition;
         private bool wasMovingLastFrame;
         private float timeSinceLastSend;
@@ -23,6 +22,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private LocalCharacterActionController.MovementSyncPhase lastSentMovementPhase;
         private bool hasLastSentPresentationState;
         private WorldLocalMovementSyncConfig runtimeFallbackConfig;
+        private readonly List<MovementObservationSample> movementObservationSamples = new();
+        private float movementObservationClock;
+
+        private readonly struct MovementObservationSample
+        {
+            public MovementObservationSample(float time, Vector2 position)
+            {
+                Time = time;
+                Position = position;
+            }
+
+            public float Time { get; }
+
+            public Vector2 Position { get; }
+        }
 
         private WorldLocalMovementSyncConfig ActiveConfig
         {
@@ -88,14 +102,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             warnedMissingMapping = false;
             timeSinceLastSend += Time.deltaTime;
+            movementObservationClock += Time.deltaTime;
             var activeConfig = ActiveConfig;
 
-            var movedSinceObserve = hasObservedPosition
-                ? Vector2.Distance(lastObservedServerPosition, serverPosition)
-                : 0f;
-            var isMoving = movedSinceObserve >= activeConfig.MovingDetectionThreshold;
-            lastObservedServerPosition = serverPosition;
-            hasObservedPosition = true;
+            var movementDistanceWithinWindow = ObserveMovementDistanceWithinWindow(
+                serverPosition,
+                Mathf.Max(0.01f, activeConfig.MovingDetectionWindowSeconds));
+            var isMoving = movementDistanceWithinWindow >= activeConfig.MovingDetectionThresholdMapUnits;
 
             var localActionController = localPlayerPresenter.CurrentLocalActionController;
             var currentFacingLeft = localActionController != null ? localActionController.IsFacingLeft : false;
@@ -119,7 +132,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (shouldSyncStateChange && timeSinceLastSend >= activeConfig.ImmediateStateChangeSyncIntervalSeconds)
             {
-                if (startedMoving || facingChanged || phaseChanged || distanceSinceLastSend >= activeConfig.FinalStopSyncThreshold)
+                if (startedMoving || facingChanged || phaseChanged || distanceSinceLastSend >= activeConfig.FinalStopSyncThresholdMapUnits)
                 {
                     SendPosition(serverPosition, currentFacingLeft, currentMovementPhase);
                     wasMovingLastFrame = isMoving;
@@ -127,7 +140,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 }
             }
 
-            if (timeSinceLastSend >= activeConfig.MinSyncIntervalSeconds && distanceSinceLastSend >= activeConfig.SyncDistanceThreshold)
+            if (timeSinceLastSend >= activeConfig.MinSyncIntervalSeconds && distanceSinceLastSend >= activeConfig.SyncDistanceThresholdMapUnits)
             {
                 SendPosition(serverPosition, currentFacingLeft, currentMovementPhase);
                 wasMovingLastFrame = isMoving;
@@ -143,7 +156,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (stoppedMoving
                 && timeSinceLastSend >= activeConfig.MinSyncIntervalSeconds
-                && distanceSinceLastSend >= activeConfig.FinalStopSyncThreshold)
+                && distanceSinceLastSend >= activeConfig.FinalStopSyncThresholdMapUnits)
             {
                 SendPosition(serverPosition, currentFacingLeft, currentMovementPhase);
             }
@@ -176,8 +189,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 ? localActionController.CurrentMovementSyncPhase
                 : LocalCharacterActionController.MovementSyncPhase.Grounded;
 
-            lastObservedServerPosition = serverPosition;
-            hasObservedPosition = true;
             SendPosition(serverPosition, currentFacingLeft, currentMovementPhase);
             wasMovingLastFrame = false;
             return true;
@@ -190,13 +201,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void ResetSyncState()
         {
-            hasObservedPosition = false;
             hasSentPosition = false;
             wasMovingLastFrame = false;
             timeSinceLastSend = 0f;
+            movementObservationClock = 0f;
+            movementObservationSamples.Clear();
             warnedMissingMapping = false;
             hasLastSentPresentationState = false;
-            lastObservedServerPosition = Vector2.zero;
             lastSentServerPosition = Vector2.zero;
             lastSentFacingLeft = false;
             lastSentMovementPhase = LocalCharacterActionController.MovementSyncPhase.Grounded;
@@ -219,6 +230,28 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             hasLastSentPresentationState = true;
             hasSentPosition = true;
             timeSinceLastSend = 0f;
+        }
+
+        private float ObserveMovementDistanceWithinWindow(Vector2 serverPosition, float windowSeconds)
+        {
+            movementObservationSamples.Add(new MovementObservationSample(movementObservationClock, serverPosition));
+
+            var cutoffTime = movementObservationClock - windowSeconds;
+            while (movementObservationSamples.Count > 1 && movementObservationSamples[1].Time < cutoffTime)
+                movementObservationSamples.RemoveAt(0);
+
+            if (movementObservationSamples.Count <= 1)
+                return 0f;
+
+            var totalDistance = 0f;
+            for (var i = 1; i < movementObservationSamples.Count; i++)
+            {
+                totalDistance += Vector2.Distance(
+                    movementObservationSamples[i - 1].Position,
+                    movementObservationSamples[i].Position);
+            }
+
+            return totalDistance;
         }
 
         private const int CultivatingStateCode = 3;

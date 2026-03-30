@@ -147,6 +147,7 @@ CREATE TABLE public.character_base_stats (
     base_mp integer DEFAULT 100,
     base_physique integer DEFAULT 10,
     base_attack integer DEFAULT 10,
+    base_move_speed numeric(10,4) DEFAULT 100.0,
     base_speed integer DEFAULT 10,
     base_spiritual_sense integer DEFAULT 10,
     base_fortune double precision DEFAULT 0.01,
@@ -344,10 +345,10 @@ COPY public.breakthrough_conditions (id, realm_id, condition_type, target_id, su
 -- Data for Name: character_base_stats; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.character_base_stats (character_id, realm_id, cultivation, base_hp, base_mp, base_physique, base_attack, base_speed, base_spiritual_sense, base_fortune, base_potential, base_stamina, lifespan_bonus) FROM stdin;
-77b30f1d-0ef7-4687-adbe-f9cba0f6d3fa	1	0	100	100	10	10	10	10	0.01	0	100	0
-28fc9149-7910-4d95-a2a5-6c04a6d4b786	1	0	100	100	10	10	10	10	0.01	0	100	0
-836b24d1-7c65-4365-a546-1e786c2c0854	1	0	100	100	10	10	10	10	0.01	0	100	0
+COPY public.character_base_stats (character_id, realm_id, cultivation, base_hp, base_mp, base_physique, base_attack, base_move_speed, base_speed, base_spiritual_sense, base_fortune, base_potential, base_stamina, lifespan_bonus) FROM stdin;
+77b30f1d-0ef7-4687-adbe-f9cba0f6d3fa	1	0	100	100	10	10	100.0000	10	10	0.01	0	100	0
+28fc9149-7910-4d95-a2a5-6c04a6d4b786	1	0	100	100	10	10	100.0000	10	10	0.01	0	100	0
+836b24d1-7c65-4365-a546-1e786c2c0854	1	0	100	100	10	10	100.0000	10	10	0.01	0	100	0
 \.
 
 

@@ -337,6 +337,7 @@ internal static class AdminColumnBindingCatalog
         Add("game_random_fortune_tags", "game_random_table_id", lookupSql: gameRandomTableLookupSql);
 
         Add("enemy_templates", "kind", enumType: typeof(EnemyKind));
+        Add("enemy_templates", "base_move_speed", headerText: "Base Move Speed");
         Add("enemy_templates", "enable_out_of_combat_restore", headerText: "Tu Hoi Mau Ngoai Combat");
         Add("enemy_templates", "out_of_combat_restore_delay_seconds", headerText: "Delay Hoi Mau Ngoai Combat");
         Add("enemy_template_skills", "enemy_template_id", lookupSql: enemyTemplateLookupSql);

@@ -6,19 +6,13 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
     {
         [SerializeField] private Vector2 moveInput;
 
-        private bool attackPressed;
-
         public override CharacterActionInputState ReadInput()
         {
-            var state = new CharacterActionInputState
+            return new CharacterActionInputState
             {
                 Horizontal = Mathf.Clamp(moveInput.x, -1f, 1f),
                 Vertical = Mathf.Clamp(moveInput.y, -1f, 1f),
-                AttackPressed = attackPressed,
             };
-
-            attackPressed = false;
-            return state;
         }
 
         public void SetMoveInput(Vector2 input)
@@ -34,11 +28,6 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         public void SetVertical(float value)
         {
             moveInput.y = Mathf.Clamp(value, -1f, 1f);
-        }
-
-        public void RequestAttack()
-        {
-            attackPressed = true;
         }
     }
 }

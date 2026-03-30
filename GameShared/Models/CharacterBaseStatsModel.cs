@@ -17,6 +17,7 @@ public struct CharacterBaseStatsModel
     public int BaseHp;
     public int BaseMp;
     public int BaseAttack;
+    public float BaseMoveSpeed;
     public int BaseSpeed;
     public int BaseSpiritualSense;
     public int BaseStamina;
