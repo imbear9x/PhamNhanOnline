@@ -260,6 +260,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                 Success = true,
                 Code = MessageCode.None,
                 Target = packet.Target,
+                SkillExecutionId = execution.ExecutionId,
                 SkillSlotIndex = packet.SkillSlotIndex,
                 PlayerSkillId = castContext.PlayerSkillId,
                 SkillId = castContext.SkillId,

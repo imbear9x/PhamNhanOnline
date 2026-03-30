@@ -1,6 +1,7 @@
 using System;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.Features.Character.Presentation;
 using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
@@ -120,8 +121,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var parent = localPlayerRoot != null ? localPlayerRoot : transform;
             playerInstance = Instantiate(playerPrefab, parent, false);
             playerInstance.name = string.Format("LocalPlayer_{0}", selectedCharacter.Value.Name);
-            localActionController = ConfigureLocalActionController(playerInstance);
             activeCharacterId = characterId;
+            localActionController = ConfigureLocalActionController(playerInstance);
             lastAppliedServerPosition = new Vector2(float.NaN, float.NaN);
             ClientLog.Info(string.Format("Spawned local player presenter for {0}.", selectedCharacter.Value.Name));
         }
@@ -268,7 +269,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 ResolveBaseSpeedPercent(),
                 ResolveBaseMoveSpeedUnitsPerSecond(),
                 ResolveWorldUnitsPerServerUnit());
+
+            ConfigureSkillPresenter(target);
             return controller;
+        }
+
+        private void ConfigureSkillPresenter(GameObject target)
+        {
+            if (target == null)
+                return;
+
+            var presenter = target.GetComponent<CharacterSkillPresenter>();
+            if (presenter == null)
+                presenter = target.AddComponent<CharacterSkillPresenter>();
+
+            presenter.ConfigureCharacter(activeCharacterId);
         }
 
         private void RefreshLocalActionSpeed()

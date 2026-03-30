@@ -22508,9 +22508,10 @@ MonoBehaviour:
   entitiesRoot: {fileID: 861396238}
   worldUiRoot: {fileID: 1200508312}
   worldCamera: {fileID: 2089833381}
-  worldMapPresenter: {fileID: 0}
-  worldLocalPlayerPresenter: {fileID: 0}
-  worldLocalMovementSyncController: {fileID: 0}
+  worldMapPresenter: {fileID: 1872203333}
+  worldLocalPlayerPresenter: {fileID: 1872203334}
+  worldLocalMovementSyncController: {fileID: 1872203337}
+  skillWorldPresentationCatalog: {fileID: 11400000, guid: da7379f762298934a821d1123cd4e643, type: 2}
 --- !u!114 &1872203333
 MonoBehaviour:
   m_ObjectHideFlags: 0

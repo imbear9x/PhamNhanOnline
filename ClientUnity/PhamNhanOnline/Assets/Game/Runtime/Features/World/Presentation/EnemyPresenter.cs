@@ -1,5 +1,6 @@
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using UnityEngine;
 
@@ -21,6 +22,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private int runtimeId;
         private bool warnedPositionMapping;
+        private CharacterSkillPresenter skillPresenter;
 
         public int RuntimeId { get { return runtimeId; } }
 
@@ -46,6 +48,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (targetable == null)
                 targetable = GetComponent<WorldTargetable>();
 
+            if (skillPresenter == null)
+                skillPresenter = GetComponent<CharacterSkillPresenter>();
+
+            if (skillPresenter == null)
+                skillPresenter = gameObject.AddComponent<CharacterSkillPresenter>();
+
             if (groundSnapPoint == null)
             {
                 var child = transform.Find("GroundSnapPoint");
@@ -59,7 +67,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (targetable == null)
                 targetable = gameObject.AddComponent<WorldTargetable>();
 
-            targetable.Configure(WorldTargetHandle.CreateEnemy(enemy.RuntimeId, enemy.Kind == 3));
+            var handle = WorldTargetHandle.CreateEnemy(enemy.RuntimeId, enemy.Kind == 3);
+            targetable.Configure(handle);
+            if (skillPresenter == null)
+                skillPresenter = gameObject.AddComponent<CharacterSkillPresenter>();
+
+            skillPresenter.ConfigureTargetHandle(handle);
         }
 
         private void UpdateWorldPosition(EnemyRuntimeModel enemy, WorldMapPresenter worldMapPresenter)

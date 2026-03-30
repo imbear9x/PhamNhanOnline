@@ -11,6 +11,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             int? instanceId,
             Guid? casterCharacterId,
             WorldTargetHandle? target,
+            int skillExecutionId,
             int skillSlotIndex,
             long playerSkillId,
             int skillId,
@@ -24,6 +25,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             InstanceId = instanceId;
             CasterCharacterId = casterCharacterId;
             Target = target;
+            SkillExecutionId = skillExecutionId;
             SkillSlotIndex = skillSlotIndex;
             PlayerSkillId = playerSkillId;
             SkillId = skillId;
@@ -38,6 +40,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
         public int? InstanceId { get; }
         public Guid? CasterCharacterId { get; }
         public WorldTargetHandle? Target { get; }
+        public int SkillExecutionId { get; }
         public int SkillSlotIndex { get; }
         public long PlayerSkillId { get; }
         public int SkillId { get; }
@@ -55,6 +58,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             int? instanceId,
             Guid? casterCharacterId,
             WorldTargetHandle? target,
+            int skillExecutionId,
             int skillSlotIndex,
             long playerSkillId,
             int skillId,
@@ -69,6 +73,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             InstanceId = instanceId;
             CasterCharacterId = casterCharacterId;
             Target = target;
+            SkillExecutionId = skillExecutionId;
             SkillSlotIndex = skillSlotIndex;
             PlayerSkillId = playerSkillId;
             SkillId = skillId;
@@ -84,6 +89,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
         public int? InstanceId { get; }
         public Guid? CasterCharacterId { get; }
         public WorldTargetHandle? Target { get; }
+        public int SkillExecutionId { get; }
         public int SkillSlotIndex { get; }
         public long PlayerSkillId { get; }
         public int SkillId { get; }

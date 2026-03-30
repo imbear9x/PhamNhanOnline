@@ -212,6 +212,7 @@ public partial class AttackEnemyResultPacket : IPacket
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
     public CombatTargetModel? Target { get; set; }
+    public int? SkillExecutionId { get; set; }
     public int? SkillSlotIndex { get; set; }
     public long? PlayerSkillId { get; set; }
     public int? SkillId { get; set; }
@@ -233,6 +234,7 @@ public partial class SkillCastStartedPacket : IPacket
     public int? InstanceId { get; set; }
     public Guid? CasterCharacterId { get; set; }
     public CombatTargetModel? Target { get; set; }
+    public int? SkillExecutionId { get; set; }
     public int? SkillSlotIndex { get; set; }
     public long? PlayerSkillId { get; set; }
     public int? SkillId { get; set; }
@@ -251,6 +253,7 @@ public partial class SkillImpactResolvedPacket : IPacket
     public int? InstanceId { get; set; }
     public Guid? CasterCharacterId { get; set; }
     public CombatTargetModel? Target { get; set; }
+    public int? SkillExecutionId { get; set; }
     public int? SkillSlotIndex { get; set; }
     public long? PlayerSkillId { get; set; }
     public int? SkillId { get; set; }

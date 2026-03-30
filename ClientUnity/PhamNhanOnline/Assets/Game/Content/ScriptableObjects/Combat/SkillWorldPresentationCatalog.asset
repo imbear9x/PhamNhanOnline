@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6022a5336252cc94bbf2ca486914e0a4, type: 3}
+  m_Name: SkillWorldPresentationCatalog
+  m_EditorClassIdentifier: 
+  defaultArchetype: 2
+  skillOverrides:
+  - skillId: 0
+    skillCode: "hoa_\u0111an_thuat"
+    skillGroupCode: "hoa_\u0111an_thuat"
+    archetype: 2
+    castStateName: 
+    releaseStateName: 
+    targetImpactStateName: 
+    sourceSocket: 0
+    impactSocket: 0
+    castFxPrefab: {fileID: 0}
+    releaseFxPrefab: {fileID: 8171441243783990914, guid: 1f7e5b85ad2ff61408a118c789622bfc, type: 3}
+    impactFxPrefab: {fileID: 0}
+    fxLifetimeSeconds: 0
+    faceTargetOnCast: 1
+  skillGroupPresets: []

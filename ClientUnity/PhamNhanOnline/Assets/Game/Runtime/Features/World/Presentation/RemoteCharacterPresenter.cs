@@ -1,5 +1,6 @@
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.Features.Character.Presentation;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using UnityEngine;
@@ -28,6 +29,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private bool warnedPositionMapping;
         private float moveAnimationTimer;
         private WorldTargetable targetable;
+        private CharacterSkillPresenter skillPresenter;
 
         public void Initialize(float smoothing)
         {
@@ -226,6 +228,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (targetable == null)
                 targetable = GetComponent<WorldTargetable>();
 
+            if (skillPresenter == null)
+                skillPresenter = GetComponent<CharacterSkillPresenter>();
+
             if (playerView == null)
                 playerView = GetComponent<PlayerView>();
 
@@ -245,6 +250,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (animator == null)
                 animator = GetComponentInChildren<Animator>(true);
+
+            if (skillPresenter == null)
+                skillPresenter = gameObject.AddComponent<CharacterSkillPresenter>();
         }
 
         private void ConfigureTargetable(ObservedCharacterModel observedCharacter)
@@ -252,7 +260,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (targetable == null)
                 targetable = gameObject.AddComponent<WorldTargetable>();
 
-            targetable.Configure(WorldTargetHandle.CreateObservedCharacter(observedCharacter.Character.CharacterId));
+            var handle = WorldTargetHandle.CreateObservedCharacter(observedCharacter.Character.CharacterId);
+            targetable.Configure(handle);
+            if (skillPresenter == null)
+                skillPresenter = gameObject.AddComponent<CharacterSkillPresenter>();
+
+            skillPresenter.ConfigureCharacter(observedCharacter.Character.CharacterId);
+            skillPresenter.ConfigureTargetHandle(handle);
         }
     }
 }

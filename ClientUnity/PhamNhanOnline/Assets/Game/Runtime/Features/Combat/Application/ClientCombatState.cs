@@ -42,6 +42,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
         }
 
         public void ApplyAttackAccepted(
+            int skillExecutionId,
             int slotIndex,
             long playerSkillId,
             int cooldownMs,
@@ -71,6 +72,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             if (slotIndex > 0 && castStartedAtUtc.HasValue && castCompletedAtUtc.HasValue)
             {
                 ActiveLocalCast = new LocalSkillCastState(
+                    skillExecutionId,
                     slotIndex,
                     playerSkillId,
                     castStartedAtUtc.Value,
@@ -113,6 +115,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
         }
 
         public void ApplyLocalCastStarted(
+            int skillExecutionId,
             int slotIndex,
             long playerSkillId,
             DateTime? castStartedAtUtc,
@@ -123,6 +126,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
                 return;
 
             ActiveLocalCast = new LocalSkillCastState(
+                skillExecutionId,
                 slotIndex,
                 playerSkillId,
                 castStartedAtUtc.Value,
@@ -311,12 +315,14 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
     public readonly struct LocalSkillCastState
     {
         public LocalSkillCastState(
+            int skillExecutionId,
             int slotIndex,
             long playerSkillId,
             DateTime castStartedAtUtc,
             DateTime castCompletedAtUtc,
             DateTime impactAtUtc)
         {
+            SkillExecutionId = skillExecutionId;
             SlotIndex = slotIndex;
             PlayerSkillId = playerSkillId;
             CastStartedAtUtc = castStartedAtUtc;
@@ -324,6 +330,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             ImpactAtUtc = impactAtUtc;
         }
 
+        public int SkillExecutionId { get; }
         public int SlotIndex { get; }
         public long PlayerSkillId { get; }
         public DateTime CastStartedAtUtc { get; }

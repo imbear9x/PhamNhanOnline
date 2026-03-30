@@ -106,6 +106,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
                     $"skillId={packet.SkillId ?? 0}, playerSkillId={playerSkillId}, " +
                     $"cooldownMs={cooldownMs}, castStart={packet.CastStartedUnixMs}, impact={packet.ImpactUnixMs}.");
                 combatState.ApplyAttackAccepted(
+                    packet.SkillExecutionId ?? 0,
                     packet.SkillSlotIndex ?? 0,
                     playerSkillId,
                     cooldownMs,
@@ -133,6 +134,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
                 packet.InstanceId,
                 packet.CasterCharacterId,
                 TryBuildWorldTargetHandle(packet.Target, out var castTarget) ? castTarget : (WorldTargetHandle?)null,
+                packet.SkillExecutionId ?? 0,
                 packet.SkillSlotIndex ?? 0,
                 packet.PlayerSkillId ?? 0,
                 packet.SkillId ?? 0,
@@ -150,6 +152,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
                 return;
 
             combatState.ApplyLocalCastStarted(
+                packet.SkillExecutionId ?? 0,
                 packet.SkillSlotIndex ?? 0,
                 packet.PlayerSkillId ?? 0,
                 FromUnixMs(packet.CastStartedUnixMs),
@@ -169,6 +172,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
                 packet.InstanceId,
                 packet.CasterCharacterId,
                 TryBuildWorldTargetHandle(packet.Target, out var impactTarget) ? impactTarget : (WorldTargetHandle?)null,
+                packet.SkillExecutionId ?? 0,
                 packet.SkillSlotIndex ?? 0,
                 packet.PlayerSkillId ?? 0,
                 packet.SkillId ?? 0,

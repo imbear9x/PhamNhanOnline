@@ -40,7 +40,15 @@ public partial class SkillCastStartedPacket
         return HasTarget;
     }
 
-    public bool HasSkillSlotIndex => (_mask & (1UL << 4)) != 0;
+    public bool HasSkillExecutionId => (_mask & (1UL << 4)) != 0;
+
+    public bool TryGetSkillExecutionId(out int? value)
+    {
+        value = SkillExecutionId;
+        return HasSkillExecutionId;
+    }
+
+    public bool HasSkillSlotIndex => (_mask & (1UL << 5)) != 0;
 
     public bool TryGetSkillSlotIndex(out int? value)
     {
@@ -48,7 +56,7 @@ public partial class SkillCastStartedPacket
         return HasSkillSlotIndex;
     }
 
-    public bool HasPlayerSkillId => (_mask & (1UL << 5)) != 0;
+    public bool HasPlayerSkillId => (_mask & (1UL << 6)) != 0;
 
     public bool TryGetPlayerSkillId(out long? value)
     {
@@ -56,7 +64,7 @@ public partial class SkillCastStartedPacket
         return HasPlayerSkillId;
     }
 
-    public bool HasSkillId => (_mask & (1UL << 6)) != 0;
+    public bool HasSkillId => (_mask & (1UL << 7)) != 0;
 
     public bool TryGetSkillId(out int? value)
     {
@@ -64,7 +72,7 @@ public partial class SkillCastStartedPacket
         return HasSkillId;
     }
 
-    public bool HasCastTimeMs => (_mask & (1UL << 7)) != 0;
+    public bool HasCastTimeMs => (_mask & (1UL << 8)) != 0;
 
     public bool TryGetCastTimeMs(out int? value)
     {
@@ -72,7 +80,7 @@ public partial class SkillCastStartedPacket
         return HasCastTimeMs;
     }
 
-    public bool HasTravelTimeMs => (_mask & (1UL << 8)) != 0;
+    public bool HasTravelTimeMs => (_mask & (1UL << 9)) != 0;
 
     public bool TryGetTravelTimeMs(out int? value)
     {
@@ -80,7 +88,7 @@ public partial class SkillCastStartedPacket
         return HasTravelTimeMs;
     }
 
-    public bool HasCastStartedUnixMs => (_mask & (1UL << 9)) != 0;
+    public bool HasCastStartedUnixMs => (_mask & (1UL << 10)) != 0;
 
     public bool TryGetCastStartedUnixMs(out long? value)
     {
@@ -88,7 +96,7 @@ public partial class SkillCastStartedPacket
         return HasCastStartedUnixMs;
     }
 
-    public bool HasCastCompletedUnixMs => (_mask & (1UL << 10)) != 0;
+    public bool HasCastCompletedUnixMs => (_mask & (1UL << 11)) != 0;
 
     public bool TryGetCastCompletedUnixMs(out long? value)
     {
@@ -96,7 +104,7 @@ public partial class SkillCastStartedPacket
         return HasCastCompletedUnixMs;
     }
 
-    public bool HasImpactUnixMs => (_mask & (1UL << 11)) != 0;
+    public bool HasImpactUnixMs => (_mask & (1UL << 12)) != 0;
 
     public bool TryGetImpactUnixMs(out long? value)
     {
@@ -112,14 +120,15 @@ public partial class SkillCastStartedPacket
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(InstanceId, default!)) mask |= 1UL << 1;
         if (!global::System.Collections.Generic.EqualityComparer<global::System.Guid?>.Default.Equals(CasterCharacterId, default!)) mask |= 1UL << 2;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CombatTargetModel?>.Default.Equals(Target, default!)) mask |= 1UL << 3;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillSlotIndex, default!)) mask |= 1UL << 4;
-        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(PlayerSkillId, default!)) mask |= 1UL << 5;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillId, default!)) mask |= 1UL << 6;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(CastTimeMs, default!)) mask |= 1UL << 7;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(TravelTimeMs, default!)) mask |= 1UL << 8;
-        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(CastStartedUnixMs, default!)) mask |= 1UL << 9;
-        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(CastCompletedUnixMs, default!)) mask |= 1UL << 10;
-        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(ImpactUnixMs, default!)) mask |= 1UL << 11;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillExecutionId, default!)) mask |= 1UL << 4;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillSlotIndex, default!)) mask |= 1UL << 5;
+        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(PlayerSkillId, default!)) mask |= 1UL << 6;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(SkillId, default!)) mask |= 1UL << 7;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(CastTimeMs, default!)) mask |= 1UL << 8;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(TravelTimeMs, default!)) mask |= 1UL << 9;
+        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(CastStartedUnixMs, default!)) mask |= 1UL << 10;
+        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(CastCompletedUnixMs, default!)) mask |= 1UL << 11;
+        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(ImpactUnixMs, default!)) mask |= 1UL << 12;
 
         writer.Write(mask);
 
@@ -132,20 +141,22 @@ public partial class SkillCastStartedPacket
         if ((mask & (1UL << 3)) != 0)
             global::GameShared.Packets.PacketModelSerializer.Write(writer, Target);
         if ((mask & (1UL << 4)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, SkillSlotIndex.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, SkillExecutionId.Value);
         if ((mask & (1UL << 5)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, PlayerSkillId.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, SkillSlotIndex.Value);
         if ((mask & (1UL << 6)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, SkillId.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, PlayerSkillId.Value);
         if ((mask & (1UL << 7)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, CastTimeMs.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, SkillId.Value);
         if ((mask & (1UL << 8)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, TravelTimeMs.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, CastTimeMs.Value);
         if ((mask & (1UL << 9)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, CastStartedUnixMs.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, TravelTimeMs.Value);
         if ((mask & (1UL << 10)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, CastCompletedUnixMs.Value);
+            global::GameShared.Packets.PacketWriter.Write(writer, CastStartedUnixMs.Value);
         if ((mask & (1UL << 11)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, CastCompletedUnixMs.Value);
+        if ((mask & (1UL << 12)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, ImpactUnixMs.Value);
     }
 
@@ -162,20 +173,22 @@ public partial class SkillCastStartedPacket
         if ((_mask & (1UL << 3)) != 0)
             Target = global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CombatTargetModel?>(reader);
         if ((_mask & (1UL << 4)) != 0)
-            SkillSlotIndex = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+            SkillExecutionId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 5)) != 0)
-            PlayerSkillId = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
+            SkillSlotIndex = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 6)) != 0)
-            SkillId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+            PlayerSkillId = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
         if ((_mask & (1UL << 7)) != 0)
-            CastTimeMs = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+            SkillId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 8)) != 0)
-            TravelTimeMs = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+            CastTimeMs = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 9)) != 0)
-            CastStartedUnixMs = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
+            TravelTimeMs = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 10)) != 0)
-            CastCompletedUnixMs = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
+            CastStartedUnixMs = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
         if ((_mask & (1UL << 11)) != 0)
+            CastCompletedUnixMs = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
+        if ((_mask & (1UL << 12)) != 0)
             ImpactUnixMs = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
     }
 }

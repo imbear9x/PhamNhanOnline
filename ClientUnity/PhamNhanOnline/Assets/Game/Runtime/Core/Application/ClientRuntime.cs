@@ -1,6 +1,7 @@
 using System;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Combat.Application;
+using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.Features.Auth.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Inventory.Application;
@@ -36,6 +37,8 @@ namespace PhamNhanOnline.Client.Core.Application
         public static ClientSkillService SkillService { get; private set; }
         public static ClientCombatState Combat { get; private set; }
         public static ClientCombatService CombatService { get; private set; }
+        public static ClientSkillPresentationState SkillPresentation { get; private set; }
+        public static ClientSkillPresentationService SkillPresentationService { get; private set; }
         public static ClientTargetState Target { get; private set; }
         public static ClientWorldState World { get; private set; }
         public static ClientWorldService WorldService { get; private set; }
@@ -63,6 +66,7 @@ namespace PhamNhanOnline.Client.Core.Application
             MartialArts = new ClientMartialArtState();
             Skills = new ClientSkillState();
             Combat = new ClientCombatState();
+            SkillPresentation = new ClientSkillPresentationState();
             Target = new ClientTargetState();
             World = new ClientWorldState();
             UiScreens = new UiScreenService();
@@ -72,6 +76,7 @@ namespace PhamNhanOnline.Client.Core.Application
             MartialArtService = new ClientMartialArtService(Connection, Character, MartialArts);
             SkillService = new ClientSkillService(Connection, Skills);
             CombatService = new ClientCombatService(Connection, Combat, Character);
+            SkillPresentationService = new ClientSkillPresentationService(Combat, Skills, SkillPresentation);
             WorldService = new ClientWorldService(Connection, World, Character, Target);
             WorldTravelService = new ClientWorldTravelService(Connection);
             LoginFlow = new ClientLoginFlowService(Connection, AuthService, CharacterService, SceneFlow, settings);

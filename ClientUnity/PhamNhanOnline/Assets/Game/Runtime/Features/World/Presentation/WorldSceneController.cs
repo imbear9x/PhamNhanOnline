@@ -1,5 +1,6 @@
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.Infrastructure.Config;
 using PhamNhanOnline.Client.Infrastructure.Pooling;
 using UnityEngine;
@@ -20,6 +21,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private WorldMapPresenter worldMapPresenter;
         [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
         [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
+        [SerializeField] private SkillWorldPresentationCatalog skillWorldPresentationCatalog;
 
         public Transform MapRoot { get { return mapRoot; } }
         public Transform EntitiesRoot { get { return entitiesRoot; } }
@@ -28,6 +30,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public WorldMapPresenter WorldMapPresenter { get { return worldMapPresenter; } }
         public WorldLocalPlayerPresenter WorldLocalPlayerPresenter { get { return worldLocalPlayerPresenter; } }
         public WorldLocalMovementSyncController WorldLocalMovementSyncController { get { return worldLocalMovementSyncController; } }
+        public SkillWorldPresentationCatalog SkillWorldPresentationCatalog { get { return skillWorldPresentationCatalog; } }
 
         private void Awake()
         {
@@ -43,6 +46,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             Instance = this;
             AutoWireReferences();
             EnsureRuntimeInitialized();
+            ConfigureSkillPresentation();
             EnsureClientPoolService();
             EnsureWorldTargetSelectionController();
             EnsureWorldTargetActionController();
@@ -92,6 +96,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return controller != null && controller.RequestPrimaryAction(target);
         }
 
+        private void Update()
+        {
+            if (!ClientRuntime.IsInitialized)
+                return;
+
+            ClientRuntime.SkillPresentationService.ConfigureCatalog(skillWorldPresentationCatalog);
+            ClientRuntime.SkillPresentationService.Tick(System.DateTime.UtcNow);
+        }
+
         private void EnsureRuntimeInitialized()
         {
             if (ClientRuntime.IsInitialized)
@@ -108,6 +121,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private ClientPoolService EnsureClientPoolService()
         {
             return ClientPoolService.Ensure(transform);
+        }
+
+        private void ConfigureSkillPresentation()
+        {
+            if (!ClientRuntime.IsInitialized)
+                return;
+
+            ClientRuntime.SkillPresentationService.ConfigureCatalog(skillWorldPresentationCatalog);
         }
 
         private WorldClickTargetSelectionController EnsureWorldTargetSelectionController()
@@ -143,6 +164,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void OnDestroy()
         {
+            if (ClientRuntime.IsInitialized)
+                ClientRuntime.SkillPresentationService.Clear();
+
             if (Instance == this)
                 Instance = null;
         }

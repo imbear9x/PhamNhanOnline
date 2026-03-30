@@ -133,6 +133,7 @@ public readonly record struct SkillImpactDueRuntimeEvent(
     PendingSkillExecution Execution);
 
 public readonly record struct SkillImpactResolvedRuntimeEvent(
+    int ExecutionId,
     Guid CasterPlayerId,
     Guid CasterCharacterId,
     CombatTargetReference? Target,

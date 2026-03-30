@@ -484,6 +484,7 @@ public sealed class SkillExecutionService
         DateTime resolvedAtUtc)
     {
         return new SkillImpactResolvedRuntimeEvent(
+            execution.ExecutionId,
             execution.CasterPlayerId,
             execution.CasterCharacterId,
             execution.Target,
