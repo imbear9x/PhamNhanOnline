@@ -13,7 +13,11 @@ namespace PhamNhanOnline.Client.Network.Transport
         public ClientConnectionState State { get; private set; } = ClientConnectionState.Disconnected;
 
         public event Action<ClientConnectionState> StateChanged;
-        public event Action<ArraySegment<byte>> PayloadReceived;
+        public event Action<ArraySegment<byte>> PayloadReceived
+        {
+            add { }
+            remove { }
+        }
 
         public async Task<ConnectionAttemptResult> ConnectAsync(ServerEndpoint endpoint, CancellationToken cancellationToken = default(CancellationToken))
         {

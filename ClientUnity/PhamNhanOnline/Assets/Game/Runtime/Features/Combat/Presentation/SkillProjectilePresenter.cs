@@ -10,12 +10,18 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
         [SerializeField] private bool faceTravelDirection = true;
         [SerializeField] private bool followTarget = true;
 
+        private Quaternion initialRotation;
         private WorldTargetHandle? targetHandle;
         private Vector3 startWorldPosition;
         private Vector3 fallbackTargetWorldPosition;
         private float durationSeconds;
         private float elapsedSeconds;
         private bool isInitialized;
+
+        private void Awake()
+        {
+            initialRotation = transform.rotation;
+        }
 
         public void Initialize(
             Vector3 sourceWorldPosition,
@@ -30,6 +36,11 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             elapsedSeconds = 0f;
             isInitialized = true;
             transform.position = sourceWorldPosition;
+
+            if (faceTravelDirection)
+                ApplyFacing(targetWorldPosition - sourceWorldPosition);
+            else
+                transform.rotation = initialRotation;
         }
 
         private void Update()
@@ -73,6 +84,14 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
 
             var angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
             transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
+        }
+
+        private void OnDisable()
+        {
+            targetHandle = null;
+            elapsedSeconds = 0f;
+            isInitialized = false;
+            transform.rotation = initialRotation;
         }
     }
 }

@@ -25,14 +25,8 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
         [Header("Actions")]
         [SerializeField] private Button connectButton;
 
-        [Header("Defaults")]
-        [SerializeField] private int defaultServerId = 1;
-        [SerializeField] private int defaultModelId = 1;
-
         [Header("Feedback")]
         [SerializeField] private TMP_Text statusText;
-
-        private Guid? pendingCharacterId;
 
         private void Awake()
         {
@@ -94,7 +88,6 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
             var result = await ClientRuntime.LoginFlow.ConnectLoginAndEnterWorldAsync(username, password);
             if (result.RequiresCharacterCreation)
             {
-                pendingCharacterId = null;
                 SetCharacterCreationMode(true);
             }
             else if (result.Success)

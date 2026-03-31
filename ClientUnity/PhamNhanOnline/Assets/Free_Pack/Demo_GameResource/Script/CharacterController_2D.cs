@@ -103,7 +103,6 @@ public class CharacterController_2D : MonoBehaviour {
     public int sortingOrderOrigine = 0;
 
     private float Update_Tic = 0;
-    private float Update_Time = 0.1f;
 
     void spriteOrder_Controller()
     {
@@ -170,7 +169,6 @@ public class CharacterController_2D : MonoBehaviour {
 
 
     // character Filp 
-    bool B_Attack = false;
     bool B_FacingRight = true;
 
     void Filp()

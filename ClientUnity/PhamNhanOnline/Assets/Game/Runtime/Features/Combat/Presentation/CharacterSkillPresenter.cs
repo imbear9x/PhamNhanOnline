@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using PhamNhanOnline.Client.Features.Character.Presentation;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Features.World.Presentation;
+using PhamNhanOnline.Client.Infrastructure.Pooling;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.Combat.Presentation
@@ -20,6 +21,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
         private readonly Dictionary<SkillExecutionKey, List<GameObject>> activeFxByExecution =
             new Dictionary<SkillExecutionKey, List<GameObject>>();
 
+        private ClientPoolService poolService;
         private float visualDefaultScaleX = 1f;
 
         public Guid? CharacterId { get; private set; }
@@ -157,6 +159,9 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             if (worldTargetable == null)
                 worldTargetable = GetComponent<WorldTargetable>();
 
+            if (poolService == null)
+                poolService = ClientPoolService.Instance;
+
             if (!Mathf.Approximately(visualRoot.localScale.x, 0f))
                 visualDefaultScaleX = visualRoot.localScale.x;
         }
@@ -209,9 +214,13 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             var targetPosition = targetWorldPosition.HasValue
                 ? new Vector3(targetWorldPosition.Value.x, targetWorldPosition.Value.y, sourceWorldPosition.z)
                 : sourceWorldPosition;
-            var lifetimeSeconds = ResolveTravelDurationSeconds(snapshot, definition.FxLifetimeSeconds);
+            var travelDurationSeconds = ResolveTravelDurationSeconds(snapshot, definition.FxLifetimeSeconds);
+            var autoReleaseSeconds = Mathf.Max(travelDurationSeconds + 0.25f, definition.FxLifetimeSeconds);
 
-            var projectileObject = Instantiate(definition.ReleaseFxPrefab, sourceWorldPosition, Quaternion.identity);
+            var projectileObject = SpawnPooledObject(definition.ReleaseFxPrefab, null, sourceWorldPosition);
+            if (projectileObject == null)
+                return;
+
             var projectilePresenter = projectileObject.GetComponent<SkillProjectilePresenter>();
             if (projectilePresenter == null)
                 projectilePresenter = projectileObject.AddComponent<SkillProjectilePresenter>();
@@ -220,10 +229,10 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
                 sourceWorldPosition,
                 targetPosition,
                 snapshot.Target,
-                lifetimeSeconds);
+                travelDurationSeconds);
 
+            ArmPooledLifetime(projectileObject, autoReleaseSeconds);
             TrackExecutionObject(snapshot.Key, projectileObject);
-            Destroy(projectileObject, Mathf.Max(lifetimeSeconds + 0.25f, definition.FxLifetimeSeconds));
         }
 
         private void SpawnFx(
@@ -254,17 +263,16 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
                 spawnPosition = parent.position;
             }
 
-            var instance = parent != null
-                ? Instantiate(prefab, spawnPosition, Quaternion.identity, parent)
-                : Instantiate(prefab, spawnPosition, Quaternion.identity);
+            var instance = SpawnPooledObject(prefab, parent, spawnPosition);
+            if (instance == null)
+                return;
+
+            ArmPooledLifetime(instance, lifetimeSeconds);
 
             if (trackForCleanup)
             {
                 TrackExecutionObject(executionKey, instance);
             }
-
-            if (lifetimeSeconds > 0f)
-                Destroy(instance, lifetimeSeconds);
         }
 
         private void TrackExecutionObject(SkillExecutionKey executionKey, GameObject instance)
@@ -310,7 +318,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             {
                 var fx = executionFx[i];
                 if (fx != null)
-                    Destroy(fx);
+                    ReleaseSpawnedObject(fx);
             }
 
             activeFxByExecution.Remove(executionKey);
@@ -324,11 +332,62 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
                 for (var i = 0; i < fxList.Count; i++)
                 {
                     if (fxList[i] != null)
-                        Destroy(fxList[i]);
+                        ReleaseSpawnedObject(fxList[i]);
                 }
             }
 
             activeFxByExecution.Clear();
+        }
+
+        private GameObject SpawnPooledObject(GameObject prefab, Transform parent, Vector3 worldPosition)
+        {
+            var resolvedPoolService = GetOrCreatePoolService();
+            if (resolvedPoolService == null)
+                return null;
+
+            var instance = resolvedPoolService.Spawn(prefab, parent, worldPositionStays: false);
+            if (instance == null)
+                return null;
+
+            instance.transform.SetPositionAndRotation(worldPosition, Quaternion.identity);
+            return instance;
+        }
+
+        private void ArmPooledLifetime(GameObject instance, float lifetimeSeconds)
+        {
+            if (instance == null)
+                return;
+
+            var lifetime = instance.GetComponent<SkillPooledEffectLifetime>();
+            if (lifetime == null)
+                lifetime = instance.AddComponent<SkillPooledEffectLifetime>();
+
+            lifetime.Begin(lifetimeSeconds);
+        }
+
+        private void ReleaseSpawnedObject(GameObject instance)
+        {
+            if (instance == null || !instance.activeSelf)
+                return;
+
+            var lifetime = instance.GetComponent<SkillPooledEffectLifetime>();
+            if (lifetime != null)
+            {
+                lifetime.ReleaseNow();
+                return;
+            }
+
+            GetOrCreatePoolService().Release(instance);
+        }
+
+        private ClientPoolService GetOrCreatePoolService()
+        {
+            if (poolService != null)
+                return poolService;
+
+            var worldSceneController = WorldSceneController.Instance;
+            poolService = ClientPoolService.Ensure(worldSceneController != null ? worldSceneController.transform : null);
+            return poolService;
         }
     }
 }
