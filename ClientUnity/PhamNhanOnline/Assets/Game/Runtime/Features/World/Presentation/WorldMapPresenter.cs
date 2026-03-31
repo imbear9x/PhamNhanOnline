@@ -18,6 +18,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private bool hasCachedPlayableBounds;
         private string activeClientMapKey = string.Empty;
 
+        public event Action ActiveMapVisualChanged;
+
         public Transform CurrentMapTransform
         {
             get { return activeMapInstance != null ? activeMapInstance.transform : null; }
@@ -153,11 +155,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             activeClientMapKey = clientMapKey ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(activeClientMapKey))
+            {
+                NotifyActiveMapVisualChanged();
                 return;
+            }
 
             if (mapCatalog == null)
             {
                 ClientLog.Warn($"WorldMapPresenter has no {nameof(ClientMapCatalog)} assigned.");
+                NotifyActiveMapVisualChanged();
                 return;
             }
 
@@ -165,6 +171,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!mapCatalog.TryGetMapPrefab(activeClientMapKey, out mapPrefab))
             {
                 ClientLog.Warn($"No map prefab is registered for ClientMapKey '{activeClientMapKey}'.");
+                NotifyActiveMapVisualChanged();
                 return;
             }
 
@@ -173,6 +180,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             activeMapInstance.name = mapPrefab.name;
             CachePlayableBounds();
             ClientLog.Info($"Spawned map '{activeClientMapKey}' into World scene.");
+            NotifyActiveMapVisualChanged();
         }
 
         private bool EnsurePlayableBoundsCached()
@@ -190,6 +198,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             hasCachedPlayableBounds = false;
             cachedPlayableBounds = default;
 
+            if (activeMapInstance == null || string.IsNullOrWhiteSpace(activeClientMapKey))
+                return;
+
             if (activeMapView != null && activeMapView.TryGetPlayableBounds(out cachedPlayableBounds))
             {
                 hasCachedPlayableBounds = true;
@@ -199,10 +210,33 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (TryResolveFallbackPlayableBounds(out cachedPlayableBounds))
             {
                 hasCachedPlayableBounds = true;
+                ClientLog.Info(
+                    $"WorldMapPresenter resolved playable bounds via fallback for map '{activeClientMapKey}' " +
+                    $"on prefab '{(activeMapInstance != null ? activeMapInstance.name : "null")}'. " +
+                    $"Bounds center={cachedPlayableBounds.center}, size={cachedPlayableBounds.size}.");
                 return;
             }
 
-            ClientLog.Warn("WorldMapPresenter could not resolve playable bounds for the active map.");
+            var mapViewState = activeMapView != null
+                ? activeMapView.DescribePlayableBoundsSources()
+                : "ClientMapView=null";
+            var explicitBoundsRoot = activeMapInstance != null
+                ? FindChildRecursive(activeMapInstance.transform, PlayableBoundsObjectName)
+                : null;
+            var explicitBoundsState = explicitBoundsRoot != null
+                ? $"explicitBoundsRoot='{explicitBoundsRoot.name}', hasCollider={explicitBoundsRoot.GetComponent<Collider2D>() != null}, hasRenderer={explicitBoundsRoot.GetComponent<Renderer>() != null}, activeInHierarchy={explicitBoundsRoot.gameObject.activeInHierarchy}"
+                : "explicitBoundsRoot=null";
+            var colliderCount = activeMapInstance != null
+                ? activeMapInstance.GetComponentsInChildren<Collider2D>(true).Length
+                : 0;
+            var rendererCount = activeMapInstance != null
+                ? activeMapInstance.GetComponentsInChildren<Renderer>(true).Length
+                : 0;
+            ClientLog.Warn(
+                $"WorldMapPresenter could not resolve playable bounds for map '{activeClientMapKey}' " +
+                $"on prefab '{(activeMapInstance != null ? activeMapInstance.name : "null")}'. " +
+                $"{mapViewState}. {explicitBoundsState}. " +
+                $"colliderCount={colliderCount}, rendererCount={rendererCount}.");
         }
 
         private bool TryResolveFallbackPlayableBounds(out Bounds bounds)
@@ -319,6 +353,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             hasCachedPlayableBounds = false;
             cachedPlayableBounds = default;
             activeClientMapKey = string.Empty;
+        }
+
+        private void NotifyActiveMapVisualChanged()
+        {
+            var handler = ActiveMapVisualChanged;
+            if (handler != null)
+                handler();
         }
     }
 }

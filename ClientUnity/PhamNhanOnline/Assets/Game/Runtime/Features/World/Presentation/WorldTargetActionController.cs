@@ -21,6 +21,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         [Header("References")]
         [SerializeField] private WorldMapPresenter worldMapPresenter;
+        [SerializeField] private WorldPortalPresenter worldPortalPresenter;
         [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
         [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
 
@@ -233,7 +234,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (action.Mode == WorldTargetInteractionMode.ContextOnly &&
                 ClientRuntime.World.TryGetPortal(action.Target, out portal))
             {
-                return Mathf.Max(0f, portal.InteractionRadius);
+                var requiredRange = Mathf.Max(0f, portal.InteractionRadius);
+                if (worldPortalPresenter != null)
+                {
+                    var rawPortalPosition = new Vector2(portal.SourceX, portal.SourceY);
+                    var adjustedPortalPosition = worldPortalPresenter.ResolvePortalServerPosition(portal);
+                    requiredRange = Mathf.Max(0f, requiredRange - Vector2.Distance(rawPortalPosition, adjustedPortalPosition));
+                }
+
+                return requiredRange;
             }
 
             if (action.Mode == WorldTargetInteractionMode.HostileAttack)
@@ -288,6 +297,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             MapPortalModel portal;
             if (ClientRuntime.World.TryGetPortal(target, out portal))
             {
+                if (worldPortalPresenter != null &&
+                    worldPortalPresenter.TryResolvePortalWorldPosition(portal, out worldPosition))
+                {
+                    return true;
+                }
+
                 return worldMapPresenter.TryMapServerPositionToWorld(
                     new Vector2(portal.SourceX, portal.SourceY),
                     out worldPosition);
@@ -422,6 +437,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             if (worldMapPresenter == null)
                 worldMapPresenter = GetComponent<WorldMapPresenter>();
+
+            if (worldPortalPresenter == null)
+                worldPortalPresenter = GetComponent<WorldPortalPresenter>();
 
             if (worldLocalPlayerPresenter == null)
                 worldLocalPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();

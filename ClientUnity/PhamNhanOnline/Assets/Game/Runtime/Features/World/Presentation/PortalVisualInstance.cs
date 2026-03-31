@@ -10,6 +10,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private Collider2D interactionCollider;
         [SerializeField] private Collider2D touchTriggerLeftCollider;
         [SerializeField] private Collider2D touchTriggerRightCollider;
+        [SerializeField] private float visualEdgeOffsetXServerUnits;
         [SerializeField] private float visualOffsetYServerUnits;
         [SerializeField] private GameObject selectedHighlightRoot;
 
@@ -36,6 +37,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public float VisualOffsetYServerUnits
         {
             get { return visualOffsetYServerUnits; }
+        }
+
+        public float VisualEdgeOffsetXServerUnits
+        {
+            get { return visualEdgeOffsetXServerUnits; }
         }
 
         public GameObject SelectedHighlightRoot

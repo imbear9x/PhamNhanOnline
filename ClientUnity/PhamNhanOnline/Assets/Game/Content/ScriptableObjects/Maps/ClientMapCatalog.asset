@@ -16,6 +16,8 @@ MonoBehaviour:
   - clientMapKey: map_home_01
     mapPrefab: {fileID: 1542524189194087412, guid: b5e1e86752f03424598354e1aa8c6be4, type: 3}
   - clientMapKey: map_farm_01
-    mapPrefab: {fileID: 1542524189194087412, guid: 760d6690efb773e43bb1523763af340e, type: 3}
+    mapPrefab: {fileID: 1542524189194087412, guid: 05d52327a899ccc4ea3fad13e70a274c, type: 3}
   - clientMapKey: map_farm_03
-    mapPrefab: {fileID: 1542524189194087412, guid: 4963cdda3c74b21438c0ad23fe3ed567, type: 3}
+    mapPrefab: {fileID: 1542524189194087412, guid: 3eb42d0cb669de54da3140e46bb023c8, type: 3}
+  - clientMapKey: map_farm_04
+    mapPrefab: {fileID: 1542524189194087412, guid: 8f42c827d5a0da840b2b2f9c01ecf792, type: 3}

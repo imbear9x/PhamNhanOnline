@@ -1,4 +1,5 @@
 using UnityEngine;
+using PhamNhanOnline.Client.Core.Application;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
@@ -13,10 +14,35 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private bool clampToMapBounds = true;
 
         private Camera cachedCamera;
+        private Bounds cachedClampBounds;
+        private bool hasCachedClampBounds;
+        private bool runtimeEventsBound;
 
         private void Awake()
         {
             cachedCamera = GetComponent<Camera>();
+        }
+
+        private void Start()
+        {
+            TryBindRuntimeEvents();
+            RefreshCachedClampBounds();
+        }
+
+        private void OnEnable()
+        {
+            TryBindRuntimeEvents();
+            RefreshCachedClampBounds();
+        }
+
+        private void OnDisable()
+        {
+            UnbindRuntimeEvents();
+        }
+
+        private void OnDestroy()
+        {
+            UnbindRuntimeEvents();
         }
 
         private void LateUpdate()
@@ -46,29 +72,72 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!clampToMapBounds || worldMapPresenter == null || cachedCamera == null || !cachedCamera.orthographic)
                 return desiredPosition;
 
-            Bounds playableBounds;
-            if (!worldMapPresenter.TryGetPlayableBounds(out playableBounds))
+            if (!hasCachedClampBounds)
                 return desiredPosition;
 
             var halfHeight = cachedCamera.orthographicSize;
             var halfWidth = halfHeight * cachedCamera.aspect;
 
-            var minX = playableBounds.min.x + halfWidth;
-            var maxX = playableBounds.max.x - halfWidth;
-            var minY = playableBounds.min.y + halfHeight;
-            var maxY = playableBounds.max.y - halfHeight;
+            var minX = cachedClampBounds.min.x + halfWidth;
+            var maxX = cachedClampBounds.max.x - halfWidth;
+            var minY = cachedClampBounds.min.y + halfHeight;
+            var maxY = cachedClampBounds.max.y - halfHeight;
 
             if (minX > maxX)
-                desiredPosition.x = playableBounds.center.x;
+                desiredPosition.x = cachedClampBounds.center.x;
             else
                 desiredPosition.x = Mathf.Clamp(desiredPosition.x, minX, maxX);
 
             if (minY > maxY)
-                desiredPosition.y = playableBounds.center.y;
+                desiredPosition.y = cachedClampBounds.center.y;
             else
                 desiredPosition.y = Mathf.Clamp(desiredPosition.y, minY, maxY);
 
             return desiredPosition;
+        }
+
+        private bool TryGetCameraClampBounds(out Bounds bounds)
+        {
+            bounds = default;
+            var currentMapTransform = worldMapPresenter.CurrentMapTransform;
+            if (currentMapTransform == null)
+                return false;
+
+            var mapView = currentMapTransform.GetComponent<ClientMapView>();
+            if (mapView != null && mapView.TryGetCameraClampBounds(out bounds))
+                return true;
+
+            return worldMapPresenter.TryGetPlayableBounds(out bounds);
+        }
+
+        private void RefreshCachedClampBounds()
+        {
+            hasCachedClampBounds = TryGetCameraClampBounds(out cachedClampBounds);
+        }
+
+        private void TryBindRuntimeEvents()
+        {
+            if (runtimeEventsBound || !ClientRuntime.IsInitialized)
+                return;
+
+            if (worldMapPresenter != null)
+                worldMapPresenter.ActiveMapVisualChanged += HandleMapVisualChanged;
+            runtimeEventsBound = true;
+        }
+
+        private void UnbindRuntimeEvents()
+        {
+            if (!runtimeEventsBound || !ClientRuntime.IsInitialized)
+                return;
+
+            if (worldMapPresenter != null)
+                worldMapPresenter.ActiveMapVisualChanged -= HandleMapVisualChanged;
+            runtimeEventsBound = false;
+        }
+
+        private void HandleMapVisualChanged()
+        {
+            RefreshCachedClampBounds();
         }
     }
 }

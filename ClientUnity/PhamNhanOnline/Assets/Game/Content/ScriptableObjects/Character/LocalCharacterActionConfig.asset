@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: LocalCharacterActionConfig
   m_EditorClassIdentifier: 
   baseMoveSpeed: 300
-  serverMoveSpeedScale: 1.3
+  serverMoveSpeedScale: 0.013
   flyUpSpeedMultiplier: 2
   fallSpeedMultiplier: 2
   hoverActivationHeight: 200

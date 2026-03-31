@@ -50,8 +50,6 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         private int speedStatPercent = 100;
         private bool hasServerBaseMoveSpeed;
         private float serverBaseMoveSpeed;
-        private bool hasWorldUnitsPerServerUnit;
-        private Vector2 worldUnitsPerServerUnit = Vector2.one;
         private float horizontalInput;
         private float verticalInput;
         private bool isGrounded;
@@ -85,6 +83,11 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
 
         public bool IsFacingLeft => facingLeft;
 
+        public float CurrentHorizontalMoveInput
+        {
+            get { return horizontalInput; }
+        }
+
         public MovementSyncPhase CurrentMovementSyncPhase
         {
             get
@@ -102,14 +105,13 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         public void Initialize(
             LocalCharacterActionConfig config,
             int baseSpeedPercent,
-            float? baseMoveSpeedUnitsPerSecond = null,
-            Vector2? worldUnitsPerServerUnitValue = null)
+            float? baseMoveSpeedUnitsPerSecond = null)
         {
             actionConfig = config != null ? config : LocalCharacterActionConfig.CreateRuntimeDefaults();
             speedStatPercent = baseSpeedPercent > 0
                 ? baseSpeedPercent
                 : actionConfig.SpeedStatBaseline;
-            SetMovementProfile(baseMoveSpeedUnitsPerSecond, worldUnitsPerServerUnitValue);
+            SetMovementProfile(baseMoveSpeedUnitsPerSecond);
             AutoWireMissingReferences();
             ConfigureBodyForLocalSimulation();
             CacheAnimatorStatesIfNeeded(force: true);
@@ -128,7 +130,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
                 speedStatPercent = baseSpeedPercent;
         }
 
-        public void SetMovementProfile(float? baseMoveSpeedUnitsPerSecond, Vector2? worldUnitsPerServerUnitValue)
+        public void SetMovementProfile(float? baseMoveSpeedUnitsPerSecond)
         {
             if (baseMoveSpeedUnitsPerSecond.HasValue && baseMoveSpeedUnitsPerSecond.Value > 0f)
             {
@@ -139,19 +141,6 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             {
                 hasServerBaseMoveSpeed = false;
                 serverBaseMoveSpeed = 0f;
-            }
-
-            if (worldUnitsPerServerUnitValue.HasValue &&
-                worldUnitsPerServerUnitValue.Value.x > Mathf.Epsilon &&
-                worldUnitsPerServerUnitValue.Value.y > Mathf.Epsilon)
-            {
-                hasWorldUnitsPerServerUnit = true;
-                worldUnitsPerServerUnit = worldUnitsPerServerUnitValue.Value;
-            }
-            else
-            {
-                hasWorldUnitsPerServerUnit = false;
-                worldUnitsPerServerUnit = Vector2.one;
             }
         }
 
@@ -411,12 +400,8 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             if (actionConfig == null)
                 return 0f;
 
-            if (hasServerBaseMoveSpeed && hasWorldUnitsPerServerUnit)
-            {
-                return Mathf.Max(0f, serverBaseMoveSpeed)
-                    * worldUnitsPerServerUnit.x
-                    * Mathf.Max(0f, actionConfig.ServerMoveSpeedScale);
-            }
+            if (hasServerBaseMoveSpeed)
+                return ResolveServerUnitsToWorldUnits(serverBaseMoveSpeed);
 
             return Mathf.Max(0f, actionConfig.BaseMoveSpeed);
         }
@@ -426,10 +411,15 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             if (actionConfig == null)
                 return 0f;
 
-            if (hasWorldUnitsPerServerUnit)
-                return Mathf.Max(0f, actionConfig.HoverActivationHeight * worldUnitsPerServerUnit.y);
+            return ResolveServerUnitsToWorldUnits(actionConfig.HoverActivationHeight);
+        }
 
-            return Mathf.Max(0f, actionConfig.HoverActivationHeight);
+        private float ResolveServerUnitsToWorldUnits(float serverUnits)
+        {
+            if (actionConfig == null)
+                return Mathf.Max(0f, serverUnits);
+
+            return Mathf.Max(0f, serverUnits) * Mathf.Max(0f, actionConfig.ServerMoveSpeedScale);
         }
 
         private bool CanUseFlight()

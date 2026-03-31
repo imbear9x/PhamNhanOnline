@@ -45,7 +45,12 @@ namespace PhamNhanOnline.Client.Infrastructure.Pooling
             Instance = this;
             EnsureStorageRoot();
             if (persistentAcrossScenes)
+            {
+                if (transform.parent != null)
+                    transform.SetParent(null, false);
+
                 DontDestroyOnLoad(gameObject);
+            }
         }
 
         private void Update()

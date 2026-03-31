@@ -6,6 +6,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private Collider2D playableBoundsCollider;
         [SerializeField] private Renderer playableBoundsRenderer;
+        [SerializeField] private Collider2D cameraClampBoundsCollider;
+        [SerializeField] private Renderer cameraClampBoundsRenderer;
 
         public bool TryGetPlayableBounds(out Bounds bounds)
         {
@@ -23,6 +25,34 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             bounds = default;
             return false;
+        }
+
+        public bool TryGetCameraClampBounds(out Bounds bounds)
+        {
+            if (cameraClampBoundsCollider != null)
+            {
+                bounds = cameraClampBoundsCollider.bounds;
+                return true;
+            }
+
+            if (cameraClampBoundsRenderer != null)
+            {
+                bounds = cameraClampBoundsRenderer.bounds;
+                return true;
+            }
+
+            return TryGetPlayableBounds(out bounds);
+        }
+
+        public string DescribePlayableBoundsSources()
+        {
+            var colliderState = playableBoundsCollider != null
+                ? $"{playableBoundsCollider.name} ({playableBoundsCollider.GetType().Name}, enabled={playableBoundsCollider.enabled})"
+                : "null";
+            var rendererState = playableBoundsRenderer != null
+                ? $"{playableBoundsRenderer.name} ({playableBoundsRenderer.GetType().Name}, enabled={playableBoundsRenderer.enabled})"
+                : "null";
+            return $"playableBoundsCollider={colliderState}, playableBoundsRenderer={rendererState}";
         }
     }
 }

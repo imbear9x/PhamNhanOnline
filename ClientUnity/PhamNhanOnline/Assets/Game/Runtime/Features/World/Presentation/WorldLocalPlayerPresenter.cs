@@ -107,8 +107,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
             }
 
-            if (worldMapPresenter != null && !worldMapPresenter.TryGetPlayableBounds(out _))
-                return;
+            if (worldMapPresenter != null)
+            {
+                if (worldMapPresenter.CurrentMapTransform == null)
+                    return;
+
+                if (!worldMapPresenter.TryGetPlayableBounds(out _))
+                    return;
+            }
 
             var characterId = selectedCharacter.Value.CharacterId;
             if (playerInstance != null && activeCharacterId == characterId)
@@ -267,8 +273,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             controller.Initialize(
                 localCharacterActionConfig,
                 ResolveBaseSpeedPercent(),
-                ResolveBaseMoveSpeedUnitsPerSecond(),
-                ResolveWorldUnitsPerServerUnit());
+                ResolveBaseMoveSpeedUnitsPerSecond());
 
             ConfigureSkillPresenter(target);
             return controller;
@@ -292,9 +297,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             localActionController.SetSpeedStatPercent(ResolveBaseSpeedPercent());
-            localActionController.SetMovementProfile(
-                ResolveBaseMoveSpeedUnitsPerSecond(),
-                ResolveWorldUnitsPerServerUnit());
+            localActionController.SetMovementProfile(ResolveBaseMoveSpeedUnitsPerSecond());
         }
 
         private void SyncInputBlockState()
@@ -330,16 +333,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var baseMoveSpeed = baseStats.Value.BaseMoveSpeed;
             return baseMoveSpeed > 0f ? baseMoveSpeed : null;
-        }
-
-        private Vector2? ResolveWorldUnitsPerServerUnit()
-        {
-            if (worldMapPresenter == null)
-                return null;
-
-            return worldMapPresenter.TryGetWorldUnitsPerServerUnit(out var worldUnitsPerServerUnit)
-                ? worldUnitsPerServerUnit
-                : null;
         }
 
         private const int CultivatingStateCode = 3;

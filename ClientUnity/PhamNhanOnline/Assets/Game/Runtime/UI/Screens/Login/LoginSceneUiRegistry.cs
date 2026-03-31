@@ -11,12 +11,31 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
 
         [SerializeField] private GameObject loginPanelRoot;
         [SerializeField] private GameObject createCharacterPanelRoot;
+        private bool registered;
+
+        private void Awake()
+        {
+            TryRegisterScreens();
+        }
+
+        private void OnEnable()
+        {
+            TryRegisterScreens();
+        }
 
         private void Start()
         {
+            TryRegisterScreens();
+        }
+
+        private void TryRegisterScreens()
+        {
+            if (registered)
+                return;
+
             if (!ClientRuntime.IsInitialized)
             {
-                ClientLog.Warn("LoginSceneUiRegistry started before ClientRuntime initialization.");
+                ClientLog.Warn("LoginSceneUiRegistry could not register screens before ClientRuntime initialization.");
                 return;
             }
 
@@ -25,15 +44,18 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
 
             if (createCharacterPanelRoot != null)
                 ClientRuntime.UiScreens.Register(CreateCharacterScreenId, createCharacterPanelRoot);
+
+            registered = true;
         }
 
         private void OnDestroy()
         {
-            if (!ClientRuntime.IsInitialized)
+            if (!registered || !ClientRuntime.IsInitialized)
                 return;
 
             ClientRuntime.UiScreens.Unregister(LoginScreenId, loginPanelRoot);
             ClientRuntime.UiScreens.Unregister(CreateCharacterScreenId, createCharacterPanelRoot);
+            registered = false;
         }
     }
 }

@@ -10,7 +10,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
     {
         [Header("Movement")]
         [SerializeField] private float baseMoveSpeed = 4.5f;
-        [SerializeField] private float serverMoveSpeedScale = 1f;
+        [SerializeField] private float serverMoveSpeedScale = 0.013f;
         [FormerlySerializedAs("jumpVelocity")]
         [FormerlySerializedAs("flyUpSpeed")]
         [SerializeField] private float flyUpSpeedMultiplier = 1.75f;
