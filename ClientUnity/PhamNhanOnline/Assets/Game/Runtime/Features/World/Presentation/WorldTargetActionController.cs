@@ -24,6 +24,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private WorldPortalPresenter worldPortalPresenter;
         [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
         [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
+        [SerializeField] private WorldSceneReadinessService readinessService;
 
         [Header("Ranges")]
         [SerializeField] private float interactionRangeServerUnits = 30f;
@@ -72,6 +73,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             AutoWireReferences();
+            if (!IsActionRuntimeReady())
+                return;
 
             var action = pendingAction.Value;
             if (!action.Target.IsValid)
@@ -138,6 +141,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public bool RequestPrimaryAction(WorldTargetHandle target)
         {
             if (!ClientRuntime.IsInitialized || !target.IsValid)
+                return false;
+
+            AutoWireReferences();
+            if (!IsActionRuntimeReady())
                 return false;
 
             var mode = WorldTargetInteractionRules.Resolve(target);
@@ -446,6 +453,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (worldLocalMovementSyncController == null)
                 worldLocalMovementSyncController = GetComponent<WorldLocalMovementSyncController>();
+
+            if (readinessService == null)
+                readinessService = GetComponent<WorldSceneReadinessService>();
+
+            if (readinessService == null && worldMapPresenter != null)
+                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
+
+            if (readinessService == null && WorldSceneController.Instance != null)
+                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
+        }
+
+        private bool IsActionRuntimeReady()
+        {
+            return readinessService == null ||
+                   readinessService.AreReady(WorldSceneReadyKey.MapVisual, WorldSceneReadyKey.LocalPlayer);
         }
 
         private void TryBindRuntimeEvents()

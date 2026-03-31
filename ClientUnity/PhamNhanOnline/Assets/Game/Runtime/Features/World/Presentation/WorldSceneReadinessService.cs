@@ -10,6 +10,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         None = 0,
         MapVisual = 1,
+        LocalPlayer = 2,
+        RemotePlayers = 3,
+        Enemies = 4,
     }
 
     [DisallowMultipleComponent]
@@ -64,6 +67,20 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public bool IsReady(WorldSceneReadyKey key)
         {
             return readyKeys.Contains(key);
+        }
+
+        public bool AreReady(params WorldSceneReadyKey[] keys)
+        {
+            if (keys == null || keys.Length == 0)
+                return true;
+
+            for (var i = 0; i < keys.Length; i++)
+            {
+                if (!readyKeys.Contains(keys[i]))
+                    return false;
+            }
+
+            return true;
         }
 
         public bool ReportReady(WorldSceneReadyKey key)

@@ -19,8 +19,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private bool hasCachedPlayableBounds;
         private string activeClientMapKey = string.Empty;
 
-        public event Action ActiveMapVisualChanged;
-
         public Transform CurrentMapTransform
         {
             get { return activeMapInstance != null ? activeMapInstance.transform : null; }
@@ -163,15 +161,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             activeClientMapKey = clientMapKey ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(activeClientMapKey))
-            {
-                NotifyActiveMapVisualChanged();
                 return;
-            }
 
             if (mapCatalog == null)
             {
                 ClientLog.Warn($"WorldMapPresenter has no {nameof(ClientMapCatalog)} assigned.");
-                NotifyActiveMapVisualChanged();
                 return;
             }
 
@@ -179,7 +173,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!mapCatalog.TryGetMapPrefab(activeClientMapKey, out mapPrefab))
             {
                 ClientLog.Warn($"No map prefab is registered for ClientMapKey '{activeClientMapKey}'.");
-                NotifyActiveMapVisualChanged();
                 return;
             }
 
@@ -190,7 +183,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (readinessService != null && hasCachedPlayableBounds)
                 readinessService.ReportReady(WorldSceneReadyKey.MapVisual);
             ClientLog.Info($"Spawned map '{activeClientMapKey}' into World scene.");
-            NotifyActiveMapVisualChanged();
         }
 
         private bool EnsurePlayableBoundsCached()
@@ -371,11 +363,5 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 readinessService = GetComponent<WorldSceneReadinessService>();
         }
 
-        private void NotifyActiveMapVisualChanged()
-        {
-            var handler = ActiveMapVisualChanged;
-            if (handler != null)
-                handler();
-        }
     }
 }

@@ -11,6 +11,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private WorldLocalPlayerPresenter localPlayerPresenter;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
+        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private WorldLocalMovementSyncConfig syncConfig;
 
         private Vector2 lastSentServerPosition;
@@ -24,6 +25,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private WorldLocalMovementSyncConfig runtimeFallbackConfig;
         private readonly List<MovementObservationSample> movementObservationSamples = new();
         private float movementObservationClock;
+        private bool runtimeEventsBound;
 
         private readonly struct MovementObservationSample
         {
@@ -57,16 +59,20 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!ClientRuntime.IsInitialized)
                 return;
 
-            ClientRuntime.World.MapChanged += HandleMapChanged;
+            AutoWireReferences();
+            TryBindRuntimeEvents();
             ResetSyncState();
+        }
+
+        private void OnEnable()
+        {
+            AutoWireReferences();
+            TryBindRuntimeEvents();
         }
 
         private void OnDestroy()
         {
-            if (!ClientRuntime.IsInitialized)
-                return;
-
-            ClientRuntime.World.MapChanged -= HandleMapChanged;
+            UnbindRuntimeEvents();
         }
 
         private void Update()
@@ -75,6 +81,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             if (ClientRuntime.Connection.State != PhamNhanOnline.Client.Network.Session.ClientConnectionState.Connected)
+                return;
+
+            if (readinessService != null && !readinessService.IsReady(WorldSceneReadyKey.LocalPlayer))
                 return;
 
             if (localPlayerPresenter == null || worldMapPresenter == null)
@@ -172,6 +181,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (ClientRuntime.Connection.State != PhamNhanOnline.Client.Network.Session.ClientConnectionState.Connected)
                 return false;
 
+            if (readinessService != null && !readinessService.IsReady(WorldSceneReadyKey.LocalPlayer))
+                return false;
+
             if (localPlayerPresenter == null || worldMapPresenter == null)
                 return false;
 
@@ -194,9 +206,49 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return true;
         }
 
-        private void HandleMapChanged()
+        private void HandleLoadCycleStarted(int loadVersion, string mapKey)
         {
             ResetSyncState();
+        }
+
+        private void TryBindRuntimeEvents()
+        {
+            if (runtimeEventsBound || !ClientRuntime.IsInitialized)
+                return;
+
+            if (readinessService != null)
+                readinessService.LoadCycleStarted += HandleLoadCycleStarted;
+
+            runtimeEventsBound = true;
+        }
+
+        private void UnbindRuntimeEvents()
+        {
+            if (!runtimeEventsBound || !ClientRuntime.IsInitialized)
+                return;
+
+            if (readinessService != null)
+                readinessService.LoadCycleStarted -= HandleLoadCycleStarted;
+
+            runtimeEventsBound = false;
+        }
+
+        private void AutoWireReferences()
+        {
+            if (localPlayerPresenter == null)
+                localPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
+
+            if (worldMapPresenter == null)
+                worldMapPresenter = GetComponent<WorldMapPresenter>();
+
+            if (readinessService == null)
+                readinessService = GetComponent<WorldSceneReadinessService>();
+
+            if (readinessService == null && worldMapPresenter != null)
+                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
+
+            if (readinessService == null && WorldSceneController.Instance != null)
+                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
         }
 
         private void ResetSyncState()

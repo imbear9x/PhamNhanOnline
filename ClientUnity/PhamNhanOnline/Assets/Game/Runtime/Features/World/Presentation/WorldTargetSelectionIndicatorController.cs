@@ -8,6 +8,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [Header("References")]
         [SerializeField] private WorldMapPresenter worldMapPresenter;
+        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private Transform whiteIndicator;
         [SerializeField] private Transform redIndicator;
 
@@ -21,12 +22,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void Start()
         {
+            AutoWireReferences();
             TryBindRuntimeEvents();
             RefreshTrackedTarget();
         }
 
         private void OnEnable()
         {
+            AutoWireReferences();
             TryBindRuntimeEvents();
             RefreshTrackedTarget();
         }
@@ -45,6 +48,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void LateUpdate()
         {
             if (!ClientRuntime.IsInitialized || !trackedTarget.HasValue || !trackedTarget.Value.IsValid)
+            {
+                SetIndicatorsVisible(false, false);
+                return;
+            }
+
+            if (!IsIndicatorRuntimeReady())
             {
                 SetIndicatorsVisible(false, false);
                 return;
@@ -232,6 +241,26 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             trackedTargetable = null;
             trackedInteractionMode = WorldTargetInteractionMode.None;
             SetIndicatorsVisible(false, false);
+        }
+
+        private void AutoWireReferences()
+        {
+            if (worldMapPresenter == null)
+                worldMapPresenter = GetComponent<WorldMapPresenter>();
+
+            if (readinessService == null)
+                readinessService = GetComponent<WorldSceneReadinessService>();
+
+            if (readinessService == null && worldMapPresenter != null)
+                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
+
+            if (readinessService == null && WorldSceneController.Instance != null)
+                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
+        }
+
+        private bool IsIndicatorRuntimeReady()
+        {
+            return readinessService == null || readinessService.IsReady(WorldSceneReadyKey.MapVisual);
         }
 
         private static bool IsPortalTarget(WorldTargetHandle handle)

@@ -39,6 +39,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [Header("World References")]
         [SerializeField] private WorldMapPresenter worldMapPresenter;
         [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
+        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private Camera worldCamera;
         [SerializeField] private LayerMask selectableLayers = ~0;
 
@@ -93,6 +94,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 worldMapPresenter = GetComponent<WorldMapPresenter>();
             if (worldLocalPlayerPresenter == null)
                 worldLocalPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
+            if (readinessService == null)
+                readinessService = GetComponent<WorldSceneReadinessService>();
+            if (readinessService == null && worldMapPresenter != null)
+                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
+            if (readinessService == null && WorldSceneController.Instance != null)
+                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
 
             EnsureSelectableLayersConfigured();
         }
@@ -100,6 +107,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void Update()
         {
             if (!ClientRuntime.IsInitialized)
+                return;
+
+            if (!IsSelectionRuntimeReady())
                 return;
 
             TryAutoSelectNearbyTarget();
@@ -120,6 +130,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public void CycleNearbyTarget()
         {
             if (!ClientRuntime.IsInitialized)
+                return;
+
+            if (!IsSelectionRuntimeReady())
                 return;
 
             if (blockCycleWhilePinned && ClientRuntime.Target.HasPinnedTarget)
@@ -387,6 +400,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             return TryMapServerPositionToWorld(ClientRuntime.World.LocalPlayerPosition, out worldPosition);
+        }
+
+        private bool IsSelectionRuntimeReady()
+        {
+            return readinessService == null ||
+                   readinessService.AreReady(WorldSceneReadyKey.MapVisual, WorldSceneReadyKey.LocalPlayer);
         }
 
         private bool TryMapServerPositionToWorld(Vector2 serverPosition, out Vector2 worldPosition)

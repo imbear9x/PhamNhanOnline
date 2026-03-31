@@ -11,9 +11,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private EnemyPresentationCatalog presentationCatalog;
         [SerializeField] private Transform enemiesRoot;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
+        [SerializeField] private WorldSceneReadinessService readinessService;
 
         private readonly Dictionary<int, EnemyPresenter> enemyPresenters = new Dictionary<int, EnemyPresenter>();
         private bool warnedMissingCatalog;
+        private bool runtimeEventsBound;
+        private bool hasReportedReadyForCurrentCycle;
 
         private void Start()
         {
@@ -23,49 +26,53 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
             }
 
-            ClientRuntime.World.MapChanged += HandleWorldChanged;
-            ClientRuntime.World.EnemyUpserted += HandleEnemyUpserted;
-            ClientRuntime.World.EnemyRemoved += HandleEnemyRemoved;
-            ClientRuntime.World.EnemyHpChanged += HandleEnemyHpChanged;
-            SyncEnemies();
+            AutoWireReferences();
+            TryBindRuntimeEvents();
+            TrySyncIfReady();
         }
 
         private void OnDestroy()
         {
-            if (ClientRuntime.IsInitialized)
-            {
-                ClientRuntime.World.MapChanged -= HandleWorldChanged;
-                ClientRuntime.World.EnemyUpserted -= HandleEnemyUpserted;
-                ClientRuntime.World.EnemyRemoved -= HandleEnemyRemoved;
-                ClientRuntime.World.EnemyHpChanged -= HandleEnemyHpChanged;
-            }
-
+            UnbindRuntimeEvents();
             ClearEnemies();
         }
 
-        private void HandleWorldChanged()
+        private void HandleMapVisualReady()
         {
             SyncEnemies();
+            TryReportReady();
         }
 
         private void HandleEnemyUpserted(EnemyRuntimeModel enemy)
         {
+            if (!IsMapVisualReady())
+                return;
+
             UpsertPresenter(enemy);
         }
 
         private void HandleEnemyRemoved(int runtimeId)
         {
+            if (!IsMapVisualReady())
+                return;
+
             RemovePresenter(runtimeId);
         }
 
         private void HandleEnemyHpChanged(PhamNhanOnline.Client.Features.World.Application.EnemyHpChangedNotice notice)
         {
+            if (!IsMapVisualReady())
+                return;
+
             UpsertPresenter(notice.Enemy);
         }
 
         private void SyncEnemies()
         {
             if (!ClientRuntime.IsInitialized)
+                return;
+
+            if (!IsMapVisualReady())
                 return;
 
             if (string.IsNullOrWhiteSpace(ClientRuntime.World.CurrentClientMapKey))
@@ -103,6 +110,91 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             for (var i = 0; i < removedRuntimeIds.Count; i++)
                 RemovePresenter(removedRuntimeIds[i]);
+        }
+
+        private bool IsMapVisualReady()
+        {
+            return readinessService == null || readinessService.IsReady(WorldSceneReadyKey.MapVisual);
+        }
+
+        private void TrySyncIfReady()
+        {
+            if (!IsMapVisualReady())
+                return;
+
+            SyncEnemies();
+            TryReportReady();
+        }
+
+        private void TryReportReady()
+        {
+            if (hasReportedReadyForCurrentCycle || readinessService == null)
+                return;
+
+            hasReportedReadyForCurrentCycle = readinessService.ReportReady(WorldSceneReadyKey.Enemies);
+        }
+
+        private void HandleLoadCycleStarted(int loadVersion, string mapKey)
+        {
+            hasReportedReadyForCurrentCycle = false;
+            ClearEnemies();
+        }
+
+        private void HandleReadyReported(int loadVersion, WorldSceneReadyKey key)
+        {
+            if (key != WorldSceneReadyKey.MapVisual)
+                return;
+
+            HandleMapVisualReady();
+        }
+
+        private void TryBindRuntimeEvents()
+        {
+            if (runtimeEventsBound || !ClientRuntime.IsInitialized)
+                return;
+
+            ClientRuntime.World.EnemyUpserted += HandleEnemyUpserted;
+            ClientRuntime.World.EnemyRemoved += HandleEnemyRemoved;
+            ClientRuntime.World.EnemyHpChanged += HandleEnemyHpChanged;
+            if (readinessService != null)
+            {
+                readinessService.LoadCycleStarted += HandleLoadCycleStarted;
+                readinessService.ReadyReported += HandleReadyReported;
+            }
+
+            runtimeEventsBound = true;
+        }
+
+        private void UnbindRuntimeEvents()
+        {
+            if (!runtimeEventsBound || !ClientRuntime.IsInitialized)
+                return;
+
+            ClientRuntime.World.EnemyUpserted -= HandleEnemyUpserted;
+            ClientRuntime.World.EnemyRemoved -= HandleEnemyRemoved;
+            ClientRuntime.World.EnemyHpChanged -= HandleEnemyHpChanged;
+            if (readinessService != null)
+            {
+                readinessService.LoadCycleStarted -= HandleLoadCycleStarted;
+                readinessService.ReadyReported -= HandleReadyReported;
+            }
+
+            runtimeEventsBound = false;
+        }
+
+        private void AutoWireReferences()
+        {
+            if (worldMapPresenter == null)
+                worldMapPresenter = GetComponent<WorldMapPresenter>();
+
+            if (readinessService == null)
+                readinessService = GetComponent<WorldSceneReadinessService>();
+
+            if (readinessService == null && worldMapPresenter != null)
+                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
+
+            if (readinessService == null && WorldSceneController.Instance != null)
+                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
         }
 
         private EnemyPresenter CreatePresenter(EnemyRuntimeModel enemy)
