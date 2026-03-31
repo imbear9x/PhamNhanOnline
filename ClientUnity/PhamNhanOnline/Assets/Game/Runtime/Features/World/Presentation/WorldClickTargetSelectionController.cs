@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
-    public sealed class WorldClickTargetSelectionController : MonoBehaviour
+    public sealed class WorldClickTargetSelectionController : WorldSceneBehaviour
     {
         [System.Serializable]
         private struct TargetKindPriorityRule
@@ -39,7 +39,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [Header("World References")]
         [SerializeField] private WorldMapPresenter worldMapPresenter;
         [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
-        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private Camera worldCamera;
         [SerializeField] private LayerMask selectableLayers = ~0;
 
@@ -90,17 +89,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (worldCamera == null)
                 worldCamera = Camera.main;
 
-            if (worldMapPresenter == null)
-                worldMapPresenter = GetComponent<WorldMapPresenter>();
-            if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
-            if (readinessService == null)
-                readinessService = GetComponent<WorldSceneReadinessService>();
-            if (readinessService == null && worldMapPresenter != null)
-                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
-            if (readinessService == null && WorldSceneController.Instance != null)
-                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
-
+            AutoWireReferences();
             EnsureSelectableLayersConfigured();
         }
 
@@ -404,8 +393,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private bool IsSelectionRuntimeReady()
         {
-            return readinessService == null ||
-                   readinessService.AreReady(WorldSceneReadyKey.MapVisual, WorldSceneReadyKey.LocalPlayer);
+            return AreReady(WorldSceneReadyKey.MapVisual, WorldSceneReadyKey.LocalPlayer);
         }
 
         private bool TryMapServerPositionToWorld(Vector2 serverPosition, out Vector2 worldPosition)
@@ -615,6 +603,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             manualSelectionRangeTrackedTarget = currentTarget.Value;
             manualSelectionHasEnteredAutoRange = false;
+        }
+
+        private void AutoWireReferences()
+        {
+            InitializeWorldSceneBehaviour(ref worldMapPresenter);
+
+            if (worldLocalPlayerPresenter == null)
+                worldLocalPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : GetComponent<WorldLocalPlayerPresenter>();
         }
     }
 }

@@ -7,11 +7,10 @@ using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
-    public sealed class WorldLocalMovementSyncController : MonoBehaviour
+    public sealed class WorldLocalMovementSyncController : WorldSceneBehaviour
     {
         [SerializeField] private WorldLocalPlayerPresenter localPlayerPresenter;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
-        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private WorldLocalMovementSyncConfig syncConfig;
 
         private Vector2 lastSentServerPosition;
@@ -25,7 +24,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private WorldLocalMovementSyncConfig runtimeFallbackConfig;
         private readonly List<MovementObservationSample> movementObservationSamples = new();
         private float movementObservationClock;
-        private bool runtimeEventsBound;
 
         private readonly struct MovementObservationSample
         {
@@ -60,19 +58,19 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             AutoWireReferences();
-            TryBindRuntimeEvents();
+            ActivateWorldSceneReadiness();
             ResetSyncState();
         }
 
         private void OnEnable()
         {
             AutoWireReferences();
-            TryBindRuntimeEvents();
+            ActivateWorldSceneReadiness();
         }
 
         private void OnDestroy()
         {
-            UnbindRuntimeEvents();
+            DeactivateWorldSceneReadiness();
         }
 
         private void Update()
@@ -83,7 +81,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (ClientRuntime.Connection.State != PhamNhanOnline.Client.Network.Session.ClientConnectionState.Connected)
                 return;
 
-            if (readinessService != null && !readinessService.IsReady(WorldSceneReadyKey.LocalPlayer))
+            if (!IsReady(WorldSceneReadyKey.LocalPlayer))
                 return;
 
             if (localPlayerPresenter == null || worldMapPresenter == null)
@@ -181,7 +179,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (ClientRuntime.Connection.State != PhamNhanOnline.Client.Network.Session.ClientConnectionState.Connected)
                 return false;
 
-            if (readinessService != null && !readinessService.IsReady(WorldSceneReadyKey.LocalPlayer))
+            if (!IsReady(WorldSceneReadyKey.LocalPlayer))
                 return false;
 
             if (localPlayerPresenter == null || worldMapPresenter == null)
@@ -206,49 +204,17 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return true;
         }
 
-        private void HandleLoadCycleStarted(int loadVersion, string mapKey)
+        protected override void OnWorldLoadCycleStarted(int loadVersion, string mapKey)
         {
             ResetSyncState();
         }
 
-        private void TryBindRuntimeEvents()
-        {
-            if (runtimeEventsBound || !ClientRuntime.IsInitialized)
-                return;
-
-            if (readinessService != null)
-                readinessService.LoadCycleStarted += HandleLoadCycleStarted;
-
-            runtimeEventsBound = true;
-        }
-
-        private void UnbindRuntimeEvents()
-        {
-            if (!runtimeEventsBound || !ClientRuntime.IsInitialized)
-                return;
-
-            if (readinessService != null)
-                readinessService.LoadCycleStarted -= HandleLoadCycleStarted;
-
-            runtimeEventsBound = false;
-        }
-
         private void AutoWireReferences()
         {
+            InitializeWorldSceneBehaviour(ref worldMapPresenter);
+
             if (localPlayerPresenter == null)
-                localPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
-
-            if (worldMapPresenter == null)
-                worldMapPresenter = GetComponent<WorldMapPresenter>();
-
-            if (readinessService == null)
-                readinessService = GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && worldMapPresenter != null)
-                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && WorldSceneController.Instance != null)
-                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
+                localPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : GetComponent<WorldLocalPlayerPresenter>();
         }
 
         private void ResetSyncState()

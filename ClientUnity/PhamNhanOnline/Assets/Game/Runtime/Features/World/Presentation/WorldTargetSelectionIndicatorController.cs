@@ -4,11 +4,10 @@ using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
-    public sealed class WorldTargetSelectionIndicatorController : MonoBehaviour
+    public sealed class WorldTargetSelectionIndicatorController : WorldSceneBehaviour
     {
         [Header("References")]
         [SerializeField] private WorldMapPresenter worldMapPresenter;
-        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private Transform whiteIndicator;
         [SerializeField] private Transform redIndicator;
 
@@ -245,22 +244,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void AutoWireReferences()
         {
-            if (worldMapPresenter == null)
-                worldMapPresenter = GetComponent<WorldMapPresenter>();
-
-            if (readinessService == null)
-                readinessService = GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && worldMapPresenter != null)
-                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && WorldSceneController.Instance != null)
-                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
+            InitializeWorldSceneBehaviour(ref worldMapPresenter);
         }
 
         private bool IsIndicatorRuntimeReady()
         {
-            return readinessService == null || readinessService.IsReady(WorldSceneReadyKey.MapVisual);
+            return IsReady(WorldSceneReadyKey.MapVisual);
         }
 
         private static bool IsPortalTarget(WorldTargetHandle handle)

@@ -8,14 +8,13 @@ using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
-    public sealed class WorldLocalPlayerPresenter : MonoBehaviour
+    public sealed class WorldLocalPlayerPresenter : WorldSceneBehaviour
     {
         private const float DefaultBoundsPadding = 0.1f;
 
         [SerializeField] private GameObject playerPrefab;
         [SerializeField] private Transform localPlayerRoot;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
-        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private LocalCharacterActionConfig localCharacterActionConfig;
         [SerializeField] private float authoritativeSnapDistance = 1.5f;
 
@@ -25,7 +24,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private Vector2 lastAppliedServerPosition;
         private bool warnedMissingPrefab;
         private bool warnedPositionMapping;
-        private bool runtimeEventsBound;
         private bool hasReportedLocalPlayerReadyForCurrentCycle;
 
         public Transform CurrentPlayerTransform
@@ -68,20 +66,20 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             AutoWireReferences();
-            TryBindRuntimeEvents();
+            ActivateWorldSceneReadiness();
             TryInitializeForReadyState(forcePosition: true);
         }
 
         private void OnEnable()
         {
             AutoWireReferences();
-            TryBindRuntimeEvents();
+            ActivateWorldSceneReadiness();
             TryInitializeForReadyState(forcePosition: true);
         }
 
         private void OnDisable()
         {
-            UnbindRuntimeEvents();
+            DeactivateWorldSceneReadiness();
         }
 
         private void Update()
@@ -95,7 +93,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
             }
 
-            if (readinessService != null && !readinessService.IsReady(WorldSceneReadyKey.MapVisual))
+            if (!IsReady(WorldSceneReadyKey.MapVisual))
                 return;
 
             TryEnsureLocalPlayer();
@@ -106,7 +104,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void OnDestroy()
         {
-            UnbindRuntimeEvents();
+            DeactivateWorldSceneReadiness();
             ClearLocalPlayer();
         }
 
@@ -286,7 +284,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!ClientRuntime.IsInitialized)
                 return;
 
-            if (readinessService != null && !readinessService.IsReady(WorldSceneReadyKey.MapVisual))
+            if (!IsReady(WorldSceneReadyKey.MapVisual))
                 return;
 
             TryEnsureLocalPlayer();
@@ -297,73 +295,37 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void TryReportLocalPlayerReady()
         {
-            if (hasReportedLocalPlayerReadyForCurrentCycle || readinessService == null || playerInstance == null)
+            if (hasReportedLocalPlayerReadyForCurrentCycle || Readiness == null || playerInstance == null)
                 return;
 
-            if (!readinessService.IsReady(WorldSceneReadyKey.MapVisual))
+            if (!IsReady(WorldSceneReadyKey.MapVisual))
                 return;
 
             if (localActionController == null)
                 return;
 
-            hasReportedLocalPlayerReadyForCurrentCycle = readinessService.ReportReady(WorldSceneReadyKey.LocalPlayer);
+            hasReportedLocalPlayerReadyForCurrentCycle = Readiness.ReportReady(WorldSceneReadyKey.LocalPlayer);
         }
 
-        private void HandleLoadCycleStarted(int loadVersion, string mapKey)
+        protected override void ConfigureReadyWaits()
+        {
+            WaitFor(WorldSceneReadyKey.MapVisual, HandleMapVisualReady);
+        }
+
+        protected override void OnWorldLoadCycleStarted(int loadVersion, string mapKey)
         {
             hasReportedLocalPlayerReadyForCurrentCycle = false;
             lastAppliedServerPosition = new Vector2(float.NaN, float.NaN);
         }
 
-        private void HandleReadyReported(int loadVersion, WorldSceneReadyKey key)
+        private void HandleMapVisualReady()
         {
-            if (key != WorldSceneReadyKey.MapVisual)
-                return;
-
             TryInitializeForReadyState(forcePosition: true);
-        }
-
-        private void TryBindRuntimeEvents()
-        {
-            if (runtimeEventsBound || !ClientRuntime.IsInitialized)
-                return;
-
-            if (readinessService != null)
-            {
-                readinessService.LoadCycleStarted += HandleLoadCycleStarted;
-                readinessService.ReadyReported += HandleReadyReported;
-            }
-
-            runtimeEventsBound = true;
-        }
-
-        private void UnbindRuntimeEvents()
-        {
-            if (!runtimeEventsBound || !ClientRuntime.IsInitialized)
-                return;
-
-            if (readinessService != null)
-            {
-                readinessService.LoadCycleStarted -= HandleLoadCycleStarted;
-                readinessService.ReadyReported -= HandleReadyReported;
-            }
-
-            runtimeEventsBound = false;
         }
 
         private void AutoWireReferences()
         {
-            if (worldMapPresenter == null)
-                worldMapPresenter = GetComponent<WorldMapPresenter>();
-
-            if (readinessService == null)
-                readinessService = GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && worldMapPresenter != null)
-                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && WorldSceneController.Instance != null)
-                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
+            InitializeWorldSceneBehaviour(ref worldMapPresenter);
         }
 
         private LocalCharacterActionController ConfigureLocalActionController(GameObject target)

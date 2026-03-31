@@ -7,12 +7,11 @@ using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
-    public sealed class WorldRemotePlayersPresenter : MonoBehaviour
+    public sealed class WorldRemotePlayersPresenter : WorldSceneBehaviour
     {
         [SerializeField] private GameObject playerPrefab;
         [SerializeField] private Transform remotePlayersRoot;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
-        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private float remoteMoveSmoothing = 14f;
 
         private readonly Dictionary<Guid, RemoteCharacterPresenter> remotePresenters = new Dictionary<Guid, RemoteCharacterPresenter>();
@@ -29,6 +28,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             AutoWireReferences();
+            ActivateWorldSceneReadiness();
+            TryBindRuntimeEvents();
+            TrySyncIfReady();
+        }
+
+        private void OnEnable()
+        {
+            AutoWireReferences();
+            ActivateWorldSceneReadiness();
             TryBindRuntimeEvents();
             TrySyncIfReady();
         }
@@ -38,19 +46,34 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!ClientRuntime.IsInitialized)
                 return;
 
-            if (readinessService != null && !readinessService.IsReady(WorldSceneReadyKey.MapVisual))
+            if (!IsReady(WorldSceneReadyKey.MapVisual))
                 return;
 
             if (string.IsNullOrWhiteSpace(ClientRuntime.World.CurrentClientMapKey))
-            {
                 ClearRemotePlayers();
-                return;
-            }
+        }
+
+        private void OnDisable()
+        {
+            DeactivateWorldSceneReadiness();
+            UnbindRuntimeEvents();
         }
 
         private void OnDestroy()
         {
+            DeactivateWorldSceneReadiness();
             UnbindRuntimeEvents();
+            ClearRemotePlayers();
+        }
+
+        protected override void ConfigureReadyWaits()
+        {
+            WaitFor(WorldSceneReadyKey.MapVisual, HandleMapVisualReady);
+        }
+
+        protected override void OnWorldLoadCycleStarted(int loadVersion, string mapKey)
+        {
+            hasReportedReadyForCurrentCycle = false;
             ClearRemotePlayers();
         }
 
@@ -138,7 +161,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private bool IsMapVisualReady()
         {
-            return readinessService == null || readinessService.IsReady(WorldSceneReadyKey.MapVisual);
+            return IsReady(WorldSceneReadyKey.MapVisual);
         }
 
         private void TrySyncIfReady()
@@ -152,24 +175,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void TryReportReady()
         {
-            if (hasReportedReadyForCurrentCycle || readinessService == null)
+            if (hasReportedReadyForCurrentCycle || Readiness == null)
                 return;
 
-            hasReportedReadyForCurrentCycle = readinessService.ReportReady(WorldSceneReadyKey.RemotePlayers);
-        }
-
-        private void HandleLoadCycleStarted(int loadVersion, string mapKey)
-        {
-            hasReportedReadyForCurrentCycle = false;
-            ClearRemotePlayers();
-        }
-
-        private void HandleReadyReported(int loadVersion, WorldSceneReadyKey key)
-        {
-            if (key != WorldSceneReadyKey.MapVisual)
-                return;
-
-            HandleMapVisualReady();
+            hasReportedReadyForCurrentCycle = Readiness.ReportReady(WorldSceneReadyKey.RemotePlayers);
         }
 
         private void TryBindRuntimeEvents()
@@ -181,12 +190,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ClientRuntime.World.ObservedCharacterRemoved += HandleObservedCharacterRemoved;
             ClientRuntime.World.ObservedCharacterMoved += HandleObservedCharacterMoved;
             ClientRuntime.World.ObservedCharacterStateChanged += HandleObservedCharacterStateChanged;
-            if (readinessService != null)
-            {
-                readinessService.LoadCycleStarted += HandleLoadCycleStarted;
-                readinessService.ReadyReported += HandleReadyReported;
-            }
-
             runtimeEventsBound = true;
         }
 
@@ -199,28 +202,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ClientRuntime.World.ObservedCharacterRemoved -= HandleObservedCharacterRemoved;
             ClientRuntime.World.ObservedCharacterMoved -= HandleObservedCharacterMoved;
             ClientRuntime.World.ObservedCharacterStateChanged -= HandleObservedCharacterStateChanged;
-            if (readinessService != null)
-            {
-                readinessService.LoadCycleStarted -= HandleLoadCycleStarted;
-                readinessService.ReadyReported -= HandleReadyReported;
-            }
-
             runtimeEventsBound = false;
         }
 
         private void AutoWireReferences()
         {
-            if (worldMapPresenter == null)
-                worldMapPresenter = GetComponent<WorldMapPresenter>();
-
-            if (readinessService == null)
-                readinessService = GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && worldMapPresenter != null)
-                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && WorldSceneController.Instance != null)
-                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
+            InitializeWorldSceneBehaviour(ref worldMapPresenter);
         }
 
         private RemoteCharacterPresenter CreatePresenter(ObservedCharacterModel observedCharacter)

@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
-    public sealed class WorldTargetActionController : MonoBehaviour
+    public sealed class WorldTargetActionController : WorldSceneBehaviour
     {
         private const int BasicSkillSlotIndex = 1;
 
@@ -24,7 +24,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private WorldPortalPresenter worldPortalPresenter;
         [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
         [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
-        [SerializeField] private WorldSceneReadinessService readinessService;
 
         [Header("Ranges")]
         [SerializeField] private float interactionRangeServerUnits = 30f;
@@ -442,32 +441,20 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void AutoWireReferences()
         {
-            if (worldMapPresenter == null)
-                worldMapPresenter = GetComponent<WorldMapPresenter>();
-
+            InitializeWorldSceneBehaviour(ref worldMapPresenter);
             if (worldPortalPresenter == null)
                 worldPortalPresenter = GetComponent<WorldPortalPresenter>();
 
             if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
+                worldLocalPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : GetComponent<WorldLocalPlayerPresenter>();
 
             if (worldLocalMovementSyncController == null)
                 worldLocalMovementSyncController = GetComponent<WorldLocalMovementSyncController>();
-
-            if (readinessService == null)
-                readinessService = GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && worldMapPresenter != null)
-                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && WorldSceneController.Instance != null)
-                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
         }
 
         private bool IsActionRuntimeReady()
         {
-            return readinessService == null ||
-                   readinessService.AreReady(WorldSceneReadyKey.MapVisual, WorldSceneReadyKey.LocalPlayer);
+            return AreReady(WorldSceneReadyKey.MapVisual, WorldSceneReadyKey.LocalPlayer);
         }
 
         private void TryBindRuntimeEvents()

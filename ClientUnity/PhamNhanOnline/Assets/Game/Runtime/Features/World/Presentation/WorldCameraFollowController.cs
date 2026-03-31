@@ -4,11 +4,10 @@ using PhamNhanOnline.Client.Core.Application;
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
     [RequireComponent(typeof(Camera))]
-    public sealed class WorldCameraFollowController : MonoBehaviour
+    public sealed class WorldCameraFollowController : WorldSceneBehaviour
     {
         [SerializeField] private WorldLocalPlayerPresenter localPlayerPresenter;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
-        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private Vector3 followOffset = new Vector3(0f, 0f, -10f);
         [SerializeField] private bool smoothFollow = false;
         [SerializeField] private float smoothSpeed = 8f;
@@ -17,7 +16,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private Camera cachedCamera;
         private Bounds cachedClampBounds;
         private bool hasCachedClampBounds;
-        private bool runtimeEventsBound;
 
         private void Awake()
         {
@@ -28,25 +26,25 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void Start()
         {
             AutoWireReferences();
-            TryBindRuntimeEvents();
+            ActivateWorldSceneReadiness();
             TryRefreshCachedClampBoundsIfReady();
         }
 
         private void OnEnable()
         {
             AutoWireReferences();
-            TryBindRuntimeEvents();
+            ActivateWorldSceneReadiness();
             TryRefreshCachedClampBoundsIfReady();
         }
 
         private void OnDisable()
         {
-            UnbindRuntimeEvents();
+            DeactivateWorldSceneReadiness();
         }
 
         private void OnDestroy()
         {
-            UnbindRuntimeEvents();
+            DeactivateWorldSceneReadiness();
         }
 
         private void LateUpdate()
@@ -127,7 +125,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void TryRefreshCachedClampBoundsIfReady()
         {
-            if (readinessService != null && !readinessService.IsReady(WorldSceneReadyKey.MapVisual))
+            if (!IsReady(WorldSceneReadyKey.MapVisual))
             {
                 ClearCachedClampBounds();
                 return;
@@ -136,58 +134,22 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             RefreshCachedClampBounds();
         }
 
-        private void TryBindRuntimeEvents()
+        protected override void ConfigureReadyWaits()
         {
-            if (runtimeEventsBound || !ClientRuntime.IsInitialized)
-                return;
-
-            if (readinessService != null)
-            {
-                readinessService.LoadCycleStarted += HandleLoadCycleStarted;
-                readinessService.ReadyReported += HandleReadyReported;
-            }
-            runtimeEventsBound = true;
+            WaitFor(WorldSceneReadyKey.MapVisual, TryRefreshCachedClampBoundsIfReady);
         }
 
-        private void UnbindRuntimeEvents()
-        {
-            if (!runtimeEventsBound || !ClientRuntime.IsInitialized)
-                return;
-
-            if (readinessService != null)
-            {
-                readinessService.LoadCycleStarted -= HandleLoadCycleStarted;
-                readinessService.ReadyReported -= HandleReadyReported;
-            }
-            runtimeEventsBound = false;
-        }
-
-        private void HandleLoadCycleStarted(int loadVersion, string mapKey)
+        protected override void OnWorldLoadCycleStarted(int loadVersion, string mapKey)
         {
             ClearCachedClampBounds();
         }
 
-        private void HandleReadyReported(int loadVersion, WorldSceneReadyKey key)
-        {
-            if (key != WorldSceneReadyKey.MapVisual)
-                return;
-
-            TryRefreshCachedClampBoundsIfReady();
-        }
-
         private void AutoWireReferences()
         {
-            if (worldMapPresenter == null)
-                worldMapPresenter = GetComponent<WorldMapPresenter>();
+            InitializeWorldSceneBehaviour(ref worldMapPresenter);
 
-            if (readinessService == null)
-                readinessService = GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && worldMapPresenter != null)
-                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && WorldSceneController.Instance != null)
-                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
+            if (localPlayerPresenter == null)
+                localPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : GetComponent<WorldLocalPlayerPresenter>();
         }
     }
 }

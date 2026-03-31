@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
-    public sealed class WorldPortalPresenter : MonoBehaviour
+    public sealed class WorldPortalPresenter : WorldSceneBehaviour
     {
         private const int TouchInteractionMode = 1;
         private const int InteractInteractionMode = 2;
@@ -29,7 +29,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [Header("References")]
         [SerializeField] private WorldSceneController worldSceneController;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
-        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private WorldTargetActionController worldTargetActionController;
         [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
         [SerializeField] private Transform portalRoot;
@@ -63,6 +62,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void Start()
         {
             AutoWireReferences();
+            ActivateWorldSceneReadiness();
             TryBindRuntimeEvents();
             TryRebuildPortalsIfReady();
         }
@@ -70,6 +70,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void OnEnable()
         {
             AutoWireReferences();
+            ActivateWorldSceneReadiness();
             TryBindRuntimeEvents();
             TryRebuildPortalsIfReady();
         }
@@ -82,12 +83,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void OnDisable()
         {
+            DeactivateWorldSceneReadiness();
             UnbindRuntimeEvents();
             ClearPortals();
         }
 
         private void OnDestroy()
         {
+            DeactivateWorldSceneReadiness();
             UnbindRuntimeEvents();
             ClearPortals();
         }
@@ -316,7 +319,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void TryRebuildPortalsIfReady()
         {
-            if (readinessService != null && !readinessService.IsReady(WorldSceneReadyKey.MapVisual))
+            if (!IsReady(WorldSceneReadyKey.MapVisual))
                 return;
 
             RebuildPortals();
@@ -600,16 +603,20 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
         }
 
+        protected override void ConfigureReadyWaits()
+        {
+            WaitFor(WorldSceneReadyKey.MapVisual, HandleMapVisualReady);
+        }
+
+        protected override void OnWorldLoadCycleStarted(int loadVersion, string mapKey)
+        {
+            rebuildRetryPending = false;
+            ClearPortals();
+        }
+
         private void AutoWireReferences()
         {
-            if (worldSceneController == null)
-                worldSceneController = GetComponent<WorldSceneController>();
-
-            if (worldMapPresenter == null)
-                worldMapPresenter = GetComponent<WorldMapPresenter>();
-
-            if (readinessService == null)
-                readinessService = GetComponent<WorldSceneReadinessService>();
+            InitializeWorldSceneBehaviour(ref worldSceneController, ref worldMapPresenter);
 
             if (worldTargetActionController == null)
                 worldTargetActionController = GetComponent<WorldTargetActionController>();
@@ -623,11 +630,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (runtimeEventsBound || !ClientRuntime.IsInitialized)
                 return;
 
-            if (readinessService != null)
-            {
-                readinessService.LoadCycleStarted += HandleLoadCycleStarted;
-                readinessService.ReadyReported += HandleReadyReported;
-            }
             ClientRuntime.Target.CurrentTargetChanged += HandleCurrentTargetChanged;
             if (worldTargetActionController != null)
                 worldTargetActionController.InteractionRequested += HandleInteractionRequested;
@@ -639,29 +641,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!runtimeEventsBound || !ClientRuntime.IsInitialized)
                 return;
 
-            if (readinessService != null)
-            {
-                readinessService.LoadCycleStarted -= HandleLoadCycleStarted;
-                readinessService.ReadyReported -= HandleReadyReported;
-            }
             ClientRuntime.Target.CurrentTargetChanged -= HandleCurrentTargetChanged;
             if (worldTargetActionController != null)
                 worldTargetActionController.InteractionRequested -= HandleInteractionRequested;
             runtimeEventsBound = false;
-        }
-
-        private void HandleLoadCycleStarted(int loadVersion, string mapKey)
-        {
-            rebuildRetryPending = false;
-            ClearPortals();
-        }
-
-        private void HandleReadyReported(int loadVersion, WorldSceneReadyKey key)
-        {
-            if (key != WorldSceneReadyKey.MapVisual)
-                return;
-
-            HandleMapVisualReady();
         }
 
         private static int ResolveTargetableLayer()

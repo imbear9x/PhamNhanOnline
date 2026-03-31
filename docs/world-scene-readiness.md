@@ -10,6 +10,60 @@
 
 Service này tạo ra một `load cycle` mới mỗi lần đổi map, reset readiness của cycle cũ, sau đó các subsystem tự `report ready` khi xong việc của mình.
 
+## Ba mảnh chính của thiết kế mới
+
+### 1. `WorldSceneReadinessService`
+
+File:
+
+- [WorldSceneReadinessService.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldSceneReadinessService.cs)
+
+Trách nhiệm:
+
+- mở `load cycle` mới khi map đổi
+- tăng `CurrentLoadVersion`
+- clear các key đã ready của cycle cũ
+- phát event:
+  - `LoadCycleStarted(loadVersion, mapKey)`
+  - `ReadyReported(loadVersion, key)`
+- lưu trạng thái key nào đã ready trong cycle hiện tại
+
+### 2. `WorldSceneBehaviour`
+
+File:
+
+- [WorldSceneBehaviour.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldSceneBehaviour.cs)
+
+Đây là base class mới cho các world component có phụ thuộc readiness.
+
+Nó gom các phần lặp lại:
+
+- auto-wire `WorldSceneController`
+- auto-wire `WorldMapPresenter`
+- auto-wire `WorldSceneReadinessService`
+- bind / unbind readiness events
+- helper check readiness:
+  - `IsReady(key)`
+  - `AreReady(keys)`
+- helper khai báo dependency rõ ràng:
+  - `WaitFor(key, action)`
+  - `WaitForAll(action, keys...)`
+
+### 3. Component cụ thể
+
+Mỗi component chỉ cần:
+
+- gọi `InitializeWorldSceneBehaviour(...)`
+- gọi `ActivateWorldSceneReadiness()` / `DeactivateWorldSceneReadiness()`
+- khai báo dependency trong `ConfigureReadyWaits()`
+- reset state theo cycle trong `OnWorldLoadCycleStarted(...)` nếu cần
+
+Nhờ vậy code đọc ra rõ hơn, không còn lặp quá nhiều đoạn:
+
+- `GetComponent<WorldSceneReadinessService>()`
+- `readinessService.LoadCycleStarted += ...`
+- `if (key != ...) return;`
+
 ## Ready Keys
 
 Hiện tại có 4 key:
@@ -42,7 +96,7 @@ Reporter:
 Điều kiện report:
 
 1. `MapVisual` đã ready
-2. local player đã được spawn/ensure
+2. local player đã được spawn hoặc ensure
 3. vị trí mới đã được apply vào map hiện tại
 
 ### `RemotePlayers`
@@ -79,27 +133,30 @@ Lưu ý:
 
 ### Chờ `MapVisual`
 
-- [WorldPortalPresenter.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldPortalPresenter.cs)
-  - chỉ rebuild portal sau khi `MapVisual` ready
 - [WorldCameraFollowController.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldCameraFollowController.cs)
-  - chỉ refresh clamp bounds sau khi `MapVisual` ready
+  - `ConfigureReadyWaits()` khai báo `WaitFor(MapVisual, TryRefreshCachedClampBoundsIfReady)`
+- [WorldPortalPresenter.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldPortalPresenter.cs)
+  - `ConfigureReadyWaits()` khai báo `WaitFor(MapVisual, HandleMapVisualReady)`
 - [WorldLocalPlayerPresenter.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldLocalPlayerPresenter.cs)
-  - chỉ spawn/apply player sau khi `MapVisual` ready
+  - `ConfigureReadyWaits()` khai báo `WaitFor(MapVisual, HandleMapVisualReady)`
 - [WorldRemotePlayersPresenter.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldRemotePlayersPresenter.cs)
-  - chỉ sync remote players sau khi `MapVisual` ready
+  - `ConfigureReadyWaits()` khai báo `WaitFor(MapVisual, HandleMapVisualReady)`
 - [WorldEnemiesPresenter.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldEnemiesPresenter.cs)
-  - chỉ sync enemies sau khi `MapVisual` ready
+  - `ConfigureReadyWaits()` khai báo `WaitFor(MapVisual, HandleMapVisualReady)`
 - [WorldTargetSelectionIndicatorController.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldTargetSelectionIndicatorController.cs)
-  - chỉ vẽ indicator khi `MapVisual` ready
+  - không đợi bằng callback, nhưng gate runtime bằng `IsReady(MapVisual)`
+
+### Chờ `LocalPlayer`
+
+- [WorldLocalMovementSyncController.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldLocalMovementSyncController.cs)
+  - gate runtime bằng `IsReady(LocalPlayer)`
 
 ### Chờ `MapVisual + LocalPlayer`
 
-- [WorldLocalMovementSyncController.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldLocalMovementSyncController.cs)
-  - thực tế chỉ gate theo `LocalPlayer`; key này đã bao hàm `MapVisual`
 - [WorldClickTargetSelectionController.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldClickTargetSelectionController.cs)
-  - auto select / click select chỉ chạy khi map và local player đã sẵn sàng
+  - gate runtime bằng `AreReady(MapVisual, LocalPlayer)`
 - [WorldTargetActionController.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldTargetActionController.cs)
-  - logic approach/interact/attack chỉ chạy khi map và local player đã sẵn sàng
+  - gate runtime bằng `AreReady(MapVisual, LocalPlayer)`
 
 ## Load Cycle Flow
 
@@ -111,6 +168,36 @@ Khi đổi map:
 4. `MapVisual` được report
 5. local player / remote players / enemies chạy initial sync theo map mới
 6. `LocalPlayer`, `RemotePlayers`, `Enemies` được report khi xong initial sync của từng subsystem
+
+## Cách đọc code mới
+
+### Nếu muốn biết component đang đợi ai
+
+Xem `ConfigureReadyWaits()`.
+
+Ví dụ:
+
+- [WorldCameraFollowController.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldCameraFollowController.cs)
+  - `WaitFor(MapVisual, ...)`
+- [WorldPortalPresenter.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldPortalPresenter.cs)
+  - `WaitFor(MapVisual, ...)`
+
+### Nếu muốn biết component reset gì khi đổi map
+
+Xem `OnWorldLoadCycleStarted(...)`.
+
+Ví dụ:
+
+- [WorldCameraFollowController.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldCameraFollowController.cs)
+  - clear clamp bounds cũ
+- [WorldPortalPresenter.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldPortalPresenter.cs)
+  - clear portal runtime cũ
+- [WorldLocalPlayerPresenter.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldLocalPlayerPresenter.cs)
+  - reset cờ `LocalPlayer ready` của cycle trước
+
+### Nếu muốn biết component chỉ gate runtime chứ không cần callback
+
+Xem chỗ `IsReady(...)` hoặc `AreReady(...)` trong `Update`, `LateUpdate`, hoặc action method.
 
 ## Rule implement mới
 
@@ -128,14 +215,15 @@ Nếu một subsystem:
 Không nên:
 
 - đoán `if (CurrentMapTransform == null) return;` ở khắp nơi để tự suy ra readiness
-- đọc map bounds trong `Update` trừ khi subsystem đã biết dependency của nó ready
+- lặp lại binding readiness events trong từng component nếu đã có base class
+- giấu dependency trong quá nhiều `if (key != ...) return;`
 
 Nên:
 
-- bind vào `WorldSceneReadinessService`
-- clear state của subsystem khi `LoadCycleStarted`
-- chỉ chạy initial sync khi key phụ thuộc đã ready
-- report ready nếu subsystem của mình là một mốc cần thiết cho subsystem khác
+- kế thừa [WorldSceneBehaviour.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldSceneBehaviour.cs)
+- khai báo dependency ở `ConfigureReadyWaits()`
+- clear state ở `OnWorldLoadCycleStarted(...)`
+- report ready nếu subsystem của mình là một mốc cần cho subsystem khác
 
 ## Component cố ý không gate readiness
 

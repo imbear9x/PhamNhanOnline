@@ -6,12 +6,11 @@ using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
-    public sealed class WorldEnemiesPresenter : MonoBehaviour
+    public sealed class WorldEnemiesPresenter : WorldSceneBehaviour
     {
         [SerializeField] private EnemyPresentationCatalog presentationCatalog;
         [SerializeField] private Transform enemiesRoot;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
-        [SerializeField] private WorldSceneReadinessService readinessService;
 
         private readonly Dictionary<int, EnemyPresenter> enemyPresenters = new Dictionary<int, EnemyPresenter>();
         private bool warnedMissingCatalog;
@@ -27,13 +26,40 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             AutoWireReferences();
+            ActivateWorldSceneReadiness();
             TryBindRuntimeEvents();
             TrySyncIfReady();
         }
 
+        private void OnEnable()
+        {
+            AutoWireReferences();
+            ActivateWorldSceneReadiness();
+            TryBindRuntimeEvents();
+            TrySyncIfReady();
+        }
+
+        private void OnDisable()
+        {
+            DeactivateWorldSceneReadiness();
+            UnbindRuntimeEvents();
+        }
+
         private void OnDestroy()
         {
+            DeactivateWorldSceneReadiness();
             UnbindRuntimeEvents();
+            ClearEnemies();
+        }
+
+        protected override void ConfigureReadyWaits()
+        {
+            WaitFor(WorldSceneReadyKey.MapVisual, HandleMapVisualReady);
+        }
+
+        protected override void OnWorldLoadCycleStarted(int loadVersion, string mapKey)
+        {
+            hasReportedReadyForCurrentCycle = false;
             ClearEnemies();
         }
 
@@ -114,7 +140,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private bool IsMapVisualReady()
         {
-            return readinessService == null || readinessService.IsReady(WorldSceneReadyKey.MapVisual);
+            return IsReady(WorldSceneReadyKey.MapVisual);
         }
 
         private void TrySyncIfReady()
@@ -128,24 +154,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void TryReportReady()
         {
-            if (hasReportedReadyForCurrentCycle || readinessService == null)
+            if (hasReportedReadyForCurrentCycle || Readiness == null)
                 return;
 
-            hasReportedReadyForCurrentCycle = readinessService.ReportReady(WorldSceneReadyKey.Enemies);
-        }
-
-        private void HandleLoadCycleStarted(int loadVersion, string mapKey)
-        {
-            hasReportedReadyForCurrentCycle = false;
-            ClearEnemies();
-        }
-
-        private void HandleReadyReported(int loadVersion, WorldSceneReadyKey key)
-        {
-            if (key != WorldSceneReadyKey.MapVisual)
-                return;
-
-            HandleMapVisualReady();
+            hasReportedReadyForCurrentCycle = Readiness.ReportReady(WorldSceneReadyKey.Enemies);
         }
 
         private void TryBindRuntimeEvents()
@@ -156,12 +168,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ClientRuntime.World.EnemyUpserted += HandleEnemyUpserted;
             ClientRuntime.World.EnemyRemoved += HandleEnemyRemoved;
             ClientRuntime.World.EnemyHpChanged += HandleEnemyHpChanged;
-            if (readinessService != null)
-            {
-                readinessService.LoadCycleStarted += HandleLoadCycleStarted;
-                readinessService.ReadyReported += HandleReadyReported;
-            }
-
             runtimeEventsBound = true;
         }
 
@@ -173,28 +179,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ClientRuntime.World.EnemyUpserted -= HandleEnemyUpserted;
             ClientRuntime.World.EnemyRemoved -= HandleEnemyRemoved;
             ClientRuntime.World.EnemyHpChanged -= HandleEnemyHpChanged;
-            if (readinessService != null)
-            {
-                readinessService.LoadCycleStarted -= HandleLoadCycleStarted;
-                readinessService.ReadyReported -= HandleReadyReported;
-            }
-
             runtimeEventsBound = false;
         }
 
         private void AutoWireReferences()
         {
-            if (worldMapPresenter == null)
-                worldMapPresenter = GetComponent<WorldMapPresenter>();
-
-            if (readinessService == null)
-                readinessService = GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && worldMapPresenter != null)
-                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
-
-            if (readinessService == null && WorldSceneController.Instance != null)
-                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
+            InitializeWorldSceneBehaviour(ref worldMapPresenter);
         }
 
         private EnemyPresenter CreatePresenter(EnemyRuntimeModel enemy)
