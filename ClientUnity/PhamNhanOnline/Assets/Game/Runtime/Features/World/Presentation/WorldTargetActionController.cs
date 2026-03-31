@@ -169,7 +169,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 case WorldTargetInteractionMode.HostileAttack:
                     if (!CanUseBasicSkillNow())
                     {
-                        CompletePendingAction();
+                        CompletePendingAction(clearAutoPin: true);
                         return;
                     }
 
@@ -177,6 +177,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                         worldLocalMovementSyncController.TryForceSyncCurrentPosition();
 
                     ClientRuntime.CombatService.TryUseBasicSkillOnTarget(action.Target);
+                    CompletePendingAction(clearAutoPin: true);
                     break;
 
                 case WorldTargetInteractionMode.ContextOnly:
@@ -191,16 +192,17 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                             $"Da vao tam tuong tac voi {action.Target.Kind}/{action.Target.TargetId}.");
                     }
 
+                    // Keep the manual pin on context interactions such as portals so the
+                    // selected-highlight stays stable until the user changes target or the map changes.
+                    CompletePendingAction(clearAutoPin: false);
                     break;
             }
-
-            CompletePendingAction();
         }
 
-        private void CompletePendingAction()
+        private void CompletePendingAction(bool clearAutoPin)
         {
             pendingAction = null;
-            if (autoPinApplied)
+            if (clearAutoPin && autoPinApplied)
             {
                 ClientRuntime.Target.ClearPin();
                 autoPinApplied = false;
@@ -227,6 +229,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private float ResolveRequiredRangeServerUnits(PendingTargetAction action)
         {
+            GameShared.Models.MapPortalModel portal;
+            if (action.Mode == WorldTargetInteractionMode.ContextOnly &&
+                ClientRuntime.World.TryGetPortal(action.Target, out portal))
+            {
+                return Mathf.Max(0f, portal.InteractionRadius);
+            }
+
             if (action.Mode == WorldTargetInteractionMode.HostileAttack)
             {
                 PlayerSkillModel skill;
@@ -276,6 +285,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private bool TryResolveTargetWorldPosition(WorldTargetHandle target, out Vector2 worldPosition)
         {
+            MapPortalModel portal;
+            if (ClientRuntime.World.TryGetPortal(target, out portal))
+            {
+                return worldMapPresenter.TryMapServerPositionToWorld(
+                    new Vector2(portal.SourceX, portal.SourceY),
+                    out worldPosition);
+            }
+
             WorldTargetable targetable;
             if (WorldTargetableRegistry.TryGet(target, out targetable) &&
                 targetable != null &&

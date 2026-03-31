@@ -50,6 +50,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             EnsureClientPoolService();
             EnsureWorldTargetSelectionController();
             EnsureWorldTargetActionController();
+            EnsureWorldPortalPresenter();
 
             if (mapRoot == null || entitiesRoot == null || worldUiRoot == null)
                 Debug.LogWarning("WorldSceneController is missing one or more scene roots.");
@@ -148,6 +149,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 controller = gameObject.AddComponent<WorldTargetActionController>();
 
             return controller;
+        }
+
+        private WorldPortalPresenter EnsureWorldPortalPresenter()
+        {
+            var presenter = GetComponent<WorldPortalPresenter>();
+            if (presenter == null)
+                presenter = gameObject.AddComponent<WorldPortalPresenter>();
+
+            return presenter;
         }
 
         private void AutoWireReferences()

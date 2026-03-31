@@ -189,13 +189,49 @@ public static class NetworkModelMapper
             Width = definition.Width,
             Height = definition.Height,
             CellSize = definition.CellSize,
-            InterestRadius = definition.InterestRadius,
             DefaultSpawnX = definition.DefaultSpawnPosition.X,
             DefaultSpawnY = definition.DefaultSpawnPosition.Y,
             MaxPublicZoneCount = definition.MaxPublicZoneCount,
             MaxPlayersPerZone = definition.MaxPlayersPerZone,
             SupportsCavePlacement = definition.SupportsCavePlacement,
-            IsPrivatePerPlayer = definition.IsPrivatePerPlayer
+            IsPrivatePerPlayer = definition.IsPrivatePerPlayer,
+            SpawnPoints = definition.SpawnPoints.Select(ToModel).ToList(),
+            Portals = definition.Portals.Select(ToModel).ToList()
+        };
+    }
+
+    public static MapSpawnPointModel ToModel(this MapSpawnPointDefinition definition)
+    {
+        return new MapSpawnPointModel
+        {
+            Id = definition.Id,
+            Code = definition.Code,
+            Name = definition.Name,
+            SpawnCategory = (int)definition.Category,
+            PosX = definition.Position.X,
+            PosY = definition.Position.Y,
+            FacingDegrees = definition.FacingDegrees,
+            Description = definition.Description
+        };
+    }
+
+    public static MapPortalModel ToModel(this MapPortalDefinition definition)
+    {
+        return new MapPortalModel
+        {
+            Id = definition.Id,
+            Code = definition.Code,
+            Name = definition.Name,
+            SourceX = definition.SourcePosition.X,
+            SourceY = definition.SourcePosition.Y,
+            InteractionRadius = definition.InteractionRadius,
+            InteractionMode = (int)definition.InteractionMode,
+            TargetMapId = definition.TargetMapId,
+            TargetMapName = definition.TargetMapName,
+            TargetSpawnPointId = definition.TargetSpawnPointId,
+            IsEnabled = definition.IsEnabled,
+            OrderIndex = definition.OrderIndex,
+            Description = definition.Description
         };
     }
 

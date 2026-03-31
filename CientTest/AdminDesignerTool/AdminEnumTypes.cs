@@ -270,6 +270,20 @@ internal enum MapType
     Event = 4
 }
 
+internal enum MapSpawnPointCategory
+{
+    Start = 1,
+    End = 2,
+    Middle = 3,
+    Custom = 4
+}
+
+internal enum MapPortalInteractionMode
+{
+    Touch = 1,
+    Interact = 2
+}
+
 internal enum GameRandomTableMode
 {
     Exclusive = 0

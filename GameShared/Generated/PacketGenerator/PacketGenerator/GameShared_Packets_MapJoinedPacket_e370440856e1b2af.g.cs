@@ -24,12 +24,39 @@ public partial class MapJoinedPacket
         return HasZoneIndex;
     }
 
+    public bool HasEntryReason => (_mask & (1UL << 2)) != 0;
+
+    public bool TryGetEntryReason(out int? value)
+    {
+        value = EntryReason;
+        return HasEntryReason;
+    }
+
+    public bool HasEntryPortalId => (_mask & (1UL << 3)) != 0;
+
+    public bool TryGetEntryPortalId(out int? value)
+    {
+        value = EntryPortalId;
+        return HasEntryPortalId;
+    }
+
+    public bool HasEntrySpawnPointId => (_mask & (1UL << 4)) != 0;
+
+    public bool TryGetEntrySpawnPointId(out int? value)
+    {
+        value = EntrySpawnPointId;
+        return HasEntrySpawnPointId;
+    }
+
     public void Serialize(BinaryWriter writer)
     {
         ulong mask = 0;
 
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.MapDefinitionModel?>.Default.Equals(Map, default!)) mask |= 1UL << 0;
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(ZoneIndex, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(EntryReason, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(EntryPortalId, default!)) mask |= 1UL << 3;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(EntrySpawnPointId, default!)) mask |= 1UL << 4;
 
         writer.Write(mask);
 
@@ -37,6 +64,12 @@ public partial class MapJoinedPacket
             global::GameShared.Packets.PacketModelSerializer.Write(writer, Map.Value);
         if ((mask & (1UL << 1)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, ZoneIndex.Value);
+        if ((mask & (1UL << 2)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, EntryReason.Value);
+        if ((mask & (1UL << 3)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, EntryPortalId.Value);
+        if ((mask & (1UL << 4)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, EntrySpawnPointId.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -47,5 +80,11 @@ public partial class MapJoinedPacket
             Map = (global::GameShared.Models.MapDefinitionModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.MapDefinitionModel>(reader));
         if ((_mask & (1UL << 1)) != 0)
             ZoneIndex = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 2)) != 0)
+            EntryReason = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 3)) != 0)
+            EntryPortalId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 4)) != 0)
+            EntrySpawnPointId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
     }
 }

@@ -13,6 +13,7 @@ public sealed class PlayerSession
     private bool _lifespanExpiredProcessed;
     private bool _characterActionsRestricted;
     private (int ExecutionId, long PlayerSkillId, DateTime CastCompletedAtUtc)? _activeSkillCast;
+    private MapEntryContext _lastMapEntryContext = new(MapEntryReason.Unknown, null, null, Vector2.Zero);
 
     public Guid PlayerId { get; }
     public int ConnectionId { get; private set; }
@@ -55,6 +56,17 @@ public sealed class PlayerSession
             lock (_sync)
             {
                 return _activeSkillCast is not null;
+            }
+        }
+    }
+
+    public MapEntryContext LastMapEntryContext
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _lastMapEntryContext;
             }
         }
     }
@@ -130,6 +142,14 @@ public sealed class PlayerSession
             MapId = currentState.CurrentMapId ?? 0;
             ZoneIndex = currentState.CurrentZoneIndex;
             Position = new Vector2(currentState.CurrentPosX, currentState.CurrentPosY);
+        }
+    }
+
+    public void SetMapEntryContext(MapEntryContext entryContext)
+    {
+        lock (_sync)
+        {
+            _lastMapEntryContext = entryContext;
         }
     }
 

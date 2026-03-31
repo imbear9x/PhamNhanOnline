@@ -11,7 +11,10 @@ namespace PhamNhanOnline.Client.Features.World.Application
     {
         private readonly Dictionary<Guid, ObservedCharacterModel> observedCharacters = new Dictionary<Guid, ObservedCharacterModel>();
         private readonly Dictionary<int, EnemyRuntimeModel> enemies = new Dictionary<int, EnemyRuntimeModel>();
+        private readonly Dictionary<int, MapSpawnPointModel> spawnPoints = new Dictionary<int, MapSpawnPointModel>();
+        private readonly Dictionary<int, MapPortalModel> portals = new Dictionary<int, MapPortalModel>();
         private readonly List<int> currentAdjacentMapIds = new List<int>();
+        private const string PortalTargetIdPrefix = "portal:";
 
         public event Action MapChanged;
         public event Action ObservedCharactersChanged;
@@ -31,14 +34,25 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public float CurrentMapWidth { get; private set; }
         public float CurrentMapHeight { get; private set; }
         public bool CurrentMapIsPrivatePerPlayer { get; private set; }
+        public int? CurrentEntryReason { get; private set; }
+        public int? CurrentEntryPortalId { get; private set; }
+        public int? CurrentEntrySpawnPointId { get; private set; }
         public Vector2 LocalPlayerPosition { get; private set; }
         public int ObservedCharacterCount { get { return observedCharacters.Count; } }
         public IEnumerable<ObservedCharacterModel> ObservedCharacters { get { return observedCharacters.Values; } }
         public int EnemyCount { get { return enemies.Count; } }
         public IEnumerable<EnemyRuntimeModel> Enemies { get { return enemies.Values; } }
         public IReadOnlyList<int> CurrentAdjacentMapIds { get { return currentAdjacentMapIds; } }
+        public IEnumerable<MapSpawnPointModel> CurrentSpawnPoints { get { return spawnPoints.Values; } }
+        public IEnumerable<MapPortalModel> CurrentPortals { get { return portals.Values; } }
 
-        public void ApplyMapJoin(MapDefinitionModel map, int zoneIndex, Vector2 localPlayerPosition)
+        public void ApplyMapJoin(
+            MapDefinitionModel map,
+            int zoneIndex,
+            Vector2 localPlayerPosition,
+            int? entryReason,
+            int? entryPortalId,
+            int? entrySpawnPointId)
         {
             CurrentMapId = map.MapId;
             CurrentZoneIndex = zoneIndex;
@@ -47,12 +61,29 @@ namespace PhamNhanOnline.Client.Features.World.Application
             CurrentMapWidth = map.Width;
             CurrentMapHeight = map.Height;
             CurrentMapIsPrivatePerPlayer = map.IsPrivatePerPlayer;
+            CurrentEntryReason = entryReason;
+            CurrentEntryPortalId = entryPortalId;
+            CurrentEntrySpawnPointId = entrySpawnPointId;
             LocalPlayerPosition = localPlayerPosition;
             currentAdjacentMapIds.Clear();
             observedCharacters.Clear();
             enemies.Clear();
+            spawnPoints.Clear();
+            portals.Clear();
             if (map.AdjacentMapIds != null)
                 currentAdjacentMapIds.AddRange(map.AdjacentMapIds);
+            if (map.SpawnPoints != null)
+            {
+                for (var i = 0; i < map.SpawnPoints.Count; i++)
+                    spawnPoints[map.SpawnPoints[i].Id] = map.SpawnPoints[i];
+            }
+
+            if (map.Portals != null)
+            {
+                for (var i = 0; i < map.Portals.Count; i++)
+                    portals[map.Portals[i].Id] = map.Portals[i];
+            }
+
             NotifyMapChanged();
             NotifyObservedCharactersChanged();
             NotifyEnemiesChanged();
@@ -199,6 +230,26 @@ namespace PhamNhanOnline.Client.Features.World.Application
             return enemies.TryGetValue(runtimeId, out enemy);
         }
 
+        public bool TryGetSpawnPoint(int spawnPointId, out MapSpawnPointModel spawnPoint)
+        {
+            return spawnPoints.TryGetValue(spawnPointId, out spawnPoint);
+        }
+
+        public bool TryGetPortal(int portalId, out MapPortalModel portal)
+        {
+            return portals.TryGetValue(portalId, out portal);
+        }
+
+        public bool TryGetPortal(WorldTargetHandle handle, out MapPortalModel portal)
+        {
+            portal = default;
+            if (handle.Kind != WorldTargetKind.Npc)
+                return false;
+
+            int portalId;
+            return TryParsePortalTargetId(handle.TargetId, out portalId) && portals.TryGetValue(portalId, out portal);
+        }
+
         public bool TryBuildTargetSnapshot(WorldTargetHandle handle, out WorldTargetSnapshot snapshot)
         {
             snapshot = default;
@@ -212,6 +263,8 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 case WorldTargetKind.Enemy:
                 case WorldTargetKind.Boss:
                     return TryBuildEnemyTargetSnapshot(handle.TargetId, handle.Kind, out snapshot);
+                case WorldTargetKind.Npc:
+                    return TryBuildPortalTargetSnapshot(handle.TargetId, out snapshot);
                 default:
                     return false;
             }
@@ -226,13 +279,37 @@ namespace PhamNhanOnline.Client.Features.World.Application
             CurrentMapWidth = 0f;
             CurrentMapHeight = 0f;
             CurrentMapIsPrivatePerPlayer = false;
+            CurrentEntryReason = null;
+            CurrentEntryPortalId = null;
+            CurrentEntrySpawnPointId = null;
             LocalPlayerPosition = Vector2.zero;
             currentAdjacentMapIds.Clear();
             observedCharacters.Clear();
             enemies.Clear();
+            spawnPoints.Clear();
+            portals.Clear();
             NotifyMapChanged();
             NotifyObservedCharactersChanged();
             NotifyEnemiesChanged();
+        }
+
+        public static string BuildPortalTargetId(int portalId)
+        {
+            return PortalTargetIdPrefix + portalId.ToString(CultureInfo.InvariantCulture);
+        }
+
+        public static bool TryParsePortalTargetId(string targetId, out int portalId)
+        {
+            portalId = 0;
+            if (string.IsNullOrWhiteSpace(targetId) ||
+                !targetId.StartsWith(PortalTargetIdPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var rawPortalId = targetId.Substring(PortalTargetIdPrefix.Length);
+            return int.TryParse(rawPortalId, NumberStyles.Integer, CultureInfo.InvariantCulture, out portalId) &&
+                   portalId > 0;
         }
 
         private void NotifyMapChanged()
@@ -372,6 +449,33 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 0,
                 false,
                 enemy.RuntimeState != 0 && currentHp <= 0);
+            return true;
+        }
+
+        private bool TryBuildPortalTargetSnapshot(string targetId, out WorldTargetSnapshot snapshot)
+        {
+            snapshot = default;
+
+            int portalId;
+            MapPortalModel portal;
+            if (!TryParsePortalTargetId(targetId, out portalId) || !portals.TryGetValue(portalId, out portal))
+                return false;
+
+            var displayName = !string.IsNullOrWhiteSpace(portal.TargetMapName)
+                ? portal.TargetMapName
+                : (!string.IsNullOrWhiteSpace(portal.Name) ? portal.Name : "Portal");
+
+            snapshot = new WorldTargetSnapshot(
+                WorldTargetKind.Npc,
+                targetId,
+                displayName,
+                0,
+                0,
+                false,
+                0,
+                0,
+                false,
+                false);
             return true;
         }
     }

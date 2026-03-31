@@ -17,4 +17,10 @@ public sealed class MapTemplateAdjacentMapRepository
         _db.GetTable<MapTemplateAdjacentMapEntity>()
             .Where(x => x.MapTemplateId == mapTemplateId)
             .ToListAsync(cancellationToken);
+
+    public Task<List<MapTemplateAdjacentMapEntity>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        _db.GetTable<MapTemplateAdjacentMapEntity>()
+            .OrderBy(x => x.MapTemplateId)
+            .ThenBy(x => x.AdjacentMapTemplateId)
+            .ToListAsync(cancellationToken);
 }

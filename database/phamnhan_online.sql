@@ -243,7 +243,6 @@ CREATE TABLE public.map_templates (
     width real DEFAULT 0 NOT NULL,
     height real DEFAULT 0 NOT NULL,
     cell_size real DEFAULT 1 NOT NULL,
-    interest_radius real DEFAULT 0 NOT NULL,
     default_spawn_x real DEFAULT 0 NOT NULL,
     default_spawn_y real DEFAULT 0 NOT NULL,
     max_public_zone_count integer DEFAULT 0 NOT NULL,
@@ -398,9 +397,9 @@ COPY public.map_template_adjacent_maps (map_template_id, adjacent_map_template_i
 -- Data for Name: map_templates; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.map_templates (id, name, map_type, client_map_key, width, height, cell_size, interest_radius, default_spawn_x, default_spawn_y, max_public_zone_count, max_players_per_zone, is_private_per_player, created_at) FROM stdin;
-1	Player Home	0	map_home_01	256	256	32	96	64	64	0	1	t	2026-03-14 16:00:00
-2	Starter Plains	1	map_farm_01	1024	1024	64	160	128	128	2	20	f	2026-03-14 16:00:00
+COPY public.map_templates (id, name, map_type, client_map_key, width, height, cell_size, default_spawn_x, default_spawn_y, max_public_zone_count, max_players_per_zone, is_private_per_player, created_at) FROM stdin;
+1	Player Home	0	map_home_01	256	256	32	64	64	0	1	t	2026-03-14 16:00:00
+2	Starter Plains	1	map_farm_01	1024	1024	64	128	128	2	20	f	2026-03-14 16:00:00
 \.
 
 

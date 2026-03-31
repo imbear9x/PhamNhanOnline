@@ -25,10 +25,12 @@ public sealed class WorldInterestService
     public MapDefinition EnsurePlayerInWorld(
         PlayerSession player,
         int? requestedZoneIndex = null,
-        bool autoSelectPublicZone = false)
+        bool autoSelectPublicZone = false,
+        MapEntryContext? requestedEntry = null)
     {
         var definition = _worldManager.MapManager.ResolveDefinitionOrDefault(player.MapId == 0 ? null : player.MapId);
-        var targetPosition = ResolveEntryPosition(player, definition);
+        var resolvedEntry = ResolveEntryContext(player, definition, requestedEntry);
+        var targetPosition = resolvedEntry.Position;
 
         var instance = _worldManager.MapManager.JoinInstance(definition, player, requestedZoneIndex, autoSelectPublicZone);
 
@@ -46,6 +48,7 @@ public sealed class WorldInterestService
         }
 
         instance.UpdatePlayerPosition(player);
+        player.SetMapEntryContext(resolvedEntry);
         return definition;
     }
 
@@ -57,7 +60,10 @@ public sealed class WorldInterestService
         _network.Send(player.ConnectionId, new MapJoinedPacket
         {
             Map = instance.Definition.ToModel(),
-            ZoneIndex = instance.ZoneIndex
+            ZoneIndex = instance.ZoneIndex,
+            EntryReason = (int)player.LastMapEntryContext.Reason,
+            EntryPortalId = player.LastMapEntryContext.PortalId,
+            EntrySpawnPointId = player.LastMapEntryContext.SpawnPointId
         });
 
         _network.Send(player.ConnectionId, new WorldRuntimeSnapshotPacket
@@ -383,12 +389,33 @@ public sealed class WorldInterestService
         }
     }
 
-    private static System.Numerics.Vector2 ResolveEntryPosition(PlayerSession player, MapDefinition definition)
+    private static MapEntryContext ResolveEntryContext(
+        PlayerSession player,
+        MapDefinition definition,
+        MapEntryContext? requestedEntry)
     {
-        if (player.MapId == definition.MapId)
-            return definition.ClampPosition(player.Position);
+        if (requestedEntry is not null)
+        {
+            return requestedEntry with
+            {
+                Position = definition.ClampPosition(requestedEntry.Position)
+            };
+        }
 
-        return definition.DefaultSpawnPosition;
+        if (player.MapId == definition.MapId)
+        {
+            return new MapEntryContext(
+                MapEntryReason.SavedPosition,
+                PortalId: null,
+                SpawnPointId: null,
+                definition.ClampPosition(player.Position));
+        }
+
+        return new MapEntryContext(
+            MapEntryReason.DefaultSpawn,
+            PortalId: null,
+            SpawnPointId: null,
+            definition.DefaultSpawnPosition);
     }
 
     private static long? ToUnixMs(DateTime? value)

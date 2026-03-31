@@ -47,7 +47,13 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 localPosition = new Vector2(currentState.CurrentPosX, currentState.CurrentPosY);
             }
 
-            worldState.ApplyMapJoin(packet.Map.Value, packet.ZoneIndex ?? 0, localPosition);
+            worldState.ApplyMapJoin(
+                packet.Map.Value,
+                packet.ZoneIndex ?? 0,
+                localPosition,
+                packet.EntryReason,
+                packet.EntryPortalId,
+                packet.EntrySpawnPointId);
             worldState.ReplaceEnemies(null);
             targetState.Clear();
         }

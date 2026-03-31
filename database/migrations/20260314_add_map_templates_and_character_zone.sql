@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS public.map_templates (
     width real NOT NULL DEFAULT 0,
     height real NOT NULL DEFAULT 0,
     cell_size real NOT NULL DEFAULT 1,
-    interest_radius real NOT NULL DEFAULT 0,
     default_spawn_x real NOT NULL DEFAULT 0,
     default_spawn_y real NOT NULL DEFAULT 0,
     max_public_zone_count integer NOT NULL DEFAULT 0,
@@ -40,7 +39,6 @@ INSERT INTO public.map_templates (
     width,
     height,
     cell_size,
-    interest_radius,
     default_spawn_x,
     default_spawn_y,
     max_public_zone_count,
@@ -48,8 +46,8 @@ INSERT INTO public.map_templates (
     is_private_per_player
 )
 VALUES
-    (1, 'Player Home', 0, 'map_home_01', 256, 256, 32, 96, 64, 64, 0, 1, true),
-    (2, 'Starter Plains', 1, 'map_farm_01', 1024, 1024, 64, 160, 128, 128, 2, 20, false)
+    (1, 'Player Home', 0, 'map_home_01', 256, 256, 32, 64, 64, 0, 1, true),
+    (2, 'Starter Plains', 1, 'map_farm_01', 1024, 1024, 64, 128, 128, 2, 20, false)
 ON CONFLICT (id) DO UPDATE
 SET
     name = EXCLUDED.name,
@@ -58,7 +56,6 @@ SET
     width = EXCLUDED.width,
     height = EXCLUDED.height,
     cell_size = EXCLUDED.cell_size,
-    interest_radius = EXCLUDED.interest_radius,
     default_spawn_x = EXCLUDED.default_spawn_x,
     default_spawn_y = EXCLUDED.default_spawn_y,
     max_public_zone_count = EXCLUDED.max_public_zone_count,

@@ -11,6 +11,9 @@ public partial class MapJoinedPacket : IPacket
 {
     public MapDefinitionModel? Map { get; set; }
     public int? ZoneIndex { get; set; }
+    public int? EntryReason { get; set; }
+    public int? EntryPortalId { get; set; }
+    public int? EntrySpawnPointId { get; set; }
 }
 
 [Packet(26)]
@@ -19,9 +22,12 @@ public partial class MapJoinedPacket : IPacket
 public partial class TravelToMapPacket : IPacket
 {
     [ValidationCode(MessageCode.MapIdInvalid)]
-    [Required]
     [Range(1, int.MaxValue)]
     public int? TargetMapId { get; set; }
+
+    [ValidationCode(MessageCode.MapPortalInvalid)]
+    [Range(1, int.MaxValue)]
+    public int? PortalId { get; set; }
 }
 
 [Packet(27)]
@@ -31,6 +37,8 @@ public partial class TravelToMapResultPacket : IPacket
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
     public int? TargetMapId { get; set; }
+    public int? PortalId { get; set; }
+    public int? TargetSpawnPointId { get; set; }
 }
 
 [Packet(37)]

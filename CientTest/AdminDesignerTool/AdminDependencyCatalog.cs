@@ -179,6 +179,15 @@ internal static class AdminDependencyCatalog
             [
                 Check("Map template", "select count(*) from public.map_templates;", "Can tao it nhat 1 Map Template truoc khi them Map Zone Slots."),
                 Check("Spiritual energy template", "select count(*) from public.spiritual_energy_templates;", "Can tao it nhat 1 Spiritual Energy Template truoc khi them Map Zone Slots.")
+            ],
+            ["map_spawn_points"] =
+            [
+                Check("Map template", "select count(*) from public.map_templates;", "Can tao it nhat 1 Map Template truoc khi them Map Spawn Points.")
+            ],
+            ["map_portals"] =
+            [
+                Check("Source map", "select count(*) from public.map_templates;", "Can tao it nhat 1 Map Template truoc khi them Map Portals."),
+                Check("Target spawn point", "select count(*) from public.map_spawn_points;", "Can tao it nhat 1 Map Spawn Point truoc khi them Map Portals.")
             ]
         };
     }

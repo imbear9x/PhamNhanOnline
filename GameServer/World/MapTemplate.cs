@@ -12,7 +12,6 @@ public sealed record MapTemplate(
     float Width,
     float Height,
     float CellSize,
-    float InterestRadius,
     int MaxPublicZoneCount,
     int MaxPlayersPerZone,
     bool SupportsCavePlacement,

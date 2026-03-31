@@ -6,17 +6,27 @@ namespace PhamNhanOnline.Client.Features.World.Application
 {
     public readonly struct WorldTravelResult
     {
-        public WorldTravelResult(bool success, MessageCode? code, int? targetMapId, string message)
+        public WorldTravelResult(
+            bool success,
+            MessageCode? code,
+            int? targetMapId,
+            int? portalId,
+            int? targetSpawnPointId,
+            string message)
         {
             Success = success;
             Code = code;
             TargetMapId = targetMapId;
+            PortalId = portalId;
+            TargetSpawnPointId = targetSpawnPointId;
             Message = message ?? string.Empty;
         }
 
         public bool Success { get; }
         public MessageCode? Code { get; }
         public int? TargetMapId { get; }
+        public int? PortalId { get; }
+        public int? TargetSpawnPointId { get; }
         public string Message { get; }
     }
 

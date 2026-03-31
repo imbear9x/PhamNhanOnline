@@ -302,6 +302,14 @@ namespace PhamNhanOnline.Client.UI.Hud
                     targetHandle = currentTarget.Value;
                     return true;
 
+                case WorldTargetKind.Npc:
+                    MapPortalModel portal;
+                    if (!ClientRuntime.World.TryGetPortal(currentTarget.Value, out portal))
+                        return false;
+
+                    targetHandle = currentTarget.Value;
+                    return true;
+
                 default:
                     return false;
             }

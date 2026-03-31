@@ -84,6 +84,7 @@ public enum MessageCode : int
     MapZoneIndexInvalid = 4002,
     MapZoneSelectionNotSupported = 4003,
     MapZoneFull = 4004,
+    MapPortalInvalid = 4005,
 
     EnemyRuntimeIdInvalid = 5000,
     EnemyNotFound = 5001,

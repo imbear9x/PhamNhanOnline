@@ -1,22 +1,32 @@
 using System.Data;
 using System.Globalization;
+using Npgsql;
 
 namespace AdminDesignerTool;
 
 internal sealed class MasterDetailWorkspaceControl : UserControl
 {
+    private const string MapWorkspaceKey = "map_workspace";
+
     private readonly IReadOnlyDictionary<string, AdminResourceDefinition> _resourcesByKey;
     private readonly Label _titleLabel;
     private readonly Label _descriptionLabel;
     private readonly TextBox _helpTextBox;
+    private readonly Panel _workspaceActionPanel;
+    private readonly Label _cloneSourceLabel;
+    private readonly ComboBox _cloneSourceComboBox;
+    private readonly Button _cloneMapButton;
+    private readonly Label _workspaceActionHintLabel;
     private readonly SplitContainer _splitContainer;
     private readonly TableEditorControl _masterEditor;
     private readonly TabControl _detailTabs;
     private readonly Dictionary<string, TableEditorControl> _detailEditors;
 
     private WorkspaceDefinition? _definition;
+    private string _activeWorkspaceKey = string.Empty;
     private int _workspaceRevision;
     private bool _suspendMasterSelectionChanged;
+    private bool _isCloningMapTopology;
 
     public MasterDetailWorkspaceControl(
         string connectionString,
@@ -56,6 +66,57 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             Font = new Font("Segoe UI", 9f, FontStyle.Regular)
         };
 
+        _workspaceActionPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 72,
+            Visible = false
+        };
+
+        var workspaceActionFlow = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            Height = 36,
+            AutoSize = false,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false
+        };
+
+        _cloneSourceLabel = new Label
+        {
+            AutoSize = true,
+            Margin = new Padding(0, 8, 8, 0),
+            Text = "Clone tu map:"
+        };
+
+        _cloneSourceComboBox = new ComboBox
+        {
+            Width = 320,
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+
+        _cloneMapButton = new Button
+        {
+            AutoSize = true,
+            Text = "Clone Spawn Points + Portals"
+        };
+        _cloneMapButton.Click += CloneMapButtonOnClick;
+
+        workspaceActionFlow.Controls.Add(_cloneSourceLabel);
+        workspaceActionFlow.Controls.Add(_cloneSourceComboBox);
+        workspaceActionFlow.Controls.Add(_cloneMapButton);
+
+        _workspaceActionHintLabel = new Label
+        {
+            Dock = DockStyle.Fill,
+            ForeColor = Color.DimGray,
+            Padding = new Padding(0, 6, 0, 0),
+            Text = "Clone se copy spawn point va portal tu map mau sang map dang chon. Spawn point se duoc cap nhat theo code de giu lien ket inbound an toan hon; portal cua map hien tai se duoc thay bang map mau."
+        };
+
+        _workspaceActionPanel.Controls.Add(_workspaceActionHintLabel);
+        _workspaceActionPanel.Controls.Add(workspaceActionFlow);
+
         _splitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
@@ -74,6 +135,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
         _splitContainer.Panel2.Controls.Add(_detailTabs);
 
         Controls.Add(_splitContainer);
+        Controls.Add(_workspaceActionPanel);
         Controls.Add(_descriptionLabel);
         Controls.Add(_titleLabel);
     }
@@ -82,6 +144,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
     {
         var revision = unchecked(++_workspaceRevision);
         _suspendMasterSelectionChanged = true;
+        _activeWorkspaceKey = workspaceResource.Key;
 
         try
         {
@@ -89,11 +152,13 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             _titleLabel.Text = workspaceResource.DisplayName;
             _descriptionLabel.Text = workspaceResource.Description;
             _helpTextBox.Text = workspaceResource.HelpText;
+            _workspaceActionPanel.Visible = string.Equals(workspaceResource.Key, MapWorkspaceKey, StringComparison.Ordinal);
 
             BuildDetailTabs(_definition);
             _splitContainer.SplitterDistance = Math.Max(250, Math.Min(360, Height / 2));
 
             await _masterEditor.LoadRequestAsync(_definition.MasterRequest);
+            await RefreshWorkspaceActionsAsync();
         }
         finally
         {
@@ -109,7 +174,340 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             return;
 
         var revision = _workspaceRevision;
+        await RefreshWorkspaceActionsAsync();
         await RefreshDetailsAsync(revision);
+    }
+
+    private async void CloneMapButtonOnClick(object? sender, EventArgs e)
+    {
+        if (_isCloningMapTopology)
+            return;
+
+        if (!string.Equals(_activeWorkspaceKey, MapWorkspaceKey, StringComparison.Ordinal))
+            return;
+
+        if (!TryGetSelectedMapTarget(out var targetMap))
+        {
+            MessageBox.Show(
+                "Hay chon map dich o bang tren truoc khi clone.",
+                "Chua chon map dich",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        if (targetMap.RowState == DataRowState.Added)
+        {
+            MessageBox.Show(
+                "Map dich dang la dong moi chua luu. Hay luu map truoc khi clone spawn point va portal.",
+                "Can luu map truoc",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        if (_cloneSourceComboBox.SelectedItem is not MapCloneOption sourceMap)
+        {
+            MessageBox.Show(
+                "Hay chon map nguon de clone.",
+                "Chua chon map nguon",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        if (sourceMap.MapId == targetMap.MapId)
+        {
+            MessageBox.Show(
+                "Map nguon va map dich dang trung nhau. Hay chon map khac de clone.",
+                "Map clone khong hop le",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return;
+        }
+
+        var sourceSummary = await LoadMapCloneSummaryAsync(sourceMap.MapId);
+        var targetSummary = await LoadMapCloneSummaryAsync(targetMap.MapId);
+
+        var confirmMessage =
+            $"Clone tu map '{sourceMap.DisplayName}' sang map '{targetMap.DisplayName}'?\r\n\r\n" +
+            $"- Map mau hien co {sourceSummary.SpawnPointCount} spawn point va {sourceSummary.PortalCount} portal.\r\n" +
+            $"- Map dich hien co {targetSummary.SpawnPointCount} spawn point va {targetSummary.PortalCount} portal.\r\n\r\n" +
+            "Tool se cap nhat/chen spawn point theo code, thay toan bo portal xuat phat tu map dich theo map mau, va ghi ngay vao DB. " +
+            "Sau do workspace se reload de ban chinh sua nhe thong so.";
+
+        if (MessageBox.Show(
+                confirmMessage,
+                "Xac nhan clone map topology",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Question) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            SetMapCloneBusy(true);
+            await CloneMapTopologyAsync(sourceMap, targetMap);
+            await RefreshWorkspaceActionsAsync();
+            await RefreshDetailsAsync(_workspaceRevision);
+
+            MessageBox.Show(
+                $"Da clone {sourceSummary.SpawnPointCount} spawn point va {sourceSummary.PortalCount} portal tu '{sourceMap.DisplayName}' sang '{targetMap.DisplayName}'.",
+                "Clone thanh cong",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Khong the clone map topology.\r\n\r\n{ex.Message}",
+                "Clone that bai",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+        finally
+        {
+            SetMapCloneBusy(false);
+        }
+    }
+
+    private async Task RefreshWorkspaceActionsAsync()
+    {
+        if (!string.Equals(_activeWorkspaceKey, MapWorkspaceKey, StringComparison.Ordinal))
+        {
+            _cloneSourceComboBox.DataSource = null;
+            SetMapCloneBusy(false);
+            _cloneMapButton.Enabled = false;
+            return;
+        }
+
+        var selectedTargetMapId = TryGetSelectedMapTarget(out var targetMap)
+            ? targetMap.MapId
+            : (int?)null;
+        var selectedSourceMapId = (_cloneSourceComboBox.SelectedItem as MapCloneOption)?.MapId;
+
+        var cloneOptions = await LoadMapCloneOptionsAsync(selectedTargetMapId);
+        _cloneSourceComboBox.BeginUpdate();
+        try
+        {
+            _cloneSourceComboBox.DataSource = cloneOptions;
+            if (cloneOptions.Count == 0)
+            {
+                _cloneSourceComboBox.SelectedItem = null;
+            }
+            else if (selectedSourceMapId.HasValue)
+            {
+                var preferredOption = cloneOptions.FirstOrDefault(option => option.MapId == selectedSourceMapId.Value);
+                _cloneSourceComboBox.SelectedItem = preferredOption ?? cloneOptions[0];
+            }
+            else
+            {
+                _cloneSourceComboBox.SelectedItem = cloneOptions[0];
+            }
+        }
+        finally
+        {
+            _cloneSourceComboBox.EndUpdate();
+        }
+
+        _cloneMapButton.Enabled = !_isCloningMapTopology &&
+                                  selectedTargetMapId.HasValue &&
+                                  _cloneSourceComboBox.Items.Count > 0;
+    }
+
+    private async Task<List<MapCloneOption>> LoadMapCloneOptionsAsync(int? selectedTargetMapId)
+    {
+        var options = new List<MapCloneOption>();
+
+        await using var connection = new NpgsqlConnection(_masterEditor.ConnectionString);
+        await connection.OpenAsync();
+
+        const string sql = """
+            select id, name
+            from public.map_templates
+            where (@exclude_map_id is null or id <> @exclude_map_id)
+            order by name, id;
+            """;
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("exclude_map_id", selectedTargetMapId.HasValue ? selectedTargetMapId.Value : DBNull.Value);
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var mapId = reader.GetInt32(0);
+            var name = reader.IsDBNull(1) ? $"Map {mapId}" : reader.GetString(1);
+            options.Add(new MapCloneOption(mapId, $"{name} (id={mapId})"));
+        }
+
+        return options;
+    }
+
+    private bool TryGetSelectedMapTarget(out MapCloneTarget target)
+    {
+        target = default;
+        if (!_masterEditor.TryGetSelectedRow(out var row))
+            return false;
+
+        var mapId = Convert.ToInt32(row["id"], CultureInfo.InvariantCulture);
+        var displayName = Convert.ToString(row["name"], CultureInfo.InvariantCulture);
+        if (string.IsNullOrWhiteSpace(displayName))
+            displayName = $"Map {mapId}";
+
+        target = new MapCloneTarget(mapId, displayName, row.RowState);
+        return true;
+    }
+
+    private async Task<MapCloneSummary> LoadMapCloneSummaryAsync(int mapId)
+    {
+        await using var connection = new NpgsqlConnection(_masterEditor.ConnectionString);
+        await connection.OpenAsync();
+
+        const string sql = """
+            select
+                (select count(*) from public.map_spawn_points where map_template_id = @map_id) as spawn_point_count,
+                (select count(*) from public.map_portals where source_map_template_id = @map_id) as portal_count;
+            """;
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("map_id", mapId);
+
+        await using var reader = await command.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+            return new MapCloneSummary(0, 0);
+
+        return new MapCloneSummary(
+            SpawnPointCount: reader.GetInt32(0),
+            PortalCount: reader.GetInt32(1));
+    }
+
+    private async Task CloneMapTopologyAsync(MapCloneOption sourceMap, MapCloneTarget targetMap)
+    {
+        await using var connection = new NpgsqlConnection(_masterEditor.ConnectionString);
+        await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+
+        const string sql = """
+            with source_spawn_points as (
+                select
+                    sp.id as source_spawn_point_id,
+                    sp.code,
+                    sp.name,
+                    sp.spawn_category,
+                    sp.pos_x,
+                    sp.pos_y,
+                    sp.facing_degrees,
+                    sp.description
+                from public.map_spawn_points sp
+                where sp.map_template_id = @source_map_template_id
+            ),
+            upserted_spawn_points as (
+                insert into public.map_spawn_points (
+                    map_template_id,
+                    code,
+                    name,
+                    spawn_category,
+                    pos_x,
+                    pos_y,
+                    facing_degrees,
+                    description
+                )
+                select
+                    @target_map_template_id,
+                    ssp.code,
+                    ssp.name,
+                    ssp.spawn_category,
+                    ssp.pos_x,
+                    ssp.pos_y,
+                    ssp.facing_degrees,
+                    ssp.description
+                from source_spawn_points ssp
+                on conflict (map_template_id, code) do update
+                set
+                    name = excluded.name,
+                    spawn_category = excluded.spawn_category,
+                    pos_x = excluded.pos_x,
+                    pos_y = excluded.pos_y,
+                    facing_degrees = excluded.facing_degrees,
+                    description = excluded.description
+                returning id, code
+            ),
+            spawn_point_map as (
+                select
+                    ssp.source_spawn_point_id,
+                    target_sp.id as target_spawn_point_id
+                from source_spawn_points ssp
+                inner join public.map_spawn_points target_sp
+                    on target_sp.map_template_id = @target_map_template_id
+                   and target_sp.code = ssp.code
+            ),
+            deleted_target_portals as (
+                delete from public.map_portals
+                where source_map_template_id = @target_map_template_id
+                returning id
+            )
+            insert into public.map_portals (
+                source_map_template_id,
+                code,
+                name,
+                source_x,
+                source_y,
+                interaction_radius,
+                interaction_mode,
+                target_map_template_id,
+                target_spawn_point_id,
+                is_enabled,
+                order_index,
+                description
+            )
+            select
+                @target_map_template_id,
+                portal.code,
+                portal.name,
+                portal.source_x,
+                portal.source_y,
+                portal.interaction_radius,
+                portal.interaction_mode,
+                case
+                    when portal.target_map_template_id = @source_map_template_id then @target_map_template_id
+                    else portal.target_map_template_id
+                end,
+                case
+                    when portal.target_map_template_id = @source_map_template_id then spawn_point_map.target_spawn_point_id
+                    else portal.target_spawn_point_id
+                end,
+                portal.is_enabled,
+                portal.order_index,
+                portal.description
+            from public.map_portals portal
+            left join spawn_point_map on spawn_point_map.source_spawn_point_id = portal.target_spawn_point_id
+            where portal.source_map_template_id = @source_map_template_id
+              and (
+                  portal.target_map_template_id <> @source_map_template_id
+                  or spawn_point_map.target_spawn_point_id is not null
+              )
+            order by portal.order_index, portal.id;
+            """;
+
+        await using var command = new NpgsqlCommand(sql, connection, transaction);
+        command.Parameters.AddWithValue("source_map_template_id", sourceMap.MapId);
+        command.Parameters.AddWithValue("target_map_template_id", targetMap.MapId);
+        await command.ExecuteNonQueryAsync();
+
+        await transaction.CommitAsync();
+    }
+
+    private void SetMapCloneBusy(bool isBusy)
+    {
+        _isCloningMapTopology = isBusy;
+        _cloneSourceComboBox.Enabled = !isBusy;
+        _cloneMapButton.Enabled = !isBusy &&
+                                  string.Equals(_activeWorkspaceKey, MapWorkspaceKey, StringComparison.Ordinal) &&
+                                  TryGetSelectedMapTarget(out _) &&
+                                  _cloneSourceComboBox.Items.Count > 0;
+        _masterEditor.Enabled = !isBusy;
+        _detailTabs.Enabled = !isBusy;
     }
 
     private void BuildDetailTabs(WorkspaceDefinition definition)
@@ -164,6 +562,20 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
         Func<DataRow, AdminTableLoadRequest> BuildRequest,
         Func<AdminTableLoadRequest> BuildEmptyRequest);
 
+    private sealed record MapCloneOption(int MapId, string DisplayName)
+    {
+        public override string ToString() => DisplayName;
+    }
+
+    private readonly record struct MapCloneTarget(
+        int MapId,
+        string DisplayName,
+        DataRowState RowState);
+
+    private readonly record struct MapCloneSummary(
+        int SpawnPointCount,
+        int PortalCount);
+
     private static class WorkspaceDefinitionCatalog
     {
         public static WorkspaceDefinition Build(
@@ -175,7 +587,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                 "martial_art_workspace" => BuildMartialArtWorkspace(resourcesByKey),
                 "craft_recipe_workspace" => BuildCraftRecipeWorkspace(resourcesByKey),
                 "equipment_workspace" => BuildEquipmentWorkspace(resourcesByKey),
-                "map_workspace" => BuildMapWorkspace(resourcesByKey),
+                "map_workspace" => BuildMapWorkspaceV2(resourcesByKey),
                 "pill_recipe_workspace" => BuildPillRecipeWorkspace(resourcesByKey),
                 "pill_workspace" => BuildPillWorkspace(resourcesByKey),
                 "skill_workspace" => BuildSkillWorkspace(resourcesByKey),
@@ -479,6 +891,99 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                             });
                         },
                         () => BuildEmptyRequest(masteryStages, "Chọn một đan phương ở bảng trên để xem các mốc mastery.")),
+                ]);
+        }
+
+        private static WorkspaceDefinition BuildMapWorkspaceV2(
+            IReadOnlyDictionary<string, AdminResourceDefinition> resourcesByKey)
+        {
+            var maps = resourcesByKey["map_templates"];
+            var zoneSlots = resourcesByKey["map_zone_slots"];
+            var spawnPoints = resourcesByKey["map_spawn_points"];
+            var portals = resourcesByKey["map_portals"];
+
+            return new WorkspaceDefinition(
+                new AdminTableLoadRequest(
+                    maps,
+                    TitleOverride: "Danh Sach Map",
+                    HelpTextOverride: "Bang cha de tao va chon map. Chon 1 dong de sua zone slot, spawn point va portal ben duoi."),
+                [
+                    new WorkspaceChildDefinition(
+                        "Zone Slots",
+                        parentRow =>
+                        {
+                            var parentId = GetRequiredInt(parentRow, "id");
+                            return new AdminTableLoadRequest(
+                            zoneSlots,
+                            SelectSql: $"""
+                                select *
+                                from public.map_zone_slots
+                                where map_template_id = {parentId}
+                                order by zone_index;
+                                """,
+                            DescriptionOverride: $"Chi hien thi zone slot cua map id = {parentId}.",
+                            HelpTextOverride: "Khi bam Them Dong, tool se tu dien map_template_id theo map dang chon.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["map_template_id"] = parentId
+                            });
+                        },
+                        () => BuildEmptyRequest(zoneSlots, "Chon mot map o bang tren de xem zone slot.")),
+                    new WorkspaceChildDefinition(
+                        "Spawn Points",
+                        parentRow =>
+                        {
+                            var parentId = GetRequiredInt(parentRow, "id");
+                            var defaultSpawnX = GetOptionalSingle(parentRow, "default_spawn_x") ?? 0f;
+                            var defaultSpawnY = GetOptionalSingle(parentRow, "default_spawn_y") ?? 0f;
+                            return new AdminTableLoadRequest(
+                            spawnPoints,
+                            SelectSql: $"""
+                                select *
+                                from public.map_spawn_points
+                                where map_template_id = {parentId}
+                                order by id;
+                                """,
+                            DescriptionOverride: $"Chi hien thi spawn point cua map id = {parentId}.",
+                            HelpTextOverride: "Spawn point la diem dat chan khi vao map. Khi bam Them Dong, tool se tu dien map_template_id va toa do mac dinh bang default spawn cua map.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["map_template_id"] = parentId,
+                                ["spawn_category"] = 4,
+                                ["pos_x"] = defaultSpawnX,
+                                ["pos_y"] = defaultSpawnY
+                            });
+                        },
+                        () => BuildEmptyRequest(spawnPoints, "Chon mot map o bang tren de xem spawn point.")),
+                    new WorkspaceChildDefinition(
+                        "Portals",
+                        parentRow =>
+                        {
+                            var parentId = GetRequiredInt(parentRow, "id");
+                            var defaultSpawnX = GetOptionalSingle(parentRow, "default_spawn_x") ?? 0f;
+                            var defaultSpawnY = GetOptionalSingle(parentRow, "default_spawn_y") ?? 0f;
+                            return new AdminTableLoadRequest(
+                            portals,
+                            SelectSql: $"""
+                                select *
+                                from public.map_portals
+                                where source_map_template_id = {parentId}
+                                order by order_index, id;
+                                """,
+                            DescriptionOverride: $"Chi hien thi portal xuat phat tu map id = {parentId}.",
+                            HelpTextOverride: "Portal nay nam tren map dang chon va tro den mot spawn point cua map dich. Hay tao spawn point cua map dich truoc, sau do chon target_map_template_id va target_spawn_point_id phu hop. interaction_mode = Touch cho portal dau/cuoi map, Interact cho portal giua map can double click hoac bam skill danh thuong de vao.",
+                            NewRowDefaults: new Dictionary<string, object?>
+                            {
+                                ["source_map_template_id"] = parentId,
+                                ["source_x"] = defaultSpawnX,
+                                ["source_y"] = defaultSpawnY,
+                                ["interaction_radius"] = 24f,
+                                ["interaction_mode"] = 1,
+                                ["is_enabled"] = true,
+                                ["order_index"] = 0
+                            });
+                        },
+                        () => BuildEmptyRequest(portals, "Chon mot map o bang tren de xem cac portal xuat phat tu map do.")),
                 ]);
         }
 
@@ -944,6 +1449,18 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                 string text when Guid.TryParse(text, out var guid) => guid,
                 _ => throw new InvalidOperationException($"Column {columnName} does not contain a valid Guid value.")
             };
+        }
+
+        private static float? GetOptionalSingle(DataRow row, string columnName)
+        {
+            if (!row.Table.Columns.Contains(columnName))
+                return null;
+
+            var rawValue = row[columnName];
+            if (rawValue is null || rawValue == DBNull.Value)
+                return null;
+
+            return Convert.ToSingle(rawValue, CultureInfo.InvariantCulture);
         }
 
         private static string ToSqlLiteral(object? value)

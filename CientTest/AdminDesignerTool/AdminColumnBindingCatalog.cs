@@ -2,7 +2,10 @@ using Npgsql;
 
 namespace AdminDesignerTool;
 
-internal sealed record LookupOption(object? Value, string Display);
+internal sealed record LookupOption(
+    object? Value,
+    string Display,
+    IReadOnlyDictionary<string, object?>? Metadata = null);
 
 internal sealed record AdminColumnBinding(
     string ColumnName,
@@ -54,7 +57,22 @@ internal static class AdminColumnBindingCatalog
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            options.Add(new LookupOption(reader.GetValue(0), reader.GetString(1)));
+            Dictionary<string, object?>? metadata = null;
+            if (reader.FieldCount > 2)
+            {
+                metadata = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                for (var index = 2; index < reader.FieldCount; index++)
+                {
+                    metadata[reader.GetName(index)] = reader.IsDBNull(index)
+                        ? null
+                        : reader.GetValue(index);
+                }
+            }
+
+            options.Add(new LookupOption(
+                reader.GetValue(0),
+                reader.GetString(1),
+                metadata));
         }
 
         return options;
@@ -226,6 +244,16 @@ internal static class AdminColumnBindingCatalog
             order by id;
             """;
 
+        const string mapSpawnPointLookupSql = """
+            select
+                sp.id as value,
+                mt.name || ' -> ' || sp.code || ' - ' || sp.name || ' [ID ' || sp.id || ']' as display,
+                sp.map_template_id
+            from public.map_spawn_points sp
+            inner join public.map_templates mt on mt.id = sp.map_template_id
+            order by mt.id, sp.id;
+            """;
+
         const string pillTemplateLookupSql = """
             select pt.item_template_id as value, it.code || ' - ' || it.name as display
             from public.pill_templates pt
@@ -330,6 +358,12 @@ internal static class AdminColumnBindingCatalog
         Add("map_templates", "map_type", enumType: typeof(MapType));
         Add("map_zone_slots", "map_template_id", lookupSql: mapTemplateLookupSql);
         Add("map_zone_slots", "spiritual_energy_template_id", lookupSql: spiritualEnergyTemplateLookupSql);
+        Add("map_spawn_points", "map_template_id", lookupSql: mapTemplateLookupSql);
+        Add("map_spawn_points", "spawn_category", enumType: typeof(MapSpawnPointCategory));
+        Add("map_portals", "source_map_template_id", lookupSql: mapTemplateLookupSql);
+        Add("map_portals", "interaction_mode", enumType: typeof(MapPortalInteractionMode));
+        Add("map_portals", "target_map_template_id", lookupSql: mapTemplateLookupSql);
+        Add("map_portals", "target_spawn_point_id", lookupSql: mapSpawnPointLookupSql);
 
         Add("game_random_tables", "mode", enumType: typeof(GameRandomTableMode));
         Add("game_random_entries", "game_random_table_id", lookupSql: gameRandomTableLookupSql);

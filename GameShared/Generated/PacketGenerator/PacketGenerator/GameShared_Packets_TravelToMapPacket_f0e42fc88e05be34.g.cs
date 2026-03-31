@@ -16,16 +16,27 @@ public partial class TravelToMapPacket
         return HasTargetMapId;
     }
 
+    public bool HasPortalId => (_mask & (1UL << 1)) != 0;
+
+    public bool TryGetPortalId(out int? value)
+    {
+        value = PortalId;
+        return HasPortalId;
+    }
+
     public void Serialize(BinaryWriter writer)
     {
         ulong mask = 0;
 
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(TargetMapId, default!)) mask |= 1UL << 0;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(PortalId, default!)) mask |= 1UL << 1;
 
         writer.Write(mask);
 
         if ((mask & (1UL << 0)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, TargetMapId.Value);
+        if ((mask & (1UL << 1)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, PortalId.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -34,5 +45,7 @@ public partial class TravelToMapPacket
 
         if ((_mask & (1UL << 0)) != 0)
             TargetMapId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 1)) != 0)
+            PortalId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
     }
 }

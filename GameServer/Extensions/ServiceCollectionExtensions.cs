@@ -55,6 +55,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<MapTemplateRepository>();
         services.AddScoped<MapTemplateAdjacentMapRepository>();
         services.AddScoped<MapZoneSlotRepository>();
+        services.AddScoped<MapSpawnPointRepository>();
+        services.AddScoped<MapPortalRepository>();
         services.AddScoped<SpiritualEnergyTemplateRepository>();
         services.AddScoped<GameRandomTableRepository>();
         services.AddScoped<GameRandomEntryRepository>();

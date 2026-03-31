@@ -2,6 +2,8 @@ namespace AdminDesignerTool;
 
 internal sealed class MainForm : Form
 {
+    private const string PrimaryNavigationCategory = "Designer Workspace";
+
     private readonly SplitContainer _splitContainer;
     private readonly TreeView _navigationTree;
     private readonly Panel _editorHostPanel;
@@ -19,6 +21,7 @@ internal sealed class MainForm : Form
         Width = 1500;
         Height = 900;
         StartPosition = FormStartPosition.CenterScreen;
+        WindowState = FormWindowState.Maximized;
         Load += OnLoad;
 
         if (!DatabaseConfigResolver.TryResolve(out var connectionString, out var configPath, out var error))
@@ -192,10 +195,15 @@ internal sealed class MainForm : Form
     private void BuildNavigation()
     {
         _navigationTree.Nodes.Clear();
-        foreach (var group in _resourcesByKey.Values.OrderBy(x => x.Category).ThenBy(x => x.DisplayName).GroupBy(x => x.Category))
+        var groupedResources = _resourcesByKey.Values
+            .GroupBy(x => x.Category)
+            .OrderBy(group => string.Equals(group.Key, PrimaryNavigationCategory, StringComparison.Ordinal) ? 0 : 1)
+            .ThenBy(group => group.Key, StringComparer.Ordinal);
+
+        foreach (var group in groupedResources)
         {
             var parent = new TreeNode(group.Key);
-            foreach (var resource in group)
+            foreach (var resource in group.OrderBy(x => x.DisplayName, StringComparer.Ordinal))
             {
                 parent.Nodes.Add(new TreeNode(resource.DisplayName)
                 {

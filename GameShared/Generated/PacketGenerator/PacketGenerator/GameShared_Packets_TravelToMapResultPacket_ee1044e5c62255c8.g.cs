@@ -32,6 +32,22 @@ public partial class TravelToMapResultPacket
         return HasTargetMapId;
     }
 
+    public bool HasPortalId => (_mask & (1UL << 3)) != 0;
+
+    public bool TryGetPortalId(out int? value)
+    {
+        value = PortalId;
+        return HasPortalId;
+    }
+
+    public bool HasTargetSpawnPointId => (_mask & (1UL << 4)) != 0;
+
+    public bool TryGetTargetSpawnPointId(out int? value)
+    {
+        value = TargetSpawnPointId;
+        return HasTargetSpawnPointId;
+    }
+
     public void Serialize(BinaryWriter writer)
     {
         ulong mask = 0;
@@ -39,6 +55,8 @@ public partial class TravelToMapResultPacket
         if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(TargetMapId, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(PortalId, default!)) mask |= 1UL << 3;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(TargetSpawnPointId, default!)) mask |= 1UL << 4;
 
         writer.Write(mask);
 
@@ -48,6 +66,10 @@ public partial class TravelToMapResultPacket
             global::GameShared.Packets.PacketWriter.Write(writer, (int)Code.Value);
         if ((mask & (1UL << 2)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, TargetMapId.Value);
+        if ((mask & (1UL << 3)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, PortalId.Value);
+        if ((mask & (1UL << 4)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, TargetSpawnPointId.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -60,5 +82,9 @@ public partial class TravelToMapResultPacket
             Code = (global::GameShared.Messages.MessageCode?)((global::GameShared.Messages.MessageCode)(global::GameShared.Packets.PacketReader.ReadInt(reader)));
         if ((_mask & (1UL << 2)) != 0)
             TargetMapId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 3)) != 0)
+            PortalId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 4)) != 0)
+            TargetSpawnPointId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
     }
 }

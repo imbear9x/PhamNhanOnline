@@ -13,7 +13,6 @@ public sealed class MapTemplateEntity
     [Column("width"                                )] public float    Width             { get; set; }
     [Column("height"                               )] public float    Height            { get; set; }
     [Column("cell_size"                            )] public float    CellSize          { get; set; }
-    [Column("interest_radius"                      )] public float    InterestRadius    { get; set; }
     [Column("default_spawn_x"                      )] public float    DefaultSpawnX     { get; set; }
     [Column("default_spawn_y"                      )] public float    DefaultSpawnY     { get; set; }
     [Column("max_public_zone_count"                )] public int      MaxPublicZoneCount { get; set; }

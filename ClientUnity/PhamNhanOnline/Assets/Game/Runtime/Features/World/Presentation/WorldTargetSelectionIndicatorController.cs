@@ -58,7 +58,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             var showRed = trackedInteractionMode == WorldTargetInteractionMode.HostileAttack;
-            var showWhite = trackedInteractionMode == WorldTargetInteractionMode.ContextOnly;
+            var showWhite = trackedInteractionMode == WorldTargetInteractionMode.ContextOnly &&
+                            !IsPortalTarget(trackedTarget.Value);
             SetIndicatorsVisible(showWhite, showRed);
             ApplyPosition(whiteIndicator, worldPosition);
             ApplyPosition(redIndicator, worldPosition);
@@ -231,6 +232,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             trackedTargetable = null;
             trackedInteractionMode = WorldTargetInteractionMode.None;
             SetIndicatorsVisible(false, false);
+        }
+
+        private static bool IsPortalTarget(WorldTargetHandle handle)
+        {
+            GameShared.Models.MapPortalModel _;
+            return ClientRuntime.IsInitialized && ClientRuntime.World.TryGetPortal(handle, out _);
         }
     }
 }

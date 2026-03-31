@@ -7,18 +7,37 @@ public sealed class TravelToMapPacketValidator : PacketValidator<TravelToMapPack
 {
     public override bool TryValidate(TravelToMapPacket packet, out IPacket? errorPacket)
     {
-        if (!TryValidateAnnotations(packet, out var code))
+        if (packet.PortalId.HasValue)
         {
+            if (packet.PortalId.Value > 0)
+            {
+                errorPacket = null;
+                return true;
+            }
+
             errorPacket = new TravelToMapResultPacket
             {
                 Success = false,
-                Code = code,
+                Code = MessageCode.MapPortalInvalid,
+                PortalId = packet.PortalId,
                 TargetMapId = packet.TargetMapId
             };
             return false;
         }
 
-        errorPacket = null;
-        return true;
+        if (packet.TargetMapId.HasValue && packet.TargetMapId.Value > 0)
+        {
+            errorPacket = null;
+            return true;
+        }
+
+        errorPacket = new TravelToMapResultPacket
+        {
+            Success = false,
+            Code = MessageCode.MapIdInvalid,
+            PortalId = packet.PortalId,
+            TargetMapId = packet.TargetMapId
+        };
+        return false;
     }
 }

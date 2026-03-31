@@ -27,12 +27,25 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public Task<WorldTravelResult> TravelToMapAsync(int targetMapId)
         {
             if (connection.State != ClientConnectionState.Connected)
-                return Task.FromResult(new WorldTravelResult(false, null, targetMapId, "Not connected to server."));
+                return Task.FromResult(new WorldTravelResult(false, null, targetMapId, null, null, "Not connected to server."));
 
             travelCompletionSource = new TaskCompletionSource<WorldTravelResult>();
             connection.Send(new TravelToMapPacket
             {
                 TargetMapId = targetMapId
+            });
+            return travelCompletionSource.Task;
+        }
+
+        public Task<WorldTravelResult> UsePortalAsync(int portalId)
+        {
+            if (connection.State != ClientConnectionState.Connected)
+                return Task.FromResult(new WorldTravelResult(false, null, null, portalId, null, "Not connected to server."));
+
+            travelCompletionSource = new TaskCompletionSource<WorldTravelResult>();
+            connection.Send(new TravelToMapPacket
+            {
+                PortalId = portalId
             });
             return travelCompletionSource.Task;
         }
@@ -70,9 +83,15 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 packet.Success == true,
                 packet.Code,
                 packet.TargetMapId,
+                packet.PortalId,
+                packet.TargetSpawnPointId,
                 packet.Success == true
-                    ? $"Travelled to map {packet.TargetMapId}."
-                    : $"Failed to travel to map {packet.TargetMapId}: {packet.Code ?? MessageCode.UnknownError}");
+                    ? packet.PortalId.HasValue
+                        ? $"Used portal {packet.PortalId} to map {packet.TargetMapId} spawn {packet.TargetSpawnPointId}."
+                        : $"Travelled to map {packet.TargetMapId}."
+                    : packet.PortalId.HasValue
+                        ? $"Failed to use portal {packet.PortalId}: {packet.Code ?? MessageCode.UnknownError}"
+                        : $"Failed to travel to map {packet.TargetMapId}: {packet.Code ?? MessageCode.UnknownError}");
 
             if (packet.Success == true)
                 ClientLog.Info(result.Message);
@@ -131,7 +150,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (state != ClientConnectionState.Disconnected)
                 return;
 
-            CompletePending(ref travelCompletionSource, new WorldTravelResult(false, null, null, "Connection closed."));
+            CompletePending(ref travelCompletionSource, new WorldTravelResult(false, null, null, null, null, "Connection closed."));
             CompletePending(ref mapZonesCompletionSource, new MapZonesQueryResult(false, null, null, null, null, false, null, "Connection closed."));
             CompletePending(ref switchZoneCompletionSource, new MapZoneSwitchResult(false, null, null, null, null, "Connection closed."));
         }
