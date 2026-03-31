@@ -8,6 +8,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private WorldLocalPlayerPresenter localPlayerPresenter;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
+        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private Vector3 followOffset = new Vector3(0f, 0f, -10f);
         [SerializeField] private bool smoothFollow = false;
         [SerializeField] private float smoothSpeed = 8f;
@@ -21,18 +22,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void Awake()
         {
             cachedCamera = GetComponent<Camera>();
+            AutoWireReferences();
         }
 
         private void Start()
         {
+            AutoWireReferences();
             TryBindRuntimeEvents();
-            RefreshCachedClampBounds();
+            TryRefreshCachedClampBoundsIfReady();
         }
 
         private void OnEnable()
         {
+            AutoWireReferences();
             TryBindRuntimeEvents();
-            RefreshCachedClampBounds();
+            TryRefreshCachedClampBoundsIfReady();
         }
 
         private void OnDisable()
@@ -115,13 +119,33 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             hasCachedClampBounds = TryGetCameraClampBounds(out cachedClampBounds);
         }
 
+        private void ClearCachedClampBounds()
+        {
+            hasCachedClampBounds = false;
+            cachedClampBounds = default;
+        }
+
+        private void TryRefreshCachedClampBoundsIfReady()
+        {
+            if (readinessService != null && !readinessService.IsReady(WorldSceneReadyKey.MapVisual))
+            {
+                ClearCachedClampBounds();
+                return;
+            }
+
+            RefreshCachedClampBounds();
+        }
+
         private void TryBindRuntimeEvents()
         {
             if (runtimeEventsBound || !ClientRuntime.IsInitialized)
                 return;
 
-            if (worldMapPresenter != null)
-                worldMapPresenter.ActiveMapVisualChanged += HandleMapVisualChanged;
+            if (readinessService != null)
+            {
+                readinessService.LoadCycleStarted += HandleLoadCycleStarted;
+                readinessService.ReadyReported += HandleReadyReported;
+            }
             runtimeEventsBound = true;
         }
 
@@ -130,14 +154,40 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!runtimeEventsBound || !ClientRuntime.IsInitialized)
                 return;
 
-            if (worldMapPresenter != null)
-                worldMapPresenter.ActiveMapVisualChanged -= HandleMapVisualChanged;
+            if (readinessService != null)
+            {
+                readinessService.LoadCycleStarted -= HandleLoadCycleStarted;
+                readinessService.ReadyReported -= HandleReadyReported;
+            }
             runtimeEventsBound = false;
         }
 
-        private void HandleMapVisualChanged()
+        private void HandleLoadCycleStarted(int loadVersion, string mapKey)
         {
-            RefreshCachedClampBounds();
+            ClearCachedClampBounds();
+        }
+
+        private void HandleReadyReported(int loadVersion, WorldSceneReadyKey key)
+        {
+            if (key != WorldSceneReadyKey.MapVisual)
+                return;
+
+            TryRefreshCachedClampBoundsIfReady();
+        }
+
+        private void AutoWireReferences()
+        {
+            if (worldMapPresenter == null)
+                worldMapPresenter = GetComponent<WorldMapPresenter>();
+
+            if (readinessService == null)
+                readinessService = GetComponent<WorldSceneReadinessService>();
+
+            if (readinessService == null && worldMapPresenter != null)
+                readinessService = worldMapPresenter.GetComponent<WorldSceneReadinessService>();
+
+            if (readinessService == null && WorldSceneController.Instance != null)
+                readinessService = WorldSceneController.Instance.WorldSceneReadinessService;
         }
     }
 }

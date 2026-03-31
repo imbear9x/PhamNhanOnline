@@ -23,14 +23,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             public GameObject RootObject;
             public PortalVisualInstance VisualInstance;
             public Collider2D TriggerCollider;
-            public bool WasColliderOverlapLastFrame;
             public bool WasTouchingLastFrame;
-            public string LastTouchDebugState;
         }
 
         [Header("References")]
         [SerializeField] private WorldSceneController worldSceneController;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
+        [SerializeField] private WorldSceneReadinessService readinessService;
         [SerializeField] private WorldTargetActionController worldTargetActionController;
         [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
         [SerializeField] private Transform portalRoot;
@@ -65,14 +64,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             AutoWireReferences();
             TryBindRuntimeEvents();
-            RebuildPortals();
+            TryRebuildPortalsIfReady();
         }
 
         private void OnEnable()
         {
             AutoWireReferences();
             TryBindRuntimeEvents();
-            RebuildPortals();
+            TryRebuildPortalsIfReady();
         }
 
         private void Update()
@@ -93,7 +92,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ClearPortals();
         }
 
-        private void HandleMapChanged()
+        private void HandleMapVisualReady()
         {
             RebuildPortals();
         }
@@ -172,120 +171,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                                  isColliderOverlap &&
                                  hasPortalEntryIntent;
 
-                if (isColliderOverlap && !runtime.WasColliderOverlapLastFrame)
-                {
-                    var rawPortalPosition = new Vector2(runtime.Portal.SourceX, runtime.Portal.SourceY);
-                    var adjustedPortalPosition = ResolvePortalServerPosition(runtime.Portal);
-                    TryResolveCurrentLocalPlayerServerPosition(out var playerServerPosition);
-                    var rawDistance = Vector2.Distance(playerServerPosition, rawPortalPosition);
-                    var adjustedDistance = Vector2.Distance(playerServerPosition, adjustedPortalPosition);
-                    ClientLog.Warn(
-                        string.Format(
-                            "[PortalTouchDebug] overlap detected for portal {0} ('{1}') via collider '{2}'. mode={3}, enabled={4}, allowTouchTravel={5}, player={6}, rawPortal={7}, adjustedPortal={8}, rawDistance={9:F2}, adjustedDistance={10:F2}.",
-                            runtime.Portal.Id,
-                            ResolvePortalLabel(runtime.Portal),
-                            runtime.TriggerCollider.name,
-                            runtime.Portal.InteractionMode,
-                            runtime.Portal.IsEnabled,
-                            allowTouchTravel,
-                            playerServerPosition,
-                            rawPortalPosition,
-                            adjustedPortalPosition,
-                            rawDistance,
-                            adjustedDistance));
-                }
-
-                var debugState = ResolveTouchDebugState(
-                    runtime,
-                    isTouchPortal,
-                    isColliderOverlap,
-                    hasPortalEntryIntent,
-                    allowTouchTravel);
-                if (!string.IsNullOrWhiteSpace(debugState) &&
-                    !string.Equals(debugState, runtime.LastTouchDebugState, StringComparison.Ordinal))
-                {
-                    ClientLog.Warn(debugState);
-                }
-
                 if (allowTouchTravel && isTouching && !runtime.WasTouchingLastFrame)
                 {
-                    ClientLog.Warn(
-                        string.Format(
-                            "[PortalTouchDebug] touch accepted for portal {0} ('{1}'). Requesting travel now.",
-                            runtime.Portal.Id,
-                            ResolvePortalLabel(runtime.Portal)));
                     _ = UsePortalAsync(runtime.Portal);
                 }
 
-                if (!isColliderOverlap)
-                    runtime.LastTouchDebugState = null;
-                else
-                    runtime.LastTouchDebugState = debugState;
-
-                runtime.WasColliderOverlapLastFrame = isColliderOverlap;
                 runtime.WasTouchingLastFrame = isTouching;
             }
-        }
-
-        private string ResolveTouchDebugState(
-            PortalRuntime runtime,
-            bool isTouchPortal,
-            bool isColliderOverlap,
-            bool hasPortalEntryIntent,
-            bool allowTouchTravel)
-        {
-            if (runtime == null || !isColliderOverlap)
-                return null;
-
-            if (!isTouchPortal)
-            {
-                return string.Format(
-                    "[PortalTouchDebug] overlap ignored for portal {0} ('{1}') because interaction mode {2} is not touch.",
-                    runtime.Portal.Id,
-                    ResolvePortalLabel(runtime.Portal),
-                    runtime.Portal.InteractionMode);
-            }
-
-            if (!runtime.Portal.IsEnabled)
-            {
-                return string.Format(
-                    "[PortalTouchDebug] overlap ignored for portal {0} ('{1}') because portal is disabled.",
-                    runtime.Portal.Id,
-                    ResolvePortalLabel(runtime.Portal));
-            }
-
-            if (!hasPortalEntryIntent)
-            {
-                var touchSide = ResolveTouchTriggerSide(runtime.Portal);
-                var horizontalIntent = ResolveHorizontalMoveIntent();
-                return string.Format(
-                    "[PortalTouchDebug] overlap blocked for portal {0} ('{1}') because move intent does not enter the portal. side={2}, horizontalIntent={3:F2}, deadZone={4:F2}.",
-                    runtime.Portal.Id,
-                    ResolvePortalLabel(runtime.Portal),
-                    touchSide,
-                    horizontalIntent,
-                    Mathf.Max(0f, touchPortalHorizontalIntentDeadZone));
-            }
-
-            if (!allowTouchTravel)
-            {
-                if (usePortalInFlight)
-                {
-                    return string.Format(
-                        "[PortalTouchDebug] overlap blocked for portal {0} ('{1}') because another portal request is still in flight.",
-                        runtime.Portal.Id,
-                        ResolvePortalLabel(runtime.Portal));
-                }
-
-                return string.Format(
-                    "[PortalTouchDebug] overlap blocked for portal {0} ('{1}') because touch travel is suppressed until {2:F2} (current={3:F2}).",
-                    runtime.Portal.Id,
-                    ResolvePortalLabel(runtime.Portal),
-                    touchPortalSuppressedUntilTime,
-                    Time.unscaledTime);
-            }
-
-            return null;
         }
 
         private bool HasPortalEntryIntent(MapPortalModel portal)
@@ -420,6 +312,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             rebuildRetryPending = true;
             nextRebuildRetryTime = Time.unscaledTime + Mathf.Max(0.1f, rebuildRetryIntervalSeconds);
+        }
+
+        private void TryRebuildPortalsIfReady()
+        {
+            if (readinessService != null && !readinessService.IsReady(WorldSceneReadyKey.MapVisual))
+                return;
+
+            RebuildPortals();
         }
 
         private PortalRuntime BuildPortalObject(Transform parent, MapPortalModel portal, Vector2 worldPosition)
@@ -708,6 +608,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (worldMapPresenter == null)
                 worldMapPresenter = GetComponent<WorldMapPresenter>();
 
+            if (readinessService == null)
+                readinessService = GetComponent<WorldSceneReadinessService>();
+
             if (worldTargetActionController == null)
                 worldTargetActionController = GetComponent<WorldTargetActionController>();
 
@@ -720,8 +623,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (runtimeEventsBound || !ClientRuntime.IsInitialized)
                 return;
 
-            if (worldMapPresenter != null)
-                worldMapPresenter.ActiveMapVisualChanged += HandleMapChanged;
+            if (readinessService != null)
+            {
+                readinessService.LoadCycleStarted += HandleLoadCycleStarted;
+                readinessService.ReadyReported += HandleReadyReported;
+            }
             ClientRuntime.Target.CurrentTargetChanged += HandleCurrentTargetChanged;
             if (worldTargetActionController != null)
                 worldTargetActionController.InteractionRequested += HandleInteractionRequested;
@@ -733,12 +639,29 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!runtimeEventsBound || !ClientRuntime.IsInitialized)
                 return;
 
-            if (worldMapPresenter != null)
-                worldMapPresenter.ActiveMapVisualChanged -= HandleMapChanged;
+            if (readinessService != null)
+            {
+                readinessService.LoadCycleStarted -= HandleLoadCycleStarted;
+                readinessService.ReadyReported -= HandleReadyReported;
+            }
             ClientRuntime.Target.CurrentTargetChanged -= HandleCurrentTargetChanged;
             if (worldTargetActionController != null)
                 worldTargetActionController.InteractionRequested -= HandleInteractionRequested;
             runtimeEventsBound = false;
+        }
+
+        private void HandleLoadCycleStarted(int loadVersion, string mapKey)
+        {
+            rebuildRetryPending = false;
+            ClearPortals();
+        }
+
+        private void HandleReadyReported(int loadVersion, WorldSceneReadyKey key)
+        {
+            if (key != WorldSceneReadyKey.MapVisual)
+                return;
+
+            HandleMapVisualReady();
         }
 
         private static int ResolveTargetableLayer()

@@ -19,6 +19,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private Transform worldUiRoot;
         [SerializeField] private Camera worldCamera;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
+        [SerializeField] private WorldSceneReadinessService worldSceneReadinessService;
         [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
         [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
         [SerializeField] private SkillWorldPresentationCatalog skillWorldPresentationCatalog;
@@ -28,6 +29,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public Transform WorldUiRoot { get { return worldUiRoot; } }
         public Camera WorldCamera { get { return worldCamera; } }
         public WorldMapPresenter WorldMapPresenter { get { return worldMapPresenter; } }
+        public WorldSceneReadinessService WorldSceneReadinessService { get { return worldSceneReadinessService; } }
         public WorldLocalPlayerPresenter WorldLocalPlayerPresenter { get { return worldLocalPlayerPresenter; } }
         public WorldLocalMovementSyncController WorldLocalMovementSyncController { get { return worldLocalMovementSyncController; } }
         public SkillWorldPresentationCatalog SkillWorldPresentationCatalog { get { return skillWorldPresentationCatalog; } }
@@ -46,6 +48,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             Instance = this;
             AutoWireReferences();
             EnsureRuntimeInitialized();
+            EnsureWorldSceneReadinessService();
             ConfigureSkillPresentation();
             EnsureClientPoolService();
             EnsureWorldTargetSelectionController();
@@ -124,6 +127,17 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return ClientPoolService.Ensure(transform);
         }
 
+        private WorldSceneReadinessService EnsureWorldSceneReadinessService()
+        {
+            if (worldSceneReadinessService == null)
+                worldSceneReadinessService = GetComponent<WorldSceneReadinessService>();
+
+            if (worldSceneReadinessService == null)
+                worldSceneReadinessService = gameObject.AddComponent<WorldSceneReadinessService>();
+
+            return worldSceneReadinessService;
+        }
+
         private void ConfigureSkillPresentation()
         {
             if (!ClientRuntime.IsInitialized)
@@ -164,6 +178,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             if (worldMapPresenter == null)
                 worldMapPresenter = GetComponent<WorldMapPresenter>();
+
+            if (worldSceneReadinessService == null)
+                worldSceneReadinessService = GetComponent<WorldSceneReadinessService>();
 
             if (worldLocalPlayerPresenter == null)
                 worldLocalPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();

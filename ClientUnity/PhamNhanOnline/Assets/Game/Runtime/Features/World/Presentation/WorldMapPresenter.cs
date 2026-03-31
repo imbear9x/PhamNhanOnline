@@ -11,6 +11,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         [SerializeField] private ClientMapCatalog mapCatalog;
         [SerializeField] private Transform activeMapRoot;
+        [SerializeField] private WorldSceneReadinessService readinessService;
 
         private GameObject activeMapInstance;
         private ClientMapView activeMapView;
@@ -32,6 +33,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 ClientLog.Warn("WorldMapPresenter started before ClientRuntime initialization.");
                 return;
             }
+
+            AutoWireReferences();
+            if (readinessService != null)
+                readinessService.EnsureLoadCycleForCurrentMapState();
 
             ClientRuntime.World.MapChanged += HandleMapChanged;
             RebuildActiveMap(ClientRuntime.World.CurrentClientMapKey);
@@ -143,6 +148,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void HandleMapChanged()
         {
+            if (readinessService != null)
+                readinessService.EnsureLoadCycleForCurrentMapState();
+
             RebuildActiveMap(ClientRuntime.World.CurrentClientMapKey);
         }
 
@@ -179,6 +187,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             activeMapInstance = Instantiate(mapPrefab, parent, false);
             activeMapInstance.name = mapPrefab.name;
             CachePlayableBounds();
+            if (readinessService != null && hasCachedPlayableBounds)
+                readinessService.ReportReady(WorldSceneReadyKey.MapVisual);
             ClientLog.Info($"Spawned map '{activeClientMapKey}' into World scene.");
             NotifyActiveMapVisualChanged();
         }
@@ -353,6 +363,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             hasCachedPlayableBounds = false;
             cachedPlayableBounds = default;
             activeClientMapKey = string.Empty;
+        }
+
+        private void AutoWireReferences()
+        {
+            if (readinessService == null)
+                readinessService = GetComponent<WorldSceneReadinessService>();
         }
 
         private void NotifyActiveMapVisualChanged()
