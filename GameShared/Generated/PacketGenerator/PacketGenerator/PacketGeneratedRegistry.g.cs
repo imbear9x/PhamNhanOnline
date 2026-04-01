@@ -215,6 +215,9 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.SkillImpactResolvedPacket:
                 id = 69;
                 return true;
+            case global::GameShared.Packets.SessionTerminationPacket:
+                id = 70;
+                return true;
             default:
                 id = default;
                 return false;
@@ -294,6 +297,7 @@ internal static class PacketGeneratedRegistry
             67 => new global::GameShared.Packets.SetSkillLoadoutSlotResultPacket(),
             68 => new global::GameShared.Packets.SkillCastStartedPacket(),
             69 => new global::GameShared.Packets.SkillImpactResolvedPacket(),
+            70 => new global::GameShared.Packets.SessionTerminationPacket(),
             _ => null
         };
     }

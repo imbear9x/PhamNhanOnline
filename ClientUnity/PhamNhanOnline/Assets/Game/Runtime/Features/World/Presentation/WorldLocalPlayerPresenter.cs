@@ -376,7 +376,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var shouldBlock =
                 (currentState.HasValue && currentState.Value.CurrentState == CultivatingStateCode) ||
                 WorldMenuController.IsAnyMenuOpen ||
-                (ClientRuntime.ConnectionRecovery != null && ClientRuntime.ConnectionRecovery.IsRecovering);
+                (ClientRuntime.ConnectionRecovery != null && ClientRuntime.ConnectionRecovery.ShouldBlockGameplayInput);
             localActionController.SetInputBlocked(shouldBlock);
         }
 
@@ -406,3 +406,4 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private const int CultivatingStateCode = 3;
     }
 }
+

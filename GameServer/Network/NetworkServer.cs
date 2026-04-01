@@ -18,6 +18,7 @@ namespace GameServer.Network;
 
 public sealed class NetworkServer : INetEventListener, INetworkSender
 {
+    private const string AccountLoggedInElsewhereMessage = "Tai khoan da duoc dang nhap tren thiet bi khac.";
     private const string ReconnectHoldReasonExpired = "resume window expired";
     private const string ReconnectHoldReasonFreshLogin = "fresh login replaced held session";
     private readonly NetManager _netManager;
@@ -27,6 +28,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     private readonly ServerMetricsService _metrics;
     private readonly ConcurrentDictionary<int, ConnectionSession> _sessions = new();
     private readonly ConcurrentDictionary<string, ResumeTicket> _resumeTickets = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, RevokedResumeTicket> _revokedResumeTokens = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Guid, string> _accountTokens = new();
     private readonly CancellationTokenSource _shutdownCts = new();
     private static readonly TimeSpan ResumeWindow = TimeSpan.FromSeconds(3);
@@ -69,6 +71,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         _netManager.Stop();
         _sessions.Clear();
         _resumeTickets.Clear();
+        _revokedResumeTokens.Clear();
         _accountTokens.Clear();
     }
 
@@ -108,7 +111,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
             {
                 if (!string.Equals(oldToken, token, StringComparison.Ordinal))
                 {
-                    _resumeTickets.TryRemove(oldToken, out ResumeTicket? _);
+                    RevokeResumeToken(oldToken, MessageCode.AccountLoggedInElsewhere);
                 }
 
                 return token;
@@ -137,6 +140,12 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
             return false;
 
         PurgeExpiredResumeTickets();
+
+        if (_revokedResumeTokens.TryRemove(resumeToken, out var revokedTicket))
+        {
+            errorCode = revokedTicket.Code;
+            return false;
+        }
 
         if (!_resumeTickets.TryGetValue(resumeToken, out var ticket))
             return false;
@@ -375,6 +384,14 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
             _accountTokens.TryRemove(kv.Value.AccountId, out var _);
             ReleaseHeldPlayerIfAny(kv.Value.AccountId, ReconnectHoldReasonExpired);
         }
+
+        foreach (var kv in _revokedResumeTokens)
+        {
+            if (kv.Value.ExpiresAtUtc > now)
+                continue;
+
+            _revokedResumeTokens.TryRemove(kv.Key, out RevokedResumeTicket? _);
+        }
     }
 
     private void DisconnectDuplicateSessions(ConnectionSession replacementSession, Guid accountId)
@@ -398,11 +415,30 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
             }
 
             if (!string.IsNullOrWhiteSpace(duplicate.ResumeToken))
+            {
                 _resumeTickets.TryRemove(duplicate.ResumeToken, out ResumeTicket? _);
+                _revokedResumeTokens[duplicate.ResumeToken] = new RevokedResumeTicket(
+                    MessageCode.AccountLoggedInElsewhere,
+                    DateTime.UtcNow + ResumeWindow);
+            }
 
+            Send(duplicate.ConnectionId, new SessionTerminationPacket
+            {
+                Code = MessageCode.AccountLoggedInElsewhere,
+                Message = AccountLoggedInElsewhereMessage
+            });
             duplicate.ResumeToken = null;
             duplicate.Peer.Disconnect();
         }
+    }
+
+    private void RevokeResumeToken(string resumeToken, MessageCode code)
+    {
+        if (string.IsNullOrWhiteSpace(resumeToken))
+            return;
+
+        _resumeTickets.TryRemove(resumeToken, out ResumeTicket? _);
+        _revokedResumeTokens[resumeToken] = new RevokedResumeTicket(code, DateTime.UtcNow + ResumeWindow);
     }
 
     private void ReleaseHeldPlayerIfAny(Guid accountId, string reason)
@@ -451,5 +487,6 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     }
 
     private sealed record ResumeTicket(Guid AccountId, bool IsConnected, DateTime ExpiresAtUtc);
+    private sealed record RevokedResumeTicket(MessageCode Code, DateTime ExpiresAtUtc);
 }
 

@@ -71,11 +71,27 @@ public sealed class GetMapZonesHandler : IPacketHandler<GetMapZonesPacket>
             Success = true,
             Code = MessageCode.None,
             MapId = definition.MapId,
-            CurrentZoneIndex = session.Player.MapId == definition.MapId ? session.Player.ZoneIndex : null,
+            CurrentZoneIndex = ResolveCurrentZoneIndex(session.Player, definition.MapId),
             MaxZoneCount = definition.MaxPublicZoneCount,
             SupportsCavePlacement = definition.SupportsCavePlacement,
             Zones = zones
         });
         return Task.CompletedTask;
+    }
+    private int? ResolveCurrentZoneIndex(PlayerSession player, int requestedMapId)
+    {
+        if (player.MapId != requestedMapId)
+            return null;
+
+        if (_mapManager.TryGetInstance(player.MapId, player.InstanceId, out var instance) &&
+            instance.ContainsPlayer(player.PlayerId))
+        {
+            return instance.ZoneIndex;
+        }
+
+        if (_mapManager.TryGetInstanceContainingPlayer(player.MapId, player.PlayerId, out var fallbackInstance))
+            return fallbackInstance.ZoneIndex;
+
+        return null;
     }
 }

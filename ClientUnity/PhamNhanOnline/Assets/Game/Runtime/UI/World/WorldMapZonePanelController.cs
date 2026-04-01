@@ -24,12 +24,12 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private MapZoneListView zoneListView;
 
         [Header("Display Text")]
-        [SerializeField] private string panelTitle = "Danh sách khu";
+        [SerializeField] private string panelTitle = "Danh sach khu";
         [SerializeField] private string currentMapPrefix = "Map: ";
-        [SerializeField] private string currentZonePrefix = "Khu hiện tại: ";
-        [SerializeField] private string unknownMapText = "Chưa vào map";
-        [SerializeField] private string unsupportedMapText = "Map hiện tại không hỗ trợ chọn khu.";
-        [SerializeField] private string emptyZoneListText = "Map hiện tại chưa có khu khả dụng.";
+        [SerializeField] private string currentZonePrefix = "Khu hien tai: ";
+        [SerializeField] private string unknownMapText = "Chua vao map";
+        [SerializeField] private string unsupportedMapText = "Map hien tai khong ho tro chon khu.";
+        [SerializeField] private string emptyZoneListText = "Map hien tai chua co khu kha dung.";
 
         [Header("Occupancy Colors")]
         [SerializeField] private Color lowOccupancyColor = new Color(0.20f, 0.56f, 0.27f, 0.95f);
@@ -164,12 +164,12 @@ namespace PhamNhanOnline.Client.UI.World
                     loadedZones.AddRange(result.Zones);
 
                 lastStatusMessage = loadedZones.Count > 0
-                    ? "Chọn khu muốn vào."
+                    ? "Chon khu muon vao."
                     : emptyZoneListText;
             }
             catch (Exception ex)
             {
-                lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Lỗi tải danh sách khu: {0}", ex.Message);
+                lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi tai danh sach khu: {0}", ex.Message);
                 ClientLog.Warn($"WorldMapZonePanelController load zones exception: {ex.Message}");
             }
             finally
@@ -195,20 +195,21 @@ namespace PhamNhanOnline.Client.UI.World
             var currentMapId = ClientRuntime.World.CurrentMapId;
             if (!currentMapId.HasValue)
             {
-                lastStatusMessage = "Chưa vào map nên không thể đổi khu.";
+                lastStatusMessage = "Chua vao map nen khong the doi khu.";
                 RefreshPanel(force: true);
                 return;
             }
 
-            if (ClientRuntime.World.CurrentZoneIndex.HasValue && ClientRuntime.World.CurrentZoneIndex.Value == zoneIndex)
+            var resolvedCurrentZoneIndex = ResolveDisplayedCurrentZoneIndex();
+            if (resolvedCurrentZoneIndex.HasValue && resolvedCurrentZoneIndex.Value == zoneIndex)
             {
-                lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Bạn đang ở khu {0}.", zoneIndex);
+                lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Ban dang o khu {0}.", zoneIndex);
                 RefreshPanel(force: true);
                 return;
             }
 
             switchInFlight = true;
-            lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Đang chuyển sang khu {0}...", zoneIndex);
+            lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Dang chuyen sang khu {0}...", zoneIndex);
             RefreshPanel(force: true);
 
             var requestedMapId = currentMapId.Value;
@@ -226,14 +227,14 @@ namespace PhamNhanOnline.Client.UI.World
                 lastStatusMessage = result.Zone.HasValue
                     ? string.Format(
                         CultureInfo.InvariantCulture,
-                        "Đã vào khu {0}. Linh khí: {1} / phút.",
+                        "Da vao khu {0}. Linh khi: {1} / phut.",
                         result.Zone.Value.ZoneIndex,
                         result.Zone.Value.SpiritualEnergyPerMinute.ToString("0.##", CultureInfo.InvariantCulture))
-                    : string.Format(CultureInfo.InvariantCulture, "Đã vào khu {0}.", zoneIndex);
+                    : string.Format(CultureInfo.InvariantCulture, "Da vao khu {0}.", zoneIndex);
             }
             catch (Exception ex)
             {
-                lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Lỗi đổi khu: {0}", ex.Message);
+                lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi doi khu: {0}", ex.Message);
                 ClientLog.Warn($"WorldMapZonePanelController switch zone exception: {ex.Message}");
             }
             finally
@@ -251,7 +252,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (loadedMapId != currentMapId || loadedZones.Count == 0)
                 return Array.Empty<MapZoneListView.Entry>();
 
-            var currentZoneIndex = ClientRuntime.World.CurrentZoneIndex ?? loadedCurrentZoneIndex ?? 0;
+            var currentZoneIndex = ResolveDisplayedCurrentZoneIndex() ?? 0;
             var entries = new MapZoneListView.Entry[loadedZones.Count];
             for (var i = 0; i < loadedZones.Count; i++)
             {
@@ -309,31 +310,44 @@ namespace PhamNhanOnline.Client.UI.World
 
         private string BuildCurrentZoneText()
         {
-            if (!ClientRuntime.IsInitialized || !ClientRuntime.World.CurrentZoneIndex.HasValue)
+            var currentZoneIndex = ResolveDisplayedCurrentZoneIndex();
+            if (!currentZoneIndex.HasValue)
                 return currentZonePrefix + "-";
 
-            return currentZonePrefix + ClientRuntime.World.CurrentZoneIndex.Value.ToString(CultureInfo.InvariantCulture);
+            return currentZonePrefix + currentZoneIndex.Value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private int? ResolveDisplayedCurrentZoneIndex()
+        {
+            if (!ClientRuntime.IsInitialized)
+                return loadedCurrentZoneIndex;
+
+            var currentMapId = ClientRuntime.World.CurrentMapId;
+            if (loadedMapId.HasValue && currentMapId.HasValue && loadedMapId.Value == currentMapId.Value && loadedCurrentZoneIndex.HasValue)
+                return loadedCurrentZoneIndex;
+
+            return ClientRuntime.World.CurrentZoneIndex ?? loadedCurrentZoneIndex;
         }
 
         private string ResolveStatusText()
         {
             if (!ClientRuntime.IsInitialized)
-                return "Client runtime chưa khởi tạo.";
+                return "Client runtime chua khoi tao.";
 
             if (!ClientRuntime.World.CurrentMapId.HasValue)
-                return "Chưa vào map.";
+                return "Chua vao map.";
 
             if (switchInFlight)
                 return lastStatusMessage;
 
             if (loadInFlight)
-                return "Đang tải danh sách khu...";
+                return "Dang tai danh sach khu...";
 
             if (!string.IsNullOrWhiteSpace(lastStatusMessage))
                 return lastStatusMessage;
 
             return loadedMapId == ClientRuntime.World.CurrentMapId && loadedZones.Count > 0
-                ? "Chọn khu muốn vào."
+                ? "Chon khu muon vao."
                 : emptyZoneListText;
         }
 
@@ -343,7 +357,7 @@ namespace PhamNhanOnline.Client.UI.World
                 ? unsupportedMapText
                 : string.Format(
                     CultureInfo.InvariantCulture,
-                    "Tải danh sách khu thất bại: {0}",
+                    "Tai danh sach khu that bai: {0}",
                     code ?? MessageCode.UnknownError);
         }
 
@@ -351,7 +365,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "Đổi sang khu {0} thất bại: {1}",
+                "Doi sang khu {0} that bai: {1}",
                 zoneIndex,
                 code ?? MessageCode.UnknownError);
         }
@@ -360,7 +374,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             var currentMapId = ClientRuntime.IsInitialized ? ClientRuntime.World.CurrentMapId : null;
             var currentMapName = ClientRuntime.IsInitialized ? ClientRuntime.World.CurrentMapName : string.Empty;
-            var currentZoneIndex = ClientRuntime.IsInitialized ? ClientRuntime.World.CurrentZoneIndex : null;
+            var currentZoneIndex = ResolveDisplayedCurrentZoneIndex();
             var entriesSnapshot = loadedZones.Count <= 0
                 ? string.Empty
                 : string.Join(

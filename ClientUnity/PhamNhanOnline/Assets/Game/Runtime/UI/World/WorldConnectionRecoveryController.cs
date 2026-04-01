@@ -30,7 +30,8 @@ namespace PhamNhanOnline.Client.UI.World
             if (!ClientRuntime.IsInitialized || ClientRuntime.ConnectionRecovery == null)
                 return;
 
-            if (!ClientRuntime.ConnectionRecovery.IsRecovering)
+            var recovery = ClientRuntime.ConnectionRecovery;
+            if (!recovery.IsRecovering && !recovery.IsForcedLogoutPending)
                 return;
 
             RefreshPopup();
@@ -47,16 +48,17 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             var recovery = ClientRuntime.ConnectionRecovery;
-            if (!recovery.IsRecovering)
+            if (!recovery.IsRecovering && !recovery.IsForcedLogoutPending)
             {
                 popupView.Hide();
                 return;
             }
 
             popupView.Show(
-                recovery.ConnectionLostMessage,
-                recovery.RecoveryStatusText,
-                allowClose: false);
+                recovery.ActivePopupMessage,
+                recovery.ActivePopupStatusText,
+                recovery.ActivePopupAllowClose,
+                recovery.IsForcedLogoutPending ? (System.Action)recovery.ConfirmForcedLogout : null);
         }
     }
 }

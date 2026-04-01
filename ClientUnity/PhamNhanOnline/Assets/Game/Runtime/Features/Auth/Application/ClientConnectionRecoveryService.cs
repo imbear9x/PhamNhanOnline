@@ -1,6 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using GameShared.Messages;
+using GameShared.Packets;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Infrastructure.Config;
@@ -14,6 +16,8 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
     {
         private const float RecoveryWindowSeconds = 3f;
         private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(1);
+        private const string ConnectionLostMessageText = "Mat ket noi toi server.";
+        private const string AccountLoggedInElsewhereMessageText = "Tai khoan da duoc dang nhap tren thiet bi khac.";
 
         private readonly ClientConnectionService connection;
         private readonly ClientAuthService authService;
@@ -26,6 +30,7 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
         private CancellationTokenSource recoveryCancellation;
         private Guid? lastWorldCharacterId;
         private string pendingLoginPopupMessage = string.Empty;
+        private string forcedLogoutMessage = string.Empty;
         private DateTime recoveryDeadlineUtc;
 
         public ClientConnectionRecoveryService(
@@ -46,12 +51,14 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
             this.settings = settings;
 
             connection.StateChanged += HandleConnectionStateChanged;
+            connection.Packets.Subscribe<SessionTerminationPacket>(HandleSessionTermination);
             characterState.CurrentStateChanged += HandleCharacterCurrentStateChanged;
         }
 
         public event Action RecoveryStateChanged;
 
         public bool IsRecovering { get; private set; }
+        public bool IsForcedLogoutPending { get; private set; }
 
         public float RemainingReconnectSeconds
         {
@@ -71,18 +78,38 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
                 if (!IsRecovering)
                     return string.Empty;
 
-                return string.Format("Đang thử kết nối lại trong {0:0} giây.", Math.Ceiling(RemainingReconnectSeconds));
+                return string.Format("Dang thu ket noi lai trong {0:0} giay.", Math.Ceiling(RemainingReconnectSeconds));
             }
         }
 
         public string ConnectionLostMessage
         {
-            get { return "Mất kết nối tới server."; }
+            get { return ConnectionLostMessageText; }
+        }
+
+        public string ActivePopupMessage
+        {
+            get { return IsForcedLogoutPending ? forcedLogoutMessage : ConnectionLostMessage; }
+        }
+
+        public string ActivePopupStatusText
+        {
+            get { return IsForcedLogoutPending ? string.Empty : RecoveryStatusText; }
+        }
+
+        public bool ActivePopupAllowClose
+        {
+            get { return IsForcedLogoutPending; }
+        }
+
+        public bool ShouldBlockGameplayInput
+        {
+            get { return IsRecovering || IsForcedLogoutPending; }
         }
 
         public bool ShouldPreserveRuntimeStateOnDisconnect
         {
-            get { return IsRecovering || CanAttemptWorldRecovery(); }
+            get { return IsRecovering || IsForcedLogoutPending || CanAttemptWorldRecovery(); }
         }
 
         public bool ConsumePendingLoginPopup(out string message)
@@ -96,10 +123,20 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
         {
             CancelRecovery();
             pendingLoginPopupMessage = string.Empty;
+            forcedLogoutMessage = string.Empty;
             lastWorldCharacterId = null;
             IsRecovering = false;
+            IsForcedLogoutPending = false;
             ClearPreservedRuntimeState();
             RaiseRecoveryStateChanged();
+        }
+
+        public async void ConfirmForcedLogout()
+        {
+            if (!IsForcedLogoutPending)
+                return;
+
+            await CompleteForcedLogoutAsync();
         }
 
         private void HandleCharacterCurrentStateChanged(CharacterCurrentStateChangeNotice notice)
@@ -115,13 +152,18 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
             if (state != ClientConnectionState.Disconnected)
                 return;
 
-            if (IsRecovering)
+            if (IsRecovering || IsForcedLogoutPending)
                 return;
 
             if (!CanAttemptWorldRecovery())
                 return;
 
             _ = AttemptWorldRecoveryAsync();
+        }
+
+        private void HandleSessionTermination(SessionTerminationPacket packet)
+        {
+            BeginForcedLogout(packet.Message);
         }
 
         private bool CanAttemptWorldRecovery()
@@ -154,9 +196,18 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
             {
                 while (!cancellationToken.IsCancellationRequested && DateTime.UtcNow < recoveryDeadlineUtc)
                 {
-                    recovered = await TryReconnectOnceAsync(resumeToken, characterId.Value, cancellationToken);
-                    if (recovered)
+                    var outcome = await TryReconnectOnceAsync(resumeToken, characterId.Value, cancellationToken);
+                    if (outcome == RecoveryAttemptOutcome.Recovered)
+                    {
+                        recovered = true;
                         break;
+                    }
+
+                    if (outcome == RecoveryAttemptOutcome.ForcedLogout)
+                    {
+                        await HandleForcedLogoutDetectedAsync();
+                        return;
+                    }
 
                     await ResetConnectionAsync(cancellationToken);
 
@@ -188,33 +239,76 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
                 return;
             }
 
+            if (IsForcedLogoutPending)
+                return;
+
             await HandleRecoveryFailedAsync();
         }
 
-        private async Task<bool> TryReconnectOnceAsync(string resumeToken, Guid characterId, CancellationToken cancellationToken)
+        private async Task<RecoveryAttemptOutcome> TryReconnectOnceAsync(string resumeToken, Guid characterId, CancellationToken cancellationToken)
         {
             var connectResult = await connection.ConnectAsync(cancellationToken);
             if (!connectResult.Success)
-                return false;
+                return RecoveryAttemptOutcome.Retry;
 
             var reconnectResult = await authService.ReconnectAsync(resumeToken);
             if (!reconnectResult.Success)
-                return false;
+            {
+                if (reconnectResult.Code == MessageCode.AccountLoggedInElsewhere)
+                    return RecoveryAttemptOutcome.ForcedLogout;
+
+                return RecoveryAttemptOutcome.Retry;
+            }
 
             var enterWorldResult = await characterService.EnterWorldAsync(characterId);
             if (!enterWorldResult.Success)
-                return false;
+                return RecoveryAttemptOutcome.Retry;
 
             if (!string.Equals(sceneFlow.ActiveSceneName, settings.WorldSceneName, StringComparison.Ordinal))
                 await sceneFlow.LoadSceneAsync(settings.WorldSceneName, LoadSceneMode.Single, cancellationToken);
 
-            return true;
+            return RecoveryAttemptOutcome.Recovered;
         }
 
         private async Task HandleRecoveryFailedAsync()
         {
             IsRecovering = false;
             pendingLoginPopupMessage = ConnectionLostMessage;
+            RaiseRecoveryStateChanged();
+
+            await ResetConnectionAsync(CancellationToken.None);
+            authState.Clear();
+            lastWorldCharacterId = null;
+            ClearPreservedRuntimeState();
+
+            if (!string.Equals(sceneFlow.ActiveSceneName, settings.LoginSceneName, StringComparison.Ordinal))
+                await sceneFlow.LoadSceneAsync(settings.LoginSceneName, LoadSceneMode.Single);
+        }
+
+        private async Task HandleForcedLogoutDetectedAsync()
+        {
+            BeginForcedLogout(AccountLoggedInElsewhereMessageText);
+            await ResetConnectionAsync(CancellationToken.None);
+        }
+
+        private void BeginForcedLogout(string message)
+        {
+            CancelRecovery();
+            IsRecovering = false;
+            IsForcedLogoutPending = true;
+            pendingLoginPopupMessage = string.Empty;
+            forcedLogoutMessage = string.IsNullOrWhiteSpace(message)
+                ? AccountLoggedInElsewhereMessageText
+                : message;
+            RaiseRecoveryStateChanged();
+        }
+
+        private async Task CompleteForcedLogoutAsync()
+        {
+            CancelRecovery();
+            IsRecovering = false;
+            IsForcedLogoutPending = false;
+            forcedLogoutMessage = string.Empty;
             RaiseRecoveryStateChanged();
 
             await ResetConnectionAsync(CancellationToken.None);
@@ -264,6 +358,13 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
             var handler = RecoveryStateChanged;
             if (handler != null)
                 handler();
+        }
+
+        private enum RecoveryAttemptOutcome
+        {
+            Retry = 0,
+            Recovered = 1,
+            ForcedLogout = 2
         }
     }
 }

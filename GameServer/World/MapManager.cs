@@ -90,6 +90,24 @@ public sealed class MapManager
         return removed;
     }
 
+    public bool TryGetInstanceContainingPlayer(int mapId, Guid playerId, out MapInstance instance)
+    {
+        instance = null!;
+        if (!_maps.TryGetValue(mapId, out var instances))
+            return false;
+
+        foreach (var candidate in instances.Values)
+        {
+            if (!candidate.ContainsPlayer(playerId))
+                continue;
+
+            instance = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
     public MapDefinition ResolveDefinitionOrDefault(int? mapId) => _catalog.ResolveOrDefault(mapId);
 
     public IReadOnlyCollection<MapInstance> GetAllInstancesSnapshot()
@@ -406,3 +424,4 @@ public sealed class MapManager
         return zoneIndex >= 1 && zoneIndex <= definition.MaxPublicZoneCount;
     }
 }
+

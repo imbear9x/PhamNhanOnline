@@ -34,6 +34,7 @@ public enum MessageCode : int
     CredentialAlreadyLinkedToOtherAccount = 2013,
     ReconnectTokenInvalid = 2014,
     ReconnectSessionExpired = 2015,
+    AccountLoggedInElsewhere = 2016,
 
     CharacterNameInvalid = 3000,
     CharacterAlreadyExists = 3001,
