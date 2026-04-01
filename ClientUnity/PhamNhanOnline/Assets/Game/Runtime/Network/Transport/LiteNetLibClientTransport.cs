@@ -10,15 +10,44 @@ using PhamNhanOnline.Client.Shared.Protocol;
 
 namespace PhamNhanOnline.Client.Network.Transport
 {
-    public sealed class LiteNetLibClientTransport : IClientTransport, INetEventListener
+    public sealed class LiteNetLibClientTransport : IClientTransport, IClientTransportDebugControl, INetEventListener
     {
+        private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
         private readonly object sync = new object();
 
         private NetManager netManager;
         private NetPeer peer;
         private TaskCompletionSource<ConnectionAttemptResult> connectCompletionSource;
+        private bool debugNetworkBlocked;
+        private DateTime? debugNetworkBlockUntilUtc;
 
         public ClientConnectionState State { get; private set; } = ClientConnectionState.Disconnected;
+        public bool IsDebugNetworkBlocked
+        {
+            get
+            {
+                lock (sync)
+                {
+                    RefreshDebugBlockStateNoLock();
+                    return debugNetworkBlocked;
+                }
+            }
+        }
+
+        public float DebugNetworkBlockRemainingSeconds
+        {
+            get
+            {
+                lock (sync)
+                {
+                    RefreshDebugBlockStateNoLock();
+                    if (!debugNetworkBlocked || !debugNetworkBlockUntilUtc.HasValue)
+                        return 0f;
+
+                    return Math.Max(0f, (float)(debugNetworkBlockUntilUtc.Value - DateTime.UtcNow).TotalSeconds);
+                }
+            }
+        }
 
         public event Action<ClientConnectionState> StateChanged;
         public event Action<ArraySegment<byte>> PayloadReceived;
@@ -32,6 +61,10 @@ namespace PhamNhanOnline.Client.Network.Transport
 
                 if (State == ClientConnectionState.Connecting && connectCompletionSource != null)
                     return connectCompletionSource.Task;
+
+                RefreshDebugBlockStateNoLock();
+                if (debugNetworkBlocked)
+                    return Task.FromResult(ConnectionAttemptResult.Failed("Debug network block is active."));
 
                 CleanupTransport();
 
@@ -62,6 +95,7 @@ namespace PhamNhanOnline.Client.Network.Transport
                     SetState(ClientConnectionState.Connecting);
                     netManager.Connect(endpoint.Host, endpoint.Port, string.Empty);
                     ClientLog.Info(string.Format("LiteNetLib connect requested to {0}.", endpoint));
+                    StartConnectTimeout(endpoint, connectCompletionSource);
                     return connectCompletionSource.Task;
                 }
                 catch (Exception ex)
@@ -81,13 +115,37 @@ namespace PhamNhanOnline.Client.Network.Transport
 
         public void Tick()
         {
-            var manager = netManager;
+            NetManager manager = null;
+            var shouldForceDisconnect = false;
+
+            lock (sync)
+            {
+                RefreshDebugBlockStateNoLock();
+                shouldForceDisconnect = debugNetworkBlocked &&
+                                        (netManager != null || peer != null || State == ClientConnectionState.Connected || State == ClientConnectionState.Connecting);
+
+                if (!shouldForceDisconnect)
+                    manager = netManager;
+            }
+
+            if (shouldForceDisconnect)
+            {
+                DisconnectInternal();
+                return;
+            }
+
             if (manager != null)
                 manager.PollEvents();
         }
 
         public void Send(ArraySegment<byte> payload, DeliveryMethod deliveryMethod)
         {
+            if (IsDebugNetworkBlocked)
+            {
+                ClientLog.Warn(string.Format("Dropped {0} outbound bytes because debug network block is active.", payload.Count));
+                return;
+            }
+
             if (peer == null || State != ClientConnectionState.Connected)
             {
                 ClientLog.Warn(string.Format("Dropped {0} outbound bytes because no server peer is connected yet.", payload.Count));
@@ -99,6 +157,12 @@ namespace PhamNhanOnline.Client.Network.Transport
 
         public void OnPeerConnected(NetPeer connectedPeer)
         {
+            if (IsDebugNetworkBlocked)
+            {
+                connectedPeer.Disconnect();
+                return;
+            }
+
             peer = connectedPeer;
             SetState(ClientConnectionState.Connected);
             TryCompleteConnect(ConnectionAttemptResult.Succeeded(string.Format("Connected to {0}:{1}.", connectedPeer.Address, connectedPeer.Port)));
@@ -143,6 +207,36 @@ namespace PhamNhanOnline.Client.Network.Transport
         public void OnConnectionRequest(ConnectionRequest request)
         {
             request.Reject();
+        }
+
+        public void BlockNetwork(TimeSpan? duration = null)
+        {
+            lock (sync)
+            {
+                debugNetworkBlocked = true;
+                debugNetworkBlockUntilUtc = duration.HasValue && duration.Value > TimeSpan.Zero
+                    ? DateTime.UtcNow.Add(duration.Value)
+                    : (DateTime?)null;
+            }
+
+            ClientLog.Warn(duration.HasValue && duration.Value > TimeSpan.Zero
+                ? string.Format("Debug network block enabled for {0:0.0}s.", duration.Value.TotalSeconds)
+                : "Debug network block enabled.");
+        }
+
+        public void UnblockNetwork()
+        {
+            var wasBlocked = false;
+            lock (sync)
+            {
+                RefreshDebugBlockStateNoLock();
+                wasBlocked = debugNetworkBlocked;
+                debugNetworkBlocked = false;
+                debugNetworkBlockUntilUtc = null;
+            }
+
+            if (wasBlocked)
+                ClientLog.Info("Debug network block cleared.");
         }
 
         private void DisconnectInternal()
@@ -200,6 +294,47 @@ namespace PhamNhanOnline.Client.Network.Transport
             connectCompletionSource = null;
             if (pending != null)
                 pending.TrySetResult(result);
+        }
+
+        private void RefreshDebugBlockStateNoLock()
+        {
+            if (!debugNetworkBlocked || !debugNetworkBlockUntilUtc.HasValue)
+                return;
+
+            if (DateTime.UtcNow < debugNetworkBlockUntilUtc.Value)
+                return;
+
+            debugNetworkBlocked = false;
+            debugNetworkBlockUntilUtc = null;
+            ClientLog.Info("Debug network block expired.");
+        }
+
+        private void StartConnectTimeout(ServerEndpoint endpoint, TaskCompletionSource<ConnectionAttemptResult> pendingConnect)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(ConnectTimeout).ConfigureAwait(false);
+                }
+                catch
+                {
+                    return;
+                }
+
+                lock (sync)
+                {
+                    if (!ReferenceEquals(connectCompletionSource, pendingConnect) ||
+                        State != ClientConnectionState.Connecting)
+                    {
+                        return;
+                    }
+
+                    ClientLog.Warn(string.Format("Connection attempt to {0} timed out after {1:0.0}s.", endpoint, ConnectTimeout.TotalSeconds));
+                    TryCompleteConnect(ConnectionAttemptResult.Failed("Không thể kết nối tới server."));
+                    DisconnectInternal();
+                }
+            });
         }
 
         private static byte[] ToArray(ArraySegment<byte> payload)

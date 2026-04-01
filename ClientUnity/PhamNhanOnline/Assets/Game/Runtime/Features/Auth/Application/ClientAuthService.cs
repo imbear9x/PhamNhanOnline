@@ -77,7 +77,6 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
             if (state != ClientConnectionState.Disconnected)
                 return;
 
-            authState.Clear();
             CompletePending(ref loginCompletionSource, AuthOperationResult.From(false, null, "Connection closed."));
             CompletePending(ref reconnectCompletionSource, AuthOperationResult.From(false, null, "Connection closed."));
         }

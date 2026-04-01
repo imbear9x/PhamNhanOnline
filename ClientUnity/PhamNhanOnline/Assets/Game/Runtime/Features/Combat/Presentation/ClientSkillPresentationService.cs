@@ -76,6 +76,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
         {
             activeExecutions.Clear();
             presentationState.Clear();
+            CharacterSkillPresenterRegistry.ClearAllPresentations();
         }
 
         private void HandleSkillCastStarted(SkillCastStartedNotice notice)

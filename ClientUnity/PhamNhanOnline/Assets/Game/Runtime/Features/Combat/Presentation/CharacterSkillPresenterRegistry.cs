@@ -58,6 +58,22 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
                    presenter != null;
         }
 
+        public static void ClearAllPresentations()
+        {
+            var presenters = new HashSet<CharacterSkillPresenter>();
+            foreach (var presenter in ByCharacterId.Values)
+            {
+                if (presenter != null)
+                    presenters.Add(presenter);
+            }
+            foreach (var presenter in ByTargetHandleKey.Values)
+            {
+                if (presenter != null)
+                    presenters.Add(presenter);
+            }
+            foreach (var presenter in presenters)
+                presenter.ClearPresentation();
+        }
         private static string BuildHandleKey(WorldTargetHandle handle)
         {
             return string.Concat((int)handle.Kind, ":", handle.TargetId ?? string.Empty);

@@ -375,7 +375,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var currentState = ClientRuntime.Character.CurrentState;
             var shouldBlock =
                 (currentState.HasValue && currentState.Value.CurrentState == CultivatingStateCode) ||
-                WorldMenuController.IsAnyMenuOpen;
+                WorldMenuController.IsAnyMenuOpen ||
+                (ClientRuntime.ConnectionRecovery != null && ClientRuntime.ConnectionRecovery.IsRecovering);
             localActionController.SetInputBlocked(shouldBlock);
         }
 

@@ -92,6 +92,8 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
     public string IssueResumeToken(ConnectionSession session, Guid accountId)
     {
+        DisconnectDuplicateSessions(session, accountId);
+
         var token = CreateResumeToken();
         var ticket = new ResumeTicket(accountId, IsConnected: true, ExpiresAtUtc: DateTime.MaxValue);
         _resumeTickets[token] = ticket;
@@ -191,6 +193,13 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         {
             _runtimeSaveService.FlushPlayerAsync(session.PlayerId).GetAwaiter().GetResult();
             _worldManager.RemovePlayer(session.PlayerId);
+        }
+        else if (session.IsAuthenticated &&
+                 _worldManager.TryGetPlayer(session.PlayerId, out var replacementOwner))
+        {
+            Logger.Info(
+                $"Disconnected session no longer owns online player. AccountId={session.PlayerId}, " +
+                $"DisconnectedConnectionId={session.ConnectionId}, ActiveConnectionId={replacementOwner.ConnectionId}");
         }
 
         if (!session.IsAuthenticated || string.IsNullOrWhiteSpace(session.ResumeToken))
@@ -354,6 +363,34 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
             _resumeTickets.TryRemove(kv.Key, out ResumeTicket? _);
             _accountTokens.TryRemove(kv.Value.AccountId, out var _);
+        }
+    }
+
+    private void DisconnectDuplicateSessions(ConnectionSession replacementSession, Guid accountId)
+    {
+        var duplicates = _sessions.Values
+            .Where(existing =>
+                existing.ConnectionId != replacementSession.ConnectionId &&
+                existing.IsAuthenticated &&
+                existing.PlayerId == accountId)
+            .ToArray();
+
+        foreach (var duplicate in duplicates)
+        {
+            if (_worldManager.IsOwnedByConnection(accountId, duplicate.ConnectionId))
+            {
+                Logger.Info(
+                    $"Replacing active session for account {accountId}. " +
+                    $"OldConnectionId={duplicate.ConnectionId}, NewConnectionId={replacementSession.ConnectionId}");
+                _runtimeSaveService.FlushPlayerAsync(accountId).GetAwaiter().GetResult();
+                _worldManager.RemovePlayer(accountId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(duplicate.ResumeToken))
+                _resumeTickets.TryRemove(duplicate.ResumeToken, out ResumeTicket? _);
+
+            duplicate.ResumeToken = null;
+            duplicate.Peer.Disconnect();
         }
     }
 

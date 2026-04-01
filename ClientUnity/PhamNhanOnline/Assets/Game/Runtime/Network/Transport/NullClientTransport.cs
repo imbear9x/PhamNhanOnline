@@ -8,9 +8,11 @@ using PhamNhanOnline.Client.Shared.Protocol;
 
 namespace PhamNhanOnline.Client.Network.Transport
 {
-    public sealed class NullClientTransport : IClientTransport
+    public sealed class NullClientTransport : IClientTransport, IClientTransportDebugControl
     {
         public ClientConnectionState State { get; private set; } = ClientConnectionState.Disconnected;
+        public bool IsDebugNetworkBlocked { get; private set; }
+        public float DebugNetworkBlockRemainingSeconds { get; private set; }
 
         public event Action<ClientConnectionState> StateChanged;
         public event Action<ArraySegment<byte>> PayloadReceived
@@ -46,6 +48,20 @@ namespace PhamNhanOnline.Client.Network.Transport
         public void Send(ArraySegment<byte> payload, DeliveryMethod deliveryMethod)
         {
             ClientLog.Warn(string.Format("Dropped {0} bytes because no gameplay transport is wired yet.", payload.Count));
+        }
+
+        public void BlockNetwork(TimeSpan? duration = null)
+        {
+            IsDebugNetworkBlocked = true;
+            DebugNetworkBlockRemainingSeconds = duration.HasValue && duration.Value > TimeSpan.Zero
+                ? (float)duration.Value.TotalSeconds
+                : 0f;
+        }
+
+        public void UnblockNetwork()
+        {
+            IsDebugNetworkBlocked = false;
+            DebugNetworkBlockRemainingSeconds = 0f;
         }
 
         private void SetState(ClientConnectionState state)

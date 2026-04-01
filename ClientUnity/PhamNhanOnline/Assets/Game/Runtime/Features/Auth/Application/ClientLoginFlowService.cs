@@ -35,16 +35,16 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
             {
                 var connectResult = await connection.ConnectAsync();
                 if (!connectResult.Success)
-                    return LoginFlowResult.Failed(connectResult.Message);
+                    return LoginFlowResult.Failed(connectResult.Message, LoginFlowFailureKind.ConnectionUnavailable);
             }
 
             var authResult = await authService.LoginAsync(username, password);
             if (!authResult.Success)
-                return LoginFlowResult.Failed(authResult.Message);
+                return LoginFlowResult.Failed(authResult.Message, LoginFlowFailureKind.AuthenticationFailed);
 
             var listResult = await characterService.LoadCharacterListAsync();
             if (!listResult.Success)
-                return LoginFlowResult.Failed(listResult.Message);
+                return LoginFlowResult.Failed(listResult.Message, LoginFlowFailureKind.CharacterListFailed);
 
             if (listResult.Characters.Length == 0)
                 return LoginFlowResult.RequiresCharacterCreationResult("Account has no characters yet. Create one to continue.");
@@ -52,7 +52,7 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
             var selectedCharacter = listResult.Characters[0];
             var enterWorldResult = await characterService.EnterWorldAsync(selectedCharacter.CharacterId);
             if (!enterWorldResult.Success)
-                return LoginFlowResult.Failed(enterWorldResult.Message);
+                return LoginFlowResult.Failed(enterWorldResult.Message, LoginFlowFailureKind.EnterWorldFailed);
 
             if (sceneFlow.ActiveSceneName != settings.WorldSceneName)
                 await sceneFlow.LoadSceneAsync(settings.WorldSceneName, LoadSceneMode.Single);

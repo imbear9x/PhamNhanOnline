@@ -67,6 +67,47 @@ namespace PhamNhanOnline.Client.Network.Session
             ClientLog.Info(string.Format("Sent packet {0} ({1} bytes, {2}).", packet.GetType().Name, payload.Length, deliveryMethod));
         }
 
+        public bool SupportsDebugNetworkControl
+        {
+            get { return transport is IClientTransportDebugControl; }
+        }
+
+        public bool IsDebugNetworkBlocked
+        {
+            get
+            {
+                var debugControl = transport as IClientTransportDebugControl;
+                return debugControl != null && debugControl.IsDebugNetworkBlocked;
+            }
+        }
+
+        public float DebugNetworkBlockRemainingSeconds
+        {
+            get
+            {
+                var debugControl = transport as IClientTransportDebugControl;
+                return debugControl != null ? debugControl.DebugNetworkBlockRemainingSeconds : 0f;
+            }
+        }
+
+        public void BlockNetworkForDebug(TimeSpan? duration = null)
+        {
+            var debugControl = transport as IClientTransportDebugControl;
+            if (debugControl == null)
+                return;
+
+            debugControl.BlockNetwork(duration);
+        }
+
+        public void UnblockNetworkForDebug()
+        {
+            var debugControl = transport as IClientTransportDebugControl;
+            if (debugControl == null)
+                return;
+
+            debugControl.UnblockNetwork();
+        }
+
         private void HandleTransportStateChanged(ClientConnectionState state)
         {
             State = state;

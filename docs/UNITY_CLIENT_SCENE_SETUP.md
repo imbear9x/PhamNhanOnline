@@ -1108,6 +1108,81 @@ Checklist:
 5. Luu y khi test
 - Sau khi seed DB xong, hay restart `GameServer` de `EnemyDefinitionCatalog` nap lai template/spawn group moi.
 - Sau khi restart server, vao lai `Player Home` de instance private moi duoc tao voi spawn group `wood_doll`.
+
+### 3.10. Map zone panel checklist
+
+Mục tiêu:
+- có một panel riêng để xem danh sách khu của map public hiện tại
+- khi mở panel, client gọi `GetMapZonesPacket`
+- mỗi dòng khu hiển thị:
+- tên khu
+- số lượng người `current/max`
+- màu nền theo mật độ:
+- dưới `30%` -> xanh lá
+- từ `30%` đến `80%` -> vàng
+- trên `80%` nhưng chưa full -> cam
+- `100%` -> đỏ
+- click vào khu sẽ gọi `SwitchMapZonePacket`
+
+Hierarchy gợi ý:
+
+```text
+WorldUiRoot
+  HudCanvas
+    MapZoneUiController
+    MapZonePanel
+      Window
+        Header
+          TitleText
+          CurrentMapText
+          CurrentZoneText
+          StatusText
+        ZoneListRoot
+          Viewport
+            Content
+              ZoneItemTemplate
+                Background
+                ZoneNameText
+                PlayerCountText
+                CurrentZoneBadgeRoot
+                  CurrentZoneBadgeText
+```
+
+Component placement:
+- `MapZoneUiController` -> `WorldMapZonePanelController`
+- `ZoneListRoot` hoặc `Content` -> `MapZoneListView`
+- `ZoneItemTemplate` -> `MapZoneListItemView`
+
+Wiring cho `WorldMapZonePanelController`:
+- `Title Text` -> `TitleText`
+- `Current Map Text` -> `CurrentMapText`
+- `Current Zone Text` -> `CurrentZoneText`
+- `Status Text` -> `StatusText`
+- `Zone List View` -> `ZoneListRoot` hoặc object có `MapZoneListView`
+- phần màu cần chỉnh trực tiếp trong Inspector chỉ gồm 4 màu background theo mật độ:
+- `Low Occupancy Color`
+- `Medium Occupancy Color`
+- `High Occupancy Color`
+- `Full Occupancy Color`
+
+Wiring cho `MapZoneListView`:
+- `Content Root` -> `Content`
+- `Item Template` -> `ZoneItemTemplate`
+- giữ `Hide Template Object` bật
+
+Wiring cho `MapZoneListItemView`:
+- `Button` -> `ZoneItemTemplate`
+- `Background Image` -> `Background`
+- `Zone Name Text` -> `ZoneNameText`
+- `Player Count Text` -> `PlayerCountText`
+- `Current Zone Badge Root` -> `CurrentZoneBadgeRoot`
+- `Current Zone Badge Text` -> `CurrentZoneBadgeText` nếu bạn thật sự muốn hiện chữ, còn không có thể để trống
+- các màu text/icon khác nên để prefab quyết định, code không override
+
+Ghi chú:
+- panel này nên được bật/tắt bởi UI flow ngoài hoặc object cha, giống các panel world khác
+- panel này hiện tải snapshot khu khi mở panel hoặc sau khi đổi khu thành công
+- server hiện chưa push realtime số lượng người trong từng khu, nên nếu muốn live hơn thì phase sau có thể thêm refresh định kỳ hoặc packet broadcast riêng
 - `wood_doll` hien dang dat tam o `x = 500`, `y = 125` theo he toa do server cua map home.
 - Sau khi ban chot prefab/home layout, ta se tinh tiep vi tri chinh xac trong map.
 

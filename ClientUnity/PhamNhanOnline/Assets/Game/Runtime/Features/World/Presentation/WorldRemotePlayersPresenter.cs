@@ -107,6 +107,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             UpsertPresenter(notice.Character, snap: false);
         }
 
+        private void HandleObservedCharactersChanged()
+        {
+            if (!IsMapVisualReady())
+                return;
+
+            SyncRemotePlayers();
+        }
+
         private void HandleObservedCharacterStateChanged(PhamNhanOnline.Client.Features.World.Application.ObservedCharacterStateChangedNotice notice)
         {
             if (!IsMapVisualReady())
@@ -190,6 +198,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ClientRuntime.World.ObservedCharacterRemoved += HandleObservedCharacterRemoved;
             ClientRuntime.World.ObservedCharacterMoved += HandleObservedCharacterMoved;
             ClientRuntime.World.ObservedCharacterStateChanged += HandleObservedCharacterStateChanged;
+            ClientRuntime.World.ObservedCharactersChanged += HandleObservedCharactersChanged;
             runtimeEventsBound = true;
         }
 
@@ -202,6 +211,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ClientRuntime.World.ObservedCharacterRemoved -= HandleObservedCharacterRemoved;
             ClientRuntime.World.ObservedCharacterMoved -= HandleObservedCharacterMoved;
             ClientRuntime.World.ObservedCharacterStateChanged -= HandleObservedCharacterStateChanged;
+            ClientRuntime.World.ObservedCharactersChanged -= HandleObservedCharactersChanged;
             runtimeEventsBound = false;
         }
 

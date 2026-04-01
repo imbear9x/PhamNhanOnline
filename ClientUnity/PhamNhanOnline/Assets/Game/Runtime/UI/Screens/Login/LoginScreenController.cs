@@ -1,10 +1,9 @@
-using System;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Infrastructure.Config;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Screens.Login
@@ -27,6 +26,7 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
 
         [Header("Feedback")]
         [SerializeField] private TMP_Text statusText;
+        [SerializeField] private ServerConnectionPopupView connectionLostPopupView;
 
         private void Awake()
         {
@@ -35,18 +35,19 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
             if (connectButton != null)
                 connectButton.onClick.AddListener(HandleConnectClicked);
 
-
-
             SetStatus("Ready.");
 
-            // hard code để test cho nhanh
-            usernameInput.text = "admin123456";
-            passwordInput.text = "admin@admin";
+            // hard code de test cho nhanh
+            if (usernameInput != null)
+                usernameInput.text = "admin123456";
+            if (passwordInput != null)
+                passwordInput.text = "admin@admin";
         }
 
         private void Start()
         {
             SetCharacterCreationMode(false);
+            ConsumePendingConnectionLostPopup();
         }
 
         private void EnsureRuntimeInitialized()
@@ -66,8 +67,6 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
         {
             if (connectButton != null)
                 connectButton.onClick.RemoveListener(HandleConnectClicked);
-
-           
         }
 
         private async void HandleConnectClicked()
@@ -77,6 +76,8 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
                 SetStatus("Client runtime is not initialized.");
                 return;
             }
+
+            HideConnectionLostPopup();
 
             if (connectButton != null)
                 connectButton.interactable = false;
@@ -96,12 +97,12 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
             }
 
             SetStatus(result.Message);
+            if (result.IsConnectionFailure)
+                ShowConnectionLostPopup();
 
             if (connectButton != null)
                 connectButton.interactable = true;
         }
-
-        
 
         private void SetCharacterCreationMode(bool enabled)
         {
@@ -122,6 +123,35 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
         {
             if (statusText != null)
                 statusText.text = message;
+        }
+
+        private void ConsumePendingConnectionLostPopup()
+        {
+            if (!ClientRuntime.IsInitialized || ClientRuntime.ConnectionRecovery == null)
+                return;
+
+            if (ClientRuntime.ConnectionRecovery.ConsumePendingLoginPopup(out var message))
+                ShowConnectionLostPopup(message);
+        }
+
+        private void ShowConnectionLostPopup(string message = null)
+        {
+            if (connectionLostPopupView == null)
+            {
+                ClientLog.Warn("LoginScreenController could not show connection lost popup because Connection Lost Popup View is not assigned.");
+                return;
+            }
+
+            var resolvedMessage = string.IsNullOrWhiteSpace(message)
+                ? "Mất kết nối tới server."
+                : message;
+            connectionLostPopupView.Show(resolvedMessage, allowClose: true);
+        }
+
+        private void HideConnectionLostPopup()
+        {
+            if (connectionLostPopupView != null)
+                connectionLostPopupView.Hide();
         }
     }
 }

@@ -1,4 +1,5 @@
 using GameShared.Packets;
+using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Network.Session;
@@ -138,11 +139,20 @@ namespace PhamNhanOnline.Client.Features.World.Application
 
         private void HandleConnectionStateChanged(ClientConnectionState state)
         {
-            if (state == ClientConnectionState.Disconnected)
+            if (state != ClientConnectionState.Disconnected)
+                return;
+
+            targetState.Clear();
+
+            if (ClientRuntime.ConnectionRecovery != null &&
+                ClientRuntime.ConnectionRecovery.ShouldPreserveRuntimeStateOnDisconnect)
             {
-                worldState.Clear();
-                targetState.Clear();
+                worldState.ClearRuntimeEntitiesPreservingMap();
+                ClientRuntime.SkillPresentationService?.Clear();
+                return;
             }
+
+            worldState.Clear();
         }
     }
 }

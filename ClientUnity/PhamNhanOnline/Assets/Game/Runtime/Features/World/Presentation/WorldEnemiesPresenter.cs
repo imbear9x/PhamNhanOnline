@@ -93,6 +93,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             UpsertPresenter(notice.Enemy);
         }
 
+        private void HandleEnemiesChanged()
+        {
+            if (!IsMapVisualReady())
+                return;
+
+            SyncEnemies();
+        }
+
         private void SyncEnemies()
         {
             if (!ClientRuntime.IsInitialized)
@@ -168,6 +176,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ClientRuntime.World.EnemyUpserted += HandleEnemyUpserted;
             ClientRuntime.World.EnemyRemoved += HandleEnemyRemoved;
             ClientRuntime.World.EnemyHpChanged += HandleEnemyHpChanged;
+            ClientRuntime.World.EnemiesChanged += HandleEnemiesChanged;
             runtimeEventsBound = true;
         }
 
@@ -179,6 +188,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ClientRuntime.World.EnemyUpserted -= HandleEnemyUpserted;
             ClientRuntime.World.EnemyRemoved -= HandleEnemyRemoved;
             ClientRuntime.World.EnemyHpChanged -= HandleEnemyHpChanged;
+            ClientRuntime.World.EnemiesChanged -= HandleEnemiesChanged;
             runtimeEventsBound = false;
         }
 

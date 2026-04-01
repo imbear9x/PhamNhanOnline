@@ -92,11 +92,13 @@ namespace PhamNhanOnline.Client.UI.World
         private void Start()
         {
             TryRegisterScreen();
+            TryBindRuntimeEvents();
         }
 
         private void Update()
         {
             TryRegisterScreen();
+            TryBindRuntimeEvents();
 
             if (IsMenuVisible)
             {
@@ -130,6 +132,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (isRegistered && ClientRuntime.IsInitialized)
                 ClientRuntime.UiScreens.Unregister(ScreenId, panelRoot);
 
+            UnbindRuntimeEvents();
             if (activeInstance == this)
                 activeInstance = null;
         }
@@ -215,6 +218,29 @@ namespace PhamNhanOnline.Client.UI.World
 
             ClientRuntime.UiScreens.Register(ScreenId, panelRoot != null ? panelRoot : gameObject);
             isRegistered = true;
+        }
+
+        private void TryBindRuntimeEvents()
+        {
+            if (!ClientRuntime.IsInitialized)
+                return;
+
+            ClientRuntime.Connection.StateChanged -= HandleConnectionStateChanged;
+            ClientRuntime.Connection.StateChanged += HandleConnectionStateChanged;
+        }
+
+        private void UnbindRuntimeEvents()
+        {
+            if (!ClientRuntime.IsInitialized)
+                return;
+
+            ClientRuntime.Connection.StateChanged -= HandleConnectionStateChanged;
+        }
+
+        private void HandleConnectionStateChanged(PhamNhanOnline.Client.Network.Session.ClientConnectionState state)
+        {
+            if (state == PhamNhanOnline.Client.Network.Session.ClientConnectionState.Disconnected)
+                HideMenu();
         }
 
         private void SetMenuVisible(bool visible)

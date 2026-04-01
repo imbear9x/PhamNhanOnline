@@ -106,6 +106,10 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
                 trackForCleanup: false);
         }
 
+        public void ClearPresentation()
+        {
+            ClearAllFx();
+        }
         private void Awake()
         {
             AutoWireReferences();

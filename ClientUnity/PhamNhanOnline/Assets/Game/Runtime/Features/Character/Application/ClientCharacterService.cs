@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using GameShared.Messages;
 using GameShared.Models;
 using GameShared.Packets;
+using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Network.Session;
 
 namespace PhamNhanOnline.Client.Features.Character.Application
@@ -303,7 +304,12 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             if (state != ClientConnectionState.Disconnected)
                 return;
 
-            characterState.Clear();
+            if (ClientRuntime.ConnectionRecovery == null ||
+                !ClientRuntime.ConnectionRecovery.ShouldPreserveRuntimeStateOnDisconnect)
+            {
+                characterState.Clear();
+            }
+
             CompletePending(ref characterListCompletionSource, new CharacterListLoadResult(false, null, Array.Empty<CharacterModel>(), "Connection closed."));
             CompletePending(ref characterDataCompletionSource, new CharacterDataLoadResult(false, null, null, null, null, "Connection closed."));
             CompletePending(ref characterCreateCompletionSource, new CharacterCreateResult(false, null, null, null, null, "Connection closed."));

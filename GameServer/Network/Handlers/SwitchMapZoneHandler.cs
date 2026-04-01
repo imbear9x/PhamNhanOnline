@@ -135,12 +135,13 @@ public sealed class SwitchMapZoneHandler : IPacketHandler<SwitchMapZonePacket>
             return Task.CompletedTask;
         }
 
+        var targetPosition = definition.ClampPosition(player.Position);
         var entryContext = new MapEntryContext(
-            MapEntryReason.DefaultSpawn,
+            MapEntryReason.SavedPosition,
             PortalId: null,
             SpawnPointId: null,
-            definition.DefaultSpawnPosition);
-        _runtimeService.UpdatePosition(player, definition.MapId, targetZoneIndex, definition.DefaultSpawnPosition);
+            targetPosition);
+        _runtimeService.UpdatePosition(player, definition.MapId, targetZoneIndex, targetPosition);
         player.SetMapEntryContext(entryContext);
         _interestService.PublishWorldSnapshot(player);
 

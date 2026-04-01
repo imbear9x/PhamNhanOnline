@@ -54,6 +54,10 @@ namespace PhamNhanOnline.Client.Features.World.Application
             int? entryPortalId,
             int? entrySpawnPointId)
         {
+            var didMapVisualChange =
+                CurrentMapId != map.MapId ||
+                !string.Equals(CurrentClientMapKey, map.ClientMapKey ?? string.Empty, StringComparison.Ordinal);
+
             CurrentMapId = map.MapId;
             CurrentZoneIndex = zoneIndex;
             CurrentMapName = map.Name ?? string.Empty;
@@ -84,7 +88,9 @@ namespace PhamNhanOnline.Client.Features.World.Application
                     portals[map.Portals[i].Id] = map.Portals[i];
             }
 
-            NotifyMapChanged();
+            if (didMapVisualChange)
+                NotifyMapChanged();
+
             NotifyObservedCharactersChanged();
             NotifyEnemiesChanged();
         }
@@ -293,6 +299,13 @@ namespace PhamNhanOnline.Client.Features.World.Application
             NotifyEnemiesChanged();
         }
 
+        public void ClearRuntimeEntitiesPreservingMap()
+        {
+            observedCharacters.Clear();
+            enemies.Clear();
+            NotifyObservedCharactersChanged();
+            NotifyEnemiesChanged();
+        }
         public static string BuildPortalTargetId(int portalId)
         {
             return PortalTargetIdPrefix + portalId.ToString(CultureInfo.InvariantCulture);
