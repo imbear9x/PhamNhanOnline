@@ -419,6 +419,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (kind == WorldTargetKind.None)
                 return;
 
+            if (kind == WorldTargetKind.GroundReward)
+                return;
+
             if (IsLocalPlayerHandle(handle))
                 return;
 

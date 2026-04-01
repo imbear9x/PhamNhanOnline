@@ -16,7 +16,8 @@ namespace PhamNhanOnline.Client.Features.Targeting.Application
         Player = 1,
         Enemy = 2,
         Boss = 3,
-        Npc = 4
+        Npc = 4,
+        GroundReward = 5
     }
 
     public readonly struct WorldTargetHandle : IEquatable<WorldTargetHandle>
@@ -41,6 +42,13 @@ namespace PhamNhanOnline.Client.Features.Targeting.Application
             return new WorldTargetHandle(
                 isBoss ? WorldTargetKind.Boss : WorldTargetKind.Enemy,
                 runtimeId.ToString(CultureInfo.InvariantCulture));
+        }
+
+        public static WorldTargetHandle CreateGroundReward(int rewardId)
+        {
+            return new WorldTargetHandle(
+                WorldTargetKind.GroundReward,
+                rewardId.ToString(CultureInfo.InvariantCulture));
         }
 
         public bool Equals(WorldTargetHandle other)
@@ -204,6 +212,16 @@ namespace PhamNhanOnline.Client.Features.Targeting.Application
                 CurrentTarget.Value.TargetId,
                 runtimeId.ToString(CultureInfo.InvariantCulture),
                 StringComparison.Ordinal);
+        }
+
+        public bool IsSelectedGroundReward(int rewardId)
+        {
+            return CurrentTarget.HasValue &&
+                   CurrentTarget.Value.Kind == WorldTargetKind.GroundReward &&
+                   string.Equals(
+                       CurrentTarget.Value.TargetId,
+                       PhamNhanOnline.Client.Features.World.Application.ClientWorldState.BuildGroundRewardTargetId(rewardId),
+                       StringComparison.Ordinal);
         }
 
         private void NotifyChanged()

@@ -12,8 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a4ca79802f0a2884596253ec5ef55312, type: 3}
   m_Name: EnemyPresentationCatalog
   m_EditorClassIdentifier: 
-  defaultEnemyPrefab: {fileID: 0}
+  defaultEnemyPrefab: {fileID: 1256030191282544, guid: 125feebcde020894d91740ac65606688, type: 3}
   codeEntries:
   - code: wood_doll
     prefab: {fileID: 6915535442127511761, guid: 8e193126da294a64e89056ebe4bc8681, type: 3}
+  - code: enemy_soi_lang_bang
+    prefab: {fileID: 6915535442127511761, guid: 72cc811c897499f4faf924f2f6f49698, type: 3}
+  - code: enemy_gau_nau_tinh
+    prefab: {fileID: 6915535442127511761, guid: 0c9de6765fbf0e449b7857dcc72361ae, type: 3}
   templateOverrides: []

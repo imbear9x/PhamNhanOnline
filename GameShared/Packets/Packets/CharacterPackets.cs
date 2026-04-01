@@ -376,3 +376,30 @@ public partial class UnequipInventoryItemResultPacket : IPacket
     public CharacterBaseStatsModel? BaseStats { get; set; }
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
+
+[Packet(71)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class DropInventoryItemPacket : IPacket
+{
+    [ValidationCode(MessageCode.InventoryItemInvalid)]
+    [Required]
+    [Range(1, long.MaxValue)]
+    public long? PlayerItemId { get; set; }
+
+    [ValidationCode(MessageCode.InventoryItemQuantityInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? Quantity { get; set; }
+}
+
+[Packet(72)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class DropInventoryItemResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public long? PlayerItemId { get; set; }
+    public int? Quantity { get; set; }
+    public int? RewardId { get; set; }
+}

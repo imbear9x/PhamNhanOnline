@@ -21,6 +21,7 @@ namespace PhamNhanOnline.Client.Features.Targeting.Application
                     return WorldTargetInteractionMode.HostileAttack;
                 case WorldTargetKind.Player:
                 case WorldTargetKind.Npc:
+                case WorldTargetKind.GroundReward:
                     return WorldTargetInteractionMode.ContextOnly;
                 default:
                     return WorldTargetInteractionMode.None;

@@ -218,6 +218,12 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.SessionTerminationPacket:
                 id = 70;
                 return true;
+            case global::GameShared.Packets.DropInventoryItemPacket:
+                id = 71;
+                return true;
+            case global::GameShared.Packets.DropInventoryItemResultPacket:
+                id = 72;
+                return true;
             default:
                 id = default;
                 return false;
@@ -298,6 +304,8 @@ internal static class PacketGeneratedRegistry
             68 => new global::GameShared.Packets.SkillCastStartedPacket(),
             69 => new global::GameShared.Packets.SkillImpactResolvedPacket(),
             70 => new global::GameShared.Packets.SessionTerminationPacket(),
+            71 => new global::GameShared.Packets.DropInventoryItemPacket(),
+            72 => new global::GameShared.Packets.DropInventoryItemResultPacket(),
             _ => null
         };
     }

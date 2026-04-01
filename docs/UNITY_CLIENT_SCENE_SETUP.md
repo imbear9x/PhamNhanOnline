@@ -1186,6 +1186,140 @@ Ghi chú:
 - `wood_doll` hien dang dat tam o `x = 500`, `y = 125` theo he toa do server cua map home.
 - Sau khi ban chot prefab/home layout, ta se tinh tiep vi tri chinh xac trong map.
 
+### 3.11. Ground item pickup/drop checklist
+
+Mục tiêu:
+- item rơi trên đất hiện trong world bằng chính item icon
+- icon có viền đen do code tạo, không cần vẽ art riêng
+- click vào item rơi trên đất để nhặt
+- nhặt xong icon thu nhỏ, bay về local player rồi biến mất
+- mở balo sẽ thấy item đã vào inventory
+- trong balo, option `Vứt ra` chỉ hiện với item được phép drop
+- item stack khi drop sẽ mở popup chọn số lượng
+
+Hierarchy gợi ý trong `World` scene:
+
+```text
+WorldRoot
+  WorldGroundRewardPresenter (component)
+
+WorldUiRoot
+  ScreenCanvas
+    InventoryDropQuantityPopup
+      Frame
+        TitleText
+        ItemNameText
+        QuantityText
+        QuantitySlider
+        QuantityInput
+        ConfirmButton
+        CancelButton
+      DimmerButton
+```
+
+Checklist:
+
+1. World presenter cho item rơi trên đất
+- Trên `WorldRoot`, giữ `WorldSceneController`.
+- Thêm hoặc để script tự tạo `WorldGroundRewardPresenter`.
+- Wiring gợi ý:
+- `Rewards Root` -> `EntitiesRoot`
+- `World Map Presenter` -> object đang gắn `WorldMapPresenter`
+- `World Target Action Controller` -> `WorldRoot`
+- `World Local Player Presenter` -> `WorldRoot`
+- `Item Presentation Catalog` -> cùng asset `InventoryItemPresentationCatalog.asset` đang dùng cho inventory
+- `Reward Visual Prefab` -> optional, dùng nếu bạn muốn tự kiểm soát size/look của item ground bằng prefab
+
+2. Config visual cho item rơi trên đất
+- Trên `WorldGroundRewardPresenter`, có thể dùng tạm:
+- `Sorting Layer Name` -> `Ground`
+- `Sorting Order` -> `12`
+- `Icon World Size` -> `0.65`
+- `Outline Offset World Units` -> `0.025`
+- `Outline Color` -> đen
+- `Bob Amplitude World Units` -> `0.05`
+- `Bob Speed` -> `2.8`
+- `Vertical Offset World Units` -> `0`
+- `Selected Scale Multiplier` -> `1.1`
+- `Snap To Ground` -> bật
+- `Ground Probe Height` -> `3`
+- `Ground Probe Distance` -> `12`
+- `Ground Contact Offset` -> `0`
+- Viền đen hiện tại được tạo bằng code bằng cách duplicate sprite 4 hướng quanh icon.
+- Nếu icon art của bạn đã có viền đen sẵn, set `Outline Offset World Units = 0` để tắt viền code.
+- `Vertical Offset World Units` lúc này chỉ là offset thêm SAU KHI đã snap xuống mặt đất.
+- Nếu muốn item nằm sát ground collider, để `Vertical Offset World Units = 0`.
+- Nếu có `Reward Visual Prefab`, presenter sẽ ưu tiên dùng scale/render bounds của prefab thay vì scale code-generated.
+
+2.1. Cấu hình prefab optional cho ground item
+- Nếu bạn muốn item ground có kích thước đúng với map/screen của mình, hãy tạo một prefab riêng, ví dụ `GroundRewardVisual.prefab`.
+- Gắn component `GroundRewardVisualBindings` lên root prefab đó.
+- Wiring trong `GroundRewardVisualBindings`:
+- `Scale Root` -> object bạn muốn scale khi item được chọn hoặc lúc pickup animation
+- `Icon Renderer` -> sprite renderer chính sẽ được thay sprite icon item
+- `Outline Renderers` -> optional, nếu prefab của bạn đã có các sprite outline riêng
+- `Bounds Renderers` -> optional, dùng để tính snap xuống mặt đất theo bounds thật của prefab
+- Nếu không gắn `GroundRewardVisualBindings`, code sẽ fallback:
+- lấy `SpriteRenderer` đầu tiên trong prefab làm icon chính
+- dùng toàn bộ renderer trong prefab để tính bounds snap ground
+- Nếu không gắn `Reward Visual Prefab`, client sẽ fallback về icon dựng bằng code như hiện tại.
+
+3. Layer/sorting
+- Root target của item rơi trên đất sẽ tự đặt vào layer `Targetable`.
+- Visual con có thể dùng layer `GroundReward` nếu layer này đã có trong project.
+- Raycast snap ground sẽ ưu tiên `Ground Layer Mask` nếu bạn set tay.
+- Nếu để trống, code sẽ fallback sang layer `WorldMap`, rồi mới tới default raycast layers.
+- `WorldClickTargetSelectionController` đã được chỉnh để KHÔNG auto target item rơi trên đất.
+- Item rơi trên đất vẫn click chọn và primary action được bình thường.
+
+4. Inventory option popup
+- `WorldInventoryPanelController` vẫn dùng `PotentialUpgradeOptionsPopupView` cho menu item.
+- Giờ option `Vứt ra` chỉ hiện khi `InventoryItemModel.IsDroppable = true`.
+
+5. Popup số lượng drop cho item stack
+- Tạo `InventoryDropQuantityPopup`.
+- Gắn `InventoryDropQuantityPopupView` lên root popup.
+- Wiring:
+- `Panel Root` -> `InventoryDropQuantityPopup`
+- `Title Text` -> `TitleText`
+- `Item Name Text` -> `ItemNameText`
+- `Quantity Text` -> `QuantityText`
+- `Quantity Slider` -> `QuantitySlider`
+- `Quantity Input` -> `QuantityInput`
+- `Confirm Button` -> `ConfirmButton`
+- `Cancel Button` -> `CancelButton`
+- `Dimmer Button` -> `DimmerButton`
+
+6. Wiring trên `WorldInventoryPanelController`
+- Kéo thêm field mới:
+- `Drop Quantity Popup View` -> `InventoryDropQuantityPopup`
+- Nếu field này để trống:
+- item quantity = 1 vẫn drop bình thường
+- item stack > 1 sẽ fallback drop 1 item
+
+7. Catalog icon item rơi trên đất
+- Ground reward presenter dùng cùng `InventoryItemPresentationCatalog`.
+- Nó ưu tiên icon của item đầu tiên trong reward.
+- Vì vậy key icon/background trong DB và catalog hiện tại của inventory sẽ được tái sử dụng luôn cho item rơi trên đất.
+
+8. Flow runtime hiện tại
+- Server drop reward từ quái/boss đã spawn vào world runtime.
+- Client nhận:
+- snapshot `GroundRewards`
+- `GroundRewardSpawnedPacket`
+- `GroundRewardDespawnedPacket`
+- click vào item rơi trên đất -> client gửi `PickupGroundRewardPacket`
+- pickup thành công -> client force reload inventory
+- drop từ inventory -> client gửi `DropInventoryItemPacket`
+- drop thành công -> client force reload inventory, server spawn reward mới ra world
+
+9. Lưu ý phase hiện tại
+- Chưa thêm validate server cuối cùng cho:
+- khoảng cách nhặt item
+- anti spam pickup/drop
+- placement hardening khi drop
+- Mục này để làm sau như đã thống nhất.
+
 ## Naming rules
 
 Use clear scene roots so another developer can understand quickly:

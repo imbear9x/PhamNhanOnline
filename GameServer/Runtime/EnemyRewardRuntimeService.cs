@@ -348,11 +348,20 @@ public sealed class EnemyRewardRuntimeService
 
             foreach (var item in created.OrderBy(x => x.Id))
             {
+                if (!_itemDefinitions.TryGetItem(item.ItemTemplateId, out var definition))
+                    throw new InvalidOperationException($"Reward item template {item.ItemTemplateId} was not found.");
+
                 result.Add(new GroundRewardItem(
                     item.Id,
                     item.ItemTemplateId,
+                    definition.Code,
+                    definition.Name,
+                    definition.ItemType,
+                    definition.Rarity,
                     item.Quantity,
-                    item.IsBound));
+                    item.IsBound,
+                    definition.Icon,
+                    definition.BackgroundIcon));
             }
         }
 

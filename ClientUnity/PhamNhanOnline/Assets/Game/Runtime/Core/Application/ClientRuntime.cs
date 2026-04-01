@@ -43,6 +43,7 @@ namespace PhamNhanOnline.Client.Core.Application
         public static ClientTargetState Target { get; private set; }
         public static ClientWorldState World { get; private set; }
         public static ClientWorldService WorldService { get; private set; }
+        public static ClientGroundRewardService GroundRewardService { get; private set; }
         public static ClientWorldTravelService WorldTravelService { get; private set; }
         public static ClientLoginFlowService LoginFlow { get; private set; }
         public static UiScreenService UiScreens { get; private set; }
@@ -80,6 +81,7 @@ namespace PhamNhanOnline.Client.Core.Application
             CombatService = new ClientCombatService(Connection, Combat, Character);
             SkillPresentationService = new ClientSkillPresentationService(Combat, Skills, SkillPresentation);
             WorldService = new ClientWorldService(Connection, World, Character, Target);
+            GroundRewardService = new ClientGroundRewardService(Connection, InventoryService, Target);
             WorldTravelService = new ClientWorldTravelService(Connection);
             LoginFlow = new ClientLoginFlowService(Connection, AuthService, CharacterService, SceneFlow, settings);
 

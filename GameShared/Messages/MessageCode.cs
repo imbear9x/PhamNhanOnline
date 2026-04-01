@@ -79,6 +79,7 @@ public enum MessageCode : int
     SkillTargetRequired = 3040,
     SkillTargetTypeNotSupported = 3041,
     SkillTargetInvalid = 3042,
+    InventoryItemQuantityInvalid = 3043,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001,

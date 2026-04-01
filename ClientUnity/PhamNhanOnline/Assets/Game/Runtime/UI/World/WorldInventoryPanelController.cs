@@ -31,6 +31,7 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private InventoryDropZoneView inventoryDropZoneView;
         [SerializeField] private InventoryItemTooltipView itemTooltipView;
         [SerializeField] private PotentialUpgradeOptionsPopupView itemOptionsPopupView;
+        [SerializeField] private InventoryDropQuantityPopupView dropQuantityPopupView;
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
 
         [Header("Character Display")]
@@ -43,7 +44,9 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private string inventoryLoadingText = "Dang tai kho do...";
         [SerializeField] private string emptyInventoryText = "Kho do dang trong.";
         [SerializeField] private string inventoryActionInProgressText = "Dang cap nhat trang bi...";
-        [SerializeField] private string inventoryDropPendingText = "Tinh nang vut item chua duoc bat o phase nay.";
+        [SerializeField] private string inventoryDropActionText = "Dang vut vat pham...";
+        [SerializeField] private string inventoryDropSuccessText = "Da vut vat pham.";
+        [SerializeField] private string inventoryDropUnavailableText = "Vat pham nay khong the vut.";
         [SerializeField] private string inventoryUnsupportedUseText = "Vat pham nay chua co logic su dung o phase nay.";
         [SerializeField] private string inventoryMartialArtAlreadyLearnedText = "Cong phap nay da hoc roi, khong the dung them sach.";
         [SerializeField] private string inventoryAlreadyEquippedText = "Trang bi nay dang duoc mac.";
@@ -71,6 +74,7 @@ namespace PhamNhanOnline.Client.UI.World
         private long? popupPlayerItemId;
         private bool suppressTooltipUntilHoverReset;
         private bool inventoryActionInFlight;
+        private long? dropQuantityPopupPlayerItemId;
 
         private void Awake()
         {
@@ -121,6 +125,12 @@ namespace PhamNhanOnline.Client.UI.World
             TryReloadMissingData();
             TryReloadInventory();
             UpdateItemPopupVisibility();
+        }
+
+        private void OnDisable()
+        {
+            HideItemOptionsPopup(force: true);
+            HideDropQuantityPopup(force: true);
         }
 
         private void OnDestroy()
@@ -396,17 +406,23 @@ namespace PhamNhanOnline.Client.UI.World
         private void UpdateItemPopupVisibility()
         {
             if (itemOptionsPopupView == null || !itemOptionsPopupView.IsVisible)
+            {
+                UpdateDropQuantityPopupVisibility();
                 return;
+            }
 
             if (popupPlayerItemId.HasValue &&
                 (!ClientRuntime.IsInitialized || !ClientRuntime.Inventory.TryGetItem(popupPlayerItemId.Value, out _)))
             {
                 HideItemOptionsPopup(force: true);
+                UpdateDropQuantityPopupVisibility();
                 return;
             }
 
             if (DidClickBlankSpaceInsideInventoryPanel())
                 HideItemOptionsPopup();
+
+            UpdateDropQuantityPopupVisibility();
         }
 
         private void HandleInventoryItemClicked(InventoryItemModel item)
@@ -544,7 +560,8 @@ namespace PhamNhanOnline.Client.UI.World
 
             var options = new List<PotentialUpgradeOptionsPopupView.OptionEntry>(2);
             options.Add(BuildUseOption(item));
-            options.Add(new PotentialUpgradeOptionsPopupView.OptionEntry("Vut ra", HandleDropItemClicked));
+            if (item.IsDroppable)
+                options.Add(new PotentialUpgradeOptionsPopupView.OptionEntry("Vut ra", () => HandleDropItemClicked(item)));
             return options;
         }
 
@@ -748,10 +765,22 @@ namespace PhamNhanOnline.Client.UI.World
             return System.Threading.Tasks.Task.CompletedTask;
         }
 
-        private void HandleDropItemClicked()
+        private void HandleDropItemClicked(InventoryItemModel item)
         {
             HideItemOptionsPopup(force: true);
-            ApplyInventoryStatus(inventoryDropPendingText, force: true);
+            if (!item.IsDroppable)
+            {
+                ApplyInventoryStatus(inventoryDropUnavailableText, force: true);
+                return;
+            }
+
+            if (item.Quantity > 1)
+            {
+                ShowDropQuantityPopup(item);
+                return;
+            }
+
+            _ = DropItemAsync(item.PlayerItemId, 1);
         }
 
         private void HideItemOptionsPopup(bool force = false)
@@ -762,6 +791,105 @@ namespace PhamNhanOnline.Client.UI.World
                 itemOptionsPopupView.Hide(force);
             if (itemTooltipView != null)
                 itemTooltipView.Hide(force: true);
+        }
+
+        private void ShowDropQuantityPopup(InventoryItemModel item)
+        {
+            if (dropQuantityPopupView == null)
+            {
+                _ = DropItemAsync(item.PlayerItemId, 1);
+                return;
+            }
+
+            dropQuantityPopupPlayerItemId = item.PlayerItemId;
+            dropQuantityPopupView.Show(
+                item.Name,
+                Mathf.Max(1, item.Quantity),
+                HandleDropQuantityConfirmed,
+                HandleDropQuantityCancelled);
+        }
+
+        private void HideDropQuantityPopup(bool force = false)
+        {
+            dropQuantityPopupPlayerItemId = null;
+            if (dropQuantityPopupView != null)
+                dropQuantityPopupView.Hide(force);
+        }
+
+        private void UpdateDropQuantityPopupVisibility()
+        {
+            if (dropQuantityPopupView == null || !dropQuantityPopupView.IsVisible)
+                return;
+
+            if (!dropQuantityPopupPlayerItemId.HasValue ||
+                !ClientRuntime.IsInitialized ||
+                !ClientRuntime.Inventory.TryGetItem(dropQuantityPopupPlayerItemId.Value, out _))
+            {
+                HideDropQuantityPopup(force: true);
+            }
+        }
+
+        private void HandleDropQuantityConfirmed(int quantity)
+        {
+            InventoryItemModel item;
+            if (!dropQuantityPopupPlayerItemId.HasValue ||
+                !ClientRuntime.IsInitialized ||
+                !ClientRuntime.Inventory.TryGetItem(dropQuantityPopupPlayerItemId.Value, out item))
+            {
+                HideDropQuantityPopup(force: true);
+                return;
+            }
+
+            HideDropQuantityPopup(force: true);
+            _ = DropItemAsync(item.PlayerItemId, Mathf.Clamp(quantity, 1, Mathf.Max(1, item.Quantity)));
+        }
+
+        private void HandleDropQuantityCancelled()
+        {
+            HideDropQuantityPopup(force: true);
+        }
+
+        private async System.Threading.Tasks.Task DropItemAsync(long playerItemId, int quantity)
+        {
+            if (inventoryActionInFlight || !ClientRuntime.IsInitialized)
+                return;
+
+            InventoryItemModel item;
+            if (!ClientRuntime.Inventory.TryGetItem(playerItemId, out item) || !item.IsDroppable)
+            {
+                ApplyInventoryStatus(inventoryDropUnavailableText, force: true);
+                return;
+            }
+
+            inventoryActionInFlight = true;
+            HideItemOptionsPopup(force: true);
+            HideDropQuantityPopup(force: true);
+            ApplyInventoryStatus(inventoryDropActionText, force: true);
+
+            try
+            {
+                var result = await ClientRuntime.InventoryService.DropItemAsync(playerItemId, quantity);
+                if (!result.Success)
+                {
+                    ClientLog.Warn($"WorldInventoryPanelController failed to drop item: {result.Message}");
+                    ApplyInventoryStatus(result.Message, force: true);
+                    return;
+                }
+
+                previewPlayerItemId = null;
+                ApplyInventoryStatus(inventoryDropSuccessText, force: true);
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Warn($"WorldInventoryPanelController drop exception: {ex.Message}");
+                ApplyInventoryStatus(ex.Message, force: true);
+            }
+            finally
+            {
+                inventoryActionInFlight = false;
+                RefreshFromRuntime(force: true);
+                RefreshInventory(force: true);
+            }
         }
 
         private bool DidClickBlankSpaceInsideInventoryPanel()

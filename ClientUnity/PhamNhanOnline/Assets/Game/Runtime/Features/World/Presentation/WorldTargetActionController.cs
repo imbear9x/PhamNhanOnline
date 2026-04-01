@@ -5,6 +5,7 @@ using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Character.Presentation;
 using PhamNhanOnline.Client.Features.Skills.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
+using PhamNhanOnline.Client.Features.World.Application;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -351,6 +352,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                     {
                         return worldMapPresenter.TryMapServerPositionToWorld(
                             new Vector2(enemy.PosX, enemy.PosY),
+                            out worldPosition);
+                    }
+
+                    break;
+
+                case WorldTargetKind.GroundReward:
+                    int rewardId;
+                    if (!ClientWorldState.TryParseGroundRewardTargetId(target.TargetId, out rewardId))
+                        break;
+
+                    GameShared.Models.GroundRewardModel reward;
+                    if (ClientRuntime.World.TryGetGroundReward(rewardId, out reward))
+                    {
+                        return worldMapPresenter.TryMapServerPositionToWorld(
+                            new Vector2(reward.PosX, reward.PosY),
                             out worldPosition);
                     }
 

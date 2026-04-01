@@ -18,6 +18,9 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
         private TaskCompletionSource<InventoryActionResult> equipCompletionSource;
         private TaskCompletionSource<InventoryActionResult> unequipCompletionSource;
         private TaskCompletionSource<InventoryActionResult> useMartialArtBookCompletionSource;
+        private TaskCompletionSource<InventoryActionResult> dropItemCompletionSource;
+
+        public event Action<int> DropToGroundSucceeded;
 
         public ClientInventoryService(
             ClientConnectionService connection,
@@ -32,6 +35,7 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
             connection.Packets.Subscribe<EquipInventoryItemResultPacket>(HandleEquipInventoryItemResult);
             connection.Packets.Subscribe<UnequipInventoryItemResultPacket>(HandleUnequipInventoryItemResult);
             connection.Packets.Subscribe<UseMartialArtBookResultPacket>(HandleUseMartialArtBookResult);
+            connection.Packets.Subscribe<DropInventoryItemResultPacket>(HandleDropInventoryItemResult);
             connection.StateChanged += HandleConnectionStateChanged;
         }
 
@@ -139,6 +143,31 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
             return useMartialArtBookCompletionSource.Task;
         }
 
+        public Task<InventoryActionResult> DropItemAsync(long playerItemId, int quantity)
+        {
+            if (connection.State != ClientConnectionState.Connected)
+            {
+                return Task.FromResult(new InventoryActionResult(
+                    false,
+                    null,
+                    inventoryState.Items,
+                    characterState.BaseStats,
+                    characterState.CurrentState,
+                    "Not connected to server."));
+            }
+
+            if (dropItemCompletionSource != null && !dropItemCompletionSource.Task.IsCompleted)
+                return dropItemCompletionSource.Task;
+
+            dropItemCompletionSource = new TaskCompletionSource<InventoryActionResult>();
+            connection.Send(new DropInventoryItemPacket
+            {
+                PlayerItemId = playerItemId,
+                Quantity = quantity
+            });
+            return dropItemCompletionSource.Task;
+        }
+
         private void HandleGetInventoryResult(GetInventoryResultPacket packet)
         {
             var items = packet.Items != null ? packet.Items.ToArray() : Array.Empty<InventoryItemModel>();
@@ -220,6 +249,49 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
                     : string.Format("Failed to use martial art book: {0}", packet.Code ?? MessageCode.UnknownError)));
         }
 
+        private async void HandleDropInventoryItemResult(DropInventoryItemResultPacket packet)
+        {
+            InventoryItemModel[] resolvedItems = inventoryState.Items;
+            if (packet.Success == true)
+            {
+                try
+                {
+                    var reloadResult = await LoadInventoryAsync(forceRefresh: true);
+                    resolvedItems = reloadResult.Success ? reloadResult.Items : inventoryState.Items;
+                }
+                catch
+                {
+                    resolvedItems = inventoryState.Items;
+                }
+
+                if (packet.RewardId.HasValue)
+                    NotifyDropToGroundSucceeded(packet.RewardId.Value);
+            }
+            else
+            {
+                inventoryState.ApplyFailure(
+                    packet.Code,
+                    string.Format("Failed to drop item: {0}", packet.Code ?? MessageCode.UnknownError));
+            }
+
+            CompletePending(ref dropItemCompletionSource, new InventoryActionResult(
+                packet.Success == true,
+                packet.Code,
+                resolvedItems,
+                characterState.BaseStats,
+                characterState.CurrentState,
+                packet.Success == true
+                    ? "Item dropped."
+                    : string.Format("Failed to drop item: {0}", packet.Code ?? MessageCode.UnknownError)));
+        }
+
+        private void NotifyDropToGroundSucceeded(int rewardId)
+        {
+            var handler = DropToGroundSucceeded;
+            if (handler != null)
+                handler(rewardId);
+        }
+
         private void HandleConnectionStateChanged(ClientConnectionState state)
         {
             if (state != ClientConnectionState.Disconnected)
@@ -247,6 +319,13 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
                 null,
                 "Connection closed."));
             CompletePending(ref useMartialArtBookCompletionSource, new InventoryActionResult(
+                false,
+                null,
+                Array.Empty<InventoryItemModel>(),
+                null,
+                null,
+                "Connection closed."));
+            CompletePending(ref dropItemCompletionSource, new InventoryActionResult(
                 false,
                 null,
                 Array.Empty<InventoryItemModel>(),

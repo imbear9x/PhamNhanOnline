@@ -295,8 +295,14 @@ public static class NetworkModelMapper
         return new GroundRewardItemModel
         {
             ItemTemplateId = item.ItemTemplateId,
+            Code = item.Code,
+            Name = item.Name,
+            ItemType = (int)item.ItemType,
+            Rarity = (int)item.Rarity,
             Quantity = item.Quantity,
-            IsBound = item.IsBound
+            IsBound = item.IsBound,
+            Icon = item.Icon,
+            BackgroundIcon = item.BackgroundIcon
         };
     }
 

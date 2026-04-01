@@ -153,5 +153,11 @@ public readonly record struct RewardTargetSnapshot(
 public sealed record GroundRewardItem(
     long PlayerItemId,
     int ItemTemplateId,
+    string Code,
+    string Name,
+    ItemType ItemType,
+    ItemRarity Rarity,
     int Quantity,
-    bool IsBound);
+    bool IsBound,
+    string? Icon,
+    string? BackgroundIcon);

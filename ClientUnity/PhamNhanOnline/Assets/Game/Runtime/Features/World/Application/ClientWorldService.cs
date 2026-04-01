@@ -32,6 +32,8 @@ namespace PhamNhanOnline.Client.Features.World.Application
             connection.Packets.Subscribe<EnemySpawnedPacket>(HandleEnemySpawned);
             connection.Packets.Subscribe<EnemyDespawnedPacket>(HandleEnemyDespawned);
             connection.Packets.Subscribe<EnemyHpChangedPacket>(HandleEnemyHpChanged);
+            connection.Packets.Subscribe<GroundRewardSpawnedPacket>(HandleGroundRewardSpawned);
+            connection.Packets.Subscribe<GroundRewardDespawnedPacket>(HandleGroundRewardDespawned);
             connection.Packets.Subscribe<CharacterCurrentStateChangedPacket>(HandleCharacterCurrentStateChanged);
             connection.StateChanged += HandleConnectionStateChanged;
         }
@@ -56,12 +58,14 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 packet.EntryPortalId,
                 packet.EntrySpawnPointId);
             worldState.ReplaceEnemies(null);
+            worldState.ReplaceGroundRewards(null);
             targetState.Clear();
         }
 
         private void HandleWorldRuntimeSnapshot(WorldRuntimeSnapshotPacket packet)
         {
             worldState.ReplaceEnemies(packet.Enemies);
+            worldState.ReplaceGroundRewards(packet.GroundRewards);
         }
 
         private void HandleObservedCharacterSpawned(ObservedCharacterSpawnedPacket packet)
@@ -126,6 +130,24 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 packet.CurrentHp,
                 packet.MaxHp,
                 packet.RuntimeState);
+        }
+
+        private void HandleGroundRewardSpawned(GroundRewardSpawnedPacket packet)
+        {
+            if (!packet.Reward.HasValue)
+                return;
+
+            worldState.UpsertGroundReward(packet.Reward.Value);
+        }
+
+        private void HandleGroundRewardDespawned(GroundRewardDespawnedPacket packet)
+        {
+            if (!packet.RewardId.HasValue)
+                return;
+
+            worldState.RemoveGroundReward(packet.RewardId.Value);
+            if (targetState.IsSelectedGroundReward(packet.RewardId.Value))
+                targetState.Clear();
         }
 
         private void HandleCharacterCurrentStateChanged(CharacterCurrentStateChangedPacket packet)

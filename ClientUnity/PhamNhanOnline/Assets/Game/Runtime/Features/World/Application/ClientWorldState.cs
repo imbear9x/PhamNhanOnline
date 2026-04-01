@@ -11,10 +11,12 @@ namespace PhamNhanOnline.Client.Features.World.Application
     {
         private readonly Dictionary<Guid, ObservedCharacterModel> observedCharacters = new Dictionary<Guid, ObservedCharacterModel>();
         private readonly Dictionary<int, EnemyRuntimeModel> enemies = new Dictionary<int, EnemyRuntimeModel>();
+        private readonly Dictionary<int, GroundRewardModel> groundRewards = new Dictionary<int, GroundRewardModel>();
         private readonly Dictionary<int, MapSpawnPointModel> spawnPoints = new Dictionary<int, MapSpawnPointModel>();
         private readonly Dictionary<int, MapPortalModel> portals = new Dictionary<int, MapPortalModel>();
         private readonly List<int> currentAdjacentMapIds = new List<int>();
         private const string PortalTargetIdPrefix = "portal:";
+        private const string GroundRewardTargetIdPrefix = "reward:";
 
         public event Action MapChanged;
         public event Action ObservedCharactersChanged;
@@ -26,6 +28,9 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public event Action<EnemyRuntimeModel> EnemyUpserted;
         public event Action<int> EnemyRemoved;
         public event Action<EnemyHpChangedNotice> EnemyHpChanged;
+        public event Action GroundRewardsChanged;
+        public event Action<GroundRewardModel> GroundRewardUpserted;
+        public event Action<int> GroundRewardRemoved;
 
         public int? CurrentMapId { get; private set; }
         public int? CurrentZoneIndex { get; private set; }
@@ -42,6 +47,8 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public IEnumerable<ObservedCharacterModel> ObservedCharacters { get { return observedCharacters.Values; } }
         public int EnemyCount { get { return enemies.Count; } }
         public IEnumerable<EnemyRuntimeModel> Enemies { get { return enemies.Values; } }
+        public int GroundRewardCount { get { return groundRewards.Count; } }
+        public IEnumerable<GroundRewardModel> GroundRewards { get { return groundRewards.Values; } }
         public IReadOnlyList<int> CurrentAdjacentMapIds { get { return currentAdjacentMapIds; } }
         public IEnumerable<MapSpawnPointModel> CurrentSpawnPoints { get { return spawnPoints.Values; } }
         public IEnumerable<MapPortalModel> CurrentPortals { get { return portals.Values; } }
@@ -72,6 +79,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
             currentAdjacentMapIds.Clear();
             observedCharacters.Clear();
             enemies.Clear();
+            groundRewards.Clear();
             spawnPoints.Clear();
             portals.Clear();
             if (map.AdjacentMapIds != null)
@@ -93,6 +101,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
 
             NotifyObservedCharactersChanged();
             NotifyEnemiesChanged();
+            NotifyGroundRewardsChanged();
         }
 
         public void ApplyLocalPlayerPosition(Vector2 localPlayerPosition)
@@ -179,6 +188,34 @@ namespace PhamNhanOnline.Client.Features.World.Application
             NotifyEnemiesChanged();
         }
 
+        public void ReplaceGroundRewards(IEnumerable<GroundRewardModel> rewardSnapshot)
+        {
+            groundRewards.Clear();
+            if (rewardSnapshot != null)
+            {
+                foreach (var reward in rewardSnapshot)
+                    groundRewards[reward.RewardId] = reward;
+            }
+
+            NotifyGroundRewardsChanged();
+        }
+
+        public void UpsertGroundReward(GroundRewardModel reward)
+        {
+            groundRewards[reward.RewardId] = reward;
+            NotifyGroundRewardUpserted(reward);
+            NotifyGroundRewardsChanged();
+        }
+
+        public void RemoveGroundReward(int rewardId)
+        {
+            if (!groundRewards.Remove(rewardId))
+                return;
+
+            NotifyGroundRewardRemoved(rewardId);
+            NotifyGroundRewardsChanged();
+        }
+
         public void UpsertEnemy(EnemyRuntimeModel enemy)
         {
             enemies[enemy.RuntimeId] = enemy;
@@ -234,6 +271,11 @@ namespace PhamNhanOnline.Client.Features.World.Application
             return enemies.TryGetValue(runtimeId, out enemy);
         }
 
+        public bool TryGetGroundReward(int rewardId, out GroundRewardModel reward)
+        {
+            return groundRewards.TryGetValue(rewardId, out reward);
+        }
+
         public bool TryGetSpawnPoint(int spawnPointId, out MapSpawnPointModel spawnPoint)
         {
             return spawnPoints.TryGetValue(spawnPointId, out spawnPoint);
@@ -269,6 +311,8 @@ namespace PhamNhanOnline.Client.Features.World.Application
                     return TryBuildEnemyTargetSnapshot(handle.TargetId, handle.Kind, out snapshot);
                 case WorldTargetKind.Npc:
                     return TryBuildPortalTargetSnapshot(handle.TargetId, out snapshot);
+                case WorldTargetKind.GroundReward:
+                    return TryBuildGroundRewardTargetSnapshot(handle.TargetId, out snapshot);
                 default:
                     return false;
             }
@@ -290,23 +334,32 @@ namespace PhamNhanOnline.Client.Features.World.Application
             currentAdjacentMapIds.Clear();
             observedCharacters.Clear();
             enemies.Clear();
+            groundRewards.Clear();
             spawnPoints.Clear();
             portals.Clear();
             NotifyMapChanged();
             NotifyObservedCharactersChanged();
             NotifyEnemiesChanged();
+            NotifyGroundRewardsChanged();
         }
 
         public void ClearRuntimeEntitiesPreservingMap()
         {
             observedCharacters.Clear();
             enemies.Clear();
+            groundRewards.Clear();
             NotifyObservedCharactersChanged();
             NotifyEnemiesChanged();
+            NotifyGroundRewardsChanged();
         }
         public static string BuildPortalTargetId(int portalId)
         {
             return PortalTargetIdPrefix + portalId.ToString(CultureInfo.InvariantCulture);
+        }
+
+        public static string BuildGroundRewardTargetId(int rewardId)
+        {
+            return GroundRewardTargetIdPrefix + rewardId.ToString(CultureInfo.InvariantCulture);
         }
 
         public static bool TryParsePortalTargetId(string targetId, out int portalId)
@@ -321,6 +374,20 @@ namespace PhamNhanOnline.Client.Features.World.Application
             var rawPortalId = targetId.Substring(PortalTargetIdPrefix.Length);
             return int.TryParse(rawPortalId, NumberStyles.Integer, CultureInfo.InvariantCulture, out portalId) &&
                    portalId > 0;
+        }
+
+        public static bool TryParseGroundRewardTargetId(string targetId, out int rewardId)
+        {
+            rewardId = 0;
+            if (string.IsNullOrWhiteSpace(targetId) ||
+                !targetId.StartsWith(GroundRewardTargetIdPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var rawRewardId = targetId.Substring(GroundRewardTargetIdPrefix.Length);
+            return int.TryParse(rawRewardId, NumberStyles.Integer, CultureInfo.InvariantCulture, out rewardId) &&
+                   rewardId > 0;
         }
 
         private void NotifyMapChanged()
@@ -391,6 +458,27 @@ namespace PhamNhanOnline.Client.Features.World.Application
             var handler = EnemyHpChanged;
             if (handler != null)
                 handler(notice);
+        }
+
+        private void NotifyGroundRewardsChanged()
+        {
+            var handler = GroundRewardsChanged;
+            if (handler != null)
+                handler();
+        }
+
+        private void NotifyGroundRewardUpserted(GroundRewardModel reward)
+        {
+            var handler = GroundRewardUpserted;
+            if (handler != null)
+                handler(reward);
+        }
+
+        private void NotifyGroundRewardRemoved(int rewardId)
+        {
+            var handler = GroundRewardRemoved;
+            if (handler != null)
+                handler(rewardId);
         }
 
         private bool TryBuildObservedCharacterTargetSnapshot(string targetId, out WorldTargetSnapshot snapshot)
@@ -478,6 +566,37 @@ namespace PhamNhanOnline.Client.Features.World.Application
 
             snapshot = new WorldTargetSnapshot(
                 WorldTargetKind.Npc,
+                targetId,
+                displayName,
+                0,
+                0,
+                false,
+                0,
+                0,
+                false,
+                false);
+            return true;
+        }
+
+        private bool TryBuildGroundRewardTargetSnapshot(string targetId, out WorldTargetSnapshot snapshot)
+        {
+            snapshot = default;
+
+            int rewardId;
+            GroundRewardModel reward;
+            if (!TryParseGroundRewardTargetId(targetId, out rewardId) || !groundRewards.TryGetValue(rewardId, out reward))
+                return false;
+
+            var itemCount = reward.Items != null ? reward.Items.Count : 0;
+            var displayName = itemCount switch
+            {
+                <= 0 => "Vat pham",
+                1 => string.IsNullOrWhiteSpace(reward.Items[0].Name) ? "Vat pham" : reward.Items[0].Name,
+                _ => "Nhieu vat pham"
+            };
+
+            snapshot = new WorldTargetSnapshot(
+                WorldTargetKind.GroundReward,
                 targetId,
                 displayName,
                 0,

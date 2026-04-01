@@ -89,6 +89,14 @@ namespace PhamNhanOnline.Client.UI.Inventory
             return new InventoryItemPresentation(iconSprite, backgroundSprite, nameColor);
         }
 
+        public InventoryItemPresentation Resolve(GroundRewardItemModel item)
+        {
+            var iconSprite = ResolveIcon(item.ItemTemplateId, item.Icon);
+            var backgroundSprite = ResolveBackground(item.ItemTemplateId, item.BackgroundIcon, item.Rarity, item.ItemType);
+            var nameColor = ResolveNameColor(item.Rarity);
+            return new InventoryItemPresentation(iconSprite, backgroundSprite, nameColor);
+        }
+
         public static string GetRarityLabel(int rarity)
         {
             switch ((InventoryItemRarity)rarity)
@@ -163,12 +171,17 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         private Sprite ResolveIcon(InventoryItemModel item)
         {
+            return ResolveIcon(item.ItemTemplateId, item.Icon);
+        }
+
+        private Sprite ResolveIcon(int itemTemplateId, string iconKey)
+        {
             TemplateOverrideEntry templateEntry;
-            if (TryGetTemplateOverride(item.ItemTemplateId, out templateEntry) && templateEntry.IconSprite != null)
+            if (TryGetTemplateOverride(itemTemplateId, out templateEntry) && templateEntry.IconSprite != null)
                 return templateEntry.IconSprite;
 
             Sprite sprite;
-            if (TryResolveByKey(iconEntries, item.Icon, out sprite))
+            if (TryResolveByKey(iconEntries, iconKey, out sprite))
                 return sprite;
 
             return defaultIconSprite;
@@ -176,18 +189,23 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         private Sprite ResolveBackground(InventoryItemModel item)
         {
+            return ResolveBackground(item.ItemTemplateId, item.BackgroundIcon, item.Rarity, item.ItemType);
+        }
+
+        private Sprite ResolveBackground(int itemTemplateId, string backgroundIconKey, int rarity, int itemType)
+        {
             TemplateOverrideEntry templateEntry;
-            if (TryGetTemplateOverride(item.ItemTemplateId, out templateEntry) && templateEntry.BackgroundSprite != null)
+            if (TryGetTemplateOverride(itemTemplateId, out templateEntry) && templateEntry.BackgroundSprite != null)
                 return templateEntry.BackgroundSprite;
 
             Sprite sprite;
-            if (TryResolveByKey(backgroundEntries, item.BackgroundIcon, out sprite))
+            if (TryResolveByKey(backgroundEntries, backgroundIconKey, out sprite))
                 return sprite;
 
-            if (TryResolveRarityBackground(item.Rarity, out sprite))
+            if (TryResolveRarityBackground(rarity, out sprite))
                 return sprite;
 
-            if (TryResolveItemTypeBackground(item.ItemType, out sprite))
+            if (TryResolveItemTypeBackground(itemType, out sprite))
                 return sprite;
 
             return defaultBackgroundSprite;
