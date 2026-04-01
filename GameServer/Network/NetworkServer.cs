@@ -18,6 +18,8 @@ namespace GameServer.Network;
 
 public sealed class NetworkServer : INetEventListener, INetworkSender
 {
+    private const string ReconnectHoldReasonExpired = "resume window expired";
+    private const string ReconnectHoldReasonFreshLogin = "fresh login replaced held session";
     private readonly NetManager _netManager;
     private readonly PacketDispatcher _dispatcher;
     private readonly WorldManager _worldManager;
@@ -27,7 +29,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     private readonly ConcurrentDictionary<string, ResumeTicket> _resumeTickets = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Guid, string> _accountTokens = new();
     private readonly CancellationTokenSource _shutdownCts = new();
-    private static readonly TimeSpan ResumeWindow = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan ResumeWindow = TimeSpan.FromSeconds(3);
 
     public NetworkServer(
         PacketDispatcher dispatcher,
@@ -93,6 +95,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     public string IssueResumeToken(ConnectionSession session, Guid accountId)
     {
         DisconnectDuplicateSessions(session, accountId);
+        ReleaseHeldPlayerIfAny(accountId, ReconnectHoldReasonFreshLogin);
 
         var token = CreateResumeToken();
         var ticket = new ResumeTicket(accountId, IsConnected: true, ExpiresAtUtc: DateTime.MaxValue);
@@ -192,7 +195,14 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
             _worldManager.IsOwnedByConnection(session.PlayerId, session.ConnectionId))
         {
             _runtimeSaveService.FlushPlayerAsync(session.PlayerId).GetAwaiter().GetResult();
-            _worldManager.RemovePlayer(session.PlayerId);
+            if (string.IsNullOrWhiteSpace(session.ResumeToken))
+            {
+                _worldManager.RemovePlayer(session.PlayerId);
+            }
+            else
+            {
+                _worldManager.TryMarkPlayerDisconnected(session.PlayerId);
+            }
         }
         else if (session.IsAuthenticated &&
                  _worldManager.TryGetPlayer(session.PlayerId, out var replacementOwner))
@@ -363,6 +373,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
 
             _resumeTickets.TryRemove(kv.Key, out ResumeTicket? _);
             _accountTokens.TryRemove(kv.Value.AccountId, out var _);
+            ReleaseHeldPlayerIfAny(kv.Value.AccountId, ReconnectHoldReasonExpired);
         }
     }
 
@@ -392,6 +403,25 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
             duplicate.ResumeToken = null;
             duplicate.Peer.Disconnect();
         }
+    }
+
+    private void ReleaseHeldPlayerIfAny(Guid accountId, string reason)
+    {
+        if (!_worldManager.TryGetPlayer(accountId, out var player))
+            return;
+
+        var hasActiveSession = _sessions.Values.Any(existing =>
+            existing.IsAuthenticated &&
+            existing.PlayerId == accountId &&
+            existing.Player is not null);
+        if (hasActiveSession)
+            return;
+
+        Logger.Info(
+            $"Releasing held runtime player for account {accountId} because {reason}. " +
+            $"MapId={player.MapId}, InstanceId={player.InstanceId}, ZoneIndex={player.ZoneIndex}");
+        _runtimeSaveService.FlushPlayerAsync(accountId).GetAwaiter().GetResult();
+        _worldManager.RemovePlayer(accountId);
     }
 
     private static void WaitForInboundProcessors(IEnumerable<ConnectionSession> sessions)

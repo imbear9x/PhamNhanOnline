@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using GameServer.DTO;
 using GameServer.Runtime;
+using GameShared.Logging;
 
 namespace GameServer.World;
 
@@ -29,9 +30,30 @@ public sealed class WorldManager
             id => new PlayerSession(id, connectionId, character, new CharacterRuntimeState(baseStats, currentState)),
             (_, existing) =>
             {
+                var instanceExists = existing.InstanceId != 0 &&
+                                     MapManager.TryGetInstance(existing.MapId, existing.InstanceId, out var _instance);
+                var shouldReloadFromSnapshot =
+                    existing.CharacterData.CharacterId != character.CharacterId ||
+                    (existing.InstanceId != 0 && !instanceExists);
+
+                if (shouldReloadFromSnapshot)
+                {
+                    Logger.Info(
+                        $"Reloading runtime snapshot for online player {playerId}. " +
+                        $"CharacterChanged={existing.CharacterData.CharacterId != character.CharacterId}, " +
+                        $"MapId={existing.MapId}, InstanceId={existing.InstanceId}, ZoneIndex={existing.ZoneIndex}");
+
+                    MapManager.RemovePlayer(existing);
+                    existing.ClearVisibleCharacters();
+                    existing.RuntimeState.Reset(baseStats, currentState);
+                }
+
                 existing.UpdateConnection(connectionId);
                 existing.UpdateCharacter(character);
-                existing.SynchronizeFromCurrentState(existing.RuntimeState.CaptureSnapshot().CurrentState);
+                existing.SynchronizeFromCurrentState(
+                    shouldReloadFromSnapshot
+                        ? currentState
+                        : existing.RuntimeState.CaptureSnapshot().CurrentState);
                 return existing;
             });
     }
@@ -44,6 +66,15 @@ public sealed class WorldManager
             session.IsConnected = false;
             MapManager.RemovePlayer(session);
         }
+    }
+
+    public bool TryMarkPlayerDisconnected(Guid playerId)
+    {
+        if (!_onlinePlayers.TryGetValue(playerId, out var session))
+            return false;
+
+        session.IsConnected = false;
+        return true;
     }
 
     public bool IsOwnedByConnection(Guid playerId, int connectionId)

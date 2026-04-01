@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using GameServer.Randomness;
 using GameServer.Runtime;
+using GameShared.Logging;
 
 namespace GameServer.World;
 
@@ -170,6 +171,7 @@ public sealed class MapManager
             if (instance.OwnerCharacterId != player.CharacterData.CharacterId)
                 continue;
 
+            RemovePlayerFromOtherInstances(player, definition.MapId, instance.InstanceId);
             if (!instance.AddPlayer(player))
                 throw new InvalidOperationException("Unable to rejoin private map instance.");
 
@@ -182,6 +184,7 @@ public sealed class MapManager
             ownerCharacterId: player.CharacterData.CharacterId,
             runtimeKind: MapRuntimeKind.PrivateHome,
             instanceConfig: null);
+        RemovePlayerFromOtherInstances(player, definition.MapId, created.InstanceId);
         if (!created.AddPlayer(player))
             throw new InvalidOperationException("Unable to join private map instance.");
 
@@ -202,6 +205,7 @@ public sealed class MapManager
             if (instance.ShouldDestroy(DateTime.UtcNow))
                 continue;
 
+            RemovePlayerFromOtherInstances(player, definition.MapId, instance.InstanceId);
             if (!instance.AddPlayer(player))
                 throw new InvalidOperationException("Unable to rejoin configured instance.");
 
@@ -221,6 +225,7 @@ public sealed class MapManager
             ownerCharacterId: player.CharacterData.CharacterId,
             runtimeKind: runtimeKind,
             instanceConfig: instanceConfig);
+        RemovePlayerFromOtherInstances(player, definition.MapId, created.InstanceId);
         if (!created.AddPlayer(player))
             throw new InvalidOperationException("Unable to join configured instance.");
 
@@ -246,17 +251,20 @@ public sealed class MapManager
 
         if (TryGetPublicInstanceByZone(definition.MapId, targetZoneIndex.Value, out var preferred))
         {
+            RemovePlayerFromOtherInstances(player, definition.MapId, preferred.InstanceId);
             if (preferred.AddPlayer(player))
                 return preferred;
         }
 
         var instance = CreatePublicInstance(definition, targetZoneIndex.Value);
+        RemovePlayerFromOtherInstances(player, definition.MapId, instance.InstanceId);
 
         if (!instance.AddPlayer(player))
         {
             instance = TryGetPublicInstanceByZone(definition.MapId, targetZoneIndex.Value, out preferred)
                 ? preferred
                 : CreatePublicInstance(definition, targetZoneIndex.Value);
+            RemovePlayerFromOtherInstances(player, definition.MapId, instance.InstanceId);
             if (!instance.AddPlayer(player))
                 throw new InvalidOperationException($"Unable to join public map zone {targetZoneIndex.Value}.");
         }
@@ -339,6 +347,26 @@ public sealed class MapManager
         var instances = _maps.GetOrAdd(definition.MapId, _ => new ConcurrentDictionary<int, MapInstance>());
         instances[instanceId] = instance;
         return instance;
+    }
+
+    private void RemovePlayerFromOtherInstances(PlayerSession player, int targetMapId, int targetInstanceId)
+    {
+        foreach (var (mapId, instances) in _maps)
+        {
+            foreach (var (instanceId, instance) in instances)
+            {
+                if (mapId == targetMapId && instanceId == targetInstanceId)
+                    continue;
+
+                if (!instance.ContainsPlayer(player.PlayerId))
+                    continue;
+
+                Logger.Info(
+                    $"Removing stale instance membership for player {player.PlayerId}. " +
+                    $"StaleMapId={mapId}, StaleInstanceId={instanceId}, TargetMapId={targetMapId}, TargetInstanceId={targetInstanceId}");
+                RemovePlayer(mapId, instanceId, player);
+            }
+        }
     }
 
     private IReadOnlyList<MapEnemySpawnGroupDefinition> ResolveSpawnGroups(int mapId, MapRuntimeKind runtimeKind, int zoneIndex)

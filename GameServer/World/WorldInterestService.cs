@@ -1,6 +1,7 @@
 using GameServer.DTO;
 using GameServer.Network.Interface;
 using GameServer.Time;
+using GameShared.Logging;
 using GameShared.Packets;
 
 namespace GameServer.World;
@@ -55,7 +56,12 @@ public sealed class WorldInterestService
     public void PublishWorldSnapshot(PlayerSession player)
     {
         if (!_worldManager.MapManager.TryGetInstance(player.MapId, player.InstanceId, out var instance))
+        {
+            Logger.Error(
+                $"PublishWorldSnapshot failed to resolve instance for player {player.PlayerId}. " +
+                $"CharacterId={player.CharacterData.CharacterId}, MapId={player.MapId}, InstanceId={player.InstanceId}, ZoneIndex={player.ZoneIndex}");
             return;
+        }
 
         _network.Send(player.ConnectionId, new MapJoinedPacket
         {

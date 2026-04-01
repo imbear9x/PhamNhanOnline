@@ -56,6 +56,19 @@ public sealed class CharacterRuntimeState
         }
     }
 
+    public CharacterRuntimeSnapshot Reset(CharacterBaseStatsDto baseStats, CharacterCurrentStateDto currentState)
+    {
+        lock (_sync)
+        {
+            _baseStats = baseStats;
+            _currentState = currentState;
+            _baseStatsVersion = 0;
+            _currentStateVersion = 0;
+            _dirtyFlags = CharacterRuntimeDirtyFlags.None;
+            return CreateSnapshotNoLock();
+        }
+    }
+
     public void MarkBaseStatsPersisted(long version)
     {
         lock (_sync)

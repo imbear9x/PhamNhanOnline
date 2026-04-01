@@ -12,7 +12,7 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
 {
     public sealed class ClientConnectionRecoveryService
     {
-        private const float RecoveryWindowSeconds = 20f;
+        private const float RecoveryWindowSeconds = 3f;
         private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(1);
 
         private readonly ClientConnectionService connection;
@@ -267,3 +267,4 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
         }
     }
 }
+

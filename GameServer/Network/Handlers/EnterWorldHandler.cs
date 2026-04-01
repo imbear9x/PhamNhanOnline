@@ -17,6 +17,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
     private readonly CharacterLifecycleService _lifecycleService;
     private readonly CharacterCultivationService _cultivationService;
     private readonly WorldInterestService _interestService;
+    private readonly MapManager _mapManager;
     private readonly INetworkSender _server;
     private readonly GameTimeService _gameTimeService;
 
@@ -27,6 +28,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
         CharacterLifecycleService lifecycleService,
         CharacterCultivationService cultivationService,
         WorldInterestService interestService,
+        MapManager mapManager,
         INetworkSender server,
         GameTimeService gameTimeService)
     {
@@ -36,6 +38,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
         _lifecycleService = lifecycleService;
         _cultivationService = cultivationService;
         _interestService = interestService;
+        _mapManager = mapManager;
         _server = server;
         _gameTimeService = gameTimeService;
     }
@@ -65,7 +68,12 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
 
             session.SelectedCharacterId = data.Character.CharacterId;
             var player = _runtimeService.AttachPlayerSession(session, data);
-            _interestService.EnsurePlayerInWorld(player, requestedZoneIndex: null, autoSelectPublicZone: true);
+            var preserveHeldWorldState = player.InstanceId != 0 &&
+                                         _mapManager.TryGetInstance(player.MapId, player.InstanceId, out _);
+            _interestService.EnsurePlayerInWorld(
+                player,
+                requestedZoneIndex: preserveHeldWorldState ? player.ZoneIndex : null,
+                autoSelectPublicZone: !preserveHeldWorldState);
             if (isLifespanExpired)
             {
                 player.SetCharacterActionsRestricted(true);

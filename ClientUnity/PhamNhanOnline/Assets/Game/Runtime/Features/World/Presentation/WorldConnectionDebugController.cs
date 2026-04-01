@@ -14,8 +14,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private KeyCode unblockKey = KeyCode.F11;
 
         [Header("Durations")]
-        [SerializeField] private float shortOutageSeconds = 8f;
-        [SerializeField] private float longOutageSeconds = 25f;
+        [SerializeField] private float shortOutageSeconds = 2f;
+        [SerializeField] private float longOutageSeconds = 5f;
 
         [Header("Optional UI")]
         [SerializeField] private TMP_Text statusText;
@@ -117,3 +117,4 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
     }
 }
+

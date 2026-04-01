@@ -122,6 +122,14 @@ public sealed class MapInstance
         }
     }
 
+    public bool ContainsPlayer(Guid playerId)
+    {
+        lock (_sync)
+        {
+            return _playersById.ContainsKey(playerId);
+        }
+    }
+
     public void RemovePlayer(PlayerSession player)
     {
         lock (_sync)
