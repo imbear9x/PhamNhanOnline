@@ -24753,7 +24753,8 @@ MonoBehaviour:
   playerPrefab: {fileID: 6915535442127511761, guid: 809faba7c36d42944a20489cf145e686, type: 3}
   remotePlayersRoot: {fileID: 2070082916}
   worldMapPresenter: {fileID: 1872203333}
-  remoteMoveSmoothing: 8
+  remoteMoveSmoothing: 15
+  remoteTeleportSnapDistance: 3
 --- !u!114 &1872203336
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -24793,6 +24794,7 @@ MonoBehaviour:
   localPlayerPresenter: {fileID: 1872203334}
   worldMapPresenter: {fileID: 1872203333}
   syncConfig: {fileID: 11400000, guid: ef41d0ff1e4543a49b52da503a8f667c, type: 2}
+  logSyncSendReasons: 0
 --- !u!114 &1872203338
 MonoBehaviour:
   m_ObjectHideFlags: 0

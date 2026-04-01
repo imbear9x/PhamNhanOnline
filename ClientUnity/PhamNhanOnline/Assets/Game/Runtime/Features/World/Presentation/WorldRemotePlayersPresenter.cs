@@ -13,6 +13,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private Transform remotePlayersRoot;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
         [SerializeField] private float remoteMoveSmoothing = 14f;
+        [SerializeField] private float remoteTeleportSnapDistance = 3f;
 
         private readonly Dictionary<Guid, RemoteCharacterPresenter> remotePresenters = new Dictionary<Guid, RemoteCharacterPresenter>();
         private bool warnedMissingPrefab;
@@ -230,7 +231,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (presenter == null)
                 presenter = instance.AddComponent<RemoteCharacterPresenter>();
 
-            presenter.Initialize(remoteMoveSmoothing);
+            presenter.Initialize(remoteMoveSmoothing, remoteTeleportSnapDistance);
             ClientLog.Info($"Spawned remote player presenter for {observedCharacter.Character.Name}.");
             return presenter;
         }

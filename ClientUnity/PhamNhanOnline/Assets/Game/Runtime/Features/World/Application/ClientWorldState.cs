@@ -134,7 +134,6 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 previousPosY,
                 currentPosX,
                 currentPosY));
-            NotifyObservedCharactersChanged();
         }
 
         public void ApplyObservedCurrentState(CharacterCurrentStateModel currentState)
@@ -166,7 +165,6 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 observedCharacter.MaxHp,
                 previousMaxMp,
                 observedCharacter.MaxMp));
-            NotifyObservedCharactersChanged();
         }
 
         public void ReplaceEnemies(IEnumerable<EnemyRuntimeModel> enemySnapshot)

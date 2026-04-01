@@ -12,6 +12,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private WorldLocalPlayerPresenter localPlayerPresenter;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
         [SerializeField] private WorldLocalMovementSyncConfig syncConfig;
+        [Header("Debug")]
+        [SerializeField] private bool logSyncSendReasons;
 
         private Vector2 lastSentServerPosition;
         private bool hasSentPosition;
@@ -125,7 +127,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (!hasSentPosition)
             {
-                SendPosition(serverPosition, currentFacingLeft, currentMovementPhase);
+                SendPosition(
+                    "init",
+                    serverPosition,
+                    currentFacingLeft,
+                    currentMovementPhase,
+                    0f,
+                    movementDistanceWithinWindow,
+                    isMoving,
+                    startedMoving: false,
+                    stoppedMoving: false,
+                    facingChanged: true,
+                    phaseChanged: true);
                 wasMovingLastFrame = isMoving;
                 return;
             }
@@ -141,7 +154,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             {
                 if (startedMoving || facingChanged || phaseChanged || distanceSinceLastSend >= activeConfig.FinalStopSyncThresholdMapUnits)
                 {
-                    SendPosition(serverPosition, currentFacingLeft, currentMovementPhase);
+                    SendPosition(
+                        "state",
+                        serverPosition,
+                        currentFacingLeft,
+                        currentMovementPhase,
+                        distanceSinceLastSend,
+                        movementDistanceWithinWindow,
+                        isMoving,
+                        startedMoving,
+                        stoppedMoving,
+                        facingChanged,
+                        phaseChanged);
                     wasMovingLastFrame = isMoving;
                     return;
                 }
@@ -149,14 +173,36 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (timeSinceLastSend >= activeConfig.MinSyncIntervalSeconds && distanceSinceLastSend >= activeConfig.SyncDistanceThresholdMapUnits)
             {
-                SendPosition(serverPosition, currentFacingLeft, currentMovementPhase);
+                SendPosition(
+                    "distance",
+                    serverPosition,
+                    currentFacingLeft,
+                    currentMovementPhase,
+                    distanceSinceLastSend,
+                    movementDistanceWithinWindow,
+                    isMoving,
+                    startedMoving,
+                    stoppedMoving,
+                    facingChanged,
+                    phaseChanged);
                 wasMovingLastFrame = isMoving;
                 return;
             }
 
             if (isMoving && timeSinceLastSend >= activeConfig.MaxSyncIntervalSeconds)
             {
-                SendPosition(serverPosition, currentFacingLeft, currentMovementPhase);
+                SendPosition(
+                    "max",
+                    serverPosition,
+                    currentFacingLeft,
+                    currentMovementPhase,
+                    distanceSinceLastSend,
+                    movementDistanceWithinWindow,
+                    isMoving,
+                    startedMoving,
+                    stoppedMoving,
+                    facingChanged,
+                    phaseChanged);
                 wasMovingLastFrame = true;
                 return;
             }
@@ -165,7 +211,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 && timeSinceLastSend >= activeConfig.MinSyncIntervalSeconds
                 && distanceSinceLastSend >= activeConfig.FinalStopSyncThresholdMapUnits)
             {
-                SendPosition(serverPosition, currentFacingLeft, currentMovementPhase);
+                SendPosition(
+                    "stop",
+                    serverPosition,
+                    currentFacingLeft,
+                    currentMovementPhase,
+                    distanceSinceLastSend,
+                    movementDistanceWithinWindow,
+                    isMoving,
+                    startedMoving,
+                    stoppedMoving,
+                    facingChanged,
+                    phaseChanged);
             }
 
             wasMovingLastFrame = isMoving;
@@ -199,7 +256,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 ? localActionController.CurrentMovementSyncPhase
                 : LocalCharacterActionController.MovementSyncPhase.Grounded;
 
-            SendPosition(serverPosition, currentFacingLeft, currentMovementPhase);
+            SendPosition(
+                "force",
+                serverPosition,
+                currentFacingLeft,
+                currentMovementPhase,
+                hasSentPosition ? Vector2.Distance(lastSentServerPosition, serverPosition) : 0f,
+                0f,
+                false,
+                false,
+                false,
+                !hasLastSentPresentationState || currentFacingLeft != lastSentFacingLeft,
+                !hasLastSentPresentationState || currentMovementPhase != lastSentMovementPhase);
             wasMovingLastFrame = false;
             return true;
         }
@@ -232,15 +300,32 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
 
         private void SendPosition(
+            string reason,
             Vector2 serverPosition,
             bool currentFacingLeft,
-            LocalCharacterActionController.MovementSyncPhase currentMovementPhase)
+            LocalCharacterActionController.MovementSyncPhase currentMovementPhase,
+            float distanceSinceLastSend,
+            float movementDistanceWithinWindow,
+            bool isMoving,
+            bool startedMoving,
+            bool stoppedMoving,
+            bool facingChanged,
+            bool phaseChanged)
         {
             ClientRuntime.Connection.Send(new CharacterPositionSyncPacket
             {
                 CurrentPosX = serverPosition.x,
                 CurrentPosY = serverPosition.y
             });
+
+            if (logSyncSendReasons)
+            {
+                ClientLog.Info(
+                    $"[MoveSync] reason={reason} dt={timeSinceLastSend:0.000}s dist={distanceSinceLastSend:0.###} " +
+                    $"windowDist={movementDistanceWithinWindow:0.###} moving={isMoving} " +
+                    $"start={startedMoving} stop={stoppedMoving} face={facingChanged} phase={phaseChanged} " +
+                    $"pos=({serverPosition.x:0.##},{serverPosition.y:0.##})");
+            }
 
             lastSentServerPosition = serverPosition;
             lastSentFacingLeft = currentFacingLeft;

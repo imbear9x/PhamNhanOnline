@@ -11,6 +11,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     public sealed class RemoteCharacterPresenter : MonoBehaviour
     {
         private const string MoveSpeedParameterName = "MoveSpeed";
+        private const float DefaultPacketIntervalSeconds = 0.10f;
+        private const float MinPacketIntervalSeconds = 0.05f;
+        private const float MaxPacketIntervalSeconds = 0.60f;
+        private const float PacketIntervalBlendFactor = 0.35f;
+        private const float MinInterpolationDurationSeconds = 0.04f;
+        private const float MaxInterpolationDurationSeconds = 0.50f;
 
         [SerializeField] private PlayerView playerView;
         [SerializeField] private Transform visualRoot;
@@ -19,8 +25,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private float moveSmoothing = 14f;
         [SerializeField] private float animationMoveThreshold = 0.02f;
         [SerializeField] private float animationHoldDuration = 0.12f;
-
         private Vector3 targetPosition;
+        private float currentMoveSpeed;
+        private float lastSnapshotReceivedAt = -1f;
+        private float estimatedPacketInterval = DefaultPacketIntervalSeconds;
         private bool hasTargetPosition;
         private float visualDefaultScaleX = 1f;
         private bool facingLeft = true;
@@ -30,10 +38,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private float moveAnimationTimer;
         private WorldTargetable targetable;
         private CharacterSkillPresenter skillPresenter;
+        private float teleportSnapDistance = 3f;
 
-        public void Initialize(float smoothing)
+        public void Initialize(float smoothing, float snapDistance)
         {
             moveSmoothing = Mathf.Max(0.01f, smoothing);
+            teleportSnapDistance = Mathf.Max(0.1f, snapDistance);
             AutoWireReferences();
             DisableLocalOnlyComponents();
             CacheAnimatorParameters();
@@ -94,7 +104,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var nextPosition = Vector3.MoveTowards(
                 currentPosition,
                 targetPosition,
-                moveSmoothing * Time.deltaTime);
+                currentMoveSpeed * Time.deltaTime);
+
+            if ((targetPosition - nextPosition).sqrMagnitude <= animationMoveThreshold * animationMoveThreshold)
+            {
+                nextPosition = targetPosition;
+                currentMoveSpeed = 0f;
+            }
 
             transform.position = nextPosition;
             UpdateFacingAndAnimation(currentPosition, nextPosition);
@@ -118,12 +134,57 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (movementDelta.sqrMagnitude > animationMoveThreshold * animationMoveThreshold)
                 moveAnimationTimer = animationHoldDuration;
 
-            if (!snap)
+            var shouldSnap = snap;
+            if (!shouldSnap)
+            {
+                var teleportDistance = Mathf.Max(animationMoveThreshold, teleportSnapDistance);
+                var currentToTargetDistance = Vector3.Distance(transform.position, targetPosition);
+                shouldSnap = currentToTargetDistance >= teleportDistance;
+            }
+
+            if (!shouldSnap)
+            {
+                UpdateMoveSpeedForCurrentTarget();
                 return;
+            }
 
             transform.position = targetPosition;
+            currentMoveSpeed = 0f;
+            lastSnapshotReceivedAt = Time.unscaledTime;
             moveAnimationTimer = 0f;
             SyncMoveAnimation(false);
+        }
+
+        private void UpdateMoveSpeedForCurrentTarget()
+        {
+            var now = Time.unscaledTime;
+            if (lastSnapshotReceivedAt > 0f)
+            {
+                var measuredInterval = Mathf.Clamp(
+                    now - lastSnapshotReceivedAt,
+                    MinPacketIntervalSeconds,
+                    MaxPacketIntervalSeconds);
+                estimatedPacketInterval = Mathf.Lerp(
+                    estimatedPacketInterval,
+                    measuredInterval,
+                    PacketIntervalBlendFactor);
+            }
+            else
+            {
+                estimatedPacketInterval = DefaultPacketIntervalSeconds;
+            }
+
+            lastSnapshotReceivedAt = now;
+
+            var speedScale = Mathf.Clamp(14f / Mathf.Max(0.01f, moveSmoothing), 0.35f, 2f);
+            var interpolationDuration = Mathf.Clamp(
+                estimatedPacketInterval * speedScale,
+                MinInterpolationDurationSeconds,
+                MaxInterpolationDurationSeconds);
+            var distanceToTarget = Vector3.Distance(transform.position, targetPosition);
+            currentMoveSpeed = interpolationDuration > Mathf.Epsilon
+                ? distanceToTarget / interpolationDuration
+                : 0f;
         }
 
         private void UpdateFacingAndAnimation(Vector3 previousPosition, Vector3 nextPosition)
