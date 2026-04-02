@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text.Json;
+using GameServer.Config;
 using GameServer.Diagnostics;
 using GameServer.Network.Interface;
 using GameServer.Runtime;
@@ -27,24 +28,25 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     private readonly CharacterRuntimeSaveService _runtimeSaveService;
     private readonly CharacterCombatDeathRecoveryService _deathRecoveryService;
     private readonly ServerMetricsService _metrics;
+    private readonly TimeSpan _resumeWindow;
     private readonly ConcurrentDictionary<int, ConnectionSession> _sessions = new();
     private readonly ConcurrentDictionary<string, ResumeTicket> _resumeTickets = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, RevokedResumeTicket> _revokedResumeTokens = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Guid, string> _accountTokens = new();
     private readonly CancellationTokenSource _shutdownCts = new();
-    private static readonly TimeSpan ResumeWindow = TimeSpan.FromSeconds(3);
-
     public NetworkServer(
         PacketDispatcher dispatcher,
         WorldManager worldManager,
         CharacterRuntimeSaveService runtimeSaveService,
         CharacterCombatDeathRecoveryService deathRecoveryService,
+        GameConfigValues gameConfig,
         ServerMetricsService metrics)
     {
         _dispatcher = dispatcher;
         _worldManager = worldManager;
         _runtimeSaveService = runtimeSaveService;
         _deathRecoveryService = deathRecoveryService;
+        _resumeWindow = gameConfig.ResumeWindow;
         _metrics = metrics;
         _netManager = new NetManager(this)
         {
@@ -240,7 +242,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
             _resumeTickets[session.ResumeToken] = resumeTicket with
             {
                 IsConnected = false,
-                ExpiresAtUtc = DateTime.UtcNow + ResumeWindow
+                ExpiresAtUtc = DateTime.UtcNow + _resumeWindow
             };
         }
     }
@@ -430,7 +432,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
                 _resumeTickets.TryRemove(duplicate.ResumeToken, out ResumeTicket? _);
                 _revokedResumeTokens[duplicate.ResumeToken] = new RevokedResumeTicket(
                     MessageCode.AccountLoggedInElsewhere,
-                    DateTime.UtcNow + ResumeWindow);
+                    DateTime.UtcNow + _resumeWindow);
             }
 
             Send(duplicate.ConnectionId, new SessionTerminationPacket
@@ -449,7 +451,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
             return;
 
         _resumeTickets.TryRemove(resumeToken, out ResumeTicket? _);
-        _revokedResumeTokens[resumeToken] = new RevokedResumeTicket(code, DateTime.UtcNow + ResumeWindow);
+        _revokedResumeTokens[resumeToken] = new RevokedResumeTicket(code, DateTime.UtcNow + _resumeWindow);
     }
 
     private void ReleaseHeldPlayerIfAny(Guid accountId, string reason)

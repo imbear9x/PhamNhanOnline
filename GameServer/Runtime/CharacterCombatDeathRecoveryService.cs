@@ -1,3 +1,4 @@
+using GameServer.Config;
 using GameServer.DTO;
 using GameServer.Services;
 using GameServer.World;
@@ -7,18 +8,19 @@ namespace GameServer.Runtime;
 
 public sealed class CharacterCombatDeathRecoveryService
 {
-    private const double ReturnHomeRecoveryRatio = 0.80d;
-
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly GameConfigValues _gameConfig;
     private readonly MapCatalog _mapCatalog;
     private readonly CharacterRuntimeSaveService _runtimeSaveService;
 
     public CharacterCombatDeathRecoveryService(
         IServiceScopeFactory scopeFactory,
+        GameConfigValues gameConfig,
         MapCatalog mapCatalog,
         CharacterRuntimeSaveService runtimeSaveService)
     {
         _scopeFactory = scopeFactory;
+        _gameConfig = gameConfig;
         _mapCatalog = mapCatalog;
         _runtimeSaveService = runtimeSaveService;
     }
@@ -99,8 +101,9 @@ public sealed class CharacterCombatDeathRecoveryService
         CharacterCurrentStateDto currentState)
     {
         var homeDefinition = _mapCatalog.ResolveHomeDefinition();
-        var recoveredHp = Math.Max(1, (int)Math.Ceiling(baseStats.GetEffectiveHp() * ReturnHomeRecoveryRatio));
-        var recoveredMp = Math.Max(0, (int)Math.Ceiling(baseStats.GetEffectiveMp() * ReturnHomeRecoveryRatio));
+        var recoveryRatio = Math.Clamp(_gameConfig.CombatDeathReturnHomeRecoveryRatio, 0d, 1d);
+        var recoveredHp = Math.Max(1, (int)Math.Ceiling(baseStats.GetEffectiveHp() * recoveryRatio));
+        var recoveredMp = Math.Max(0, (int)Math.Ceiling(baseStats.GetEffectiveMp() * recoveryRatio));
         var maxStamina = Math.Max(0, baseStats.GetEffectiveStamina());
         var recoveredStamina = Math.Clamp(currentState.CurrentStamina, 0, maxStamina);
 

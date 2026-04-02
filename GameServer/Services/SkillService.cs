@@ -1,3 +1,4 @@
+using GameServer.Config;
 using GameServer.DTO;
 using GameServer.Entities;
 using GameServer.Exceptions;
@@ -10,19 +11,19 @@ namespace GameServer.Services;
 
 public sealed class SkillService
 {
-    public const int DefaultMaxLoadoutSlotCount = 5;
-    public const int BasicSkillSlotIndex = 1;
-
     private readonly CombatDefinitionCatalog _combatDefinitions;
+    private readonly GameConfigValues _gameConfig;
     private readonly PlayerSkillRepository _playerSkills;
     private readonly PlayerSkillLoadoutRepository _playerSkillLoadouts;
 
     public SkillService(
         CombatDefinitionCatalog combatDefinitions,
+        GameConfigValues gameConfig,
         PlayerSkillRepository playerSkills,
         PlayerSkillLoadoutRepository playerSkillLoadouts)
     {
         _combatDefinitions = combatDefinitions;
+        _gameConfig = gameConfig;
         _playerSkills = playerSkills;
         _playerSkillLoadouts = playerSkillLoadouts;
     }
@@ -41,7 +42,7 @@ public sealed class SkillService
         long? playerSkillId,
         CancellationToken cancellationToken = default)
     {
-        if (slotIndex < 1 || slotIndex > DefaultMaxLoadoutSlotCount)
+        if (slotIndex < 1 || slotIndex > _gameConfig.SkillMaxLoadoutSlotCount)
             throw new GameException(MessageCode.SkillLoadoutSlotInvalid);
 
         var normalizedPlayerSkillId = playerSkillId.GetValueOrDefault();
@@ -51,7 +52,7 @@ public sealed class SkillService
 
         if (normalizedPlayerSkillId <= 0)
         {
-            if (slotIndex == BasicSkillSlotIndex && HasOwnedBasicSkill(playerSkills))
+            if (slotIndex == _gameConfig.CharacterStarterBasicSkillSlotIndex && HasOwnedBasicSkill(playerSkills))
                 throw new GameException(MessageCode.SkillLoadoutBasicSkillRequired);
 
             await ClearSlotAsync(playerId, slotIndex, loadouts, cancellationToken);
@@ -101,7 +102,7 @@ public sealed class SkillService
         int slotIndex,
         CancellationToken cancellationToken = default)
     {
-        if (slotIndex < 1 || slotIndex > DefaultMaxLoadoutSlotCount)
+        if (slotIndex < 1 || slotIndex > _gameConfig.SkillMaxLoadoutSlotCount)
             throw new GameException(MessageCode.SkillLoadoutSlotInvalid);
 
         IReadOnlyList<PlayerSkillEntity> playerSkills = await _playerSkills.ListByPlayerIdAsync(playerId, cancellationToken);
@@ -131,7 +132,7 @@ public sealed class SkillService
         IReadOnlyList<PlayerSkillLoadoutEntity> loadouts)
     {
         var loadoutsBySlot = loadouts
-            .Where(x => x.SlotIndex >= 1 && x.SlotIndex <= DefaultMaxLoadoutSlotCount)
+            .Where(x => x.SlotIndex >= 1 && x.SlotIndex <= _gameConfig.SkillMaxLoadoutSlotCount)
             .GroupBy(x => x.SlotIndex)
             .ToDictionary(x => x.Key, x => x.OrderByDescending(row => row.UpdatedAt).ThenByDescending(row => row.Id).First());
 
@@ -147,7 +148,7 @@ public sealed class SkillService
             .ToArray();
 
         var skillDtoByPlayerSkillId = skillDtos.ToDictionary(x => x.PlayerSkillId);
-        var slotDtos = Enumerable.Range(1, DefaultMaxLoadoutSlotCount)
+        var slotDtos = Enumerable.Range(1, _gameConfig.SkillMaxLoadoutSlotCount)
             .Select(slotIndex =>
             {
                 if (loadoutsBySlot.TryGetValue(slotIndex, out var loadout) &&
@@ -160,7 +161,7 @@ public sealed class SkillService
             })
             .ToArray();
 
-        return new OwnedSkillsSnapshotDto(DefaultMaxLoadoutSlotCount, skillDtos, slotDtos);
+        return new OwnedSkillsSnapshotDto(_gameConfig.SkillMaxLoadoutSlotCount, skillDtos, slotDtos);
     }
 
     private PlayerSkillDto BuildPlayerSkillDto(
@@ -207,7 +208,7 @@ public sealed class SkillService
         if (!_combatDefinitions.TryGetSkill(playerSkill.SkillId, out var skillDefinition))
             throw new GameException(MessageCode.SkillNotLearned);
 
-        if (slotIndex == BasicSkillSlotIndex)
+        if (slotIndex == _gameConfig.CharacterStarterBasicSkillSlotIndex)
         {
             if (skillDefinition.SkillCategory != SkillCategory.Basic)
                 throw new GameException(MessageCode.SkillLoadoutFirstSlotRequiresBasic);
@@ -231,7 +232,7 @@ public sealed class SkillService
 
         var playerSkillById = playerSkills.ToDictionary(x => x.Id);
         var loadoutsBySlot = loadouts
-            .Where(x => x.SlotIndex >= 1 && x.SlotIndex <= DefaultMaxLoadoutSlotCount)
+            .Where(x => x.SlotIndex >= 1 && x.SlotIndex <= _gameConfig.SkillMaxLoadoutSlotCount)
             .GroupBy(x => x.SlotIndex)
             .ToDictionary(x => x.Key, x => x.OrderByDescending(row => row.UpdatedAt).ThenByDescending(row => row.Id).First());
 
@@ -241,7 +242,7 @@ public sealed class SkillService
             .ThenBy(x => x.Id)
             .ToArray();
 
-        if (loadoutsBySlot.TryGetValue(BasicSkillSlotIndex, out var slotOneLoadout) &&
+        if (loadoutsBySlot.TryGetValue(_gameConfig.CharacterStarterBasicSkillSlotIndex, out var slotOneLoadout) &&
             playerSkillById.TryGetValue(slotOneLoadout.PlayerSkillId, out var slotOneSkill) &&
             IsBasicSkill(slotOneSkill))
         {
@@ -256,7 +257,7 @@ public sealed class SkillService
 
         var changed = false;
 
-        if (loadoutsBySlot.TryGetValue(BasicSkillSlotIndex, out var firstSlotLoadout))
+        if (loadoutsBySlot.TryGetValue(_gameConfig.CharacterStarterBasicSkillSlotIndex, out var firstSlotLoadout))
         {
             if (firstSlotLoadout.PlayerSkillId != preferredBasic.Id)
             {
@@ -271,7 +272,7 @@ public sealed class SkillService
             var newLoadout = new PlayerSkillLoadoutEntity
             {
                 PlayerId = playerId,
-                SlotIndex = BasicSkillSlotIndex,
+                SlotIndex = _gameConfig.CharacterStarterBasicSkillSlotIndex,
                 PlayerSkillId = preferredBasic.Id,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -282,7 +283,7 @@ public sealed class SkillService
 
         foreach (var loadout in basicLoadouts)
         {
-            if (loadout.PlayerSkillId != preferredBasic.Id || loadout.SlotIndex == BasicSkillSlotIndex)
+            if (loadout.PlayerSkillId != preferredBasic.Id || loadout.SlotIndex == _gameConfig.CharacterStarterBasicSkillSlotIndex)
                 continue;
 
             await _playerSkillLoadouts.DeleteAsync(loadout, cancellationToken);

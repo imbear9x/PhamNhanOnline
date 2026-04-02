@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using GameServer.Config;
 using GameServer.Randomness;
 using GameServer.Runtime;
 using GameShared.Logging;
@@ -7,10 +8,9 @@ namespace GameServer.World;
 
 public sealed class MapManager
 {
-    private static readonly TimeSpan EmptyPublicInstanceLifetime = TimeSpan.FromMinutes(2);
-
     private readonly MapCatalog _catalog;
     private readonly EnemyDefinitionCatalog _enemyDefinitions;
+    private readonly GameConfigValues _gameConfig;
     private readonly IRandomNumberProvider _random;
     private readonly ConcurrentDictionary<int, ConcurrentDictionary<int, MapInstance>> _maps = new();
     private int _nextInstanceId;
@@ -18,10 +18,12 @@ public sealed class MapManager
     public MapManager(
         MapCatalog catalog,
         EnemyDefinitionCatalog enemyDefinitions,
+        GameConfigValues gameConfig,
         IRandomNumberProvider random)
     {
         _catalog = catalog;
         _enemyDefinitions = enemyDefinitions;
+        _gameConfig = gameConfig;
         _random = random;
     }
 
@@ -170,7 +172,7 @@ public sealed class MapManager
 
                 if (instance.PlayerCount <= 0 &&
                     instance.EmptySinceUtc.HasValue &&
-                    utcNow - instance.EmptySinceUtc.Value >= EmptyPublicInstanceLifetime)
+                    utcNow - instance.EmptySinceUtc.Value >= _gameConfig.WorldEmptyPublicInstanceLifetime)
                 {
                     instances.TryRemove(instanceId, out _);
                 }

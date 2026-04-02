@@ -17,11 +17,9 @@ public sealed class CharacterService
 {
     private const int DefaultCurrentStateCode = 0;
     private const int DefaultAppearanceValue = 1;
-    private const int DefaultHomeGardenPlotCount = 8;
-    private const int DefaultStarterBasicSkillId = 0;
-    private const int DefaultStarterSkillSlotIndex = 1;
 
     private readonly GameDb _db;
+    private readonly GameConfigValues _gameConfig;
     private readonly CharacterRepository _characters;
     private readonly CharacterBaseStatRepository _baseStats;
     private readonly CharacterCurrentStateRepository _currentStates;
@@ -35,6 +33,7 @@ public sealed class CharacterService
 
     public CharacterService(
         GameDb db,
+        GameConfigValues gameConfig,
         CharacterRepository characters,
         CharacterBaseStatRepository baseStats,
         CharacterCurrentStateRepository currentStates,
@@ -47,6 +46,7 @@ public sealed class CharacterService
         PotentialStatCatalog potentialStatCatalog)
     {
         _db = db;
+        _gameConfig = gameConfig;
         _characters = characters;
         _baseStats = baseStats;
         _currentStates = currentStates;
@@ -583,7 +583,7 @@ public sealed class CharacterService
         };
 
         cave.Id = await _playerCaves.CreateAsync(cave, cancellationToken);
-        for (var plotIndex = 1; plotIndex <= DefaultHomeGardenPlotCount; plotIndex++)
+        for (var plotIndex = 1; plotIndex <= _gameConfig.CharacterHomeGardenPlotCount; plotIndex++)
         {
             await _playerGardenPlots.CreateAsync(new PlayerGardenPlotEntity
             {
@@ -600,16 +600,17 @@ public sealed class CharacterService
 
     private async Task EnsureStarterBasicSkillAsync(Guid characterId, CancellationToken cancellationToken)
     {
+        var starterBasicSkillId = _gameConfig.CharacterStarterBasicSkillId;
+        var starterSkillSlotIndex = _gameConfig.CharacterStarterBasicSkillSlotIndex;
         var starterSkill = await _db.GetTable<SkillEntity>()
-            .FirstOrDefaultAsync(x => x.Id == DefaultStarterBasicSkillId, cancellationToken);
-
+            .FirstOrDefaultAsync(x => x.Id == starterBasicSkillId, cancellationToken);
         if (starterSkill is null)
             throw new InvalidOperationException(
-                $"Starter basic skill {DefaultStarterBasicSkillId} is missing from public.skills.");
+                $"Starter basic skill {starterBasicSkillId} is missing from public.skills.");
 
         if (starterSkill.SkillCategory != (int)SkillCategory.Basic)
             throw new InvalidOperationException(
-                $"Starter skill {DefaultStarterBasicSkillId} must have skill_category = {(int)SkillCategory.Basic}.");
+                $"Starter skill {starterBasicSkillId} must have skill_category = {(int)SkillCategory.Basic}.");
 
         var playerSkill = await _db.GetTable<PlayerSkillEntity>()
             .FirstOrDefaultAsync(
@@ -637,7 +638,7 @@ public sealed class CharacterService
 
         var slotOneLoadout = await _db.GetTable<PlayerSkillLoadoutEntity>()
             .FirstOrDefaultAsync(
-                x => x.PlayerId == characterId && x.SlotIndex == DefaultStarterSkillSlotIndex,
+                x => x.PlayerId == characterId && x.SlotIndex == starterSkillSlotIndex,
                 cancellationToken);
 
         if (slotOneLoadout is null)
@@ -645,7 +646,7 @@ public sealed class CharacterService
             slotOneLoadout = new PlayerSkillLoadoutEntity
             {
                 PlayerId = characterId,
-                SlotIndex = DefaultStarterSkillSlotIndex,
+                SlotIndex = starterSkillSlotIndex,
                 PlayerSkillId = playerSkill.Id,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow

@@ -1,3 +1,4 @@
+using GameServer.Config;
 using GameServer.Entities;
 using GameServer.DTO;
 using GameServer.Randomness;
@@ -11,9 +12,7 @@ namespace GameServer.Runtime;
 
 public sealed class EnemyRewardRuntimeService
 {
-    private const int DefaultGroundOwnershipSeconds = 30;
-    private const int DefaultGroundFreeForAllSeconds = 30;
-
+    private readonly GameConfigValues _gameConfig;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IGameRandomService _gameRandomService;
     private readonly ItemDefinitionCatalog _itemDefinitions;
@@ -24,6 +23,7 @@ public sealed class EnemyRewardRuntimeService
     private readonly IReadOnlyDictionary<int, RealmTemplate> _realmsById;
 
     public EnemyRewardRuntimeService(
+        GameConfigValues gameConfig,
         IServiceScopeFactory scopeFactory,
         IGameRandomService gameRandomService,
         ItemDefinitionCatalog itemDefinitions,
@@ -32,6 +32,7 @@ public sealed class EnemyRewardRuntimeService
         CharacterCultivationService cultivationService,
         PotentialStatCatalog potentialStatCatalog)
     {
+        _gameConfig = gameConfig;
         _scopeFactory = scopeFactory;
         _gameRandomService = gameRandomService;
         _itemDefinitions = itemDefinitions;
@@ -141,11 +142,13 @@ public sealed class EnemyRewardRuntimeService
                     var ownerCharacterId = rewardRule.OwnershipDurationSeconds is > 0
                         ? target.Player.CharacterData.CharacterId
                         : (Guid?)null;
-                    var freeAtUtc = utcNow.AddSeconds(rewardRule.OwnershipDurationSeconds ?? DefaultGroundOwnershipSeconds);
+                    var defaultOwnershipSeconds = Math.Max(0, _gameConfig.ItemDropEnemyDefaultOwnershipSeconds);
+                    var defaultFreeForAllSeconds = Math.Max(0, _gameConfig.ItemDropEnemyDefaultFreeForAllSeconds);
+                    var freeAtUtc = utcNow.AddSeconds(rewardRule.OwnershipDurationSeconds ?? defaultOwnershipSeconds);
                     if (ownerCharacterId is null)
                         freeAtUtc = utcNow;
 
-                    var destroyAtUtc = freeAtUtc.AddSeconds(rewardRule.FreeForAllDurationSeconds ?? DefaultGroundFreeForAllSeconds);
+                    var destroyAtUtc = freeAtUtc.AddSeconds(rewardRule.FreeForAllDurationSeconds ?? defaultFreeForAllSeconds);
                     instance.AddGroundReward(new GroundRewardEntity(
                         instance.AllocateGroundRewardId(),
                         ownerCharacterId,

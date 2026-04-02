@@ -1,4 +1,5 @@
 using System.Numerics;
+using GameServer.Config;
 using GameServer.Network.Interface;
 using GameServer.Runtime;
 using GameServer.World;
@@ -10,10 +11,9 @@ namespace GameServer.Network.Handlers;
 
 public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
 {
-    private const float PortalValidationBufferServerUnits = 4f;
-
     private readonly CharacterRuntimeService _runtimeService;
     private readonly CharacterCultivationService _cultivationService;
+    private readonly GameConfigValues _gameConfig;
     private readonly WorldInterestService _interestService;
     private readonly INetworkSender _server;
     private readonly MapCatalog _mapCatalog;
@@ -22,6 +22,7 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
     public TravelToMapHandler(
         CharacterRuntimeService runtimeService,
         CharacterCultivationService cultivationService,
+        GameConfigValues gameConfig,
         WorldInterestService interestService,
         INetworkSender server,
         MapCatalog mapCatalog,
@@ -29,6 +30,7 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
     {
         _runtimeService = runtimeService;
         _cultivationService = cultivationService;
+        _gameConfig = gameConfig;
         _interestService = interestService;
         _server = server;
         _mapCatalog = mapCatalog;
@@ -93,7 +95,7 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
         }
 
         var validationPosition = ResolvePortalValidationPosition(player, packet);
-        var maxDistance = MathF.Max(0f, portal.InteractionRadius) + PortalValidationBufferServerUnits;
+        var maxDistance = MathF.Max(0f, portal.InteractionRadius) + MathF.Max(0f, _gameConfig.WorldPortalValidationBufferServerUnits);
         var distanceSquared = Vector2.DistanceSquared(validationPosition, portal.SourcePosition);
         if (distanceSquared > maxDistance * maxDistance)
         {

@@ -1,3 +1,4 @@
+using GameServer.Config;
 using GameServer.Network.Interface;
 using GameServer.Runtime;
 using GameServer.Services;
@@ -9,20 +10,20 @@ namespace GameServer.Network.Handlers;
 
 public sealed class DropInventoryItemHandler : IPacketHandler<DropInventoryItemPacket>
 {
-    private const int DropOwnershipSeconds = 10;
-    private const int DropFreeForAllSeconds = 50;
-
+    private readonly GameConfigValues _gameConfig;
     private readonly ItemService _itemService;
     private readonly ItemDefinitionCatalog _itemDefinitions;
     private readonly INetworkSender _network;
     private readonly WorldManager _worldManager;
 
     public DropInventoryItemHandler(
+        GameConfigValues gameConfig,
         ItemService itemService,
         ItemDefinitionCatalog itemDefinitions,
         INetworkSender network,
         WorldManager worldManager)
     {
+        _gameConfig = gameConfig;
         _itemService = itemService;
         _itemDefinitions = itemDefinitions;
         _network = network;
@@ -77,8 +78,10 @@ public sealed class DropInventoryItemHandler : IPacketHandler<DropInventoryItemP
             }
 
             var utcNow = DateTime.UtcNow;
-            var freeAtUtc = utcNow.AddSeconds(DropOwnershipSeconds);
-            var destroyAtUtc = freeAtUtc.AddSeconds(DropFreeForAllSeconds);
+            var ownershipSeconds = Math.Max(0, _gameConfig.ItemDropPlayerOwnershipSeconds);
+            var freeForAllSeconds = Math.Max(0, _gameConfig.ItemDropPlayerFreeForAllSeconds);
+            var freeAtUtc = utcNow.AddSeconds(ownershipSeconds);
+            var destroyAtUtc = freeAtUtc.AddSeconds(freeForAllSeconds);
             var reward = new GroundRewardEntity(
                 instance.AllocateGroundRewardId(),
                 player.CharacterData.CharacterId,

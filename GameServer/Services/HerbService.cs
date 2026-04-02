@@ -1,3 +1,4 @@
+using GameServer.Config;
 using GameServer.Entities;
 using GameServer.Randomness;
 using GameServer.Repositories;
@@ -8,9 +9,8 @@ namespace GameServer.Services;
 
 public sealed class HerbService
 {
-    private const int DefaultHomeGardenPlotCount = 8;
-
     private readonly GameDb _db;
+    private readonly GameConfigValues _gameConfig;
     private readonly MapCatalog _mapCatalog;
     private readonly AlchemyDefinitionCatalog _definitions;
     private readonly ItemDefinitionCatalog _itemDefinitions;
@@ -24,6 +24,7 @@ public sealed class HerbService
 
     public HerbService(
         GameDb db,
+        GameConfigValues gameConfig,
         MapCatalog mapCatalog,
         AlchemyDefinitionCatalog definitions,
         ItemDefinitionCatalog itemDefinitions,
@@ -36,6 +37,7 @@ public sealed class HerbService
         IGameRandomService randomService)
     {
         _db = db;
+        _gameConfig = gameConfig;
         _mapCatalog = mapCatalog;
         _definitions = definitions;
         _itemDefinitions = itemDefinitions;
@@ -67,7 +69,7 @@ public sealed class HerbService
         };
 
         cave.Id = await _playerCaves.CreateAsync(cave, cancellationToken);
-        for (var plotIndex = 1; plotIndex <= DefaultHomeGardenPlotCount; plotIndex++)
+        for (var plotIndex = 1; plotIndex <= _gameConfig.CharacterHomeGardenPlotCount; plotIndex++)
         {
             await _playerGardenPlots.CreateAsync(new PlayerGardenPlotEntity
             {

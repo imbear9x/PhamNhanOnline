@@ -1,3 +1,4 @@
+using GameServer.Config;
 using GameServer.DTO;
 using GameServer.Entities;
 using GameServer.Network;
@@ -15,11 +16,10 @@ namespace GameServer.Runtime;
 
 public sealed class CharacterCultivationService
 {
-    private const int PotentialPerCultivationPoint = 1;
     private const decimal DefaultQiAbsorptionRate = 1m;
     private const decimal FormationCoefficientStub = 1m;
-    private static readonly TimeSpan SettlementIntervalValue = TimeSpan.FromMinutes(5);
 
+    private readonly GameConfigValues _gameConfig;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly WorldManager _worldManager;
     private readonly CharacterRuntimeService _runtimeService;
@@ -31,6 +31,7 @@ public sealed class CharacterCultivationService
     private readonly IGameRandomService _gameRandomService;
 
     public CharacterCultivationService(
+        GameConfigValues gameConfig,
         IServiceScopeFactory scopeFactory,
         WorldManager worldManager,
         CharacterRuntimeService runtimeService,
@@ -41,6 +42,7 @@ public sealed class CharacterCultivationService
         PotentialStatCatalog potentialStatCatalog,
         IGameRandomService gameRandomService)
     {
+        _gameConfig = gameConfig;
         _scopeFactory = scopeFactory;
         _worldManager = worldManager;
         _runtimeService = runtimeService;
@@ -52,7 +54,7 @@ public sealed class CharacterCultivationService
         _gameRandomService = gameRandomService;
     }
 
-    public TimeSpan SettlementInterval => SettlementIntervalValue;
+    public TimeSpan SettlementInterval => _gameConfig.CultivationSettlementInterval;
 
     public Task<CultivationActionResult> StartCultivationAsync(ConnectionSession session, CancellationToken cancellationToken = default)
     {
@@ -325,7 +327,7 @@ public sealed class CharacterCultivationService
             qiAbsorptionRate);
         var estimatedPotentialPerMinute = IsPotentialRewardLocked(baseStats, realm)
             ? 0m
-            : estimatedCultivationPerMinute * PotentialPerCultivationPoint;
+            : estimatedCultivationPerMinute * _gameConfig.CultivationPotentialPerCultivationPoint;
 
         return new CultivationPreviewDto(
             baseStats.ActiveMartialArtId.Value,
@@ -556,7 +558,7 @@ public sealed class CharacterCultivationService
         var reachedRealmCap = currentCultivation + grantedCultivation >= maxCultivation;
         var grantedPotential = potentialRewardLocked || grantedCultivation <= 0
             ? 0
-            : (int)Math.Min(int.MaxValue, grantedCultivation * PotentialPerCultivationPoint);
+            : (int)Math.Min(int.MaxValue, grantedCultivation * _gameConfig.CultivationPotentialPerCultivationPoint);
         var remainingProgress = accumulatedProgress - grantedCultivation;
         if (reachedRealmCap)
             remainingProgress = 0m;

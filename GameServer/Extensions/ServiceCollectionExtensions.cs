@@ -26,6 +26,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddGameServices(this IServiceCollection services)
     {
         services.AddSingleton(BuildCharacterCreateConfig());
+        services.AddSingleton(BuildGameConfigValuesFromDatabase);
 
         // add game services
         services.AddScoped<AccountService>();
@@ -52,6 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CharacterBaseStatRepository>();
         services.AddScoped<CharacterCurrentStateRepository>();
         services.AddScoped<GameTimeStateRepository>();
+        services.AddScoped<GameConfigRepository>();
         services.AddScoped<MapTemplateRepository>();
         services.AddScoped<MapTemplateAdjacentMapRepository>();
         services.AddScoped<MapZoneSlotRepository>();
@@ -302,6 +304,44 @@ public static class ServiceCollectionExtensions
         };
     }
 
+    private static GameConfigValues BuildGameConfigValuesFromDatabase(IServiceProvider rootProvider)
+    {
+        using var scope = rootProvider.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<GameConfigRepository>();
+        var configs = repository.GetAllAsync().GetAwaiter().GetResult();
+        var configsByKey = configs
+            .GroupBy(x => x.ConfigKey, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    if (g.Count() != 1)
+                        throw new InvalidOperationException($"Duplicate game config key detected: {g.Key}");
+
+                    return g.Single().ConfigValue;
+                },
+                StringComparer.OrdinalIgnoreCase);
+
+        return new GameConfigValues
+        {
+            NetworkReconnectResumeWindowSeconds = GetInt(configsByKey, GameConfigKeys.NetworkReconnectResumeWindowSeconds, 3),
+            WorldPortalValidationBufferServerUnits = GetFloat(configsByKey, GameConfigKeys.WorldPortalValidationBufferServerUnits, 4f),
+            CombatSkillRangeGraceBufferUnits = GetFloat(configsByKey, GameConfigKeys.CombatSkillRangeGraceBufferUnits, 12f),
+            CombatDeathReturnHomeRecoveryRatio = GetDouble(configsByKey, GameConfigKeys.CombatDeathReturnHomeRecoveryRatio, 0.80d),
+            ItemDropPlayerOwnershipSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropPlayerOwnershipSeconds, 10),
+            ItemDropPlayerFreeForAllSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropPlayerFreeForAllSeconds, 50),
+            ItemDropEnemyDefaultOwnershipSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropEnemyDefaultOwnershipSeconds, 30),
+            ItemDropEnemyDefaultFreeForAllSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropEnemyDefaultFreeForAllSeconds, 30),
+            WorldEmptyPublicInstanceLifetimeSeconds = GetInt(configsByKey, GameConfigKeys.WorldEmptyPublicInstanceLifetimeSeconds, 120),
+            CultivationPotentialPerCultivationPoint = GetInt(configsByKey, GameConfigKeys.CultivationPotentialPerCultivationPoint, 1),
+            CultivationSettlementIntervalSeconds = GetInt(configsByKey, GameConfigKeys.CultivationSettlementIntervalSeconds, 300),
+            CharacterHomeGardenPlotCount = GetInt(configsByKey, GameConfigKeys.CharacterHomeGardenPlotCount, 8),
+            CharacterStarterBasicSkillId = GetInt(configsByKey, GameConfigKeys.CharacterStarterBasicSkillId, 0),
+            CharacterStarterBasicSkillSlotIndex = GetInt(configsByKey, GameConfigKeys.CharacterStarterBasicSkillSlotIndex, 1),
+            SkillMaxLoadoutSlotCount = GetInt(configsByKey, GameConfigKeys.SkillMaxLoadoutSlotCount, 5)
+        };
+    }
+
     private static T LoadConfig<T>(string fileName)
     {
         var path = Path.Combine(AppContext.BaseDirectory, "Config", fileName);
@@ -311,6 +351,39 @@ public static class ServiceCollectionExtensions
         var json = File.ReadAllText(path);
         return JsonSerializer.Deserialize<T>(json, ConfigJsonOptions)
                ?? throw new Exception($"Failed to deserialize config: {path}");
+    }
+
+    private static int GetInt(IReadOnlyDictionary<string, string> configs, string key, int fallback)
+    {
+        if (!configs.TryGetValue(key, out var rawValue) || string.IsNullOrWhiteSpace(rawValue))
+            return fallback;
+
+        if (int.TryParse(rawValue, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var value))
+            return value;
+
+        throw new InvalidOperationException($"Game config '{key}' is not a valid int: '{rawValue}'.");
+    }
+
+    private static float GetFloat(IReadOnlyDictionary<string, string> configs, string key, float fallback)
+    {
+        if (!configs.TryGetValue(key, out var rawValue) || string.IsNullOrWhiteSpace(rawValue))
+            return fallback;
+
+        if (float.TryParse(rawValue, System.Globalization.NumberStyles.Float | System.Globalization.NumberStyles.AllowThousands, System.Globalization.CultureInfo.InvariantCulture, out var value))
+            return value;
+
+        throw new InvalidOperationException($"Game config '{key}' is not a valid float: '{rawValue}'.");
+    }
+
+    private static double GetDouble(IReadOnlyDictionary<string, string> configs, string key, double fallback)
+    {
+        if (!configs.TryGetValue(key, out var rawValue) || string.IsNullOrWhiteSpace(rawValue))
+            return fallback;
+
+        if (double.TryParse(rawValue, System.Globalization.NumberStyles.Float | System.Globalization.NumberStyles.AllowThousands, System.Globalization.CultureInfo.InvariantCulture, out var value))
+            return value;
+
+        throw new InvalidOperationException($"Game config '{key}' is not a valid double: '{rawValue}'.");
     }
 
     private static JsonSerializerOptions BuildConfigJsonOptions()

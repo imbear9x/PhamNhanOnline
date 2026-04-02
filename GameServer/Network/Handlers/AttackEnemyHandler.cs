@@ -1,3 +1,4 @@
+using GameServer.Config;
 using System.Numerics;
 using GameServer.Exceptions;
 using GameServer.Network.Interface;
@@ -12,10 +13,9 @@ namespace GameServer.Network.Handlers;
 
 public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
 {
-    private const float SkillRangeGraceBufferUnits = 12f;
-
     private readonly CharacterCultivationService _cultivationService;
     private readonly CharacterRuntimeService _characterRuntimeService;
+    private readonly GameConfigValues _gameConfig;
     private readonly SkillExecutionService _skillExecutionService;
     private readonly SkillService _skillService;
     private readonly INetworkSender _network;
@@ -25,6 +25,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
     public AttackEnemyHandler(
         CharacterCultivationService cultivationService,
         CharacterRuntimeService characterRuntimeService,
+        GameConfigValues gameConfig,
         SkillExecutionService skillExecutionService,
         SkillService skillService,
         INetworkSender network,
@@ -33,6 +34,7 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
     {
         _cultivationService = cultivationService;
         _characterRuntimeService = characterRuntimeService;
+        _gameConfig = gameConfig;
         _skillExecutionService = skillExecutionService;
         _skillService = skillService;
         _network = network;
@@ -194,8 +196,9 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                     }
 
                     var castRange = Math.Max(0f, castContext.Skill.CastRange);
+                    var rangeGrace = Math.Max(0f, _gameConfig.CombatSkillRangeGraceBufferUnits);
                     var effectiveRange = castRange > 0f
-                        ? castRange + SkillRangeGraceBufferUnits
+                        ? castRange + rangeGrace
                         : 0f;
                     if (effectiveRange > 0f &&
                         Vector2.DistanceSquared(player.Position, targetSnapshot.Position) > effectiveRange * effectiveRange)
