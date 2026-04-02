@@ -4,6 +4,7 @@ using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Combat.Application;
+using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Skills.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Features.World.Presentation;
@@ -203,7 +204,8 @@ namespace PhamNhanOnline.Client.UI.Hud
                 out remainingMs,
                 out durationMs);
 
-            var interactable = !hasCooldown &&
+            var interactable = !IsLocalCharacterDead() &&
+                               !hasCooldown &&
                                !ClientRuntime.Combat.HasPendingAttackRequest &&
                                !ClientRuntime.Combat.IsLocalCastActive(utcNow);
 
@@ -243,14 +245,10 @@ namespace PhamNhanOnline.Client.UI.Hud
                 return;
             }
 
-            WorldTargetHandle targetHandle;
-            if (!TryResolveSelectedTarget(out targetHandle))
-                return;
-
             if (slotIndex == BasicSkillSlotIndex)
             {
                 if (worldSceneController == null ||
-                    !worldSceneController.RequestPrimaryTargetAction(targetHandle))
+                    !worldSceneController.RequestPrimaryActionForCurrentSelection())
                 {
                     return;
                 }
@@ -258,6 +256,10 @@ namespace PhamNhanOnline.Client.UI.Hud
                 Refresh(force: true);
                 return;
             }
+
+            WorldTargetHandle targetHandle;
+            if (!TryResolveSelectedTarget(out targetHandle))
+                return;
 
             if (!ClientRuntime.CombatService.TryUseSkillOnTarget(slotIndex, targetHandle))
                 return;
@@ -305,6 +307,22 @@ namespace PhamNhanOnline.Client.UI.Hud
                 case WorldTargetKind.Npc:
                     MapPortalModel portal;
                     if (!ClientRuntime.World.TryGetPortal(currentTarget.Value, out portal))
+                        return false;
+
+                    targetHandle = currentTarget.Value;
+                    return true;
+
+                case WorldTargetKind.GroundReward:
+                    int rewardId;
+                    if (!PhamNhanOnline.Client.Features.World.Application.ClientWorldState.TryParseGroundRewardTargetId(
+                            currentTarget.Value.TargetId,
+                            out rewardId))
+                    {
+                        return false;
+                    }
+
+                    GroundRewardModel reward;
+                    if (!ClientRuntime.World.TryGetGroundReward(rewardId, out reward))
                         return false;
 
                     targetHandle = currentTarget.Value;
@@ -424,6 +442,15 @@ namespace PhamNhanOnline.Client.UI.Hud
                 return (remainingMs / 1000f).ToString("0.0", CultureInfo.InvariantCulture);
 
             return (remainingMs / 1000f).ToString("0.0", CultureInfo.InvariantCulture);
+        }
+
+        private static bool IsLocalCharacterDead()
+        {
+            var currentState = ClientRuntime.Character.CurrentState;
+            return currentState.HasValue &&
+                   (currentState.Value.IsDead ||
+                    ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState) ||
+                    ClientCharacterRuntimeStateCodes.IsPermanentlyDead(currentState.Value.CurrentState));
         }
     }
 }

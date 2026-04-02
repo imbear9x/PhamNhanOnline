@@ -125,7 +125,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 if (worldLocalMovementSyncController != null)
                     worldLocalMovementSyncController.TryForceSyncCurrentPosition();
 
-                var result = await ClientRuntime.WorldTravelService.UsePortalAsync(portal.Id);
+                Vector2 currentServerPosition;
+                Vector2? reportedServerPosition = TryResolveCurrentLocalPlayerServerPosition(out currentServerPosition)
+                    ? currentServerPosition
+                    : (Vector2?)null;
+                var result = await ClientRuntime.WorldTravelService.UsePortalAsync(portal.Id, reportedServerPosition);
                 if (result.Success)
                 {
                     ClientLog.Info(
@@ -143,6 +147,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                         portal.Id,
                         result.Code,
                         result.Message));
+                WorldTravelDebugController.SetExternalCharacterStatsDebugLine(
+                    $"Portal {portal.Id} that bai: {result.Code} ({result.Message})");
             }
             catch (Exception ex)
             {
@@ -253,7 +259,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!TryResolveCurrentLocalPlayerServerPosition(out var playerServerPosition))
                 return false;
 
-            var portalServerPosition = ResolvePortalServerPosition(runtime.Portal);
+            var portalServerPosition = new Vector2(runtime.Portal.SourceX, runtime.Portal.SourceY);
             return Vector2.Distance(playerServerPosition, portalServerPosition) <= Mathf.Max(0f, runtime.Portal.InteractionRadius);
         }
 
@@ -274,7 +280,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 if (onlyShowEnabledPortals && !portal.IsEnabled)
                     continue;
 
-                var portalServerPosition = ResolvePortalServerPosition(portal);
+                var portalServerPosition = new Vector2(portal.SourceX, portal.SourceY);
                 Vector2 worldPosition;
                 if (!worldMapPresenter.TryMapServerPositionToWorld(portalServerPosition, out worldPosition))
                 {
@@ -331,7 +337,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var visualInstance = portalObject.GetComponent<PortalVisualInstance>();
             if (visualInstance != null)
+            {
                 visualInstance.Apply(ResolvePortalLabel(portal));
+                ApplyPortalVisualLayout(visualInstance, portal);
+            }
 
             var labelObject = visualInstance != null
                 ? visualInstance.LabelObject
@@ -347,6 +356,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 TriggerCollider = collider,
                 WasTouchingLastFrame = false
             };
+        }
+
+        private void ApplyPortalVisualLayout(PortalVisualInstance visualInstance, MapPortalModel portal)
+        {
+            if (visualInstance == null)
+                return;
+
+            var side = ResolveTouchTriggerSide(portal);
+            var signedOffset = visualInstance.ResolveSignedEdgeVisualOffsetX(
+                side == TouchTriggerSide.Left,
+                side == TouchTriggerSide.Right);
+            visualInstance.ApplyEdgeVisualOffset(signedOffset);
         }
 
         private GameObject CreatePortalVisualRoot(Transform parent, MapPortalModel portal, Vector2 worldPosition)
@@ -627,12 +648,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void TryBindRuntimeEvents()
         {
-            if (runtimeEventsBound || !ClientRuntime.IsInitialized)
+            AutoWireReferences();
+            if (runtimeEventsBound || !ClientRuntime.IsInitialized || worldTargetActionController == null)
                 return;
 
             ClientRuntime.Target.CurrentTargetChanged += HandleCurrentTargetChanged;
-            if (worldTargetActionController != null)
-                worldTargetActionController.InteractionRequested += HandleInteractionRequested;
+            worldTargetActionController.InteractionRequested += HandleInteractionRequested;
             runtimeEventsBound = true;
         }
 
@@ -670,36 +691,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (portal.Equals(default(MapPortalModel)) || worldMapPresenter == null)
                 return false;
 
-            return worldMapPresenter.TryMapServerPositionToWorld(ResolvePortalServerPosition(portal), out worldPosition);
-        }
-
-        public Vector2 ResolvePortalServerPosition(MapPortalModel portal)
-        {
-            var portalServerPosition = new Vector2(portal.SourceX, portal.SourceY);
-            var prefab = ResolvePortalVisualPrefab();
-            if (prefab == null)
-                return portalServerPosition;
-
-            var visualInstance = prefab.GetComponent<PortalVisualInstance>();
-            if (visualInstance == null)
-                return portalServerPosition;
-
-            var resolvedX = portalServerPosition.x;
-            var edgeOffsetX = Mathf.Max(0f, visualInstance.VisualEdgeOffsetXServerUnits);
-            switch (ResolveTouchTriggerSide(portal))
-            {
-                case TouchTriggerSide.Left:
-                    resolvedX += edgeOffsetX;
-                    break;
-
-                case TouchTriggerSide.Right:
-                    resolvedX -= edgeOffsetX;
-                    break;
-            }
-
-            return new Vector2(
-                resolvedX,
-                portalServerPosition.y + visualInstance.VisualOffsetYServerUnits);
+            return worldMapPresenter.TryMapServerPositionToWorld(
+                new Vector2(portal.SourceX, portal.SourceY),
+                out worldPosition);
         }
 
         private bool TryResolveCurrentLocalPlayerServerPosition(out Vector2 playerServerPosition)

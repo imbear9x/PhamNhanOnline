@@ -1367,3 +1367,81 @@ Goi y nhanh:
 
 The client runtime now expects `GameShared.dll` and `LiteNetLib.dll` in `Assets/Plugins`.
 Those are synced by the PowerShell script above, so packet contracts stay shared between server and Unity without copying source files.
+
+## 3.12. Combat dead return-home checklist
+
+Mục này dùng để test flow:
+- quái đánh chết người chơi
+- UI gameplay bị ẩn/khóa
+- chỉ còn 1 panel chọn `Trở về`
+- bấm `Trở về` thì nhân vật về `home`
+- nếu thoát game khi đang `combat dead`, server cũng tự đưa nhân vật về `home` với `80% HP/MP`
+
+1. Tạo panel chết trong `World` scene
+- Tạo một object riêng, ví dụ `CombatDeadPanel`
+- Để `inactive` mặc định
+- Bên trong panel tạo:
+- `TitleText`
+- `MessageText`
+- `StatusText`
+- `ReturnHomeButton`
+
+2. Tạo view cho panel chết
+- Gắn [CombatDeadPanelView.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/UI/World/CombatDeadPanelView.cs) lên object view hoặc root quản lý panel
+- View này mới là nơi wire toàn bộ UI refs
+
+3. Wiring trên `CombatDeadPanelView`
+- `Panel Root` -> `CombatDeadPanel`
+- `Title Text` -> `TitleText`
+- `Message Text` -> `MessageText`
+- `Status Text` -> `StatusText`
+- `Return Home Button` -> `ReturnHomeButton`
+
+4. Cấu hình text trên `CombatDeadPanelView`
+- `Title` -> tiêu đề bạn muốn, ví dụ `Trọng thương`
+- `Message` -> mô tả, ví dụ `Nhân vật đã tử thương. Tạm thời chỉ có thể trở về động phủ.`
+
+5. Cấu hình UI persistent cần ẩn khi chết trên `CombatDeadPanelView`
+- Trong `Persistent Ui Roots To Hide`, kéo các root UI mà bạn muốn biến mất khi nhân vật chết
+- Gợi ý thường dùng:
+- `CombatHudRoot`
+- `TopButtonsRoot`
+- `ZonePanelRoot`
+- `WorldMenuRoot`
+- các panel world khác đang để mở độc lập ngoài menu
+
+- Trong `Persistent Behaviours To Disable`, kéo các component cần khóa tạm thay vì ẩn cả root
+- Chỉ dùng mục này nếu bạn thực sự cần giữ object đang active nhưng không cho nó chạy
+
+6. Tạo controller luôn active
+- Tạo một object riêng luôn `active`, ví dụ `CombatDeadController`
+- Gắn [WorldCombatDeathController.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/UI/World/WorldCombatDeathController.cs)
+- Không gắn script này trực tiếp lên `CombatDeadPanel` nếu panel sẽ bị tắt/bật bằng `SetActive`
+
+7. Wiring trên `WorldCombatDeathController`
+- `Panel View` -> object có `CombatDeadPanelView`
+- `Action In Progress Text` -> ví dụ `Đang trở về động phủ...`
+
+8. Quy tắc setup quan trọng
+- `CombatDeadPanel` không được nằm trong `Persistent Ui Roots To Hide`
+- `CombatDeadController` nên là object riêng, luôn active
+- `CombatDeadPanelView` quản lý UI và event button
+- `WorldCombatDeathController` chỉ giữ logic flow, không wire text/button/root UI trực tiếp
+
+9. Flow runtime hiện tại
+- Khi local player vào `combat dead`:
+- `WorldMenuController` tự đóng menu nếu đang mở
+- `CombatDeadPanelView` ẩn/khóa các UI persistent bạn đã kéo ref
+- chỉ hiện `CombatDeadPanel`
+- bấm `Trở về`:
+- client gửi `ReturnHomeAfterCombatDeathPacket`
+- server đưa player về `home`
+- hardcode hồi `80% HP` và `80% MP`
+- state `IsDead = false`, `CurrentState = Idle`
+- world snapshot mới được publish lại
+
+10. Flow thoát game khi đang combat dead
+- Nếu người chơi không bấm gì mà app disconnect:
+- server không giữ nguyên xác chết ở map cũ
+- server tự persist state mới về `home`
+- lần sau vào game sẽ vào từ `home`, không còn trạng thái chết ở map cũ

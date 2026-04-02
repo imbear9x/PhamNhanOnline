@@ -3,6 +3,7 @@ using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Character.Presentation;
+using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Skills.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Features.World.Application;
@@ -29,6 +30,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [Header("Ranges")]
         [SerializeField] private float interactionRangeServerUnits = 30f;
         [SerializeField] private float actionRangeBufferServerUnits = 2f;
+        [SerializeField] private float portalActionRangeBufferServerUnits = 4f;
         [SerializeField] private float arrivalDeadZoneWorldUnits = 0.05f;
 
         [Header("Behavior")]
@@ -93,6 +95,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
             }
 
+            if (IsLocalCharacterDead())
+            {
+                CancelPendingAction(clearPin: true);
+                return;
+            }
+
             Vector2 playerWorldPosition;
             if (!TryResolveLocalPlayerWorldPosition(out playerWorldPosition))
                 return;
@@ -108,7 +116,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (TryResolveDistanceServerUnits(playerWorldPosition, targetWorldPosition, out distanceServerUnits))
             {
                 var requiredRange = ResolveRequiredRangeServerUnits(action);
-                if (distanceServerUnits <= requiredRange + Mathf.Max(0f, actionRangeBufferServerUnits))
+                var rangeBuffer = ResolveRangeBufferServerUnits(action);
+                if (distanceServerUnits <= requiredRange + rangeBuffer)
                 {
                     localActionController.ClearExternalMoveOverride();
                     ExecutePendingAction(action);
@@ -117,6 +126,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
                 Vector2 preferredMoveOverride;
                 if (TryResolvePreferredApproachMoveOverride(
+                        action,
                         playerWorldPosition,
                         targetWorldPosition,
                         requiredRange,
@@ -141,6 +151,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public bool RequestPrimaryAction(WorldTargetHandle target)
         {
             if (!ClientRuntime.IsInitialized || !target.IsValid)
+                return false;
+
+            if (IsLocalCharacterDead())
                 return false;
 
             AutoWireReferences();
@@ -241,15 +254,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (action.Mode == WorldTargetInteractionMode.ContextOnly &&
                 ClientRuntime.World.TryGetPortal(action.Target, out portal))
             {
-                var requiredRange = Mathf.Max(0f, portal.InteractionRadius);
-                if (worldPortalPresenter != null)
-                {
-                    var rawPortalPosition = new Vector2(portal.SourceX, portal.SourceY);
-                    var adjustedPortalPosition = worldPortalPresenter.ResolvePortalServerPosition(portal);
-                    requiredRange = Mathf.Max(0f, requiredRange - Vector2.Distance(rawPortalPosition, adjustedPortalPosition));
-                }
-
-                return requiredRange;
+                return Mathf.Max(0f, portal.InteractionRadius);
             }
 
             if (action.Mode == WorldTargetInteractionMode.HostileAttack)
@@ -262,9 +267,24 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return Mathf.Max(0f, interactionRangeServerUnits);
         }
 
+        private float ResolveRangeBufferServerUnits(PendingTargetAction action)
+        {
+            GameShared.Models.MapPortalModel portal;
+            if (action.Mode == WorldTargetInteractionMode.ContextOnly &&
+                ClientRuntime.World.TryGetPortal(action.Target, out portal))
+            {
+                return Mathf.Max(0f, portalActionRangeBufferServerUnits);
+            }
+
+            return Mathf.Max(0f, actionRangeBufferServerUnits);
+        }
+
         private bool CanUseBasicSkillNow()
         {
             if (!ClientRuntime.IsInitialized)
+                return false;
+
+            if (IsLocalCharacterDead())
                 return false;
 
             var utcNow = DateTime.UtcNow;
@@ -396,6 +416,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
 
         private bool TryResolvePreferredApproachMoveOverride(
+            PendingTargetAction action,
             Vector2 playerWorldPosition,
             Vector2 targetWorldPosition,
             float requiredRangeServerUnits,
@@ -413,7 +434,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return false;
             }
 
-            var stopRangeServerUnits = Mathf.Max(0f, requiredRangeServerUnits) + Mathf.Max(0f, actionRangeBufferServerUnits);
+            var stopRangeServerUnits = Mathf.Max(0f, requiredRangeServerUnits) + ResolveRangeBufferServerUnits(action);
             var deltaServer = targetServerPosition - playerServerPosition;
 
             if (Mathf.Abs(deltaServer.x) > stopRangeServerUnits)
@@ -500,6 +521,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             CancelPendingAction(clearPin: true);
+        }
+
+        private static bool IsLocalCharacterDead()
+        {
+            var currentState = ClientRuntime.Character.CurrentState;
+            return currentState.HasValue &&
+                   (currentState.Value.IsDead ||
+                    ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState) ||
+                    ClientCharacterRuntimeStateCodes.IsPermanentlyDead(currentState.Value.CurrentState));
         }
     }
 }

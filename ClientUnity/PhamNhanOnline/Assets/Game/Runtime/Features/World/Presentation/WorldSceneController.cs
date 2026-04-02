@@ -101,6 +101,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return controller != null && controller.RequestPrimaryAction(target);
         }
 
+        public bool RequestPrimaryActionForCurrentSelection()
+        {
+            if (!ClientRuntime.IsInitialized)
+                return false;
+
+            var currentTarget = ClientRuntime.Target.CurrentTarget;
+            if (!currentTarget.HasValue || !currentTarget.Value.IsValid)
+                return false;
+
+            return RequestPrimaryTargetAction(currentTarget.Value);
+        }
+
         private void Update()
         {
             if (!ClientRuntime.IsInitialized)

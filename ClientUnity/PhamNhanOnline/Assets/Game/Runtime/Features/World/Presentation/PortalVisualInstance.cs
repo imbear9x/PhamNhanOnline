@@ -7,16 +7,24 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     public sealed class PortalVisualInstance : MonoBehaviour
     {
         [SerializeField] private TMP_Text labelText;
+        [SerializeField] private Transform visualRoot;
         [SerializeField] private Collider2D interactionCollider;
         [SerializeField] private Collider2D touchTriggerLeftCollider;
         [SerializeField] private Collider2D touchTriggerRightCollider;
-        [SerializeField] private float visualEdgeOffsetXServerUnits;
-        [SerializeField] private float visualOffsetYServerUnits;
+        [SerializeField] private float edgeVisualOffsetXWorldUnits;
         [SerializeField] private GameObject selectedHighlightRoot;
+
+        private bool visualRootDefaultCaptured;
+        private Vector3 visualRootDefaultLocalPosition;
 
         public TMP_Text LabelText
         {
             get { return labelText; }
+        }
+
+        public Transform VisualRoot
+        {
+            get { return visualRoot; }
         }
 
         public Collider2D InteractionCollider
@@ -32,16 +40,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public Collider2D TouchTriggerRightCollider
         {
             get { return touchTriggerRightCollider; }
-        }
-
-        public float VisualOffsetYServerUnits
-        {
-            get { return visualOffsetYServerUnits; }
-        }
-
-        public float VisualEdgeOffsetXServerUnits
-        {
-            get { return visualEdgeOffsetXServerUnits; }
         }
 
         public GameObject SelectedHighlightRoot
@@ -77,6 +75,31 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 labelText.text = label ?? string.Empty;
         }
 
+        public void ApplyEdgeVisualOffset(float signedOffsetXWorldUnits)
+        {
+            AutoResolveReferences();
+            if (visualRoot == null)
+                return;
+
+            CaptureDefaultVisualRootLocalPosition();
+            visualRoot.localPosition = visualRootDefaultLocalPosition + new Vector3(signedOffsetXWorldUnits, 0f, 0f);
+        }
+
+        public float ResolveSignedEdgeVisualOffsetX(bool isLeftEdge, bool isRightEdge)
+        {
+            var magnitude = Mathf.Max(0f, edgeVisualOffsetXWorldUnits);
+            if (magnitude <= Mathf.Epsilon)
+                return 0f;
+
+            if (isLeftEdge)
+                return magnitude;
+
+            if (isRightEdge)
+                return -magnitude;
+
+            return 0f;
+        }
+
         public void SetSelected(bool selected)
         {
             if (selectedHighlightRoot != null && selectedHighlightRoot.activeSelf != selected)
@@ -88,6 +111,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (labelText == null)
                 labelText = GetComponentInChildren<TMP_Text>(true);
 
+            if (visualRoot == null)
+            {
+                var rootTransform = transform.Find("Root");
+                if (rootTransform != null)
+                    visualRoot = rootTransform;
+            }
+
             if (interactionCollider == null)
             {
                 if (labelText != null)
@@ -96,6 +126,17 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 if (interactionCollider == null)
                     interactionCollider = GetComponentInChildren<Collider2D>(true);
             }
+
+            CaptureDefaultVisualRootLocalPosition();
+        }
+
+        private void CaptureDefaultVisualRootLocalPosition()
+        {
+            if (visualRoot == null || visualRootDefaultCaptured)
+                return;
+
+            visualRootDefaultLocalPosition = visualRoot.localPosition;
+            visualRootDefaultCaptured = true;
         }
     }
 }

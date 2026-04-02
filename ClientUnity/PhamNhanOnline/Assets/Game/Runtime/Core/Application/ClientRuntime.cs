@@ -30,6 +30,7 @@ namespace PhamNhanOnline.Client.Core.Application
         public static ClientConnectionRecoveryService ConnectionRecovery { get; private set; }
         public static ClientCharacterState Character { get; private set; }
         public static ClientCharacterService CharacterService { get; private set; }
+        public static ClientCombatDeathRecoveryService CombatDeathRecoveryService { get; private set; }
         public static ClientInventoryState Inventory { get; private set; }
         public static ClientInventoryService InventoryService { get; private set; }
         public static ClientMartialArtState MartialArts { get; private set; }
@@ -74,6 +75,7 @@ namespace PhamNhanOnline.Client.Core.Application
             UiScreens = new UiScreenService();
             AuthService = new ClientAuthService(Connection, Auth);
             CharacterService = new ClientCharacterService(Connection, Character);
+            CombatDeathRecoveryService = new ClientCombatDeathRecoveryService(Connection, Character);
             ConnectionRecovery = new ClientConnectionRecoveryService(Connection, AuthService, Auth, CharacterService, Character, SceneFlow, settings);
             InventoryService = new ClientInventoryService(Connection, Character, Inventory);
             MartialArtService = new ClientMartialArtService(Connection, Character, MartialArts);

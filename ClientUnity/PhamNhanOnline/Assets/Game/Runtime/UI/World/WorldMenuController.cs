@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using PhamNhanOnline.Client.Core.Application;
+using PhamNhanOnline.Client.Features.Character.Application;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -227,6 +228,8 @@ namespace PhamNhanOnline.Client.UI.World
 
             ClientRuntime.Connection.StateChanged -= HandleConnectionStateChanged;
             ClientRuntime.Connection.StateChanged += HandleConnectionStateChanged;
+            ClientRuntime.Character.CurrentStateChanged -= HandleCharacterCurrentStateChanged;
+            ClientRuntime.Character.CurrentStateChanged += HandleCharacterCurrentStateChanged;
         }
 
         private void UnbindRuntimeEvents()
@@ -235,12 +238,27 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             ClientRuntime.Connection.StateChanged -= HandleConnectionStateChanged;
+            ClientRuntime.Character.CurrentStateChanged -= HandleCharacterCurrentStateChanged;
         }
 
         private void HandleConnectionStateChanged(PhamNhanOnline.Client.Network.Session.ClientConnectionState state)
         {
             if (state == PhamNhanOnline.Client.Network.Session.ClientConnectionState.Disconnected)
                 HideMenu();
+        }
+
+        private void HandleCharacterCurrentStateChanged(CharacterCurrentStateChangeNotice notice)
+        {
+            var currentState = notice.CurrentState;
+            if (!currentState.HasValue)
+                return;
+
+            if (currentState.Value.IsDead ||
+                ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState) ||
+                ClientCharacterRuntimeStateCodes.IsPermanentlyDead(currentState.Value.CurrentState))
+            {
+                HideMenu();
+            }
         }
 
         private void SetMenuVisible(bool visible)

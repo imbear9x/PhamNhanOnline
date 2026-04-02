@@ -5,6 +5,7 @@ using GameShared.Packets;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Network.Session;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Application
 {
@@ -37,16 +38,23 @@ namespace PhamNhanOnline.Client.Features.World.Application
             return travelCompletionSource.Task;
         }
 
-        public Task<WorldTravelResult> UsePortalAsync(int portalId)
+        public Task<WorldTravelResult> UsePortalAsync(int portalId, Vector2? currentServerPosition = null)
         {
             if (connection.State != ClientConnectionState.Connected)
                 return Task.FromResult(new WorldTravelResult(false, null, null, portalId, null, "Not connected to server."));
 
             travelCompletionSource = new TaskCompletionSource<WorldTravelResult>();
-            connection.Send(new TravelToMapPacket
+            var packet = new TravelToMapPacket
             {
                 PortalId = portalId
-            });
+            };
+            if (currentServerPosition.HasValue)
+            {
+                packet.CurrentPosX = currentServerPosition.Value.x;
+                packet.CurrentPosY = currentServerPosition.Value.y;
+            }
+
+            connection.Send(packet);
             return travelCompletionSource.Task;
         }
 

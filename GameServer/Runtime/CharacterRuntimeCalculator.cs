@@ -18,7 +18,7 @@ public sealed class CharacterRuntimeCalculator
         {
             CurrentHp = hpAfter,
             IsDead = isDead,
-            CurrentState = isDead ? CharacterRuntimeStateCodes.Dead : currentState.CurrentState,
+            CurrentState = isDead ? CharacterRuntimeStateCodes.CombatDead : currentState.CurrentState,
             CurrentMp = Clamp(currentState.CurrentMp, 0, baseStats.GetEffectiveMp()),
             CurrentStamina = Clamp(currentState.CurrentStamina, 0, baseStats.GetEffectiveStamina()),
         };
@@ -54,7 +54,7 @@ public sealed class CharacterRuntimeCalculator
             CurrentMp = mp,
             CurrentStamina = stamina,
             IsDead = isDead,
-            CurrentState = isDead ? CharacterRuntimeStateCodes.Dead : currentState.CurrentState,
+            CurrentState = isDead ? CharacterRuntimeStateCodes.CombatDead : currentState.CurrentState,
         };
     }
 
@@ -76,7 +76,7 @@ public sealed class CharacterRuntimeCalculator
             CurrentMp = mp,
             CurrentStamina = stamina,
             IsDead = isDead,
-            CurrentState = isDead ? CharacterRuntimeStateCodes.Dead : currentState.CurrentState,
+            CurrentState = isDead ? CharacterRuntimeStateCodes.CombatDead : currentState.CurrentState,
         };
     }
 

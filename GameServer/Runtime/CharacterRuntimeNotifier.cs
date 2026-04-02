@@ -51,4 +51,13 @@ public sealed class CharacterRuntimeNotifier
 
         return true;
     }
+
+    public void NotifyStateTransition(PlayerSession player, int reason)
+    {
+        _network.Send(player.ConnectionId, new CharacterStateTransitionPacket
+        {
+            CharacterId = player.CharacterData.CharacterId,
+            Reason = reason
+        });
+    }
 }

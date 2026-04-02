@@ -306,7 +306,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void TryBindRuntimeEvents()
         {
-            if (runtimeEventsBound || !ClientRuntime.IsInitialized)
+            AutoWireReferences();
+            if (runtimeEventsBound || !ClientRuntime.IsInitialized || worldTargetActionController == null)
                 return;
 
             ClientRuntime.World.GroundRewardUpserted += HandleGroundRewardUpserted;
@@ -317,8 +318,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 ClientRuntime.GroundRewardService.PickupSucceeded += HandlePickupSucceeded;
             if (ClientRuntime.InventoryService != null)
                 ClientRuntime.InventoryService.DropToGroundSucceeded += HandleLocalDropToGroundSucceeded;
-            if (worldTargetActionController != null)
-                worldTargetActionController.InteractionRequested += HandleInteractionRequested;
+            worldTargetActionController.InteractionRequested += HandleInteractionRequested;
             runtimeEventsBound = true;
         }
 

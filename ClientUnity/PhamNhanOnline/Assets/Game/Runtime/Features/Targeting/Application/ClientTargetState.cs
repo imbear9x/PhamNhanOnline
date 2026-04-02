@@ -48,7 +48,7 @@ namespace PhamNhanOnline.Client.Features.Targeting.Application
         {
             return new WorldTargetHandle(
                 WorldTargetKind.GroundReward,
-                rewardId.ToString(CultureInfo.InvariantCulture));
+                PhamNhanOnline.Client.Features.World.Application.ClientWorldState.BuildGroundRewardTargetId(rewardId));
         }
 
         public bool Equals(WorldTargetHandle other)

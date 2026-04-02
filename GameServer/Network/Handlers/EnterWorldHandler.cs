@@ -15,6 +15,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
     private readonly CharacterRuntimeService _runtimeService;
     private readonly CharacterFinalStatService _characterFinalStatService;
     private readonly CharacterLifecycleService _lifecycleService;
+    private readonly CharacterCombatDeathRecoveryService _deathRecoveryService;
     private readonly CharacterCultivationService _cultivationService;
     private readonly WorldInterestService _interestService;
     private readonly MapManager _mapManager;
@@ -26,6 +27,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
         CharacterRuntimeService runtimeService,
         CharacterFinalStatService characterFinalStatService,
         CharacterLifecycleService lifecycleService,
+        CharacterCombatDeathRecoveryService deathRecoveryService,
         CharacterCultivationService cultivationService,
         WorldInterestService interestService,
         MapManager mapManager,
@@ -36,6 +38,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
         _runtimeService = runtimeService;
         _characterFinalStatService = characterFinalStatService;
         _lifecycleService = lifecycleService;
+        _deathRecoveryService = deathRecoveryService;
         _cultivationService = cultivationService;
         _interestService = interestService;
         _mapManager = mapManager;
@@ -64,6 +67,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
             var cultivationSettlement = await _cultivationService.SettleSnapshotAsync(data);
             data = cultivationSettlement.Snapshot;
             data = await _lifecycleService.PrepareSnapshotForWorldEntryAsync(data);
+            data = await _deathRecoveryService.RecoverSnapshotToHomeAsync(data);
             var isLifespanExpired = _lifecycleService.IsLifespanExpired(data.CurrentState);
 
             session.SelectedCharacterId = data.Character.CharacterId;

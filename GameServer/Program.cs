@@ -52,7 +52,6 @@ class Program
 
         try
         {
-            Logger.Info("NetworkServer resolved.");
             groundItemRuntimeService.CleanupResidualGroundItemsOnStartup();
             server.Start();
             gameLoop.Start();

@@ -3,6 +3,7 @@ using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.Features.Character.Presentation;
+using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
 
@@ -374,6 +375,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var currentState = ClientRuntime.Character.CurrentState;
             var shouldBlock =
+                (currentState.HasValue &&
+                 (currentState.Value.IsDead ||
+                  ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState) ||
+                  ClientCharacterRuntimeStateCodes.IsPermanentlyDead(currentState.Value.CurrentState))) ||
                 (currentState.HasValue && currentState.Value.CurrentState == CultivatingStateCode) ||
                 WorldMenuController.IsAnyMenuOpen ||
                 (ClientRuntime.ConnectionRecovery != null && ClientRuntime.ConnectionRecovery.ShouldBlockGameplayInput);
@@ -403,7 +408,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return baseMoveSpeed > 0f ? baseMoveSpeed : null;
         }
 
-        private const int CultivatingStateCode = 3;
+        private const int CultivatingStateCode = ClientCharacterRuntimeStateCodes.Cultivating;
     }
 }
 

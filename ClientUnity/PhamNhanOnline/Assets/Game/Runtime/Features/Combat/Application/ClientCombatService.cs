@@ -40,6 +40,9 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
             if (skillSlotIndex <= 0)
                 return false;
 
+            if (IsLocalCharacterDead())
+                return false;
+
             if (combatState.HasPendingAttackRequest)
                 return false;
 
@@ -60,6 +63,9 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
                 return false;
 
             if (skillSlotIndex <= 0)
+                return false;
+
+            if (IsLocalCharacterDead())
                 return false;
 
             if (combatState.HasPendingAttackRequest)
@@ -197,6 +203,15 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
         {
             if (state == ClientConnectionState.Disconnected)
                 combatState.Clear();
+        }
+
+        private bool IsLocalCharacterDead()
+        {
+            var currentState = characterState.CurrentState;
+            return currentState.HasValue &&
+                   (currentState.Value.IsDead ||
+                    ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState) ||
+                    ClientCharacterRuntimeStateCodes.IsPermanentlyDead(currentState.Value.CurrentState));
         }
 
         private static DateTime? FromUnixMs(long? unixMs)

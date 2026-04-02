@@ -89,8 +89,9 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
             return Task.CompletedTask;
         }
 
+        var validationPosition = ResolvePortalValidationPosition(player, packet);
         var maxDistance = MathF.Max(0f, portal.InteractionRadius) + PortalValidationBufferServerUnits;
-        if (Vector2.DistanceSquared(player.Position, portal.SourcePosition) > maxDistance * maxDistance)
+        if (Vector2.DistanceSquared(validationPosition, portal.SourcePosition) > maxDistance * maxDistance)
         {
             SendFailure(session, packet, MessageCode.MapTravelNotAllowed, portal.TargetMapId, portal.TargetSpawnPointId);
             return Task.CompletedTask;
@@ -119,6 +120,16 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
             TargetSpawnPointId = targetSpawnPoint.Id
         });
         return Task.CompletedTask;
+    }
+
+    private Vector2 ResolvePortalValidationPosition(PlayerSession player, TravelToMapPacket packet)
+    {
+        if (packet.CurrentPosX.HasValue && packet.CurrentPosY.HasValue && _mapCatalog.TryGet(player.MapId, out var currentMap))
+        {
+            return currentMap.ClampPosition(new Vector2(packet.CurrentPosX.Value, packet.CurrentPosY.Value));
+        }
+
+        return player.Position;
     }
 
     private Task HandleLegacyMapTravelAsync(ConnectionSession session, PlayerSession player, TravelToMapPacket packet)

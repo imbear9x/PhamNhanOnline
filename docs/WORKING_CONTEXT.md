@@ -7,16 +7,23 @@ Những gì có thể tự suy ra từ code hoặc đọc ở doc chuyên đề 
 
 ## Rule cộng tác
 
-- Khi code luôn phải nghĩ tới, tính trước performance cho game client và server. Không code lấy xong, chạy là được. Phải báo user các case sẽ gây hại có thể xảy ra và hướng tối ưu
+- Khi code luôn phải nghĩ tới, tính trước performance cho game client và server. Không code lấy xong, chạy là được. Phải báo user các case sẽ gây hại có thể xảy ra và hướng tối ưu.
 - Trước khi sửa `GameServer` hoặc `GameShared`, phải phân tích trước và chỉ sửa khi user thực sự muốn đụng vào phía đó.
 - Client chỉ được phụ thuộc `GameShared`, không phụ thuộc `GameServer`.
+- Khi thêm service hoặc runtime mới ở server, phải kiểm tra vòng DI trước khi chốt code.
+- Đã từng có lỗi startup kẹt ngay tại `provider.GetRequiredService<NetworkServer>()` do vòng:
+  - `NetworkServer -> CharacterCombatDeathRecoveryService -> WorldInterestService -> INetworkSender -> NetworkServer`
+- Rule bắt buộc:
+  - không inject trực tiếp `WorldInterestService`, `CharacterRuntimeNotifier` hoặc service nào phụ thuộc `INetworkSender/NetworkServer`
+  - vào các service mà chính `NetworkServer` cần để khởi tạo
+  - nếu thật sự cần, resolve lười trong method runtime bằng `IServiceScopeFactory`
 - Nếu đổi contract dùng chung trong `GameShared`, phải chạy:
 
 ```powershell
 powershell -File .\scripts\sync-gameshared-to-unity.ps1
 ```
 
-- Với UI gameplay trong Unity, ưu tiên viết controller/logic trước để user tự dựng hierarchy, prefab, scene trong Editor và kéo ref bằng Inspector.
+- Với UI gameplay trong Unity, ưu tiên viết controller hoặc logic trước để user tự dựng hierarchy, prefab, scene trong Editor và kéo ref bằng Inspector.
 - Không tự sinh cả UI hierarchy bằng runtime code nếu user chưa yêu cầu rõ kiểu đó.
 
 ## Rule trả lời và tài liệu

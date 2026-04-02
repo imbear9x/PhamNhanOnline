@@ -55,7 +55,11 @@ public sealed class CharacterRuntimeService
             clampedCurrentState.LifespanEndGameMinute,
             _gameTimeService.GetCurrentSnapshot());
         player.TryUpdateReportedRemainingLifespan(currentRemaining);
-        var isRestricted = currentRemaining <= 0 || clampedCurrentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired;
+        var isRestricted =
+            currentRemaining <= 0 ||
+            clampedCurrentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired ||
+            clampedCurrentState.CurrentState == CharacterRuntimeStateCodes.CombatDead ||
+            clampedCurrentState.IsDead;
         player.SetCharacterActionsRestricted(isRestricted);
         session.AreCharacterActionsRestricted = isRestricted;
         return player;
@@ -64,6 +68,7 @@ public sealed class CharacterRuntimeService
     public CharacterRuntimeSnapshot ApplyDamage(PlayerSession player, int damage)
     {
         var utcNow = DateTime.UtcNow;
+        var previousState = player.RuntimeState.CaptureSnapshot().CurrentState;
         var remainingDamage = player.CombatStatuses.AbsorbIncomingDamage(damage, utcNow, out _);
         if (remainingDamage <= 0)
             return player.RuntimeState.CaptureSnapshot();
@@ -73,8 +78,10 @@ public sealed class CharacterRuntimeService
             current => _calculator.ApplyDamage(baseStats, current, remainingDamage));
 
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
+        SyncCharacterActionRestriction(player, snapshot.CurrentState);
         _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);
         _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
+        NotifyDeathTransitionIfNeeded(player, previousState, snapshot.CurrentState);
         return snapshot;
     }
 
@@ -85,13 +92,16 @@ public sealed class CharacterRuntimeService
 
     public CharacterRuntimeSnapshot ApplyResourceDelta(PlayerSession player, int hpDelta, int mpDelta, int staminaDelta)
     {
+        var previousState = player.RuntimeState.CaptureSnapshot().CurrentState;
         var baseStats = player.RuntimeState.CaptureSnapshot().BaseStats;
         var snapshot = player.RuntimeState.UpdateCurrentState(
             current => _calculator.ApplyResourceDelta(baseStats, current, hpDelta, mpDelta, staminaDelta));
 
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
+        SyncCharacterActionRestriction(player, snapshot.CurrentState);
         _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);
         _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
+        NotifyDeathTransitionIfNeeded(player, previousState, snapshot.CurrentState);
         return snapshot;
     }
 
@@ -114,6 +124,7 @@ public sealed class CharacterRuntimeService
             });
 
         player.SynchronizeFromCurrentState(currentStateSnapshot.CurrentState);
+        SyncCharacterActionRestriction(player, currentStateSnapshot.CurrentState);
         _notifier.NotifyBaseStatsChanged(player, baseStatsSnapshot.BaseStats);
         _notifier.NotifyCurrentStateChanged(player, currentStateSnapshot.CurrentState);
         _interestService.NotifyCurrentStateChanged(player, currentStateSnapshot.CurrentState);
@@ -127,14 +138,18 @@ public sealed class CharacterRuntimeService
         bool notifySelf = true,
         bool notifyObservers = true)
     {
+        var previousState = player.RuntimeState.CaptureSnapshot().CurrentState;
         var snapshot = player.RuntimeState.UpdateCurrentState(mutation, markDirty: persist);
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
+        SyncCharacterActionRestriction(player, snapshot.CurrentState);
 
         if (notifySelf)
             _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);
 
         if (notifyObservers)
             _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
+
+        NotifyDeathTransitionIfNeeded(player, previousState, snapshot.CurrentState, notifySelf);
 
         return snapshot;
     }
@@ -179,5 +194,37 @@ public sealed class CharacterRuntimeService
                 _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
             }
         }
+    }
+
+    private void SyncCharacterActionRestriction(PlayerSession player, CharacterCurrentStateDto currentState)
+    {
+        var currentRemaining = CharacterLifespanRules.CalculateRemainingLifespanYears(
+            currentState.LifespanEndGameMinute,
+            _gameTimeService.GetCurrentSnapshot());
+        player.TryUpdateReportedRemainingLifespan(currentRemaining);
+
+        var restricted =
+            currentRemaining <= 0 ||
+            currentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired ||
+            currentState.CurrentState == CharacterRuntimeStateCodes.CombatDead ||
+            currentState.IsDead;
+        player.SetCharacterActionsRestricted(restricted);
+    }
+
+    private void NotifyDeathTransitionIfNeeded(
+        PlayerSession player,
+        CharacterCurrentStateDto previousState,
+        CharacterCurrentStateDto currentState,
+        bool notifySelf = true)
+    {
+        if (!notifySelf)
+            return;
+
+        var wasDead = previousState.IsDead || previousState.CurrentState == CharacterRuntimeStateCodes.CombatDead;
+        var isDead = currentState.IsDead || currentState.CurrentState == CharacterRuntimeStateCodes.CombatDead;
+        if (wasDead || !isDead)
+            return;
+
+        _notifier.NotifyStateTransition(player, CharacterStateTransitionReasons.CombatDead);
     }
 }

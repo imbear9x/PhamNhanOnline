@@ -63,7 +63,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             new TargetKindPriorityRule { kind = WorldTargetKind.Npc, priority = 0 },
             new TargetKindPriorityRule { kind = WorldTargetKind.Boss, priority = 1 },
             new TargetKindPriorityRule { kind = WorldTargetKind.Enemy, priority = 2 },
-            new TargetKindPriorityRule { kind = WorldTargetKind.Player, priority = 3 }
+            new TargetKindPriorityRule { kind = WorldTargetKind.GroundReward, priority = 3 },
+            new TargetKindPriorityRule { kind = WorldTargetKind.Player, priority = 4 }
         };
 
         private readonly System.Collections.Generic.List<RaycastResult> uiRaycastResults =
@@ -417,9 +418,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             var kind = handle.Kind;
             if (kind == WorldTargetKind.None)
-                return;
-
-            if (kind == WorldTargetKind.GroundReward)
                 return;
 
             if (IsLocalPlayerHandle(handle))

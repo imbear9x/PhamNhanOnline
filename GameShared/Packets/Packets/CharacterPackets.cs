@@ -403,3 +403,20 @@ public partial class DropInventoryItemResultPacket : IPacket
     public int? Quantity { get; set; }
     public int? RewardId { get; set; }
 }
+
+[Packet(73)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 300)]
+public partial class ReturnHomeAfterCombatDeathPacket : IPacket
+{
+}
+
+[Packet(74)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class ReturnHomeAfterCombatDeathResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
+}

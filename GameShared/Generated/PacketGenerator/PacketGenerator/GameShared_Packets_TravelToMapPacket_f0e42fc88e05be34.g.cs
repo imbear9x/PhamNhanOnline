@@ -24,12 +24,30 @@ public partial class TravelToMapPacket
         return HasPortalId;
     }
 
+    public bool HasCurrentPosX => (_mask & (1UL << 2)) != 0;
+
+    public bool TryGetCurrentPosX(out float? value)
+    {
+        value = CurrentPosX;
+        return HasCurrentPosX;
+    }
+
+    public bool HasCurrentPosY => (_mask & (1UL << 3)) != 0;
+
+    public bool TryGetCurrentPosY(out float? value)
+    {
+        value = CurrentPosY;
+        return HasCurrentPosY;
+    }
+
     public void Serialize(BinaryWriter writer)
     {
         ulong mask = 0;
 
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(TargetMapId, default!)) mask |= 1UL << 0;
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(PortalId, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<float?>.Default.Equals(CurrentPosX, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<float?>.Default.Equals(CurrentPosY, default!)) mask |= 1UL << 3;
 
         writer.Write(mask);
 
@@ -37,6 +55,10 @@ public partial class TravelToMapPacket
             global::GameShared.Packets.PacketWriter.Write(writer, TargetMapId.Value);
         if ((mask & (1UL << 1)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, PortalId.Value);
+        if ((mask & (1UL << 2)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, CurrentPosX.Value);
+        if ((mask & (1UL << 3)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, CurrentPosY.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -47,5 +69,9 @@ public partial class TravelToMapPacket
             TargetMapId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 1)) != 0)
             PortalId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 2)) != 0)
+            CurrentPosX = (float?)(global::GameShared.Packets.PacketReader.ReadFloat(reader));
+        if ((_mask & (1UL << 3)) != 0)
+            CurrentPosY = (float?)(global::GameShared.Packets.PacketReader.ReadFloat(reader));
     }
 }

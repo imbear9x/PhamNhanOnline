@@ -152,6 +152,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CharacterRuntimeCalculator>();
         services.AddSingleton<CharacterRuntimeNotifier>();
         services.AddSingleton<CharacterRuntimeService>();
+        services.AddSingleton<CharacterCombatDeathRecoveryService>();
         services.AddSingleton<GroundItemRuntimeService>();
         services.AddSingleton<CharacterRuntimeSaveService>();
         services.AddSingleton<CharacterLifecycleService>();
@@ -178,6 +179,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<EquipInventoryItemPacket>, EquipInventoryItemHandler>();
         services.AddScoped<IPacketHandler<UnequipInventoryItemPacket>, UnequipInventoryItemHandler>();
         services.AddScoped<IPacketHandler<DropInventoryItemPacket>, DropInventoryItemHandler>();
+        services.AddScoped<IPacketHandler<ReturnHomeAfterCombatDeathPacket>, ReturnHomeAfterCombatDeathHandler>();
         services.AddScoped<IPacketHandler<TravelToMapPacket>, TravelToMapHandler>();
         services.AddScoped<IPacketHandler<GetMapZonesPacket>, GetMapZonesHandler>();
         services.AddScoped<IPacketHandler<SwitchMapZonePacket>, SwitchMapZoneHandler>();

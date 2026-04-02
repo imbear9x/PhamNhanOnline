@@ -19,16 +19,19 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private float groundProbeHeight = 3f;
         [SerializeField] private float groundProbeDistance = 12f;
         [SerializeField] private float groundContactOffset = 0f;
+        [SerializeField] private bool logGroundingDiagnostics;
 
         private int runtimeId;
-        private bool warnedPositionMapping;
+        private bool hasResolvedWorldPosition;
         private CharacterSkillPresenter skillPresenter;
+        private string enemyCode = string.Empty;
 
         public int RuntimeId { get { return runtimeId; } }
 
         public void ApplySnapshot(EnemyRuntimeModel enemy, WorldMapPresenter worldMapPresenter)
         {
             runtimeId = enemy.RuntimeId;
+            enemyCode = enemy.Code ?? string.Empty;
             AutoWireReferences();
             ConfigureTargetable(enemy);
             UpdateWorldPosition(enemy, worldMapPresenter);
@@ -57,6 +60,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (groundSnapPoint == null)
             {
                 var child = transform.Find("GroundSnapPoint");
+                if (child == null)
+                    child = transform.Find("GroundCheck");
+
                 if (child != null)
                     groundSnapPoint = child;
             }
@@ -82,18 +88,19 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (worldMapPresenter != null && worldMapPresenter.TryMapServerPositionToWorld(serverPosition, out worldPosition))
             {
+                LogGrounding(
+                    $"mapped serverPos={serverPosition} to worldPos={worldPosition} " +
+                    $"mapReady={worldMapPresenter != null}");
                 ApplyWorldPosition(worldPosition);
-                warnedPositionMapping = false;
+                hasResolvedWorldPosition = true;
                 return;
             }
 
-            if (!warnedPositionMapping)
-            {
-                ClientLog.Warn($"EnemyPresenter on {name} could not map server position into Unity world space. Falling back to raw coordinates.");
-                warnedPositionMapping = true;
-            }
-
-            ApplyWorldPosition(serverPosition);
+            LogGrounding(
+                $"failed to map serverPos={serverPosition}. " +
+                $"worldMapPresenterAssigned={worldMapPresenter != null}");
+            if (!hasResolvedWorldPosition)
+                return;
         }
 
         private void ApplyWorldPosition(Vector2 worldPosition)
@@ -102,6 +109,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!snapToGround)
             {
                 transform.position = targetPosition;
+                LogGrounding($"applied without snap finalPos={transform.position}");
                 return;
             }
 
@@ -109,6 +117,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!TryResolveBottomOffset(out bottomOffset))
             {
                 transform.position = targetPosition;
+                LogGrounding($"no bottom offset resolved. finalPos={transform.position}");
                 return;
             }
 
@@ -121,11 +130,17 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (hit.collider == null)
             {
                 transform.position = targetPosition;
+                LogGrounding(
+                    $"ray miss origin={rayOrigin} distance={rayDistance} bottomOffset={bottomOffset} " +
+                    $"layerMask={layerMask} finalPos={transform.position}");
                 return;
             }
 
             targetPosition.y = hit.point.y - bottomOffset + groundContactOffset;
             transform.position = targetPosition;
+            LogGrounding(
+                $"ray hit collider={hit.collider.name} point={hit.point} normal={hit.normal} " +
+                $"bottomOffset={bottomOffset} contactOffset={groundContactOffset} finalPos={transform.position}");
         }
 
         private bool TryResolveBottomOffset(out float bottomOffset)
@@ -188,6 +203,16 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return Physics2D.DefaultRaycastLayers;
         }
 
+        private void LogGrounding(string message)
+        {
+            if (!logGroundingDiagnostics)
+                return;
+
+            ClientLog.Info(
+                $"[EnemyGrounding] name={name} code={enemyCode} runtimeId={runtimeId} " +
+                $"snapPoint={(groundSnapPoint != null ? groundSnapPoint.name : "null")} {message}");
+        }
+
         private void UpdateLifeState(EnemyRuntimeModel enemy)
         {
             var isAlive = enemy.CurrentHp > 0 && enemy.RuntimeState != 4;
@@ -195,7 +220,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 targetable.enabled = isAlive;
 
             if (visualRoot != null)
-                visualRoot.gameObject.SetActive(!hideWhenDead || isAlive);
+                visualRoot.gameObject.SetActive(hasResolvedWorldPosition && (!hideWhenDead || isAlive));
         }
     }
 }

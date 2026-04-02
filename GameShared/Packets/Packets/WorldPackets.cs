@@ -28,6 +28,9 @@ public partial class TravelToMapPacket : IPacket
     [ValidationCode(MessageCode.MapPortalInvalid)]
     [Range(1, int.MaxValue)]
     public int? PortalId { get; set; }
+
+    public float? CurrentPosX { get; set; }
+    public float? CurrentPosY { get; set; }
 }
 
 [Packet(27)]

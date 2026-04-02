@@ -25,6 +25,7 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     private readonly PacketDispatcher _dispatcher;
     private readonly WorldManager _worldManager;
     private readonly CharacterRuntimeSaveService _runtimeSaveService;
+    private readonly CharacterCombatDeathRecoveryService _deathRecoveryService;
     private readonly ServerMetricsService _metrics;
     private readonly ConcurrentDictionary<int, ConnectionSession> _sessions = new();
     private readonly ConcurrentDictionary<string, ResumeTicket> _resumeTickets = new(StringComparer.Ordinal);
@@ -37,11 +38,13 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         PacketDispatcher dispatcher,
         WorldManager worldManager,
         CharacterRuntimeSaveService runtimeSaveService,
+        CharacterCombatDeathRecoveryService deathRecoveryService,
         ServerMetricsService metrics)
     {
         _dispatcher = dispatcher;
         _worldManager = worldManager;
         _runtimeSaveService = runtimeSaveService;
+        _deathRecoveryService = deathRecoveryService;
         _metrics = metrics;
         _netManager = new NetManager(this)
         {
@@ -203,14 +206,22 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         if (session.IsAuthenticated &&
             _worldManager.IsOwnedByConnection(session.PlayerId, session.ConnectionId))
         {
-            _runtimeSaveService.FlushPlayerAsync(session.PlayerId).GetAwaiter().GetResult();
-            if (string.IsNullOrWhiteSpace(session.ResumeToken))
+            if (_deathRecoveryService.IsCombatDead(session.Player?.RuntimeState.CaptureSnapshot().CurrentState))
             {
+                _deathRecoveryService.RecoverDisconnectedPlayerToHomeAsync(session.Player!).GetAwaiter().GetResult();
                 _worldManager.RemovePlayer(session.PlayerId);
             }
             else
             {
-                _worldManager.TryMarkPlayerDisconnected(session.PlayerId);
+                _runtimeSaveService.FlushPlayerAsync(session.PlayerId).GetAwaiter().GetResult();
+                if (string.IsNullOrWhiteSpace(session.ResumeToken))
+                {
+                    _worldManager.RemovePlayer(session.PlayerId);
+                }
+                else
+                {
+                    _worldManager.TryMarkPlayerDisconnected(session.PlayerId);
+                }
             }
         }
         else if (session.IsAuthenticated &&

@@ -8,6 +8,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
     {
         public event Action<CultivationRewardNotice> CultivationRewardGranted;
         public event Action<CharacterCurrentStateChangeNotice> CurrentStateChanged;
+        public event Action<CharacterStateTransitionNotice> StateTransitioned;
 
         public Guid? SelectedCharacterId { get; private set; }
         public bool HasLoadedCharacterList { get; private set; }
@@ -66,6 +67,13 @@ namespace PhamNhanOnline.Client.Features.Character.Application
         {
             LastCultivationReward = notice;
             var handler = CultivationRewardGranted;
+            if (handler != null)
+                handler(notice);
+        }
+
+        public void PublishStateTransition(CharacterStateTransitionNotice notice)
+        {
+            var handler = StateTransitioned;
             if (handler != null)
                 handler(notice);
         }

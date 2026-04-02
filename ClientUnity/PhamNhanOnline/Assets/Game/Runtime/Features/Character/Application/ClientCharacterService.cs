@@ -33,6 +33,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             connection.Packets.Subscribe<EnterWorldResultPacket>(HandleEnterWorldResult);
             connection.Packets.Subscribe<CharacterBaseStatsChangedPacket>(HandleCharacterBaseStatsChanged);
             connection.Packets.Subscribe<CharacterCurrentStateChangedPacket>(HandleCharacterCurrentStateChanged);
+            connection.Packets.Subscribe<CharacterStateTransitionPacket>(HandleCharacterStateTransition);
             connection.Packets.Subscribe<StartCultivationResultPacket>(HandleStartCultivationResult);
             connection.Packets.Subscribe<StopCultivationResultPacket>(HandleStopCultivationResult);
             connection.Packets.Subscribe<BreakthroughResultPacket>(HandleBreakthroughResult);
@@ -208,7 +209,16 @@ namespace PhamNhanOnline.Client.Features.Character.Application
 
         private void HandleCharacterCurrentStateChanged(CharacterCurrentStateChangedPacket packet)
         {
+            var previousState = characterState.CurrentState;
             characterState.ApplyCurrentState(packet.CurrentState);
+            HandleLocalDeathTransition(previousState, packet.CurrentState);
+        }
+
+        private void HandleCharacterStateTransition(CharacterStateTransitionPacket packet)
+        {
+            characterState.PublishStateTransition(new CharacterStateTransitionNotice(
+                packet.CharacterId,
+                packet.Reason ?? 0));
         }
 
         private void HandleStartCultivationResult(StartCultivationResultPacket packet)
@@ -318,6 +328,33 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             CompletePending(ref stopCultivationCompletionSource, new CharacterStopCultivationResult(false, null, null, "Connection closed."));
             CompletePending(ref breakthroughCompletionSource, new CharacterBreakthroughResult(false, null, null, null, "Connection closed."));
             CompletePending(ref allocatePotentialCompletionSource, new CharacterAllocatePotentialResult(false, null, null, null, 0, 0, 0, "Connection closed."));
+        }
+
+        private static void HandleLocalDeathTransition(
+            CharacterCurrentStateModel? previousState,
+            CharacterCurrentStateModel? currentState)
+        {
+            if (!currentState.HasValue)
+                return;
+
+            var isDead = currentState.Value.IsDead ||
+                         ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState) ||
+                         ClientCharacterRuntimeStateCodes.IsPermanentlyDead(currentState.Value.CurrentState);
+            var wasDead = previousState.HasValue &&
+                          (previousState.Value.IsDead ||
+                           ClientCharacterRuntimeStateCodes.IsCombatDead(previousState.Value.CurrentState) ||
+                           ClientCharacterRuntimeStateCodes.IsPermanentlyDead(previousState.Value.CurrentState));
+            if (!isDead || wasDead)
+                return;
+
+            if (ClientRuntime.Target != null)
+                ClientRuntime.Target.Clear();
+
+            if (ClientRuntime.Combat != null)
+            {
+                ClientRuntime.Combat.ClearPendingAttackRequest();
+                ClientRuntime.Combat.ClearActiveCast();
+            }
         }
 
         private static void CompletePending(ref TaskCompletionSource<CharacterListLoadResult> completionSource, CharacterListLoadResult result)

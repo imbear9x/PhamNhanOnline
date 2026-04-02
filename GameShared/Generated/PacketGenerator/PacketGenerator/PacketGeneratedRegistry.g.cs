@@ -224,6 +224,12 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.DropInventoryItemResultPacket:
                 id = 72;
                 return true;
+            case global::GameShared.Packets.ReturnHomeAfterCombatDeathPacket:
+                id = 73;
+                return true;
+            case global::GameShared.Packets.ReturnHomeAfterCombatDeathResultPacket:
+                id = 74;
+                return true;
             default:
                 id = default;
                 return false;
@@ -306,6 +312,8 @@ internal static class PacketGeneratedRegistry
             70 => new global::GameShared.Packets.SessionTerminationPacket(),
             71 => new global::GameShared.Packets.DropInventoryItemPacket(),
             72 => new global::GameShared.Packets.DropInventoryItemResultPacket(),
+            73 => new global::GameShared.Packets.ReturnHomeAfterCombatDeathPacket(),
+            74 => new global::GameShared.Packets.ReturnHomeAfterCombatDeathResultPacket(),
             _ => null
         };
     }

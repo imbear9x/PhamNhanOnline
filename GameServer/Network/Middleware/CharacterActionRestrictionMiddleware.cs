@@ -21,7 +21,8 @@ public sealed class CharacterActionRestrictionMiddleware : IPacketMiddleware
     [
         typeof(GetCharacterListPacket),
         typeof(GetCharacterDataPacket),
-        typeof(EnterWorldPacket)
+        typeof(EnterWorldPacket),
+        typeof(ReturnHomeAfterCombatDeathPacket)
     ];
 
     private readonly IServiceProvider _serviceProvider;
@@ -67,7 +68,22 @@ public sealed class CharacterActionRestrictionMiddleware : IPacketMiddleware
         networkSender.Send(session.ConnectionId, new CharacterStateTransitionPacket
         {
             CharacterId = session.SelectedCharacterId,
-            Reason = CharacterStateTransitionReasons.LifespanExpired
+            Reason = ResolveRestrictionReason(session)
         });
+    }
+
+    private static int ResolveRestrictionReason(ConnectionSession session)
+    {
+        var currentState = session.Player?.RuntimeState.CaptureSnapshot().CurrentState;
+        if (currentState is null)
+            return CharacterStateTransitionReasons.LifespanExpired;
+
+        if (CharacterRuntimeStateCodes.IsPermanentlyDead(currentState.CurrentState))
+            return CharacterStateTransitionReasons.LifespanExpired;
+
+        if (currentState.IsDead || CharacterRuntimeStateCodes.IsCombatDead(currentState.CurrentState))
+            return CharacterStateTransitionReasons.CombatDead;
+
+        return CharacterStateTransitionReasons.LifespanExpired;
     }
 }
