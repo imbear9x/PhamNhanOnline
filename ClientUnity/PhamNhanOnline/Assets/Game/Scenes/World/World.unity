@@ -5743,6 +5743,8 @@ GameObject:
   m_Component:
   - component: {fileID: 322786216}
   - component: {fileID: 322786217}
+  - component: {fileID: 322786218}
+  - component: {fileID: 322786219}
   m_Layer: 0
   m_Name: SceneServices
   m_TagString: Untagged
@@ -5778,6 +5780,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   popupView: {fileID: 532559420}
+--- !u!114 &322786218
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 322786215}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54f6edbaf07f4f34be4f3b011f6f7d7c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  verboseLogging: 0
+--- !u!114 &322786219
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 322786215}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acfefc59b150b4744b3b56697dbbe327, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  persistentAcrossScenes: 1
+  minimumInactiveInstancesPerPool: 1
+  retainedPeakFraction: 0.5
+  trimCheckIntervalSeconds: 10
+  trimIdleDelaySeconds: 15
+  poolStorageRoot: {fileID: 322786216}
 --- !u!1 &328846608
 GameObject:
   m_ObjectHideFlags: 0
@@ -27179,6 +27212,8 @@ GameObject:
   - component: {fileID: 1872203340}
   - component: {fileID: 1872203341}
   - component: {fileID: 1872203342}
+  - component: {fileID: 1872203343}
+  - component: {fileID: 1872203344}
   m_Layer: 0
   m_Name: WorldRoot
   m_TagString: Untagged
@@ -27219,7 +27254,7 @@ MonoBehaviour:
   worldUiRoot: {fileID: 1200508312}
   worldCamera: {fileID: 2089833381}
   worldMapPresenter: {fileID: 1872203333}
-  worldSceneReadinessService: {fileID: 0}
+  worldSceneReadinessService: {fileID: 322786218}
   worldLocalPlayerPresenter: {fileID: 1872203334}
   worldLocalMovementSyncController: {fileID: 1872203337}
   skillWorldPresentationCatalog: {fileID: 11400000, guid: da7379f762298934a821d1123cd4e643, type: 2}
@@ -27237,7 +27272,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mapCatalog: {fileID: 11400000, guid: 3d270eb130cd45f3926d799ba8b1938f, type: 2}
   activeMapRoot: {fileID: 675277142}
-  readinessService: {fileID: 0}
+  readinessService: {fileID: 322786218}
 --- !u!114 &1872203334
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27359,7 +27394,7 @@ MonoBehaviour:
   worldSceneController: {fileID: 1872203332}
   localPlayerPresenter: {fileID: 1872203334}
   popupRoot: {fileID: 122807365}
-  poolService: {fileID: 0}
+  poolService: {fileID: 322786219}
   defaultPopupPrefab: {fileID: 5695655413667941502, guid: 3dc146e55c716dd4c8081445bfcb15f6, type: 3}
   hpDamagePopupPrefab: {fileID: 3378034370087073202, guid: 4dedbb68e86387846a98f034cb3899e3, type: 3}
   hpHealPopupPrefab: {fileID: 7340688471897147718, guid: f54badc8d11190b40abc9fab552740eb, type: 3}
@@ -27425,14 +27460,79 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   worldMapPresenter: {fileID: 1872203333}
-  worldPortalPresenter: {fileID: 0}
+  worldPortalPresenter: {fileID: 1872203344}
   worldLocalPlayerPresenter: {fileID: 1872203334}
   worldLocalMovementSyncController: {fileID: 1872203337}
   interactionRangeServerUnits: 30
   actionRangeBufferServerUnits: 50
+  portalActionRangeBufferServerUnits: 4
   arrivalDeadZoneWorldUnits: 20
   pinTargetWhileApproaching: 1
   logInteractionPlaceholder: 1
+--- !u!114 &1872203343
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872203330}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60173208903e4fbbbd41653349951ecb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  worldMapPresenter: {fileID: 1872203333}
+  worldLocalPlayerPresenter: {fileID: 1872203334}
+  worldCamera: {fileID: 2089833381}
+  selectableLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  clearTargetWhenClickingEmptySpace: 1
+  blockClicksWhenPointerIsOverInteractiveUi: 1
+  doubleClickThresholdSeconds: 0.3
+  autoSelectNearbyTargets: 1
+  autoSelectRadiusWorldUnits: 3.5
+  autoSelectRefreshIntervalSeconds: 0.2
+  clearTargetWhenNoNearbyCandidates: 1
+  keepCurrentTargetWhileStillNearby: 1
+  blockCycleWhilePinned: 1
+  priorityRules:
+  - kind: 4
+    priority: 0
+  - kind: 3
+    priority: 1
+  - kind: 2
+    priority: 2
+  - kind: 5
+    priority: 3
+  - kind: 1
+    priority: 4
+--- !u!114 &1872203344
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872203330}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e18b7f71e334bd6b9bc7d8096e1c6d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  worldSceneController: {fileID: 1872203332}
+  worldMapPresenter: {fileID: 1872203333}
+  worldTargetActionController: {fileID: 1872203342}
+  worldLocalMovementSyncController: {fileID: 1872203337}
+  portalRoot: {fileID: 675277142}
+  portalVisualPrefab: {fileID: 1536656912344579108, guid: 224b02ca6b084eb59c66fe0d7af6dcb4, type: 3}
+  labelSortingOrder: 25
+  edgePortalThresholdNormalized: 0.15
+  labelTargetPaddingWorldUnits: {x: 0.4, y: 0.25}
+  minLabelTargetSizeWorldUnits: {x: 2.2, y: 0.9}
+  onlyShowEnabledPortals: 1
+  touchPortalRearmDelaySeconds: 0.75
+  rebuildRetryIntervalSeconds: 0.35
+  touchPortalHorizontalIntentDeadZone: 0.05
 --- !u!1 &1878136138
 GameObject:
   m_ObjectHideFlags: 0

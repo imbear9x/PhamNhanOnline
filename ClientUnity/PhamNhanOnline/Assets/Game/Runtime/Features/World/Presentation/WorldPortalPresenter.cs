@@ -53,6 +53,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private bool rebuildRetryPending;
         private float nextRebuildRetryTime;
         private GameObject resolvedPortalVisualPrefab;
+        private bool loggedMissingWorldMapPresenter;
+        private bool loggedMissingTargetActionController;
 
         private void Awake()
         {
@@ -62,6 +64,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void Start()
         {
             AutoWireReferences();
+            LogMissingCriticalWorldSceneDependenciesIfNeeded();
+            LogMissingCriticalDependenciesIfNeeded();
             ActivateWorldSceneReadiness();
             TryBindRuntimeEvents();
             TryRebuildPortalsIfReady();
@@ -646,6 +650,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 worldLocalMovementSyncController = GetComponent<WorldLocalMovementSyncController>();
         }
 
+        private void LogMissingCriticalDependenciesIfNeeded()
+        {
+            if (worldMapPresenter == null && !loggedMissingWorldMapPresenter)
+            {
+                ClientLog.Error("WorldPortalPresenter could not resolve WorldMapPresenter.");
+                loggedMissingWorldMapPresenter = true;
+            }
+
+            if (worldTargetActionController == null && !loggedMissingTargetActionController)
+            {
+                ClientLog.Error("WorldPortalPresenter could not resolve WorldTargetActionController.");
+                loggedMissingTargetActionController = true;
+            }
+        }
+
         private void TryBindRuntimeEvents()
         {
             AutoWireReferences();
@@ -759,3 +778,5 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
     }
 }
+
+

@@ -1,4 +1,5 @@
 using PhamNhanOnline.Client.Core.Application;
+using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Character.Application;
 using UnityEngine;
 
@@ -14,6 +15,7 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private string actionInProgressText = "Dang tro ve dong phu...";
 
         private bool actionInFlight;
+        private bool loggedMissingPanelView;
 
         private void Awake()
         {
@@ -21,6 +23,11 @@ namespace PhamNhanOnline.Client.UI.World
                 panelView.ReturnHomeRequested += HandleReturnHomeRequested;
 
             ApplyViewState(false);
+        }
+
+        private void Start()
+        {
+            LogMissingCriticalDependenciesIfNeeded();
         }
 
         private void OnEnable()
@@ -123,5 +130,16 @@ namespace PhamNhanOnline.Client.UI.World
                    currentState.Value.IsDead &&
                    ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState);
         }
+
+        private void LogMissingCriticalDependenciesIfNeeded()
+        {
+            if (panelView == null && !loggedMissingPanelView)
+            {
+                ClientLog.Error("WorldCombatDeathController is missing CombatDeadPanelView.");
+                loggedMissingPanelView = true;
+            }
+        }
     }
 }
+
+

@@ -29,6 +29,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             AutoWireReferences();
+            LogMissingCriticalWorldSceneDependenciesIfNeeded();
             ActivateWorldSceneReadiness();
             TryBindRuntimeEvents();
             TrySyncIfReady();
@@ -277,3 +278,5 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
     }
 }
+
+

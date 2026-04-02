@@ -50,10 +50,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private readonly Dictionary<int, GroundRewardPresenter> rewardPresenters = new Dictionary<int, GroundRewardPresenter>();
         private readonly HashSet<int> suppressSpawnAnimationRewardIds = new HashSet<int>();
         private bool runtimeEventsBound;
+        private bool loggedMissingWorldMapPresenter;
+        private bool loggedMissingTargetActionController;
 
         private void Start()
         {
             AutoWireReferences();
+            LogMissingCriticalWorldSceneDependenciesIfNeeded();
+            LogMissingCriticalDependenciesIfNeeded();
             ActivateWorldSceneReadiness();
             TryBindRuntimeEvents();
             TrySyncIfReady();
@@ -351,6 +355,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 worldLocalPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : GetComponent<WorldLocalPlayerPresenter>();
         }
 
+        private void LogMissingCriticalDependenciesIfNeeded()
+        {
+            if (worldMapPresenter == null && !loggedMissingWorldMapPresenter)
+            {
+                ClientLog.Error("WorldGroundRewardPresenter could not resolve WorldMapPresenter.");
+                loggedMissingWorldMapPresenter = true;
+            }
+
+            if (worldTargetActionController == null && !loggedMissingTargetActionController)
+            {
+                ClientLog.Error("WorldGroundRewardPresenter could not resolve WorldTargetActionController.");
+                loggedMissingTargetActionController = true;
+            }
+        }
+
         private float ResolveSpawnHorizontalOffset(int rewardId)
         {
             var magnitude = Mathf.Max(0f, spawnHorizontalOffsetWorldUnits);
@@ -361,3 +380,5 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
     }
 }
+
+

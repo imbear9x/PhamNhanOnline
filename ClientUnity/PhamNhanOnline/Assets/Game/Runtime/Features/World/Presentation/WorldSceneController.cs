@@ -10,6 +10,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     public sealed class WorldSceneController : MonoBehaviour
     {
         public static WorldSceneController Instance { get; private set; }
+        private bool loggedMissingSceneRoots;
+        private bool loggedMissingWorldCamera;
+        private bool loggedMissingMapPresenter;
+        private bool loggedMissingLocalPlayerPresenter;
+        private bool loggedMissingLocalMovementSyncController;
 
         [Header("Runtime")]
         [SerializeField] private ClientBootstrapSettings runtimeSettingsOverride;
@@ -55,9 +60,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             EnsureWorldTargetActionController();
             EnsureWorldPortalPresenter();
             EnsureWorldGroundRewardPresenter();
+        }
 
-            if (mapRoot == null || entitiesRoot == null || worldUiRoot == null)
-                Debug.LogWarning("WorldSceneController is missing one or more scene roots.");
+        private void Start()
+        {
+            AutoWireReferences();
+            LogMissingCriticalSceneRefsIfNeeded();
         }
 
         public void CycleNearbyTarget()
@@ -146,7 +154,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 worldSceneReadinessService = GetComponent<WorldSceneReadinessService>();
 
             if (worldSceneReadinessService == null)
-                worldSceneReadinessService = gameObject.AddComponent<WorldSceneReadinessService>();
+                ClientLog.Error("WorldSceneController is missing WorldSceneReadinessService. Add it to WorldRoot.");
 
             return worldSceneReadinessService;
         }
@@ -163,7 +171,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             var controller = GetComponent<WorldClickTargetSelectionController>();
             if (controller == null)
-                controller = gameObject.AddComponent<WorldClickTargetSelectionController>();
+            {
+                ClientLog.Error("WorldSceneController is missing WorldClickTargetSelectionController. Add it to WorldRoot.");
+                return null;
+            }
 
             controller.Initialize(worldCamera, worldMapPresenter);
             return controller;
@@ -173,7 +184,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             var controller = GetComponent<WorldTargetActionController>();
             if (controller == null)
-                controller = gameObject.AddComponent<WorldTargetActionController>();
+            {
+                ClientLog.Error("WorldSceneController is missing WorldTargetActionController. Add it to WorldRoot.");
+                return null;
+            }
 
             return controller;
         }
@@ -182,7 +196,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             var presenter = GetComponent<WorldPortalPresenter>();
             if (presenter == null)
-                presenter = gameObject.AddComponent<WorldPortalPresenter>();
+            {
+                ClientLog.Error("WorldSceneController is missing WorldPortalPresenter. Add it to WorldRoot.");
+                return null;
+            }
 
             return presenter;
         }
@@ -191,7 +208,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             var presenter = GetComponent<WorldGroundRewardPresenter>();
             if (presenter == null)
-                presenter = gameObject.AddComponent<WorldGroundRewardPresenter>();
+            {
+                ClientLog.Error("WorldSceneController is missing WorldGroundRewardPresenter. Add it to WorldRoot.");
+                return null;
+            }
 
             return presenter;
         }
@@ -209,6 +229,39 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (worldLocalMovementSyncController == null)
                 worldLocalMovementSyncController = GetComponent<WorldLocalMovementSyncController>();
+        }
+
+        private void LogMissingCriticalSceneRefsIfNeeded()
+        {
+            if ((mapRoot == null || entitiesRoot == null || worldUiRoot == null) && !loggedMissingSceneRoots)
+            {
+                ClientLog.Error("WorldSceneController is missing one or more scene roots: MapRoot, EntitiesRoot, or WorldUiRoot.");
+                loggedMissingSceneRoots = true;
+            }
+
+            if (worldCamera == null && !loggedMissingWorldCamera)
+            {
+                ClientLog.Error("WorldSceneController is missing World Camera.");
+                loggedMissingWorldCamera = true;
+            }
+
+            if (worldMapPresenter == null && !loggedMissingMapPresenter)
+            {
+                ClientLog.Error("WorldSceneController could not resolve WorldMapPresenter.");
+                loggedMissingMapPresenter = true;
+            }
+
+            if (worldLocalPlayerPresenter == null && !loggedMissingLocalPlayerPresenter)
+            {
+                ClientLog.Error("WorldSceneController could not resolve WorldLocalPlayerPresenter.");
+                loggedMissingLocalPlayerPresenter = true;
+            }
+
+            if (worldLocalMovementSyncController == null && !loggedMissingLocalMovementSyncController)
+            {
+                ClientLog.Error("WorldSceneController could not resolve WorldLocalMovementSyncController.");
+                loggedMissingLocalMovementSyncController = true;
+            }
         }
 
         private void OnDestroy()

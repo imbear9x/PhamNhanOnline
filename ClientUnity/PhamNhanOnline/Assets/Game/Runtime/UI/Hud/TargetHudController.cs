@@ -1,4 +1,5 @@
 using PhamNhanOnline.Client.Core.Application;
+using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Features.World.Presentation;
 using UnityEngine;
@@ -15,20 +16,19 @@ namespace PhamNhanOnline.Client.UI.Hud
         [Header("Buttons")]
         [SerializeField] private Button nextTargetButton;
         private bool runtimeEventsBound;
+        private bool loggedMissingWorldSceneController;
+        private bool loggedMissingTargetStatusPanel;
 
         private void Awake()
         {
-            if (worldSceneController == null)
-                worldSceneController = WorldSceneController.Instance;
-
-            if (targetStatusPanel == null)
-                targetStatusPanel = GetComponent<TargetStatusPanelController>();
-
+            AutoWireReferences();
             BindButtons();
         }
 
         private void Start()
         {
+            AutoWireReferences();
+            LogMissingCriticalDependenciesIfNeeded();
             TryBindRuntimeEvents();
             Refresh(force: true);
         }
@@ -52,6 +52,7 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         public void Refresh(bool force)
         {
+            LogMissingCriticalDependenciesIfNeeded();
             if (targetStatusPanel == null)
                 return;
 
@@ -195,5 +196,32 @@ namespace PhamNhanOnline.Client.UI.Hud
         {
             return ClientRuntime.IsInitialized && ClientRuntime.Target.IsSelectedEnemy(runtimeId);
         }
+
+        private void AutoWireReferences()
+        {
+            if (worldSceneController == null)
+                worldSceneController = WorldSceneController.Instance;
+
+            if (targetStatusPanel == null)
+                targetStatusPanel = GetComponent<TargetStatusPanelController>();
+        }
+
+        private void LogMissingCriticalDependenciesIfNeeded()
+        {
+            if (worldSceneController == null && !loggedMissingWorldSceneController)
+            {
+                ClientLog.Error("TargetHudController could not resolve WorldSceneController.");
+                loggedMissingWorldSceneController = true;
+            }
+
+            if (targetStatusPanel == null && !loggedMissingTargetStatusPanel)
+            {
+                ClientLog.Error("TargetHudController could not resolve TargetStatusPanelController.");
+                loggedMissingTargetStatusPanel = true;
+            }
+        }
     }
 }
+
+
+

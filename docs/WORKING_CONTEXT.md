@@ -25,6 +25,14 @@ powershell -File .\scripts\sync-gameshared-to-unity.ps1
 
 - Với UI gameplay trong Unity, ưu tiên viết controller hoặc logic trước để user tự dựng hierarchy, prefab, scene trong Editor và kéo ref bằng Inspector.
 - Không tự sinh cả UI hierarchy bằng runtime code nếu user chưa yêu cầu rõ kiểu đó.
+- Với client Unity, phải phân biệt rõ:
+  - ref lõi / bắt buộc như `WorldSceneController`, `WorldMapPresenter`, `WorldTargetActionController`, `WorldLocalPlayerPresenter`, panel view bắt buộc
+  - ref phụ / optional như text phụ, badge, status text, root hiển thị bổ sung
+- Rule bắt buộc:
+  - ref lõi nếu thiếu thì không được im lặng `return` hoặc tự chữa cháy theo kiểu `không có thì thôi`
+  - phải `ClientLog.Error` sớm để lộ lỗi setup scene/prefab
+  - chỉ các ref phụ dạng hiển thị thêm mới được phép `có thì hiện, không có thì thôi`
+- Nếu một component world phải auto-add ở `WorldRoot` để giữ backward compatibility, vẫn phải log lỗi rõ là scene đang thiếu component bắt buộc.
 
 ## Rule trả lời và tài liệu
 

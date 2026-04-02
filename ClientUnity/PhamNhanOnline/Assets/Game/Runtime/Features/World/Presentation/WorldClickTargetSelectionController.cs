@@ -94,6 +94,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             EnsureSelectableLayersConfigured();
         }
 
+        private void Start()
+        {
+            AutoWireReferences();
+            LogMissingCriticalWorldSceneDependenciesIfNeeded();
+        }
+
         private void Update()
         {
             if (!ClientRuntime.IsInitialized)
@@ -615,3 +621,4 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
     }
 }
+

@@ -1,4 +1,5 @@
 using System;
+using PhamNhanOnline.Client.Core.Logging;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,6 +21,8 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private string message = "Nhan vat da tu thuong. Tam thoi chi co the tro ve dong phu.";
 
         public event Action ReturnHomeRequested;
+        private bool loggedMissingPanelRoot;
+        private bool loggedMissingReturnHomeButton;
 
         public bool IsVisible
         {
@@ -37,6 +40,11 @@ namespace PhamNhanOnline.Client.UI.World
             ApplyStaticText();
             SetStatus(string.Empty);
             SetVisible(false);
+        }
+
+        private void Start()
+        {
+            LogMissingCriticalDependenciesIfNeeded();
         }
 
         private void OnDestroy()
@@ -96,5 +104,22 @@ namespace PhamNhanOnline.Client.UI.World
             if (panelRoot.activeSelf != visible)
                 panelRoot.SetActive(visible);
         }
+
+        private void LogMissingCriticalDependenciesIfNeeded()
+        {
+            if (panelRoot == null && !loggedMissingPanelRoot)
+            {
+                ClientLog.Error("CombatDeadPanelView is missing Panel Root.");
+                loggedMissingPanelRoot = true;
+            }
+
+            if (returnHomeButton == null && !loggedMissingReturnHomeButton)
+            {
+                ClientLog.Error("CombatDeadPanelView is missing Return Home Button.");
+                loggedMissingReturnHomeButton = true;
+            }
+        }
     }
 }
+
+

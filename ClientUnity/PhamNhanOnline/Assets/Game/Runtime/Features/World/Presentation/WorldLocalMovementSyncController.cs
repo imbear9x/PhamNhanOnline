@@ -60,6 +60,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             AutoWireReferences();
+            LogMissingCriticalWorldSceneDependenciesIfNeeded();
             ActivateWorldSceneReadiness();
             ResetSyncState();
         }
@@ -360,3 +361,4 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private const int CultivatingStateCode = 3;
     }
 }
+

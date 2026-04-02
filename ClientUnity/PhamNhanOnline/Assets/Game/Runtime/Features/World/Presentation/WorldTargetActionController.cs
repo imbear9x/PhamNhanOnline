@@ -39,6 +39,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private PendingTargetAction? pendingAction;
         private bool autoPinApplied;
+        private bool loggedMissingWorldMapPresenter;
+        private bool loggedMissingLocalPlayerPresenter;
 
         public event Action<WorldTargetHandle> InteractionRequested;
 
@@ -50,6 +52,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void Start()
         {
             AutoWireReferences();
+            LogMissingCriticalWorldSceneDependenciesIfNeeded();
+            LogMissingCriticalDependenciesIfNeeded();
             TryBindRuntimeEvents();
         }
 
@@ -489,6 +493,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 worldLocalMovementSyncController = GetComponent<WorldLocalMovementSyncController>();
         }
 
+        private void LogMissingCriticalDependenciesIfNeeded()
+        {
+            if (worldMapPresenter == null && !loggedMissingWorldMapPresenter)
+            {
+                ClientLog.Error("WorldTargetActionController could not resolve WorldMapPresenter.");
+                loggedMissingWorldMapPresenter = true;
+            }
+
+            if (worldLocalPlayerPresenter == null && !loggedMissingLocalPlayerPresenter)
+            {
+                ClientLog.Error("WorldTargetActionController could not resolve WorldLocalPlayerPresenter.");
+                loggedMissingLocalPlayerPresenter = true;
+            }
+        }
+
         private bool IsActionRuntimeReady()
         {
             return AreReady(WorldSceneReadyKey.MapVisual, WorldSceneReadyKey.LocalPlayer);
@@ -533,3 +552,5 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
     }
 }
+
+

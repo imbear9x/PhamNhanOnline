@@ -26,6 +26,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void Start()
         {
             AutoWireReferences();
+            LogMissingCriticalWorldSceneDependenciesIfNeeded();
             ActivateWorldSceneReadiness();
             TryRefreshCachedClampBoundsIfReady();
         }
@@ -153,3 +154,4 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
     }
 }
+

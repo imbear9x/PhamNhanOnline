@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using PhamNhanOnline.Client.Core.Application;
+using PhamNhanOnline.Client.Core.Logging;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -17,6 +18,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private readonly List<ReadyWaitRegistration> readyWaits = new List<ReadyWaitRegistration>();
         private bool readyWaitsConfigured;
         private bool readinessEventsBound;
+        private bool loggedMissingSceneController;
+        private bool loggedMissingMapPresenter;
+        private bool loggedMissingReadiness;
 
         protected WorldSceneController SceneController { get; private set; }
         protected WorldMapPresenter MapPresenter { get; private set; }
@@ -122,6 +126,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
         }
 
+        protected void LogMissingCriticalWorldSceneDependenciesIfNeeded()
+        {
+            LogMissingCriticalDependenciesIfNeeded();
+        }
+
         private void EnsureReadyWaitsConfigured()
         {
             if (readyWaitsConfigured)
@@ -165,5 +174,30 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 registration.Action();
             }
         }
+
+        private void LogMissingCriticalDependenciesIfNeeded()
+        {
+            var owner = GetType().Name;
+            if (SceneController == null && !loggedMissingSceneController)
+            {
+                ClientLog.Error($"{owner} could not resolve WorldSceneController. Assign the scene root controller explicitly.");
+                loggedMissingSceneController = true;
+            }
+
+            if (MapPresenter == null && !loggedMissingMapPresenter)
+            {
+                ClientLog.Error($"{owner} could not resolve WorldMapPresenter. Assign the map presenter explicitly.");
+                loggedMissingMapPresenter = true;
+            }
+
+            if (Readiness == null && !loggedMissingReadiness)
+            {
+                ClientLog.Error($"{owner} could not resolve WorldSceneReadinessService. Assign the readiness service explicitly.");
+                loggedMissingReadiness = true;
+            }
+        }
     }
 }
+
+
+

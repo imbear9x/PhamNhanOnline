@@ -67,6 +67,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             AutoWireReferences();
+            LogMissingCriticalWorldSceneDependenciesIfNeeded();
             ActivateWorldSceneReadiness();
             TryInitializeForReadyState(forcePosition: true);
         }
@@ -411,4 +412,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private const int CultivatingStateCode = ClientCharacterRuntimeStateCodes.Cultivating;
     }
 }
+
+
 

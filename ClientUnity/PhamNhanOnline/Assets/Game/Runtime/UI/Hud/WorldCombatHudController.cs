@@ -41,6 +41,7 @@ namespace PhamNhanOnline.Client.UI.Hud
         private Guid? lastRequestedCharacterId;
         private float lastSkillReloadAttemptTime = float.NegativeInfinity;
         private bool skillReloadInFlight;
+        private bool loggedMissingWorldSceneController;
 
         private void Awake()
         {
@@ -48,6 +49,17 @@ namespace PhamNhanOnline.Client.UI.Hud
             NormalizeButtonSlotIndices();
             SubscribeButtons();
             ApplyCastBar(false, 0f);
+        }
+
+        private void Start()
+        {
+            AutoWireReferences();
+
+            if (worldSceneController == null && !loggedMissingWorldSceneController)
+            {
+                ClientLog.Error("WorldCombatHudController could not resolve WorldSceneController.");
+                loggedMissingWorldSceneController = true;
+            }
         }
 
         private void OnEnable()
@@ -454,3 +466,5 @@ namespace PhamNhanOnline.Client.UI.Hud
         }
     }
 }
+
+
