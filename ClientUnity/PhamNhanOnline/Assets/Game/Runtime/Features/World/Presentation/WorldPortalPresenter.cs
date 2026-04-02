@@ -24,6 +24,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             public PortalVisualInstance VisualInstance;
             public Collider2D TriggerCollider;
             public bool WasTouchingLastFrame;
+            public string LastTouchDiagnosticKey;
         }
 
         [Header("References")]
@@ -45,6 +46,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private float touchPortalRearmDelaySeconds = 0.75f;
         [SerializeField] private float rebuildRetryIntervalSeconds = 0.35f;
         [SerializeField] private float touchPortalHorizontalIntentDeadZone = 0.05f;
+
+        [Header("Diagnostics")]
+        [SerializeField] private bool logTouchPortalDiagnostics;
 
         private readonly Dictionary<int, PortalRuntime> spawnedPortals = new Dictionary<int, PortalRuntime>();
         private bool runtimeEventsBound;
@@ -121,7 +125,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private async Task UsePortalAsync(MapPortalModel portal)
         {
             if (usePortalInFlight)
+            {
+                if (logTouchPortalDiagnostics)
+                    ClientLog.Info($"[PortalTouch] skipped UsePortalAsync for portal={portal.Id} because a portal use is already in flight.");
                 return;
+            }
 
             usePortalInFlight = true;
             try
@@ -133,6 +141,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 Vector2? reportedServerPosition = TryResolveCurrentLocalPlayerServerPosition(out currentServerPosition)
                     ? currentServerPosition
                     : (Vector2?)null;
+                if (logTouchPortalDiagnostics)
+                {
+                    var reportedPosText = reportedServerPosition.HasValue
+                        ? $"({reportedServerPosition.Value.x:0.##},{reportedServerPosition.Value.y:0.##})"
+                        : "<unresolved>";
+                    ClientLog.Info($"[PortalTouch] sending UsePortalAsync portal={portal.Id} map={ClientRuntime.World.CurrentMapId} interactionMode={portal.InteractionMode} reportedServerPos={reportedPosText}.");
+                }
+
                 var result = await ClientRuntime.WorldTravelService.UsePortalAsync(portal.Id, reportedServerPosition);
                 if (result.Success)
                 {
@@ -173,8 +189,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                                    Time.unscaledTime >= touchPortalSuppressedUntilTime;
             foreach (var runtime in spawnedPortals.Values)
             {
-                if (runtime == null || runtime.TriggerCollider == null)
+                if (runtime == null)
                     continue;
+
+                if (runtime.TriggerCollider == null)
+                {
+                    if (logTouchPortalDiagnostics)
+                        LogTouchPortalDiagnostics(runtime, allowTouchTravel, false, false, false, false, "missing-trigger");
+                    continue;
+                }
 
                 var isTouchPortal = IsTouchPortal(runtime.Portal);
                 var isColliderOverlap = IsPortalTouchingLocalPlayer(runtime);
@@ -184,8 +207,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                                  isColliderOverlap &&
                                  hasPortalEntryIntent;
 
+                if (logTouchPortalDiagnostics)
+                    LogTouchPortalDiagnostics(runtime, allowTouchTravel, isTouchPortal, isColliderOverlap, hasPortalEntryIntent, isTouching, "state");
+
                 if (allowTouchTravel && isTouching && !runtime.WasTouchingLastFrame)
                 {
+                    if (logTouchPortalDiagnostics)
+                        LogTouchPortalDiagnostics(runtime, allowTouchTravel, isTouchPortal, isColliderOverlap, hasPortalEntryIntent, isTouching, "enter-trigger");
                     _ = UsePortalAsync(runtime.Portal);
                 }
 
@@ -212,6 +240,44 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 default:
                     return true;
             }
+        }
+
+        private void LogTouchPortalDiagnostics(
+            PortalRuntime runtime,
+            bool allowTouchTravel,
+            bool isTouchPortal,
+            bool isColliderOverlap,
+            bool hasPortalEntryIntent,
+            bool isTouching,
+            string reason)
+        {
+            if (!logTouchPortalDiagnostics || runtime == null)
+                return;
+
+            var playerPositionText = TryResolveCurrentLocalPlayerServerPosition(out var playerServerPosition)
+                ? $"({playerServerPosition.x:0.##},{playerServerPosition.y:0.##})"
+                : "<unresolved>";
+            var key = string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}",
+                reason,
+                allowTouchTravel,
+                isTouchPortal,
+                runtime.Portal.IsEnabled,
+                isColliderOverlap,
+                hasPortalEntryIntent,
+                isTouching,
+                runtime.WasTouchingLastFrame,
+                usePortalInFlight);
+            if (string.Equals(reason, "state", StringComparison.Ordinal) &&
+                string.Equals(runtime.LastTouchDiagnosticKey, key, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            runtime.LastTouchDiagnosticKey = key;
+            ClientLog.Info(
+                $"[PortalTouch] portal={runtime.Portal.Id} reason={reason} side={ResolveTouchTriggerSide(runtime.Portal)} enabled={runtime.Portal.IsEnabled} touchMode={runtime.Portal.InteractionMode} triggerEnabled={(runtime.TriggerCollider != null && runtime.TriggerCollider.enabled)} overlap={isColliderOverlap} intent={hasPortalEntryIntent} isTouching={isTouching} wasTouching={runtime.WasTouchingLastFrame} allowTouch={allowTouchTravel} inFlight={usePortalInFlight} suppressedUntil={touchPortalSuppressedUntilTime:0.##} playerPos={playerPositionText} portalPos=({runtime.Portal.SourceX:0.##},{runtime.Portal.SourceY:0.##}) radius={runtime.Portal.InteractionRadius:0.##}");
         }
 
         private float ResolveHorizontalMoveIntent()
@@ -298,6 +364,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             RefreshPortalSelectionVisuals();
             touchPortalSuppressedUntilTime = Time.unscaledTime + Mathf.Max(0f, touchPortalRearmDelaySeconds);
+
+            if (logTouchPortalDiagnostics)
+                ClientLog.Info($"[PortalTouch] rebuilt {spawnedPortals.Count} portals for map={ClientRuntime.World.CurrentMapId}.");
         }
 
         private void TryRetryDeferredRebuild()
@@ -352,13 +421,20 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ConfigureInteractiveLabel(labelObject, portal);
             var collider = ConfigureTouchTrigger(visualInstance, portal);
 
+            if (logTouchPortalDiagnostics)
+            {
+                var triggerName = collider != null ? collider.name : "<none>";
+                ClientLog.Info($"[PortalTouch] built portal={portal.Id} name='{ResolvePortalLabel(portal)}' side={ResolveTouchTriggerSide(portal)} interactionMode={portal.InteractionMode} enabled={portal.IsEnabled} trigger={triggerName}.");
+            }
+
             return new PortalRuntime
             {
                 Portal = portal,
                 RootObject = portalObject,
                 VisualInstance = visualInstance,
                 TriggerCollider = collider,
-                WasTouchingLastFrame = false
+                WasTouchingLastFrame = false,
+                LastTouchDiagnosticKey = string.Empty
             };
         }
 

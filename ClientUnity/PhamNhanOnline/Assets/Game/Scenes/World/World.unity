@@ -13082,6 +13082,7 @@ GameObject:
   m_Component:
   - component: {fileID: 788650873}
   - component: {fileID: 788650874}
+  - component: {fileID: 788650875}
   m_Layer: 0
   m_Name: DebugRoot
   m_TagString: Untagged
@@ -13124,6 +13125,37 @@ MonoBehaviour:
   shortOutageSeconds: 8
   longOutageSeconds: 25
   statusText: {fileID: 415290799}
+--- !u!114 &788650875
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 788650872}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dde377c1c55edab44aae81529b8fbf6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  worldMapPresenter: {fileID: 1872203333}
+  worldLocalPlayerPresenter: {fileID: 1872203334}
+  targetSelectionController: {fileID: 1872203343}
+  targetActionController: {fileID: 1872203342}
+  overlayRoot: {fileID: 788650873}
+  overlayEnabled: 1
+  developmentBuildOnly: 1
+  refreshIntervalSeconds: 0.2
+  showAutoSelectRange: 1
+  showContextInteractionRange: 1
+  showBasicSkillRange: 1
+  showPortalServerRange: 1
+  showPortalClientEffectiveRange: 1
+  sortingOrder: 180
+  autoSelectColor: {r: 0.15, g: 0.85, b: 1, a: 0.12}
+  contextInteractionColor: {r: 1, g: 0.85, b: 0.2, a: 0.1}
+  basicSkillColor: {r: 1, g: 0.25, b: 0.25, a: 0.1}
+  portalServerColor: {r: 0.1, g: 1, b: 0.55, a: 0.08}
+  portalEffectiveColor: {r: 0.8, g: 0.35, b: 1, a: 0.08}
 --- !u!1 &788885996
 GameObject:
   m_ObjectHideFlags: 0
@@ -27533,6 +27565,7 @@ MonoBehaviour:
   touchPortalRearmDelaySeconds: 0.75
   rebuildRetryIntervalSeconds: 0.35
   touchPortalHorizontalIntentDeadZone: 0.05
+  logTouchPortalDiagnostics: 0
 --- !u!1 &1878136138
 GameObject:
   m_ObjectHideFlags: 0

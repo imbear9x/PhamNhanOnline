@@ -75,6 +75,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private WorldTargetHandle manualSelectionRangeTrackedTarget;
         private bool manualSelectionHasEnteredAutoRange;
 
+        public float AutoSelectRadiusWorldUnits => Mathf.Max(0f, autoSelectRadiusWorldUnits);
+
         public void Initialize(Camera camera, WorldMapPresenter mapPresenter)
         {
             if (camera != null)

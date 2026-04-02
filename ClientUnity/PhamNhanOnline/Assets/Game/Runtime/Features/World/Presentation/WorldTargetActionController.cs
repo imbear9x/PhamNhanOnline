@@ -44,6 +44,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         public event Action<WorldTargetHandle> InteractionRequested;
 
+        public float InteractionRangeServerUnits => Mathf.Max(0f, interactionRangeServerUnits);
+        public float ActionRangeBufferServerUnits => Mathf.Max(0f, actionRangeBufferServerUnits);
+        public float PortalActionRangeBufferServerUnits => Mathf.Max(0f, portalActionRangeBufferServerUnits);
+
         private void Awake()
         {
             AutoWireReferences();
@@ -281,6 +285,20 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             return Mathf.Max(0f, actionRangeBufferServerUnits);
+        }
+
+        public bool TryGetBasicSkillCastRangeServerUnits(out float castRange)
+        {
+            castRange = 0f;
+            if (!ClientRuntime.IsInitialized)
+                return false;
+
+            PlayerSkillModel basicSkill;
+            if (!ClientRuntime.Skills.TryGetLoadoutSkill(BasicSkillSlotIndex, out basicSkill))
+                return false;
+
+            castRange = Mathf.Max(0f, basicSkill.CastRange);
+            return true;
         }
 
         private bool CanUseBasicSkillNow()
@@ -552,5 +570,4 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
     }
 }
-
 

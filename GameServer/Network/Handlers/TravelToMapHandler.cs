@@ -4,6 +4,7 @@ using GameServer.Runtime;
 using GameServer.World;
 using GameShared.Messages;
 using GameShared.Packets;
+using GameShared.Logging;
 
 namespace GameServer.Network.Handlers;
 
@@ -71,8 +72,10 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
     private Task HandlePortalTravelAsync(ConnectionSession session, PlayerSession player, TravelToMapPacket packet)
     {
         var portalId = packet.PortalId!.Value;
+        Logger.Info($"[PortalTravel] request conn={session.ConnectionId} player={player.CharacterData.Name} characterId={player.CharacterData.CharacterId} map={player.MapId} zone={player.ZoneIndex} portal={portalId} packetPos=({packet.CurrentPosX?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"},{packet.CurrentPosY?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"}) playerPos=({player.Position.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{player.Position.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}).");
         if (!_mapCatalog.TryGetPortal(player.MapId, portalId, out var portal) || !portal.IsEnabled)
         {
+            Logger.Info($"[PortalTravel] reject invalid portal conn={session.ConnectionId} player={player.CharacterData.Name} map={player.MapId} portal={portalId}.");
             SendFailure(session, packet, MessageCode.MapPortalInvalid, null, null);
             return Task.CompletedTask;
         }
@@ -91,8 +94,10 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
 
         var validationPosition = ResolvePortalValidationPosition(player, packet);
         var maxDistance = MathF.Max(0f, portal.InteractionRadius) + PortalValidationBufferServerUnits;
-        if (Vector2.DistanceSquared(validationPosition, portal.SourcePosition) > maxDistance * maxDistance)
+        var distanceSquared = Vector2.DistanceSquared(validationPosition, portal.SourcePosition);
+        if (distanceSquared > maxDistance * maxDistance)
         {
+            Logger.Info($"[PortalTravel] reject out-of-range conn={session.ConnectionId} player={player.CharacterData.Name} portal={portal.Id} validationPos=({validationPosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{validationPosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) portalPos=({portal.SourcePosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{portal.SourcePosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) distance={MathF.Sqrt(distanceSquared).ToString(System.Globalization.CultureInfo.InvariantCulture)} maxDistance={maxDistance.ToString(System.Globalization.CultureInfo.InvariantCulture)} packetPos=({packet.CurrentPosX?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"},{packet.CurrentPosY?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"}).");
             SendFailure(session, packet, MessageCode.MapTravelNotAllowed, portal.TargetMapId, portal.TargetSpawnPointId);
             return Task.CompletedTask;
         }
@@ -111,6 +116,7 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
         player.SetMapEntryContext(entryContext);
         _interestService.PublishWorldSnapshot(player);
 
+        Logger.Info($"[PortalTravel] success conn={session.ConnectionId} player={player.CharacterData.Name} portal={portal.Id} targetMap={targetDefinition.MapId} spawn={targetSpawnPoint.Id} targetZone={targetZoneIndex}.");
         _server.Send(session.ConnectionId, new TravelToMapResultPacket
         {
             Success = true,
