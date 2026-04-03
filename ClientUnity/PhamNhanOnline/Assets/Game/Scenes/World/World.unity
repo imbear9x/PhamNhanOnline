@@ -27236,10 +27236,10 @@ GameObject:
   - component: {fileID: 1872203332}
   - component: {fileID: 1872203333}
   - component: {fileID: 1872203334}
+  - component: {fileID: 1872203338}
   - component: {fileID: 1872203335}
   - component: {fileID: 1872203336}
   - component: {fileID: 1872203337}
-  - component: {fileID: 1872203338}
   - component: {fileID: 1872203339}
   - component: {fileID: 1872203340}
   - component: {fileID: 1872203341}

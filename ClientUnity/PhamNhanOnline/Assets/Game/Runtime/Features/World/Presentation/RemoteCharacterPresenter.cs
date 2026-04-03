@@ -38,6 +38,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private float moveAnimationTimer;
         private WorldTargetable targetable;
         private CharacterSkillPresenter skillPresenter;
+        private bool warnedMissingSkillPresenter;
         private float teleportSnapDistance = 3f;
 
         public void Initialize(float smoothing, float snapDistance)
@@ -312,8 +313,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (animator == null)
                 animator = GetComponentInChildren<Animator>(true);
 
-            if (skillPresenter == null)
-                skillPresenter = gameObject.AddComponent<CharacterSkillPresenter>();
         }
 
         private void ConfigureTargetable(ObservedCharacterModel observedCharacter)
@@ -323,8 +322,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var handle = WorldTargetHandle.CreateObservedCharacter(observedCharacter.Character.CharacterId);
             targetable.Configure(handle);
+
             if (skillPresenter == null)
-                skillPresenter = gameObject.AddComponent<CharacterSkillPresenter>();
+            {
+                if (!warnedMissingSkillPresenter)
+                {
+                    ClientLog.Error(
+                        $"RemoteCharacterPresenter requires CharacterSkillPresenter on prefab '{gameObject.name}'. Add the component to the remote player prefab instead of relying on runtime AddComponent.");
+                    warnedMissingSkillPresenter = true;
+                }
+
+                return;
+            }
 
             skillPresenter.ConfigureCharacter(observedCharacter.Character.CharacterId);
             skillPresenter.ConfigureTargetHandle(handle);

@@ -355,7 +355,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var presenter = target.GetComponent<CharacterSkillPresenter>();
             if (presenter == null)
-                presenter = target.AddComponent<CharacterSkillPresenter>();
+            {
+                ClientLog.Error(
+                    $"WorldLocalPlayerPresenter requires CharacterSkillPresenter on local player prefab '{playerPrefab?.name ?? "<null>"}'. " +
+                    $"Spawned object='{target.name}'. Add the component to the prefab instead of relying on runtime AddComponent.");
+                return;
+            }
 
             presenter.ConfigureCharacter(activeCharacterId);
         }

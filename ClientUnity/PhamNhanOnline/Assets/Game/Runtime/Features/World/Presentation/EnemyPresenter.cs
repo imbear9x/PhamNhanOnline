@@ -24,6 +24,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private int runtimeId;
         private bool hasResolvedWorldPosition;
         private CharacterSkillPresenter skillPresenter;
+        private bool warnedMissingSkillPresenter;
         private string enemyCode = string.Empty;
 
         public int RuntimeId { get { return runtimeId; } }
@@ -54,9 +55,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (skillPresenter == null)
                 skillPresenter = GetComponent<CharacterSkillPresenter>();
 
-            if (skillPresenter == null)
-                skillPresenter = gameObject.AddComponent<CharacterSkillPresenter>();
-
             if (groundSnapPoint == null)
             {
                 var child = transform.Find("GroundSnapPoint");
@@ -75,12 +73,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var handle = WorldTargetHandle.CreateEnemy(enemy.RuntimeId, enemy.Kind == 3);
             targetable.Configure(handle);
+
             if (skillPresenter == null)
-                skillPresenter = gameObject.AddComponent<CharacterSkillPresenter>();
+            {
+                if (!warnedMissingSkillPresenter)
+                {
+                    ClientLog.Error(
+                        $"EnemyPresenter requires CharacterSkillPresenter on enemy prefab '{gameObject.name}'. Add the component to the enemy prefab instead of relying on runtime AddComponent.");
+                    warnedMissingSkillPresenter = true;
+                }
+
+                return;
+            }
 
             skillPresenter.ConfigureTargetHandle(handle);
         }
-
         private void UpdateWorldPosition(EnemyRuntimeModel enemy, WorldMapPresenter worldMapPresenter)
         {
             Vector2 worldPosition;

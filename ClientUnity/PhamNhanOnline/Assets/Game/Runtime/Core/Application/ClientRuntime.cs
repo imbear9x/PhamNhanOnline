@@ -6,6 +6,7 @@ using PhamNhanOnline.Client.Features.Auth.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Inventory.Application;
 using PhamNhanOnline.Client.Features.MartialArts.Application;
+using PhamNhanOnline.Client.Features.PresentationReplication.Application;
 using PhamNhanOnline.Client.Features.Skills.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Features.World.Application;
@@ -41,6 +42,8 @@ namespace PhamNhanOnline.Client.Core.Application
         public static ClientCombatService CombatService { get; private set; }
         public static ClientSkillPresentationState SkillPresentation { get; private set; }
         public static ClientSkillPresentationService SkillPresentationService { get; private set; }
+        public static ClientPresentationReplicationState PresentationReplication { get; private set; }
+        public static ClientPresentationReplicationService PresentationReplicationService { get; private set; }
         public static ClientTargetState Target { get; private set; }
         public static ClientWorldState World { get; private set; }
         public static ClientWorldService WorldService { get; private set; }
@@ -70,6 +73,7 @@ namespace PhamNhanOnline.Client.Core.Application
             Skills = new ClientSkillState();
             Combat = new ClientCombatState();
             SkillPresentation = new ClientSkillPresentationState();
+            PresentationReplication = new ClientPresentationReplicationState();
             Target = new ClientTargetState();
             World = new ClientWorldState();
             UiScreens = new UiScreenService();
@@ -83,6 +87,7 @@ namespace PhamNhanOnline.Client.Core.Application
             CombatService = new ClientCombatService(Connection, Combat, Character);
             SkillPresentationService = new ClientSkillPresentationService(Combat, Skills, SkillPresentation);
             WorldService = new ClientWorldService(Connection, World, Character, Target);
+            PresentationReplicationService = new ClientPresentationReplicationService(PresentationReplication, Combat, World);
             GroundRewardService = new ClientGroundRewardService(Connection, InventoryService, Target);
             WorldTravelService = new ClientWorldTravelService(Connection);
             LoginFlow = new ClientLoginFlowService(Connection, AuthService, CharacterService, SceneFlow, settings);

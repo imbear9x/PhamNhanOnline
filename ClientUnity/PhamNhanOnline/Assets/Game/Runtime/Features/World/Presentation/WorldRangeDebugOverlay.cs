@@ -53,7 +53,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private readonly Dictionary<string, OverlayVisual> overlays = new Dictionary<string, OverlayVisual>();
         private static Sprite circleSprite;
         private float nextRefreshTime;
-        private bool loggedMissingMapPresenter;
+        private bool loggedMissingOverlayMapPresenter;
         private bool loggedMissingLocalPlayerPresenter;
         private bool loggedMissingSelectionController;
         private bool loggedMissingActionController;
@@ -337,10 +337,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void LogMissingCriticalDependenciesIfNeeded()
         {
-            if (worldMapPresenter == null && !loggedMissingMapPresenter)
+            if (worldMapPresenter == null && !loggedMissingOverlayMapPresenter)
             {
                 ClientLog.Error("WorldRangeDebugOverlay could not resolve WorldMapPresenter.");
-                loggedMissingMapPresenter = true;
+                loggedMissingOverlayMapPresenter = true;
             }
 
             if (worldLocalPlayerPresenter == null && !loggedMissingLocalPlayerPresenter)

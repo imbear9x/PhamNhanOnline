@@ -128,6 +128,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             ClientRuntime.SkillPresentationService.ConfigureCatalog(skillWorldPresentationCatalog);
             ClientRuntime.SkillPresentationService.Tick(System.DateTime.UtcNow);
+            ClientRuntime.PresentationReplicationService.Tick(System.DateTime.UtcNow);
         }
 
         private void EnsureRuntimeInitialized()
@@ -267,7 +268,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void OnDestroy()
         {
             if (ClientRuntime.IsInitialized)
+            {
                 ClientRuntime.SkillPresentationService.Clear();
+                ClientRuntime.PresentationReplicationService.Clear();
+            }
 
             if (Instance == this)
                 Instance = null;
