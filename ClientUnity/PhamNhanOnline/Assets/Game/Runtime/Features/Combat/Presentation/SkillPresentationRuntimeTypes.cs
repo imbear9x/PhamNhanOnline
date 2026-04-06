@@ -108,6 +108,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
     {
         public SkillPresentationExecutionSnapshot(
             SkillExecutionKey key,
+            WorldTargetHandle? casterHandle,
             Guid? casterCharacterId,
             WorldTargetHandle? target,
             int skillSlotIndex,
@@ -121,6 +122,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             DateTime? resolvedAtUtc)
         {
             Key = key;
+            CasterHandle = casterHandle;
             CasterCharacterId = casterCharacterId;
             Target = target;
             SkillSlotIndex = skillSlotIndex;
@@ -135,6 +137,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
         }
 
         public SkillExecutionKey Key { get; }
+        public WorldTargetHandle? CasterHandle { get; }
         public Guid? CasterCharacterId { get; }
         public WorldTargetHandle? Target { get; }
         public int SkillSlotIndex { get; }

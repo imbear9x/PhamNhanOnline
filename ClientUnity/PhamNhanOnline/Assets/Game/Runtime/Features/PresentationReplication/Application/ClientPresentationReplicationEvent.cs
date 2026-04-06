@@ -9,10 +9,13 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
             ClientPresentationReplicationEventKind kind,
             int? mapId,
             int? instanceId,
+            WorldTargetHandle? sourceTarget,
             Guid? sourceCharacterId,
             WorldTargetHandle? target,
             int? skillExecutionId,
             int? skillId,
+            string skillCode,
+            string skillGroupCode,
             int? skillSlotIndex,
             int? runtimeId,
             int? rewardId,
@@ -22,10 +25,13 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
             Kind = kind;
             MapId = mapId;
             InstanceId = instanceId;
+            SourceTarget = sourceTarget;
             SourceCharacterId = sourceCharacterId;
             Target = target;
             SkillExecutionId = skillExecutionId;
             SkillId = skillId;
+            SkillCode = skillCode ?? string.Empty;
+            SkillGroupCode = skillGroupCode ?? string.Empty;
             SkillSlotIndex = skillSlotIndex;
             RuntimeId = runtimeId;
             RewardId = rewardId;
@@ -36,10 +42,13 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
         public ClientPresentationReplicationEventKind Kind { get; }
         public int? MapId { get; }
         public int? InstanceId { get; }
+        public WorldTargetHandle? SourceTarget { get; }
         public Guid? SourceCharacterId { get; }
         public WorldTargetHandle? Target { get; }
         public int? SkillExecutionId { get; }
         public int? SkillId { get; }
+        public string SkillCode { get; }
+        public string SkillGroupCode { get; }
         public int? SkillSlotIndex { get; }
         public int? RuntimeId { get; }
         public int? RewardId { get; }

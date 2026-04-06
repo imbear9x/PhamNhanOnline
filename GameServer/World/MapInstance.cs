@@ -16,6 +16,7 @@ public sealed partial class MapInstance
     private readonly Queue<EnemyDespawnRuntimeEvent> _pendingEnemyDespawns = new();
     private readonly Queue<EnemyHpChangedRuntimeEvent> _pendingEnemyHpChanges = new();
     private readonly Queue<PlayerDamageRuntimeEvent> _pendingPlayerDamages = new();
+    private readonly Queue<EnemySkillCastRequestRuntimeEvent> _pendingEnemySkillCastRequests = new();
     private readonly Queue<SkillCastReleaseRuntimeEvent> _pendingSkillCastReleases = new();
     private readonly Queue<SkillImpactDueRuntimeEvent> _pendingSkillImpactDues = new();
     private readonly Queue<SkillImpactResolvedRuntimeEvent> _pendingSkillImpactResolutions = new();

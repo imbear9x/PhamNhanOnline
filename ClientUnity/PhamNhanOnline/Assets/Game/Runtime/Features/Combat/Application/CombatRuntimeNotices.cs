@@ -9,12 +9,15 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
         public SkillCastStartedNotice(
             int? mapId,
             int? instanceId,
+            WorldTargetHandle? caster,
             Guid? casterCharacterId,
             WorldTargetHandle? target,
             int skillExecutionId,
             int skillSlotIndex,
             long playerSkillId,
             int skillId,
+            string skillCode,
+            string skillGroupCode,
             int castTimeMs,
             int travelTimeMs,
             DateTime? castStartedAtUtc,
@@ -23,12 +26,15 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
         {
             MapId = mapId;
             InstanceId = instanceId;
+            Caster = caster;
             CasterCharacterId = casterCharacterId;
             Target = target;
             SkillExecutionId = skillExecutionId;
             SkillSlotIndex = skillSlotIndex;
             PlayerSkillId = playerSkillId;
             SkillId = skillId;
+            SkillCode = skillCode ?? string.Empty;
+            SkillGroupCode = skillGroupCode ?? string.Empty;
             CastTimeMs = castTimeMs;
             TravelTimeMs = travelTimeMs;
             CastStartedAtUtc = castStartedAtUtc;
@@ -38,12 +44,15 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
 
         public int? MapId { get; }
         public int? InstanceId { get; }
+        public WorldTargetHandle? Caster { get; }
         public Guid? CasterCharacterId { get; }
         public WorldTargetHandle? Target { get; }
         public int SkillExecutionId { get; }
         public int SkillSlotIndex { get; }
         public long PlayerSkillId { get; }
         public int SkillId { get; }
+        public string SkillCode { get; }
+        public string SkillGroupCode { get; }
         public int CastTimeMs { get; }
         public int TravelTimeMs { get; }
         public DateTime? CastStartedAtUtc { get; }
@@ -56,12 +65,15 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
         public SkillImpactResolvedNotice(
             int? mapId,
             int? instanceId,
+            WorldTargetHandle? caster,
             Guid? casterCharacterId,
             WorldTargetHandle? target,
             int skillExecutionId,
             int skillSlotIndex,
             long playerSkillId,
             int skillId,
+            string skillCode,
+            string skillGroupCode,
             bool success,
             MessageCode? code,
             int damageApplied,
@@ -71,12 +83,15 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
         {
             MapId = mapId;
             InstanceId = instanceId;
+            Caster = caster;
             CasterCharacterId = casterCharacterId;
             Target = target;
             SkillExecutionId = skillExecutionId;
             SkillSlotIndex = skillSlotIndex;
             PlayerSkillId = playerSkillId;
             SkillId = skillId;
+            SkillCode = skillCode ?? string.Empty;
+            SkillGroupCode = skillGroupCode ?? string.Empty;
             Success = success;
             Code = code;
             DamageApplied = damageApplied;
@@ -87,12 +102,15 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
 
         public int? MapId { get; }
         public int? InstanceId { get; }
+        public WorldTargetHandle? Caster { get; }
         public Guid? CasterCharacterId { get; }
         public WorldTargetHandle? Target { get; }
         public int SkillExecutionId { get; }
         public int SkillSlotIndex { get; }
         public long PlayerSkillId { get; }
         public int SkillId { get; }
+        public string SkillCode { get; }
+        public string SkillGroupCode { get; }
         public bool Success { get; }
         public MessageCode? Code { get; }
         public int DamageApplied { get; }

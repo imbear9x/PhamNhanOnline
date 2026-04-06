@@ -26,6 +26,7 @@ public sealed class MonsterEntity
     public DateTime? LastDamagedAtUtc { get; private set; }
     public DateTime? NextAttackAtUtc { get; private set; }
     public CombatStatusCollection CombatStatuses => _combatStatuses;
+    private int _nextSkillIndex;
 
     public MonsterEntity(int id, int spawnGroupId, EnemyDefinition definition, Vector2 spawnPosition, DateTime utcNow)
     {
@@ -43,7 +44,7 @@ public sealed class MonsterEntity
         SpawnedAtUtc = utcNow;
     }
 
-    public EnemyDamageApplicationResult ApplyDamage(Guid playerId, int damage, DateTime utcNow)
+    public EnemyDamageApplicationResult ApplyDamage(Guid? playerId, int damage, DateTime utcNow)
     {
         if (damage <= 0)
             return new EnemyDamageApplicationResult(false, false, 0, Hp, MessageCode.EnemyAlreadyDead);
@@ -63,17 +64,17 @@ public sealed class MonsterEntity
             LastDamagedAtUtc = utcNow;
             NextAttackAtUtc ??= utcNow;
 
-            if (_contributions.TryGetValue(playerId, out var existing))
+            if (playerId.HasValue && _contributions.TryGetValue(playerId.Value, out var existing))
             {
-                _contributions[playerId] = existing with
+                _contributions[playerId.Value] = existing with
                 {
                     DamageDealt = existing.DamageDealt + appliedDamage,
                     LastHitAtUtc = utcNow
                 };
             }
-            else
+            else if (playerId.HasValue)
             {
-                _contributions[playerId] = new DamageContributionState(playerId, appliedDamage, utcNow);
+                _contributions[playerId.Value] = new DamageContributionState(playerId.Value, appliedDamage, utcNow);
             }
 
             if (Hp > 0)
@@ -200,8 +201,9 @@ public sealed class MonsterEntity
         }
     }
 
-    public bool TryConsumeAttackWindow(DateTime utcNow)
+    public bool TryConsumeAttackWindow(DateTime utcNow, out EnemySkillLoadoutDefinition? skill)
     {
+        skill = null;
         lock (_sync)
         {
             if (State != EnemyRuntimeState.Combat || !CombatTargetPlayerId.HasValue)
@@ -215,7 +217,31 @@ public sealed class MonsterEntity
 
             var intervalMs = Math.Max(250, Definition.MinimumSkillIntervalMs);
             NextAttackAtUtc = utcNow.AddMilliseconds(intervalMs);
+            if (Definition.Skills.Count > 0)
+            {
+                if (_nextSkillIndex >= Definition.Skills.Count)
+                    _nextSkillIndex = 0;
+
+                skill = Definition.Skills[_nextSkillIndex];
+                _nextSkillIndex = (_nextSkillIndex + 1) % Definition.Skills.Count;
+            }
+
             return true;
+        }
+    }
+
+    public CombatStatSnapshot CaptureCombatStatsSnapshot(DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            return new CombatStatSnapshot(
+                CombatStatMath.ApplyModifiers(Definition.MaxHp, _combatStatuses.GetStatModifierAggregate(CharacterStatType.MaxHp, utcNow)),
+                0,
+                0,
+                CombatStatMath.ApplyModifiers(Definition.BaseAttack, _combatStatuses.GetStatModifierAggregate(CharacterStatType.Attack, utcNow)),
+                CombatStatMath.ApplyModifiers((int)Math.Round(Definition.BaseMoveSpeed), _combatStatuses.GetStatModifierAggregate(CharacterStatType.Speed, utcNow)),
+                0,
+                0);
         }
     }
 

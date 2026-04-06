@@ -6,7 +6,7 @@ namespace GameServer.World;
 
 public sealed partial class MapInstance
 {
-    public EnemyDamageApplicationResult ApplyEnemyDamage(PlayerSession attacker, int enemyRuntimeId, int damage, DateTime utcNow)
+    public EnemyDamageApplicationResult ApplyEnemyDamage(Guid? attackerPlayerId, int enemyRuntimeId, int damage, DateTime utcNow)
     {
         lock (_sync)
         {
@@ -14,7 +14,7 @@ public sealed partial class MapInstance
             if (enemy is null)
                 return new EnemyDamageApplicationResult(false, false, 0, 0, MessageCode.EnemyNotFound);
 
-            var result = enemy.ApplyDamage(attacker.PlayerId, damage, utcNow);
+            var result = enemy.ApplyDamage(attackerPlayerId, damage, utcNow);
             if (result.Applied)
             {
                 _pendingEnemyHpChanges.Enqueue(new EnemyHpChangedRuntimeEvent(
@@ -121,10 +121,13 @@ public sealed partial class MapInstance
     }
 
     public PendingSkillExecution EnqueueSkillExecution(
-        Guid casterPlayerId,
-        Guid casterCharacterId,
+        CombatTargetReference caster,
+        Guid? casterPlayerId,
+        Guid? casterCharacterId,
         long playerSkillId,
         int skillId,
+        string skillCode,
+        string skillGroupCode,
         int skillSlotIndex,
         SkillTargetType targetType,
         CombatStatSnapshot casterStats,
@@ -140,10 +143,13 @@ public sealed partial class MapInstance
             var impactAtUtc = castCompletedAtUtc.AddMilliseconds(Math.Max(0, travelTimeMs));
             var execution = new PendingSkillExecution(
                 _nextSkillExecutionId++,
+                caster,
                 casterPlayerId,
                 casterCharacterId,
                 playerSkillId,
                 skillId,
+                skillCode,
+                skillGroupCode,
                 skillSlotIndex,
                 targetType,
                 casterStats,
@@ -231,6 +237,15 @@ public sealed partial class MapInstance
 
             enemy.ApplyStatModifier(statType, value, valueType, durationMs, utcNow);
             return true;
+        }
+    }
+
+    public bool TryGetMonster(int enemyRuntimeId, out MonsterEntity monster)
+    {
+        lock (_sync)
+        {
+            monster = Monsters.FirstOrDefault(x => x.Id == enemyRuntimeId)!;
+            return monster != null;
         }
     }
 }

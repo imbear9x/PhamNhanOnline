@@ -26,12 +26,18 @@ public sealed class SkillExecutionService
     public CombatStatSnapshot CaptureCasterStats(PlayerSession caster, DateTime utcNow) =>
         caster.CaptureCombatStatsSnapshot(utcNow);
 
+    public CombatStatSnapshot CaptureCasterStats(MonsterEntity caster, DateTime utcNow) =>
+        caster.CaptureCombatStatsSnapshot(utcNow);
+
+    public bool TryGetSkillDefinition(int skillId, out SkillDefinition skillDefinition) =>
+        _combatDefinitions.TryGetSkill(skillId, out skillDefinition!);
+
     public void ResolveCastRelease(MapInstance instance, PendingSkillExecution execution, DateTime utcNow)
     {
         if (!_combatDefinitions.TryGetSkill(execution.SkillId, out var skillDefinition))
             return;
 
-        if (!TryGetCaster(instance, execution.CasterPlayerId, out var caster))
+        if (!TryResolveCaster(instance, execution, out var caster))
             return;
 
         ApplyEffects(instance, caster, skillDefinition, execution, SkillTriggerTiming.OnCastRelease, utcNow);
@@ -54,7 +60,7 @@ public sealed class SkillExecutionService
                 utcNow);
         }
 
-        if (!TryGetCaster(instance, execution.CasterPlayerId, out var caster))
+        if (!TryResolveCaster(instance, execution, out var caster))
         {
             return BuildImpactEvent(
                 execution,
@@ -87,7 +93,7 @@ public sealed class SkillExecutionService
 
     private SkillEffectApplicationSummary ApplyEffects(
         MapInstance instance,
-        PlayerSession caster,
+        SkillCasterContext caster,
         SkillDefinition skillDefinition,
         PendingSkillExecution execution,
         SkillTriggerTiming triggerTiming,
@@ -107,7 +113,7 @@ public sealed class SkillExecutionService
             switch (targetScope)
             {
                 case SkillTargetScope.Self:
-                    summary = summary.Merge(ApplyEffectToPlayer(caster, effect, execution.CasterStats, utcNow));
+                    summary = summary.Merge(ApplyEffectToCaster(instance, caster, effect, execution.CasterStats, utcNow));
                     break;
 
                 case SkillTargetScope.Primary:
@@ -121,14 +127,14 @@ public sealed class SkillExecutionService
 
     private SkillEffectApplicationSummary ApplyPrimaryEffect(
         MapInstance instance,
-        PlayerSession caster,
+        SkillCasterContext caster,
         SkillDefinition skillDefinition,
         PendingSkillExecution execution,
         SkillEffectDefinition effect,
         DateTime utcNow)
     {
         if (skillDefinition.TargetType == SkillTargetType.Self || !execution.Target.HasValue)
-            return ApplyEffectToPlayer(caster, effect, execution.CasterStats, utcNow);
+            return ApplyEffectToCaster(instance, caster, effect, execution.CasterStats, utcNow);
 
         var target = execution.Target.Value;
         if (target.Kind == GameShared.Enums.CombatTargetKind.Character &&
@@ -140,6 +146,22 @@ public sealed class SkillExecutionService
 
         if (target.RuntimeId.HasValue)
             return ApplyEffectToEnemy(instance, caster, target.RuntimeId.Value, effect, execution.CasterStats, utcNow);
+
+        return SkillEffectApplicationSummary.Empty;
+    }
+
+    private SkillEffectApplicationSummary ApplyEffectToCaster(
+        MapInstance instance,
+        SkillCasterContext caster,
+        SkillEffectDefinition effect,
+        CombatStatSnapshot casterStats,
+        DateTime utcNow)
+    {
+        if (caster.Player != null)
+            return ApplyEffectToPlayer(caster.Player, effect, casterStats, utcNow);
+
+        if (caster.EnemyRuntimeId.HasValue)
+            return ApplyEffectToEnemy(instance, caster, caster.EnemyRuntimeId.Value, effect, casterStats, utcNow);
 
         return SkillEffectApplicationSummary.Empty;
     }
@@ -168,7 +190,7 @@ public sealed class SkillExecutionService
 
     private SkillEffectApplicationSummary ApplyEffectToEnemy(
         MapInstance instance,
-        PlayerSession caster,
+        SkillCasterContext caster,
         int enemyRuntimeId,
         SkillEffectDefinition effect,
         CombatStatSnapshot casterStats,
@@ -265,7 +287,7 @@ public sealed class SkillExecutionService
 
     private SkillEffectApplicationSummary ApplyEnemyDamage(
         MapInstance instance,
-        PlayerSession caster,
+        SkillCasterContext caster,
         int enemyRuntimeId,
         int amount,
         DateTime utcNow)
@@ -273,7 +295,7 @@ public sealed class SkillExecutionService
         if (amount <= 0)
             return SkillEffectApplicationSummary.Empty;
 
-        var result = instance.ApplyEnemyDamage(caster, enemyRuntimeId, amount, utcNow);
+        var result = instance.ApplyEnemyDamage(caster.PlayerId, enemyRuntimeId, amount, utcNow);
         if (!result.Applied)
             return SkillEffectApplicationSummary.Failed(result.Code);
 
@@ -305,7 +327,7 @@ public sealed class SkillExecutionService
 
     private SkillEffectApplicationSummary ApplyEnemyResourceByType(
         MapInstance instance,
-        PlayerSession caster,
+        SkillCasterContext caster,
         int enemyRuntimeId,
         CombatResourceType? resourceType,
         int delta,
@@ -432,19 +454,34 @@ public sealed class SkillExecutionService
         return roll <= normalizedChance;
     }
 
-    private bool TryGetCaster(MapInstance instance, Guid casterPlayerId, out PlayerSession caster)
+    private bool TryResolveCaster(MapInstance instance, PendingSkillExecution execution, out SkillCasterContext caster)
     {
-        caster = null!;
-        if (!_worldManager.TryGetPlayer(casterPlayerId, out var resolvedCaster) ||
-            !resolvedCaster.IsConnected ||
-            resolvedCaster.MapId != instance.MapId ||
-            resolvedCaster.InstanceId != instance.InstanceId)
+        caster = default;
+
+        if (execution.Caster.Kind == GameShared.Enums.CombatTargetKind.Character)
         {
-            return false;
+            if (!execution.CasterPlayerId.HasValue ||
+                !_worldManager.TryGetPlayer(execution.CasterPlayerId.Value, out var resolvedCaster) ||
+                !resolvedCaster.IsConnected ||
+                resolvedCaster.MapId != instance.MapId ||
+                resolvedCaster.InstanceId != instance.InstanceId)
+            {
+                return false;
+            }
+
+            caster = new SkillCasterContext(execution.Caster, execution.CasterPlayerId, resolvedCaster, null);
+            return true;
         }
 
-        caster = resolvedCaster;
-        return true;
+        if (execution.Caster.RuntimeId.HasValue &&
+            instance.TryGetMonster(execution.Caster.RuntimeId.Value, out var monster) &&
+            monster.IsAlive)
+        {
+            caster = new SkillCasterContext(execution.Caster, null, null, monster.Id);
+            return true;
+        }
+
+        return false;
     }
 
     private bool TryGetTargetPlayer(MapInstance instance, Guid characterId, out PlayerSession targetPlayer)
@@ -485,12 +522,15 @@ public sealed class SkillExecutionService
     {
         return new SkillImpactResolvedRuntimeEvent(
             execution.ExecutionId,
+            execution.Caster,
             execution.CasterPlayerId,
             execution.CasterCharacterId,
             execution.Target,
             execution.SkillSlotIndex,
             execution.PlayerSkillId,
             execution.SkillId,
+            execution.SkillCode,
+            execution.SkillGroupCode,
             applied,
             code,
             damageApplied,
@@ -498,6 +538,12 @@ public sealed class SkillExecutionService
             isKilled,
             resolvedAtUtc);
     }
+
+    private readonly record struct SkillCasterContext(
+        CombatTargetReference Caster,
+        Guid? PlayerId,
+        PlayerSession? Player,
+        int? EnemyRuntimeId);
 
     private readonly record struct SkillEffectApplicationSummary(
         bool AnyApplied,

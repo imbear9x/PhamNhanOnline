@@ -243,12 +243,15 @@ public partial class SkillCastStartedPacket : IPacket
 {
     public int? MapId { get; set; }
     public int? InstanceId { get; set; }
+    public CombatTargetModel? Caster { get; set; }
     public Guid? CasterCharacterId { get; set; }
     public CombatTargetModel? Target { get; set; }
     public int? SkillExecutionId { get; set; }
     public int? SkillSlotIndex { get; set; }
     public long? PlayerSkillId { get; set; }
     public int? SkillId { get; set; }
+    public string? SkillCode { get; set; }
+    public string? SkillGroupCode { get; set; }
     public int? CastTimeMs { get; set; }
     public int? TravelTimeMs { get; set; }
     public long? CastStartedUnixMs { get; set; }
@@ -262,12 +265,15 @@ public partial class SkillImpactResolvedPacket : IPacket
 {
     public int? MapId { get; set; }
     public int? InstanceId { get; set; }
+    public CombatTargetModel? Caster { get; set; }
     public Guid? CasterCharacterId { get; set; }
     public CombatTargetModel? Target { get; set; }
     public int? SkillExecutionId { get; set; }
     public int? SkillSlotIndex { get; set; }
     public long? PlayerSkillId { get; set; }
     public int? SkillId { get; set; }
+    public string? SkillCode { get; set; }
+    public string? SkillGroupCode { get; set; }
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
     public int? DamageApplied { get; set; }

@@ -219,10 +219,17 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
 
             var cooldownEndsAtUtc = utcNow.AddMilliseconds(Math.Max(0, castContext.Skill.CooldownMs));
             var execution = instance.EnqueueSkillExecution(
+                new CombatTargetReference(
+                    GameShared.Enums.CombatTargetKind.Character,
+                    player.CharacterData.CharacterId,
+                    null,
+                    null),
                 player.PlayerId,
                 player.CharacterData.CharacterId,
                 castContext.PlayerSkillId,
                 castContext.SkillId,
+                castContext.Skill.Code,
+                castContext.Skill.GroupCode,
                 castContext.SkillSlotIndex,
                 castContext.Skill.TargetType,
                 _skillExecutionService.CaptureCasterStats(player, utcNow),

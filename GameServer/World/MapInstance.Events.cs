@@ -68,6 +68,14 @@ public sealed partial class MapInstance
         }
     }
 
+    public IReadOnlyCollection<EnemySkillCastRequestRuntimeEvent> DequeuePendingEnemySkillCastRequests()
+    {
+        lock (_sync)
+        {
+            return DrainQueueUnsafe(_pendingEnemySkillCastRequests);
+        }
+    }
+
     public IReadOnlyCollection<SkillCastReleaseRuntimeEvent> DequeuePendingSkillCastReleases()
     {
         lock (_sync)
@@ -133,3 +141,9 @@ public readonly record struct PlayerDamageRuntimeEvent(
     Guid TargetPlayerId,
     int EnemyRuntimeId,
     int Damage);
+
+public readonly record struct EnemySkillCastRequestRuntimeEvent(
+    int EnemyRuntimeId,
+    Guid TargetPlayerId,
+    int SkillId,
+    int SkillSlotIndex);

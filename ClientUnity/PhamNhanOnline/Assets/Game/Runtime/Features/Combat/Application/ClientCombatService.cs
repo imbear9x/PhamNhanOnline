@@ -132,18 +132,21 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
         private void HandleSkillCastStarted(SkillCastStartedPacket packet)
         {
             ClientLog.Info(
-                $"SkillCastStarted: caster={packet.CasterCharacterId}, slot={packet.SkillSlotIndex ?? 0}, " +
+                $"SkillCastStarted: casterChar={packet.CasterCharacterId}, casterRuntime={packet.Caster?.RuntimeId ?? 0}, slot={packet.SkillSlotIndex ?? 0}, " +
                 $"skillId={packet.SkillId ?? 0}, playerSkillId={packet.PlayerSkillId ?? 0}, " +
                 $"castMs={packet.CastTimeMs ?? 0}, travelMs={packet.TravelTimeMs ?? 0}.");
             combatState.PublishSkillCastStarted(new SkillCastStartedNotice(
                 packet.MapId,
                 packet.InstanceId,
+                TryBuildWorldTargetHandle(packet.Caster, out var castCaster) ? castCaster : (WorldTargetHandle?)null,
                 packet.CasterCharacterId,
                 TryBuildWorldTargetHandle(packet.Target, out var castTarget) ? castTarget : (WorldTargetHandle?)null,
                 packet.SkillExecutionId ?? 0,
                 packet.SkillSlotIndex ?? 0,
                 packet.PlayerSkillId ?? 0,
                 packet.SkillId ?? 0,
+                packet.SkillCode ?? string.Empty,
+                packet.SkillGroupCode ?? string.Empty,
                 packet.CastTimeMs ?? 0,
                 packet.TravelTimeMs ?? 0,
                 FromUnixMs(packet.CastStartedUnixMs),
@@ -169,19 +172,22 @@ namespace PhamNhanOnline.Client.Features.Combat.Application
         private void HandleSkillImpactResolved(SkillImpactResolvedPacket packet)
         {
             ClientLog.Info(
-                $"SkillImpactResolved: caster={packet.CasterCharacterId}, slot={packet.SkillSlotIndex ?? 0}, " +
+                $"SkillImpactResolved: casterChar={packet.CasterCharacterId}, casterRuntime={packet.Caster?.RuntimeId ?? 0}, slot={packet.SkillSlotIndex ?? 0}, " +
                 $"skillId={packet.SkillId ?? 0}, playerSkillId={packet.PlayerSkillId ?? 0}, " +
                 $"success={packet.Success == true}, code={packet.Code}, damage={packet.DamageApplied ?? 0}, " +
                 $"remainingHp={packet.RemainingHp ?? 0}, killed={packet.IsKilled == true}.");
             combatState.PublishSkillImpactResolved(new SkillImpactResolvedNotice(
                 packet.MapId,
                 packet.InstanceId,
+                TryBuildWorldTargetHandle(packet.Caster, out var impactCaster) ? impactCaster : (WorldTargetHandle?)null,
                 packet.CasterCharacterId,
                 TryBuildWorldTargetHandle(packet.Target, out var impactTarget) ? impactTarget : (WorldTargetHandle?)null,
                 packet.SkillExecutionId ?? 0,
                 packet.SkillSlotIndex ?? 0,
                 packet.PlayerSkillId ?? 0,
                 packet.SkillId ?? 0,
+                packet.SkillCode ?? string.Empty,
+                packet.SkillGroupCode ?? string.Empty,
                 packet.Success == true,
                 packet.Code,
                 packet.DamageApplied ?? 0,

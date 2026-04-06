@@ -74,12 +74,23 @@ public sealed partial class MapInstance
                     continue;
                 }
 
-                if (monster.TryConsumeAttackWindow(utcNow))
+                if (monster.TryConsumeAttackWindow(utcNow, out var selectedSkill))
                 {
-                    _pendingPlayerDamages.Enqueue(new PlayerDamageRuntimeEvent(
-                        targetPlayer.PlayerId,
-                        monster.Id,
-                        Math.Max(1, monster.GetEffectiveAttack(utcNow))));
+                    if (selectedSkill is not null)
+                    {
+                        _pendingEnemySkillCastRequests.Enqueue(new EnemySkillCastRequestRuntimeEvent(
+                            monster.Id,
+                            targetPlayer.PlayerId,
+                            selectedSkill.SkillId,
+                            Math.Max(0, selectedSkill.OrderIndex)));
+                    }
+                    else
+                    {
+                        _pendingPlayerDamages.Enqueue(new PlayerDamageRuntimeEvent(
+                            targetPlayer.PlayerId,
+                            monster.Id,
+                            Math.Max(1, monster.GetEffectiveAttack(utcNow))));
+                    }
                 }
             }
 

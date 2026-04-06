@@ -62,10 +62,13 @@ public sealed class PendingSkillExecution
 {
     public PendingSkillExecution(
         int executionId,
-        Guid casterPlayerId,
-        Guid casterCharacterId,
+        CombatTargetReference caster,
+        Guid? casterPlayerId,
+        Guid? casterCharacterId,
         long playerSkillId,
         int skillId,
+        string skillCode,
+        string skillGroupCode,
         int skillSlotIndex,
         SkillTargetType targetType,
         CombatStatSnapshot casterStats,
@@ -77,10 +80,13 @@ public sealed class PendingSkillExecution
         DateTime impactAtUtc)
     {
         ExecutionId = executionId;
+        Caster = caster;
         CasterPlayerId = casterPlayerId;
         CasterCharacterId = casterCharacterId;
         PlayerSkillId = playerSkillId;
         SkillId = skillId;
+        SkillCode = skillCode ?? string.Empty;
+        SkillGroupCode = skillGroupCode ?? string.Empty;
         SkillSlotIndex = skillSlotIndex;
         TargetType = targetType;
         CasterStats = casterStats;
@@ -93,10 +99,13 @@ public sealed class PendingSkillExecution
     }
 
     public int ExecutionId { get; }
-    public Guid CasterPlayerId { get; }
-    public Guid CasterCharacterId { get; }
+    public CombatTargetReference Caster { get; }
+    public Guid? CasterPlayerId { get; }
+    public Guid? CasterCharacterId { get; }
     public long PlayerSkillId { get; }
     public int SkillId { get; }
+    public string SkillCode { get; }
+    public string SkillGroupCode { get; }
     public int SkillSlotIndex { get; }
     public SkillTargetType TargetType { get; }
     public CombatStatSnapshot CasterStats { get; }
@@ -134,12 +143,15 @@ public readonly record struct SkillImpactDueRuntimeEvent(
 
 public readonly record struct SkillImpactResolvedRuntimeEvent(
     int ExecutionId,
-    Guid CasterPlayerId,
-    Guid CasterCharacterId,
+    CombatTargetReference Caster,
+    Guid? CasterPlayerId,
+    Guid? CasterCharacterId,
     CombatTargetReference? Target,
     int SkillSlotIndex,
     long PlayerSkillId,
     int SkillId,
+    string SkillCode,
+    string SkillGroupCode,
     bool Applied,
     MessageCode Code,
     int DamageApplied,

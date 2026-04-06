@@ -85,10 +85,16 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             if (!key.IsValid)
                 return;
 
-            var lookup = BuildLookupContext(notice.PlayerSkillId, notice.SkillId, notice.SkillSlotIndex);
+            var lookup = BuildLookupContext(
+                notice.PlayerSkillId,
+                notice.SkillId,
+                notice.SkillSlotIndex,
+                notice.SkillCode,
+                notice.SkillGroupCode);
             var definition = ResolveDefinition(lookup);
             var snapshot = new SkillPresentationExecutionSnapshot(
                 key,
+                notice.Caster,
                 notice.CasterCharacterId,
                 notice.Target,
                 notice.SkillSlotIndex,
@@ -111,8 +117,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             presentationState.BeginExecution(snapshot);
 
             CharacterSkillPresenter casterPresenter;
-            if (notice.CasterCharacterId.HasValue &&
-                CharacterSkillPresenterRegistry.TryGetByCharacterId(notice.CasterCharacterId.Value, out casterPresenter))
+            if (TryResolveCasterPresenter(notice.Caster, notice.CasterCharacterId, out casterPresenter))
             {
                 casterPresenter.HandleCastStarted(snapshot, definition, ResolveTargetWorldPosition(notice.Target));
             }
@@ -124,11 +129,17 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             ActiveExecution execution;
             if (!activeExecutions.TryGetValue(key, out execution))
             {
-                var fallbackLookup = BuildLookupContext(notice.PlayerSkillId, notice.SkillId, notice.SkillSlotIndex);
+                var fallbackLookup = BuildLookupContext(
+                    notice.PlayerSkillId,
+                    notice.SkillId,
+                    notice.SkillSlotIndex,
+                    notice.SkillCode,
+                    notice.SkillGroupCode);
                 execution = new ActiveExecution
                 {
                     Snapshot = new SkillPresentationExecutionSnapshot(
                         key,
+                        notice.Caster,
                         notice.CasterCharacterId,
                         notice.Target,
                         notice.SkillSlotIndex,
@@ -151,6 +162,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
 
             var impactSnapshot = new SkillPresentationExecutionSnapshot(
                 execution.Snapshot.Key,
+                execution.Snapshot.CasterHandle,
                 execution.Snapshot.CasterCharacterId,
                 notice.Target.HasValue ? notice.Target : execution.Snapshot.Target,
                 execution.Snapshot.SkillSlotIndex,
@@ -167,8 +179,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             presentationState.UpdateExecution(impactSnapshot);
 
             CharacterSkillPresenter casterPresenter;
-            if (impactSnapshot.CasterCharacterId.HasValue &&
-                CharacterSkillPresenterRegistry.TryGetByCharacterId(impactSnapshot.CasterCharacterId.Value, out casterPresenter))
+            if (TryResolveCasterPresenter(impactSnapshot.CasterHandle, impactSnapshot.CasterCharacterId, out casterPresenter))
             {
                 casterPresenter.HandleImpactResolvedAsCaster(impactSnapshot, execution.Definition);
             }
@@ -183,6 +194,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
 
             var completedSnapshot = new SkillPresentationExecutionSnapshot(
                 impactSnapshot.Key,
+                impactSnapshot.CasterHandle,
                 impactSnapshot.CasterCharacterId,
                 impactSnapshot.Target,
                 impactSnapshot.SkillSlotIndex,
@@ -205,6 +217,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             execution.HasReleased = true;
             execution.Snapshot = new SkillPresentationExecutionSnapshot(
                 execution.Snapshot.Key,
+                execution.Snapshot.CasterHandle,
                 execution.Snapshot.CasterCharacterId,
                 execution.Snapshot.Target,
                 execution.Snapshot.SkillSlotIndex,
@@ -219,8 +232,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             presentationState.UpdateExecution(execution.Snapshot);
 
             CharacterSkillPresenter casterPresenter;
-            if (execution.Snapshot.CasterCharacterId.HasValue &&
-                CharacterSkillPresenterRegistry.TryGetByCharacterId(execution.Snapshot.CasterCharacterId.Value, out casterPresenter))
+            if (TryResolveCasterPresenter(execution.Snapshot.CasterHandle, execution.Snapshot.CasterCharacterId, out casterPresenter))
             {
                 casterPresenter.HandleCastReleased(
                     execution.Snapshot,
@@ -244,8 +256,16 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
                 true);
         }
 
-        private SkillPresentationLookupContext BuildLookupContext(long playerSkillId, int skillId, int skillSlotIndex)
+        private SkillPresentationLookupContext BuildLookupContext(
+            long playerSkillId,
+            int skillId,
+            int skillSlotIndex,
+            string skillCode,
+            string skillGroupCode)
         {
+            if (!string.IsNullOrWhiteSpace(skillCode) || !string.IsNullOrWhiteSpace(skillGroupCode))
+                return new SkillPresentationLookupContext(skillId, playerSkillId, skillSlotIndex, skillCode, skillGroupCode);
+
             var skills = skillState != null ? skillState.Skills : Array.Empty<PlayerSkillModel>();
             for (var i = 0; i < skills.Length; i++)
             {
@@ -271,7 +291,12 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
                 }
             }
 
-            return new SkillPresentationLookupContext(skillId, playerSkillId, skillSlotIndex, string.Empty, string.Empty);
+            return new SkillPresentationLookupContext(
+                skillId,
+                playerSkillId,
+                skillSlotIndex,
+                skillCode ?? string.Empty,
+                skillGroupCode ?? string.Empty);
         }
 
         private static SkillExecutionKey BuildExecutionKey(int? mapId, int? instanceId, int skillExecutionId)
@@ -280,6 +305,19 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
                 mapId ?? 0,
                 instanceId ?? 0,
                 skillExecutionId);
+        }
+
+        private static bool TryResolveCasterPresenter(
+            WorldTargetHandle? casterHandle,
+            Guid? casterCharacterId,
+            out CharacterSkillPresenter presenter)
+        {
+            presenter = null;
+            return (casterHandle.HasValue &&
+                    casterHandle.Value.IsValid &&
+                    CharacterSkillPresenterRegistry.TryGetByTargetHandle(casterHandle.Value, out presenter)) ||
+                   (casterCharacterId.HasValue &&
+                    CharacterSkillPresenterRegistry.TryGetByCharacterId(casterCharacterId.Value, out presenter));
         }
 
         private static Vector2? ResolveTargetWorldPosition(WorldTargetHandle? target)

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using GameServer.Diagnostics;
 using GameServer.DTO;
 using GameServer.World;
+using GameShared.Enums;
 
 namespace GameServer.Runtime;
 
@@ -99,6 +100,7 @@ public sealed class GameLoop
         foreach (var instance in instances)
         {
             instance.Update(utcNow);
+            ApplyPendingEnemySkillCastRequests(instance, utcNow);
             ApplyPendingSkillCastReleases(instance, utcNow);
             ApplyPendingSkillImpacts(instance, utcNow);
             ApplyPendingPlayerDamage(instance);
@@ -124,18 +126,65 @@ public sealed class GameLoop
         }
     }
 
+    private void ApplyPendingEnemySkillCastRequests(MapInstance instance, DateTime utcNow)
+    {
+        foreach (var castRequest in instance.DequeuePendingEnemySkillCastRequests())
+        {
+            if (!instance.TryGetMonster(castRequest.EnemyRuntimeId, out var monster) || !monster.IsAlive)
+                continue;
+
+            if (!_worldManager.TryGetPlayer(castRequest.TargetPlayerId, out var targetPlayer))
+                continue;
+
+            if (targetPlayer.InstanceId != instance.InstanceId || targetPlayer.MapId != instance.MapId)
+                continue;
+
+            if (!_skillExecutionService.TryGetSkillDefinition(castRequest.SkillId, out var skillDefinition))
+                continue;
+
+            var casterTarget = new CombatTargetReference(
+                monster.Definition.Kind == EnemyKind.Boss ? GameShared.Enums.CombatTargetKind.Boss : GameShared.Enums.CombatTargetKind.Enemy,
+                null,
+                monster.Id,
+                null);
+            var target = new CombatTargetReference(
+                GameShared.Enums.CombatTargetKind.Character,
+                targetPlayer.CharacterData.CharacterId,
+                null,
+                null);
+            var execution = instance.EnqueueSkillExecution(
+                casterTarget,
+                null,
+                null,
+                0,
+                skillDefinition.Id,
+                skillDefinition.Code,
+                skillDefinition.GroupCode,
+                castRequest.SkillSlotIndex,
+                skillDefinition.TargetType,
+                _skillExecutionService.CaptureCasterStats(monster, utcNow),
+                target,
+                skillDefinition.CastTimeMs,
+                skillDefinition.TravelTimeMs,
+                utcNow);
+            _interestService.NotifySkillCastStarted(instance, execution);
+        }
+    }
+
     private void ApplyPendingSkillCastReleases(MapInstance instance, DateTime utcNow)
     {
         foreach (var releaseEvent in instance.DequeuePendingSkillCastReleases())
         {
             var execution = releaseEvent.Execution;
-            if (!_worldManager.TryGetPlayer(execution.CasterPlayerId, out var caster))
-                continue;
-
-            if (caster.MapId != instance.MapId || caster.InstanceId != instance.InstanceId)
-                continue;
-
             _skillExecutionService.ResolveCastRelease(instance, execution, utcNow);
+            if (!execution.CasterPlayerId.HasValue ||
+                !_worldManager.TryGetPlayer(execution.CasterPlayerId.Value, out var caster) ||
+                caster.MapId != instance.MapId ||
+                caster.InstanceId != instance.InstanceId)
+            {
+                continue;
+            }
+
             caster.CompleteSkillCast(execution.ExecutionId);
             var currentState = caster.RuntimeState.CaptureSnapshot().CurrentState;
             if (currentState.CurrentState != CharacterRuntimeStateCodes.Casting)

@@ -49,10 +49,13 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
                     ClientPresentationReplicationEventKind.SkillCastReleased,
                     key.MapId > 0 ? key.MapId : (int?)null,
                     key.InstanceId > 0 ? key.InstanceId : (int?)null,
+                    key.SourceTarget,
                     key.SourceCharacterId,
                     key.Target,
                     key.SkillExecutionId > 0 ? key.SkillExecutionId : (int?)null,
                     key.SkillId > 0 ? key.SkillId : (int?)null,
+                    key.SkillCode,
+                    key.SkillGroupCode,
                     key.SkillSlotIndex > 0 ? key.SkillSlotIndex : (int?)null,
                     null,
                     null,
@@ -79,6 +82,9 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
                 null,
                 null,
                 null,
+                string.Empty,
+                string.Empty,
+                null,
                 null,
                 null,
                 null,
@@ -92,9 +98,12 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
                 worldState.CurrentMapId,
                 null,
                 null,
+                null,
                 WorldTargetHandle.CreateGroundReward(reward.RewardId),
                 null,
                 null,
+                string.Empty,
+                string.Empty,
                 null,
                 null,
                 reward.RewardId,
@@ -109,9 +118,12 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
                 worldState.CurrentMapId,
                 null,
                 null,
+                null,
                 WorldTargetHandle.CreateGroundReward(rewardId),
                 null,
                 null,
+                string.Empty,
+                string.Empty,
                 null,
                 null,
                 rewardId,
@@ -125,10 +137,13 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
                 ClientPresentationReplicationEventKind.SkillCastStarted,
                 notice.MapId,
                 notice.InstanceId,
+                notice.Caster,
                 notice.CasterCharacterId,
                 notice.Target,
                 notice.SkillExecutionId,
                 notice.SkillId,
+                notice.SkillCode,
+                notice.SkillGroupCode,
                 notice.SkillSlotIndex,
                 null,
                 null,
@@ -141,10 +156,13 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
             var key = new PresentationExecutionKey(
                 notice.MapId ?? 0,
                 notice.InstanceId ?? 0,
+                notice.Caster,
                 notice.CasterCharacterId,
                 notice.Target,
                 notice.SkillExecutionId,
                 notice.SkillId,
+                notice.SkillCode,
+                notice.SkillGroupCode,
                 notice.SkillSlotIndex);
             pendingCastReleases[key] = notice.CastCompletedAtUtc.Value;
         }
@@ -154,10 +172,13 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
             var key = new PresentationExecutionKey(
                 notice.MapId ?? 0,
                 notice.InstanceId ?? 0,
+                notice.Caster,
                 notice.CasterCharacterId,
                 notice.Target,
                 notice.SkillExecutionId,
                 notice.SkillId,
+                notice.SkillCode,
+                notice.SkillGroupCode,
                 notice.SkillSlotIndex);
             pendingCastReleases.Remove(key);
 
@@ -165,10 +186,13 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
                 ClientPresentationReplicationEventKind.SkillImpactResolved,
                 notice.MapId,
                 notice.InstanceId,
+                notice.Caster,
                 notice.CasterCharacterId,
                 notice.Target,
                 notice.SkillExecutionId,
                 notice.SkillId,
+                notice.SkillCode,
+                notice.SkillGroupCode,
                 notice.SkillSlotIndex,
                 null,
                 null,
@@ -181,37 +205,49 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
             public PresentationExecutionKey(
                 int mapId,
                 int instanceId,
+                WorldTargetHandle? sourceTarget,
                 Guid? sourceCharacterId,
                 WorldTargetHandle? target,
                 int skillExecutionId,
                 int skillId,
+                string skillCode,
+                string skillGroupCode,
                 int skillSlotIndex)
             {
                 MapId = mapId;
                 InstanceId = instanceId;
+                SourceTarget = sourceTarget;
                 SourceCharacterId = sourceCharacterId;
                 Target = target;
                 SkillExecutionId = skillExecutionId;
                 SkillId = skillId;
+                SkillCode = skillCode ?? string.Empty;
+                SkillGroupCode = skillGroupCode ?? string.Empty;
                 SkillSlotIndex = skillSlotIndex;
             }
 
             public int MapId { get; }
             public int InstanceId { get; }
+            public WorldTargetHandle? SourceTarget { get; }
             public Guid? SourceCharacterId { get; }
             public WorldTargetHandle? Target { get; }
             public int SkillExecutionId { get; }
             public int SkillId { get; }
+            public string SkillCode { get; }
+            public string SkillGroupCode { get; }
             public int SkillSlotIndex { get; }
 
             public bool Equals(PresentationExecutionKey other)
             {
                 return MapId == other.MapId &&
                        InstanceId == other.InstanceId &&
+                       Nullable.Equals(SourceTarget, other.SourceTarget) &&
                        SourceCharacterId.Equals(other.SourceCharacterId) &&
                        Nullable.Equals(Target, other.Target) &&
                        SkillExecutionId == other.SkillExecutionId &&
                        SkillId == other.SkillId &&
+                       string.Equals(SkillCode, other.SkillCode, StringComparison.Ordinal) &&
+                       string.Equals(SkillGroupCode, other.SkillGroupCode, StringComparison.Ordinal) &&
                        SkillSlotIndex == other.SkillSlotIndex;
             }
 
@@ -226,10 +262,13 @@ namespace PhamNhanOnline.Client.Features.PresentationReplication.Application
                 {
                     var hashCode = MapId;
                     hashCode = (hashCode * 397) ^ InstanceId;
+                    hashCode = (hashCode * 397) ^ SourceTarget.GetHashCode();
                     hashCode = (hashCode * 397) ^ SourceCharacterId.GetHashCode();
                     hashCode = (hashCode * 397) ^ Target.GetHashCode();
                     hashCode = (hashCode * 397) ^ SkillExecutionId;
                     hashCode = (hashCode * 397) ^ SkillId;
+                    hashCode = (hashCode * 397) ^ StringComparer.Ordinal.GetHashCode(SkillCode ?? string.Empty);
+                    hashCode = (hashCode * 397) ^ StringComparer.Ordinal.GetHashCode(SkillGroupCode ?? string.Empty);
                     hashCode = (hashCode * 397) ^ SkillSlotIndex;
                     return hashCode;
                 }
