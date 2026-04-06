@@ -4,6 +4,7 @@ using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.Features.Character.Presentation;
 using PhamNhanOnline.Client.Features.Character.Application;
+using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
 
@@ -350,8 +351,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void ConfigureSkillPresenter(GameObject target)
         {
-            if (target == null)
+            if (target == null || !activeCharacterId.HasValue)
                 return;
+
+            var handle = WorldTargetHandle.CreateObservedCharacter(activeCharacterId.Value);
+            var targetable = target.GetComponent<WorldTargetable>();
+            if (targetable == null)
+                targetable = target.AddComponent<WorldTargetable>();
+
+            targetable.Configure(handle);
 
             var presenter = target.GetComponent<CharacterSkillPresenter>();
             if (presenter == null)
@@ -363,6 +371,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             presenter.ConfigureCharacter(activeCharacterId);
+            presenter.ConfigureTargetHandle(handle);
         }
 
         private void RefreshLocalActionSpeed()
@@ -417,6 +426,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private const int CultivatingStateCode = ClientCharacterRuntimeStateCodes.Cultivating;
     }
 }
+
 
 
 
