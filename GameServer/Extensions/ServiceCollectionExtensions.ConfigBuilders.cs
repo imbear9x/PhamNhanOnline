@@ -119,6 +119,7 @@ public static partial class ServiceCollectionExtensions
             ItemDropPlayerFreeForAllSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropPlayerFreeForAllSeconds, 50),
             ItemDropEnemyDefaultOwnershipSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropEnemyDefaultOwnershipSeconds, 30),
             ItemDropEnemyDefaultFreeForAllSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropEnemyDefaultFreeForAllSeconds, 30),
+            ItemDropGroundSpawnOffsetServerUnits = GetFloat(configsByKey, GameConfigKeys.ItemDropGroundSpawnOffsetServerUnits, 30f),
             WorldEmptyPublicInstanceLifetimeSeconds = GetInt(configsByKey, GameConfigKeys.WorldEmptyPublicInstanceLifetimeSeconds, 120),
             CultivationPotentialPerCultivationPoint = GetInt(configsByKey, GameConfigKeys.CultivationPotentialPerCultivationPoint, 1),
             CultivationSettlementIntervalSeconds = GetInt(configsByKey, GameConfigKeys.CultivationSettlementIntervalSeconds, 300),
@@ -185,3 +186,4 @@ public static partial class ServiceCollectionExtensions
         return options;
     }
 }
+

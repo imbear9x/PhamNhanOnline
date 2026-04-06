@@ -4,6 +4,7 @@ using GameServer.Network;
 using GameServer.Services;
 using GameServer.Time;
 using GameServer.World;
+using GameShared.Logging;
 
 namespace GameServer.Runtime;
 
@@ -59,7 +60,7 @@ public sealed class CharacterRuntimeService
             currentRemaining <= 0 ||
             clampedCurrentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired ||
             clampedCurrentState.CurrentState == CharacterRuntimeStateCodes.CombatDead ||
-            clampedCurrentState.IsDead;
+            clampedCurrentState.IsExpired;
         player.SetCharacterActionsRestricted(isRestricted);
         session.AreCharacterActionsRestricted = isRestricted;
         return player;
@@ -68,7 +69,13 @@ public sealed class CharacterRuntimeService
     public CharacterRuntimeSnapshot ApplyDamage(PlayerSession player, int damage)
     {
         var utcNow = DateTime.UtcNow;
-        var previousState = player.RuntimeState.CaptureSnapshot().CurrentState;
+        var currentSnapshot = player.RuntimeState.CaptureSnapshot();
+        var previousState = currentSnapshot.CurrentState;
+        if (CharacterRuntimeStateCodes.IsDefeated(previousState))
+        {
+            return currentSnapshot;
+        }
+
         var remainingDamage = player.CombatStatuses.AbsorbIncomingDamage(damage, utcNow, out _);
         if (remainingDamage <= 0)
             return player.RuntimeState.CaptureSnapshot();
@@ -207,7 +214,7 @@ public sealed class CharacterRuntimeService
             currentRemaining <= 0 ||
             currentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired ||
             currentState.CurrentState == CharacterRuntimeStateCodes.CombatDead ||
-            currentState.IsDead;
+            currentState.IsExpired;
         player.SetCharacterActionsRestricted(restricted);
     }
 
@@ -220,9 +227,9 @@ public sealed class CharacterRuntimeService
         if (!notifySelf)
             return;
 
-        var wasDead = previousState.IsDead || previousState.CurrentState == CharacterRuntimeStateCodes.CombatDead;
-        var isDead = currentState.IsDead || currentState.CurrentState == CharacterRuntimeStateCodes.CombatDead;
-        if (wasDead || !isDead)
+        var wasCombatDead = CharacterRuntimeStateCodes.IsCombatDead(previousState.CurrentState);
+        var isCombatDead = CharacterRuntimeStateCodes.IsCombatDead(currentState.CurrentState);
+        if (wasCombatDead || !isCombatDead || currentState.IsExpired)
             return;
 
         _notifier.NotifyStateTransition(player, CharacterStateTransitionReasons.CombatDead);

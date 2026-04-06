@@ -158,6 +158,7 @@ GameObject:
   - component: {fileID: 3879275371256251249}
   - component: {fileID: 4321474490210473762}
   - component: {fileID: 3727199274881311225}
+  - component: {fileID: 7777000000000000003}
   - component: {fileID: 275417931468559828}
   m_Layer: 7
   m_Name: enemy_soi_lang_bang
@@ -235,7 +236,7 @@ MonoBehaviour:
   visualRoot: {fileID: 7546681620866935169}
   targetable: {fileID: 0}
   hideWhenDead: 1
-  groundSnapPoint: {fileID: 2259377953169244701}
+  groundSnapBindings: {fileID: 7777000000000000003}
   snapToGround: 1
   groundLayerMask:
     serializedVersion: 2
@@ -244,6 +245,19 @@ MonoBehaviour:
   groundProbeDistance: 12
   groundContactOffset: 0
   logGroundingDiagnostics: 0
+--- !u!114 &7777000000000000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6915535442127511761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbc9dd514761e6340b3cbcb7314c4f30, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  groundContactAnchor: {fileID: 2259377953169244701}
 --- !u!114 &275417931468559828
 MonoBehaviour:
   m_ObjectHideFlags: 0

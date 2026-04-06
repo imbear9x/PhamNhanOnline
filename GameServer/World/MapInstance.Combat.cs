@@ -75,12 +75,14 @@ public sealed partial class MapInstance
                     if (targetPlayer is null || !targetPlayer.IsConnected)
                         break;
 
+                    var currentState = targetPlayer.RuntimeState.CaptureSnapshot().CurrentState;
+
                     snapshot = new CombatTargetSnapshot(
                         target.Kind,
                         target.CharacterId,
                         null,
                         targetPlayer.Position,
-                        !targetPlayer.RuntimeState.CaptureSnapshot().CurrentState.IsDead);
+                        !CharacterRuntimeStateCodes.IsDefeated(currentState));
                     return true;
 
                 case GameShared.Enums.CombatTargetKind.Enemy:

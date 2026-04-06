@@ -64,3 +64,4 @@ WHERE config_key = 'network.reconnect_resume_window_seconds';
 
 - Hiện tại `GameConfigValues` được load một lần lúc server khởi động.
 - Sau khi sửa `public.game_configs`, cần restart server để giá trị mới có hiệu lực.
+

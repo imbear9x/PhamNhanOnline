@@ -171,7 +171,7 @@ CREATE TABLE public.character_current_state (
     current_zone_index integer DEFAULT 0 NOT NULL,
     current_pos_x real DEFAULT 0 NOT NULL,
     current_pos_y real DEFAULT 0 NOT NULL,
-    is_dead boolean DEFAULT false NOT NULL,
+    is_expired boolean DEFAULT false NOT NULL,
     current_state integer DEFAULT 0 NOT NULL,
     last_saved_at timestamp without time zone DEFAULT now() NOT NULL,
     current_stamina integer DEFAULT 100 NOT NULL,
@@ -355,7 +355,7 @@ COPY public.character_base_stats (character_id, realm_id, cultivation, base_hp, 
 -- Data for Name: character_current_state; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.character_current_state (character_id, current_hp, current_mp, current_map_id, current_zone_index, current_pos_x, current_pos_y, is_dead, current_state, last_saved_at, current_stamina, lifespan_end_game_minute) FROM stdin;
+COPY public.character_current_state (character_id, current_hp, current_mp, current_map_id, current_zone_index, current_pos_x, current_pos_y, is_expired, current_state, last_saved_at, current_stamina, lifespan_end_game_minute) FROM stdin;
 77b30f1d-0ef7-4687-adbe-f9cba0f6d3fa	100	100	\N	0	0	0	f	0	2026-03-13 12:26:38.622264	100	210024951
 28fc9149-7910-4d95-a2a5-6c04a6d4b786	100	100	\N	0	0	0	f	0	2026-03-13 06:58:48.718836	100	210036689
 836b24d1-7c65-4365-a546-1e786c2c0854	100	100	\N	0	0	0	f	0	2026-03-13 07:55:50.573642	100	106986343853

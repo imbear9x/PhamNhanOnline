@@ -385,10 +385,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private static bool IsLocalCharacterDead()
         {
             var currentState = ClientRuntime.Character.CurrentState;
-            return currentState.HasValue &&
-                   (currentState.Value.IsDead ||
-                    ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState) ||
-                    ClientCharacterRuntimeStateCodes.IsPermanentlyDead(currentState.Value.CurrentState));
+            return ClientCharacterRuntimeStateCodes.IsDefeated(currentState);
         }
     }
 }

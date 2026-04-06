@@ -81,7 +81,7 @@ public sealed class CharacterActionRestrictionMiddleware : IPacketMiddleware
         if (CharacterRuntimeStateCodes.IsPermanentlyDead(currentState.CurrentState))
             return CharacterStateTransitionReasons.LifespanExpired;
 
-        if (currentState.IsDead || CharacterRuntimeStateCodes.IsCombatDead(currentState.CurrentState))
+        if (currentState.IsExpired || CharacterRuntimeStateCodes.IsCombatDead(currentState.CurrentState))
             return CharacterStateTransitionReasons.CombatDead;
 
         return CharacterStateTransitionReasons.LifespanExpired;

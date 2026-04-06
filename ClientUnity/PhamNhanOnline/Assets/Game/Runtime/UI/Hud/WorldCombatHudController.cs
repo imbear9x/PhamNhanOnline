@@ -460,9 +460,7 @@ namespace PhamNhanOnline.Client.UI.Hud
         {
             var currentState = ClientRuntime.Character.CurrentState;
             return currentState.HasValue &&
-                   (currentState.Value.IsDead ||
-                    ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState) ||
-                    ClientCharacterRuntimeStateCodes.IsPermanentlyDead(currentState.Value.CurrentState));
+                   ClientCharacterRuntimeStateCodes.IsDefeated(currentState.Value);
         }
     }
 }

@@ -1,5 +1,6 @@
 using System.Linq;
 using PhamNhanOnline.Client.Core.Application;
+using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -339,7 +340,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             foreach (var observedCharacter in ClientRuntime.World.ObservedCharacters)
             {
-                if (observedCharacter.CurrentState.IsDead)
+                if (ClientCharacterRuntimeStateCodes.IsDefeated(observedCharacter.CurrentState))
                     continue;
 
                 Vector2 worldPosition;

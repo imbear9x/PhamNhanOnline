@@ -253,9 +253,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (!currentState.HasValue)
                 return;
 
-            if (currentState.Value.IsDead ||
-                ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState) ||
-                ClientCharacterRuntimeStateCodes.IsPermanentlyDead(currentState.Value.CurrentState))
+            if (ClientCharacterRuntimeStateCodes.IsDefeated(currentState.Value))
             {
                 HideMenu();
             }

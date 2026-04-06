@@ -169,7 +169,7 @@ public static class NetworkModelMapper
             CurrentZoneIndex = dto.CurrentZoneIndex,
             CurrentPosX = dto.CurrentPosX,
             CurrentPosY = dto.CurrentPosY,
-            IsDead = dto.IsDead,
+            IsExpired = dto.IsExpired,
             CurrentState = dto.CurrentState,
             CultivationStartedUnixMs = ToUnixMs(dto.CultivationStartedAtUtc),
             LastCultivationRewardedUnixMs = ToUnixMs(dto.LastCultivationRewardedAtUtc),

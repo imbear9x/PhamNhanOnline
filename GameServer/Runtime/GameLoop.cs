@@ -122,6 +122,9 @@ public sealed class GameLoop
             if (targetPlayer.InstanceId != instance.InstanceId || targetPlayer.MapId != instance.MapId)
                 continue;
 
+            if (CharacterRuntimeStateCodes.IsDefeated(targetPlayer.RuntimeState.CaptureSnapshot().CurrentState))
+                continue;
+
             _characterRuntimeService.ApplyDamage(targetPlayer, damageEvent.Damage);
         }
     }
@@ -137,6 +140,9 @@ public sealed class GameLoop
                 continue;
 
             if (targetPlayer.InstanceId != instance.InstanceId || targetPlayer.MapId != instance.MapId)
+                continue;
+
+            if (CharacterRuntimeStateCodes.IsDefeated(targetPlayer.RuntimeState.CaptureSnapshot().CurrentState))
                 continue;
 
             if (!_skillExecutionService.TryGetSkillDefinition(castRequest.SkillId, out var skillDefinition))

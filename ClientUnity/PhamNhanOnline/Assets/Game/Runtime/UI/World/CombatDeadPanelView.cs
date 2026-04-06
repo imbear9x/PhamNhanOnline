@@ -39,7 +39,6 @@ namespace PhamNhanOnline.Client.UI.World
 
             ApplyStaticText();
             SetStatus(string.Empty);
-            SetVisible(false);
         }
 
         private void Start()

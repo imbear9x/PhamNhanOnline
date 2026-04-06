@@ -12,13 +12,16 @@ public sealed class CharacterRuntimeCalculator
     {
         var appliedDamage = Math.Max(0, damage);
         var hpAfter = Math.Max(0, currentState.CurrentHp - appliedDamage);
-        var isDead = hpAfter <= 0;
+        var isCombatDead = hpAfter <= 0;
+        var nextState = currentState.IsExpired || CharacterRuntimeStateCodes.IsPermanentlyDead(currentState.CurrentState)
+            ? CharacterRuntimeStateCodes.LifespanExpired
+            : (isCombatDead ? CharacterRuntimeStateCodes.CombatDead : currentState.CurrentState);
 
         return currentState with
         {
             CurrentHp = hpAfter,
-            IsDead = isDead,
-            CurrentState = isDead ? CharacterRuntimeStateCodes.CombatDead : currentState.CurrentState,
+            IsExpired = currentState.IsExpired,
+            CurrentState = nextState,
             CurrentMp = Clamp(currentState.CurrentMp, 0, baseStats.GetEffectiveMp()),
             CurrentStamina = Clamp(currentState.CurrentStamina, 0, baseStats.GetEffectiveStamina()),
         };
@@ -46,15 +49,18 @@ public sealed class CharacterRuntimeCalculator
         var hp = Clamp(currentState.CurrentHp + hpDelta, 0, maxHp);
         var mp = Clamp(currentState.CurrentMp + mpDelta, 0, maxMp);
         var stamina = Clamp(currentState.CurrentStamina + staminaDelta, 0, maxStamina);
-        var isDead = hp <= 0;
+        var isCombatDead = hp <= 0;
+        var nextState = currentState.IsExpired || CharacterRuntimeStateCodes.IsPermanentlyDead(currentState.CurrentState)
+            ? CharacterRuntimeStateCodes.LifespanExpired
+            : (isCombatDead ? CharacterRuntimeStateCodes.CombatDead : currentState.CurrentState);
 
         return currentState with
         {
             CurrentHp = hp,
             CurrentMp = mp,
             CurrentStamina = stamina,
-            IsDead = isDead,
-            CurrentState = isDead ? CharacterRuntimeStateCodes.CombatDead : currentState.CurrentState,
+            IsExpired = currentState.IsExpired,
+            CurrentState = nextState,
         };
     }
 
@@ -68,15 +74,18 @@ public sealed class CharacterRuntimeCalculator
         var hp = Clamp(currentState.CurrentHp, 0, maxHp);
         var mp = Clamp(currentState.CurrentMp, 0, maxMp);
         var stamina = Clamp(currentState.CurrentStamina, 0, maxStamina);
-        var isDead = hp <= 0;
+        var isCombatDead = hp <= 0;
+        var nextState = currentState.IsExpired || CharacterRuntimeStateCodes.IsPermanentlyDead(currentState.CurrentState)
+            ? CharacterRuntimeStateCodes.LifespanExpired
+            : (isCombatDead ? CharacterRuntimeStateCodes.CombatDead : currentState.CurrentState);
 
         return currentState with
         {
             CurrentHp = hp,
             CurrentMp = mp,
             CurrentStamina = stamina,
-            IsDead = isDead,
-            CurrentState = isDead ? CharacterRuntimeStateCodes.CombatDead : currentState.CurrentState,
+            IsExpired = currentState.IsExpired,
+            CurrentState = nextState,
         };
     }
 

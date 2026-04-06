@@ -1,3 +1,4 @@
+using System.Numerics;
 using GameServer.Config;
 using GameServer.Entities;
 using GameServer.DTO;
@@ -149,10 +150,11 @@ public sealed class EnemyRewardRuntimeService
                         freeAtUtc = utcNow;
 
                     var destroyAtUtc = freeAtUtc.AddSeconds(rewardRule.FreeForAllDurationSeconds ?? defaultFreeForAllSeconds);
+                    var dropPosition = ResolveGroundRewardSpawnPosition(instance, death.Position, target.Player.Position.X);
                     instance.AddGroundReward(new GroundRewardEntity(
                         instance.AllocateGroundRewardId(),
                         ownerCharacterId,
-                        death.Position,
+                        dropPosition,
                         createdGroundItems,
                         utcNow,
                         freeAtUtc,
@@ -371,6 +373,21 @@ public sealed class EnemyRewardRuntimeService
         return result;
     }
 
+    private Vector2 ResolveGroundRewardSpawnPosition(MapInstance instance, Vector2 originPosition, float? sourcePositionX = null)
+    {
+        var offset = Math.Max(0f, _gameConfig.ItemDropGroundSpawnOffsetServerUnits);
+        if (offset <= 0f)
+            return instance.Definition.ClampPosition(originPosition);
+
+        var direction = !sourcePositionX.HasValue || sourcePositionX.Value >= originPosition.X ? 1f : -1f;
+        if (sourcePositionX.HasValue && Math.Abs(sourcePositionX.Value - originPosition.X) <= 0.01f)
+            direction = 1f;
+
+        return instance.Definition.ClampPosition(new Vector2(
+            originPosition.X + (offset * direction),
+            originPosition.Y));
+    }
+
     private static Dictionary<Guid, long> AllocateLongByDamage(
         IReadOnlyList<ResolvedRewardTarget> targets,
         long totalReward)
@@ -454,3 +471,5 @@ public sealed class EnemyRewardRuntimeService
         int Quantity,
         bool IsBound);
 }
+
+

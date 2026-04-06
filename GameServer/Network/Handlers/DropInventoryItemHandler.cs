@@ -1,3 +1,4 @@
+using System.Numerics;
 using GameServer.Config;
 using GameServer.Network.Interface;
 using GameServer.Runtime;
@@ -82,10 +83,11 @@ public sealed class DropInventoryItemHandler : IPacketHandler<DropInventoryItemP
             var freeForAllSeconds = Math.Max(0, _gameConfig.ItemDropPlayerFreeForAllSeconds);
             var freeAtUtc = utcNow.AddSeconds(ownershipSeconds);
             var destroyAtUtc = freeAtUtc.AddSeconds(freeForAllSeconds);
+            var dropPosition = ResolveGroundRewardSpawnPosition(instance, player.Position);
             var reward = new GroundRewardEntity(
                 instance.AllocateGroundRewardId(),
                 player.CharacterData.CharacterId,
-                player.Position,
+                dropPosition,
                 new[]
                 {
                     new GroundRewardItem(
@@ -136,4 +138,17 @@ public sealed class DropInventoryItemHandler : IPacketHandler<DropInventoryItemP
             });
         }
     }
+    private Vector2 ResolveGroundRewardSpawnPosition(MapInstance instance, Vector2 originPosition)
+    {
+        var offset = Math.Max(0f, _gameConfig.ItemDropGroundSpawnOffsetServerUnits);
+        if (offset <= 0f)
+            return instance.Definition.ClampPosition(originPosition);
+
+        return instance.Definition.ClampPosition(new Vector2(
+            originPosition.X + offset,
+            originPosition.Y));
+    }
+
 }
+
+

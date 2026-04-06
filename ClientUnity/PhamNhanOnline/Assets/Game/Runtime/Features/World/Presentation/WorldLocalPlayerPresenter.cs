@@ -391,9 +391,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var currentState = ClientRuntime.Character.CurrentState;
             var shouldBlock =
                 (currentState.HasValue &&
-                 (currentState.Value.IsDead ||
-                  ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState) ||
-                  ClientCharacterRuntimeStateCodes.IsPermanentlyDead(currentState.Value.CurrentState))) ||
+                 ClientCharacterRuntimeStateCodes.IsDefeated(currentState.Value)) ||
                 (currentState.HasValue && currentState.Value.CurrentState == CultivatingStateCode) ||
                 WorldMenuController.IsAnyMenuOpen ||
                 (ClientRuntime.ConnectionRecovery != null && ClientRuntime.ConnectionRecovery.ShouldBlockGameplayInput);

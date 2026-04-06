@@ -51,7 +51,8 @@ public sealed partial class MapInstance
                 if (!monster.CombatTargetPlayerId.HasValue ||
                     !_playersById.TryGetValue(monster.CombatTargetPlayerId.Value, out var targetPlayer) ||
                     !targetPlayer.IsConnected ||
-                    targetPlayer.InstanceId != InstanceId)
+                    targetPlayer.InstanceId != InstanceId ||
+                    CharacterRuntimeStateCodes.IsDefeated(targetPlayer.RuntimeState.CaptureSnapshot().CurrentState))
                 {
                     monster.ReturnToPatrol();
                     _pendingEnemyHpChanges.Enqueue(new EnemyHpChangedRuntimeEvent(

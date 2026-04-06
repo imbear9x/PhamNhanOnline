@@ -127,7 +127,6 @@ namespace PhamNhanOnline.Client.UI.World
         private static bool IsCombatDead(GameShared.Models.CharacterCurrentStateModel? currentState)
         {
             return currentState.HasValue &&
-                   currentState.Value.IsDead &&
                    ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState);
         }
 

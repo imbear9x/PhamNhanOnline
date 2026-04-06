@@ -47,6 +47,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private float spawnArcHeightWorldUnits = 0.35f;
         [SerializeField] private float spawnHorizontalOffsetWorldUnits = 0.3f;
 
+        [Header("Diagnostics")]
+        [SerializeField] private bool logGroundingDiagnostics;
+
         private readonly Dictionary<int, GroundRewardPresenter> rewardPresenters = new Dictionary<int, GroundRewardPresenter>();
         private readonly HashSet<int> suppressSpawnAnimationRewardIds = new HashSet<int>();
         private bool runtimeEventsBound;
@@ -238,7 +241,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 groundLayerMask,
                 groundProbeHeight,
                 groundProbeDistance,
-                groundContactOffset);
+                groundContactOffset,
+                logGroundingDiagnostics);
 
             if (isNewPresenter && allowSpawnAnimation)
                 presenter.BeginSpawnAnimation(

@@ -73,7 +73,7 @@ public sealed class CharacterCultivationService
             return Task.FromResult(CultivationActionResult.Failed(MessageCode.CultivationRequiresPrivateHome));
         }
 
-        if (snapshot.CurrentState.IsDead || snapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired)
+        if (snapshot.CurrentState.IsExpired || snapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired)
             return Task.FromResult(CultivationActionResult.Failed(MessageCode.CharacterActionsRestricted));
 
         if (!TryResolveQiAbsorptionRate(snapshot.BaseStats, out _))
@@ -502,7 +502,7 @@ public sealed class CharacterCultivationService
         decimal qiAbsorptionRate)
     {
         if (currentState.CurrentState != CharacterRuntimeStateCodes.Cultivating ||
-            currentState.IsDead ||
+            currentState.IsExpired ||
             currentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired)
         {
             return CultivationGrant.None(baseStats, currentState);

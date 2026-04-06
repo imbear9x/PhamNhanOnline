@@ -1,5 +1,7 @@
 namespace PhamNhanOnline.Client.Features.Character.Application
 {
+    using GameShared.Models;
+
     public static class ClientCharacterRuntimeStateCodes
     {
         public const int Unknown = 0;
@@ -17,6 +19,18 @@ namespace PhamNhanOnline.Client.Features.Character.Application
         public static bool IsPermanentlyDead(int currentState)
         {
             return currentState == LifespanExpired;
+        }
+
+        public static bool IsDefeated(CharacterCurrentStateModel currentState)
+        {
+            return currentState.IsExpired ||
+                   IsCombatDead(currentState.CurrentState) ||
+                   IsPermanentlyDead(currentState.CurrentState);
+        }
+
+        public static bool IsDefeated(CharacterCurrentStateModel? currentState)
+        {
+            return currentState.HasValue && IsDefeated(currentState.Value);
         }
     }
 }

@@ -33,7 +33,7 @@ public sealed class CharacterCombatDeathRecoveryService
         if (CharacterRuntimeStateCodes.IsPermanentlyDead(currentState.CurrentState))
             return false;
 
-        return currentState.IsDead || CharacterRuntimeStateCodes.IsCombatDead(currentState.CurrentState);
+        return CharacterRuntimeStateCodes.IsCombatDead(currentState.CurrentState);
     }
 
     public async Task<CharacterSnapshotDto> RecoverSnapshotToHomeAsync(
@@ -116,7 +116,7 @@ public sealed class CharacterCombatDeathRecoveryService
             CurrentZoneIndex = homeDefinition.DefaultZoneIndex,
             CurrentPosX = homeDefinition.DefaultSpawnPosition.X,
             CurrentPosY = homeDefinition.DefaultSpawnPosition.Y,
-            IsDead = false,
+            IsExpired = false,
             CurrentState = CharacterRuntimeStateCodes.Idle,
             CultivationStartedAtUtc = null,
             LastSavedAt = DateTime.UtcNow

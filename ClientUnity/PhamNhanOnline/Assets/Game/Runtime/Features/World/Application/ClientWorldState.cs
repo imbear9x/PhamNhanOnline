@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Models;
+using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using UnityEngine;
 
@@ -511,7 +512,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 currentMp,
                 maxMp,
                 maxMp > 0 || currentMp > 0,
-                observedCharacter.CurrentState.IsDead);
+                ClientCharacterRuntimeStateCodes.IsDefeated(observedCharacter.CurrentState));
             return true;
         }
 

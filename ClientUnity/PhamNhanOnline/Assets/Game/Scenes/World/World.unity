@@ -27479,6 +27479,7 @@ MonoBehaviour:
   spawnMoveDurationSeconds: 0.22
   spawnArcHeightWorldUnits: 0.35
   spawnHorizontalOffsetWorldUnits: 0.3
+  logGroundingDiagnostics: 0
 --- !u!114 &1872203342
 MonoBehaviour:
   m_ObjectHideFlags: 0

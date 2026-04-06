@@ -7,6 +7,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private Transform scaleRoot;
         [SerializeField] private SpriteRenderer iconRenderer;
+        [SerializeField] private GroundSnapBindings groundSnapBindings;
         [SerializeField] private SpriteRenderer[] outlineRenderers = System.Array.Empty<SpriteRenderer>();
         [SerializeField] private Renderer[] boundsRenderers = System.Array.Empty<Renderer>();
         [SerializeField] private bool preserveConfiguredIconSize = true;
@@ -25,6 +26,17 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public SpriteRenderer IconRenderer
         {
             get { return iconRenderer; }
+        }
+
+        public Transform GroundContactAnchor
+        {
+            get
+            {
+                if (groundSnapBindings != null && groundSnapBindings.GroundContactAnchor != null)
+                    return groundSnapBindings.GroundContactAnchor;
+
+                return transform.Find("GroundContactAnchor");
+            }
         }
 
         public SpriteRenderer[] OutlineRenderers
@@ -162,3 +174,4 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
     }
 }
+

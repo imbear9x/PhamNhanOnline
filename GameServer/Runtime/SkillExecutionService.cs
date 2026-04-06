@@ -490,7 +490,8 @@ public sealed class SkillExecutionService
         if (!_worldManager.TryGetPlayerByCharacterId(characterId, out var resolvedPlayer) ||
             !resolvedPlayer.IsConnected ||
             resolvedPlayer.MapId != instance.MapId ||
-            resolvedPlayer.InstanceId != instance.InstanceId)
+            resolvedPlayer.InstanceId != instance.InstanceId ||
+            CharacterRuntimeStateCodes.IsDefeated(resolvedPlayer.RuntimeState.CaptureSnapshot().CurrentState))
         {
             return false;
         }

@@ -10,6 +10,7 @@ public sealed class GameConfigValues
     public int ItemDropPlayerFreeForAllSeconds { get; init; } = 50;
     public int ItemDropEnemyDefaultOwnershipSeconds { get; init; } = 30;
     public int ItemDropEnemyDefaultFreeForAllSeconds { get; init; } = 30;
+    public float ItemDropGroundSpawnOffsetServerUnits { get; init; } = 30f;
     public int WorldEmptyPublicInstanceLifetimeSeconds { get; init; } = 120;
     public int CultivationPotentialPerCultivationPoint { get; init; } = 1;
     public int CultivationSettlementIntervalSeconds { get; init; } = 300;
@@ -22,3 +23,4 @@ public sealed class GameConfigValues
     public TimeSpan CultivationSettlementInterval => TimeSpan.FromSeconds(Math.Max(1, CultivationSettlementIntervalSeconds));
     public TimeSpan WorldEmptyPublicInstanceLifetime => TimeSpan.FromSeconds(Math.Max(1, WorldEmptyPublicInstanceLifetimeSeconds));
 }
+

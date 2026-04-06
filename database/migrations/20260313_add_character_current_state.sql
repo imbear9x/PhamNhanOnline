@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.character_current_state (
     current_map_id integer,
     current_pos_x real NOT NULL DEFAULT 0,
     current_pos_y real NOT NULL DEFAULT 0,
-    is_dead boolean NOT NULL DEFAULT false,
+    is_expired boolean NOT NULL DEFAULT false,
     current_state integer NOT NULL DEFAULT 0,
     last_saved_at timestamp without time zone NOT NULL DEFAULT now(),
     CONSTRAINT character_current_state_pkey PRIMARY KEY (character_id),
@@ -28,7 +28,7 @@ INSERT INTO public.character_current_state (
     current_map_id,
     current_pos_x,
     current_pos_y,
-    is_dead,
+    is_expired,
     current_state,
     last_saved_at
 )

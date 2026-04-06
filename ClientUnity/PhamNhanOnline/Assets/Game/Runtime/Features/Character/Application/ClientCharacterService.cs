@@ -337,14 +337,9 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             if (!currentState.HasValue)
                 return;
 
-            var isDead = currentState.Value.IsDead ||
-                         ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState) ||
-                         ClientCharacterRuntimeStateCodes.IsPermanentlyDead(currentState.Value.CurrentState);
-            var wasDead = previousState.HasValue &&
-                          (previousState.Value.IsDead ||
-                           ClientCharacterRuntimeStateCodes.IsCombatDead(previousState.Value.CurrentState) ||
-                           ClientCharacterRuntimeStateCodes.IsPermanentlyDead(previousState.Value.CurrentState));
-            if (!isDead || wasDead)
+            var isDefeated = ClientCharacterRuntimeStateCodes.IsDefeated(currentState);
+            var wasDefeated = ClientCharacterRuntimeStateCodes.IsDefeated(previousState);
+            if (!isDefeated || wasDefeated)
                 return;
 
             if (ClientRuntime.Target != null)

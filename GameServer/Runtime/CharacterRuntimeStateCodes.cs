@@ -1,3 +1,5 @@
+using GameServer.DTO;
+
 namespace GameServer.Runtime;
 
 public static class CharacterRuntimeStateCodes
@@ -17,5 +19,15 @@ public static class CharacterRuntimeStateCodes
     public static bool IsPermanentlyDead(int currentState)
     {
         return currentState == LifespanExpired;
+    }
+
+    public static bool IsDefeated(CharacterCurrentStateDto? currentState)
+    {
+        if (currentState is null)
+            return true;
+
+        return currentState.IsExpired ||
+               IsCombatDead(currentState.CurrentState) ||
+               IsPermanentlyDead(currentState.CurrentState);
     }
 }

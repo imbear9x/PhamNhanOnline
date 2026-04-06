@@ -350,7 +350,7 @@ public sealed class CharacterService
         existing.CurrentZoneIndex = state.CurrentZoneIndex;
         existing.CurrentPosX = state.CurrentPosX;
         existing.CurrentPosY = state.CurrentPosY;
-        existing.IsDead = state.IsDead;
+        existing.IsExpired = state.IsExpired;
         existing.CurrentState = state.CurrentState;
         existing.CultivationStartedAtUtc = NormalizeUtcNullable(state.CultivationStartedAtUtc);
         existing.LastCultivationRewardedAtUtc = NormalizeUtcNullable(state.LastCultivationRewardedAtUtc);
@@ -415,7 +415,7 @@ public sealed class CharacterService
             CurrentZoneIndex = homeDefinition.DefaultZoneIndex,
             CurrentPosX = homeDefinition.DefaultSpawnPosition.X,
             CurrentPosY = homeDefinition.DefaultSpawnPosition.Y,
-            IsDead = false,
+            IsExpired = false,
             CurrentState = DefaultCurrentStateCode,
             CultivationStartedAtUtc = null,
             LastCultivationRewardedAtUtc = null,

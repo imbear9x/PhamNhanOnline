@@ -100,7 +100,7 @@ public sealed class CharacterLifecycleService
     private static CharacterCurrentStateDto MarkLifespanExpired(CharacterCurrentStateDto currentState)
     {
         if (currentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired &&
-            currentState.IsDead &&
+            currentState.IsExpired &&
             currentState.CurrentHp == 0)
         {
             return currentState;
@@ -109,7 +109,7 @@ public sealed class CharacterLifecycleService
         return currentState with
         {
             CurrentHp = 0,
-            IsDead = true,
+            IsExpired = true,
             CurrentState = CharacterRuntimeStateCodes.LifespanExpired,
             LastSavedAt = DateTime.UtcNow
         };

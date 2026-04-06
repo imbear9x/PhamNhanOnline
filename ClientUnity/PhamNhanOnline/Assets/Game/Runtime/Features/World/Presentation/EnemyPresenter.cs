@@ -12,7 +12,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private Transform visualRoot;
         [SerializeField] private WorldTargetable targetable;
         [SerializeField] private bool hideWhenDead;
-        [SerializeField] private Transform groundSnapPoint;
+        [SerializeField] private GroundSnapBindings groundSnapBindings;
         [Header("Grounding")]
         [SerializeField] private bool snapToGround = true;
         [SerializeField] private LayerMask groundLayerMask;
@@ -55,15 +55,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (skillPresenter == null)
                 skillPresenter = GetComponent<CharacterSkillPresenter>();
 
-            if (groundSnapPoint == null)
-            {
-                var child = transform.Find("GroundSnapPoint");
-                if (child == null)
-                    child = transform.Find("GroundCheck");
-
-                if (child != null)
-                    groundSnapPoint = child;
-            }
+            if (groundSnapBindings == null)
+                groundSnapBindings = GetComponentInChildren<GroundSnapBindings>(true);
         }
 
         private void ConfigureTargetable(EnemyRuntimeModel enemy)
@@ -132,9 +125,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 targetPosition.x,
                 targetPosition.y + Mathf.Max(groundProbeHeight, Mathf.Abs(bottomOffset) + 0.25f));
             var rayDistance = Mathf.Max(0.5f, groundProbeHeight + groundProbeDistance + Mathf.Abs(bottomOffset));
-            var layerMask = ResolveGroundLayerMask();
-            var hit = Physics2D.Raycast(rayOrigin, Vector2.down, rayDistance, layerMask);
-            if (hit.collider == null)
+            var layerMask = GroundSnapUtility.ResolveGroundLayerMask(groundLayerMask);
+            RaycastHit2D hit;
+            if (!GroundSnapUtility.TryFindGroundHit(rayOrigin, rayDistance, layerMask, LogGrounding, out hit))
             {
                 transform.position = targetPosition;
                 LogGrounding(
@@ -154,9 +147,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             bottomOffset = 0f;
 
-            if (groundSnapPoint != null)
+            var groundContactAnchor = ResolveGroundContactAnchor();
+            if (groundContactAnchor != null)
             {
-                bottomOffset = groundSnapPoint.position.y - transform.position.y;
+                bottomOffset = groundContactAnchor.position.y - transform.position.y;
                 return true;
             }
 
@@ -168,6 +162,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             return false;
+        }
+
+        private Transform ResolveGroundContactAnchor()
+        {
+            if (groundSnapBindings != null && groundSnapBindings.GroundContactAnchor != null)
+                return groundSnapBindings.GroundContactAnchor;
+
+            return transform.Find("GroundContactAnchor");
         }
 
         private bool TryGetLocalPresentationBounds(out Bounds bounds)
@@ -198,18 +200,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return false;
         }
 
-        private int ResolveGroundLayerMask()
-        {
-            if (groundLayerMask.value != 0)
-                return groundLayerMask.value;
-
-            var worldMapLayer = LayerMask.NameToLayer("WorldMap");
-            if (worldMapLayer >= 0)
-                return 1 << worldMapLayer;
-
-            return Physics2D.DefaultRaycastLayers;
-        }
-
         private void LogGrounding(string message)
         {
             if (!logGroundingDiagnostics)
@@ -217,7 +207,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             ClientLog.Info(
                 $"[EnemyGrounding] name={name} code={enemyCode} runtimeId={runtimeId} " +
-                $"snapPoint={(groundSnapPoint != null ? groundSnapPoint.name : "null")} {message}");
+                $"snapPoint={(ResolveGroundContactAnchor() != null ? ResolveGroundContactAnchor().name : "null")} {message}");
         }
 
         private void UpdateLifeState(EnemyRuntimeModel enemy)

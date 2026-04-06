@@ -14,7 +14,7 @@ public struct CharacterCurrentStateModel
     public int CurrentZoneIndex;
     public float CurrentPosX;
     public float CurrentPosY;
-    public bool IsDead;
+    public bool IsExpired;
     public int CurrentState;
     public long? CultivationStartedUnixMs;
     public long? LastCultivationRewardedUnixMs;

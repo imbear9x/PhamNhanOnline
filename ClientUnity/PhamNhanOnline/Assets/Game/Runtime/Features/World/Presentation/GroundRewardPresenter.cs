@@ -9,6 +9,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     [DisallowMultipleComponent]
     public sealed class GroundRewardPresenter : MonoBehaviour
     {
+        private const float DefaultIconTrimCompensationRatio = 0.2f;
         private static Sprite fallbackSprite;
 
         [SerializeField] private WorldTargetable targetable;
@@ -19,6 +20,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private SpriteRenderer[] outlineRenderers = new SpriteRenderer[4];
         private Renderer[] boundsRenderers = System.Array.Empty<Renderer>();
         private GroundRewardVisualBindings visualBindings;
+        private GroundSnapBindings groundSnapBindings;
         private GameObject visualInstance;
         private GameObject activeVisualPrefab;
         private Coroutine pickupAnimationCoroutine;
@@ -41,6 +43,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private float groundProbeHeight = 3f;
         private float groundProbeDistance = 12f;
         private float groundContactOffset;
+        private bool logGroundingDiagnostics;
 
         public int RewardId { get; private set; }
         public bool IsCollecting { get { return isCollecting; } }
@@ -85,7 +88,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             LayerMask configuredGroundLayerMask,
             float configuredGroundProbeHeight,
             float configuredGroundProbeDistance,
-            float configuredGroundContactOffset)
+            float configuredGroundContactOffset,
+            bool configuredLogGroundingDiagnostics)
         {
             RewardId = reward.RewardId;
             bobAmplitudeWorldUnits = Mathf.Max(0f, configuredBobAmplitudeWorldUnits);
@@ -98,6 +102,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             groundProbeHeight = Mathf.Max(0.1f, configuredGroundProbeHeight);
             groundProbeDistance = Mathf.Max(0.5f, configuredGroundProbeDistance);
             groundContactOffset = configuredGroundContactOffset;
+            logGroundingDiagnostics = configuredLogGroundingDiagnostics;
 
             EnsureVisualHierarchy(visualPrefab);
             EnsureTargetable();
@@ -238,31 +243,54 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void UpdateWorldPosition(GroundRewardModel reward, WorldMapPresenter worldMapPresenter, float verticalOffsetWorldUnits)
         {
             var serverPosition = new Vector2(reward.PosX, reward.PosY);
-            Vector2 worldPosition;
-            var resolvedWorldPosition = worldMapPresenter != null && worldMapPresenter.TryMapServerPositionToWorld(serverPosition, out worldPosition)
-                ? worldPosition
-                : serverPosition;
+            var worldPosition = serverPosition;
+            var mappedToWorld = worldMapPresenter != null && worldMapPresenter.TryMapServerPositionToWorld(serverPosition, out worldPosition);
+            var resolvedWorldPosition = mappedToWorld ? worldPosition : serverPosition;
             anchoredWorldPosition = ResolveAnchoredWorldPosition(resolvedWorldPosition, verticalOffsetWorldUnits);
             if (!isSpawning)
                 currentAnimatedPosition = anchoredWorldPosition;
+
+            LogGroundingDiagnostic(
+                $"update serverPos={serverPosition} mapped={mappedToWorld} worldPos={resolvedWorldPosition} " +
+                $"anchored={anchoredWorldPosition} verticalOffset={verticalOffsetWorldUnits} parent={(transform.parent != null ? transform.parent.name : "null")} " +
+                $"localPos={transform.localPosition} snapToGround={snapToGround}.");
         }
 
         private Vector3 ResolveAnchoredWorldPosition(Vector2 worldPosition, float verticalOffsetWorldUnits)
         {
             if (!snapToGround)
+            {
+                LogGroundingDiagnostic(
+                    $"snap-disabled worldPos={worldPosition} verticalOffset={verticalOffsetWorldUnits}.");
                 return new Vector3(worldPosition.x, worldPosition.y + verticalOffsetWorldUnits, 0f);
+            }
 
             float bottomOffset;
             if (!TryResolveBottomOffset(out bottomOffset))
+            {
+                LogGroundingDiagnostic(
+                    $"bottom-offset-miss worldPos={worldPosition} verticalOffset={verticalOffsetWorldUnits}.");
                 return new Vector3(worldPosition.x, worldPosition.y + verticalOffsetWorldUnits, 0f);
+            }
 
             var rayOrigin = new Vector2(worldPosition.x, worldPosition.y + Mathf.Max(groundProbeHeight, Mathf.Abs(bottomOffset) + 0.25f));
             var rayDistance = Mathf.Max(0.5f, groundProbeHeight + groundProbeDistance + Mathf.Abs(bottomOffset));
-            var hit = Physics2D.Raycast(rayOrigin, Vector2.down, rayDistance, ResolveGroundLayerMask());
-            if (hit.collider == null)
+            var primaryGroundMask = GroundSnapUtility.ResolveGroundLayerMask(groundLayerMask);
+            RaycastHit2D hit;
+            if (!GroundSnapUtility.TryFindGroundHit(rayOrigin, rayDistance, primaryGroundMask, LogGroundingDiagnostic, out hit))
+            {
+                LogGroundingDiagnostic(
+                    $"ray-miss worldPos={worldPosition} rayOrigin={rayOrigin} rayDistance={rayDistance} bottomOffset={bottomOffset} " +
+                    $"groundMask={primaryGroundMask} verticalOffset={verticalOffsetWorldUnits}.");
                 return new Vector3(worldPosition.x, worldPosition.y + verticalOffsetWorldUnits, 0f);
+            }
 
             var resolvedY = hit.point.y - bottomOffset + groundContactOffset + verticalOffsetWorldUnits;
+            LogGroundingDiagnostic(
+                $"ray-hit worldPos={worldPosition} rayOrigin={rayOrigin} rayDistance={rayDistance} hitCollider={hit.collider.name} " +
+                $"hitPoint={hit.point} hitLayer={LayerMask.LayerToName(hit.collider.gameObject.layer)} bottomOffset={bottomOffset} " +
+                $"contactOffset={groundContactOffset} verticalOffset={verticalOffsetWorldUnits} " +
+                $"resolvedY={resolvedY}.");
             return new Vector3(worldPosition.x, resolvedY, 0f);
         }
 
@@ -285,12 +313,65 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             bottomOffset = 0f;
 
+            Transform groundContactAnchor;
+            if (TryResolveGroundContactAnchor(out groundContactAnchor) && groundContactAnchor != null)
+            {
+                bottomOffset = groundContactAnchor.position.y - transform.position.y;
+                LogGroundingDiagnostic(
+                    $"bottom-offset-anchor anchor={groundContactAnchor.name} anchorPos={groundContactAnchor.position} rootPos={transform.position} bottomOffset={bottomOffset}.");
+                return true;
+            }
+
             Bounds bounds;
             if (!TryGetPresentationBounds(out bounds))
+            {
+                LogGroundingDiagnostic("bottom-offset-bounds-miss no presentation bounds.");
                 return false;
+            }
 
             bottomOffset = bounds.min.y - transform.position.y;
+            if (iconRenderer != null && iconRenderer.enabled)
+                bottomOffset += iconRenderer.bounds.size.y * DefaultIconTrimCompensationRatio;
+
+            LogGroundingDiagnostic(
+                $"bottom-offset-bounds boundsMinY={bounds.min.y} rootPosY={transform.position.y} iconSizeY={(iconRenderer != null ? iconRenderer.bounds.size.y : 0f)} " +
+                $"trimRatio={DefaultIconTrimCompensationRatio} bottomOffset={bottomOffset}.");
+
             return true;
+        }
+
+        private void LogGroundingDiagnostic(string message)
+        {
+            if (!logGroundingDiagnostics)
+                return;
+
+            PhamNhanOnline.Client.Core.Logging.ClientLog.Warn($"[GroundRewardGrounding] reward={RewardId} {message}");
+        }
+
+        private bool TryResolveGroundContactAnchor(out Transform groundContactAnchor)
+        {
+            groundContactAnchor = null;
+
+            if (groundSnapBindings != null && groundSnapBindings.GroundContactAnchor != null)
+            {
+                groundContactAnchor = groundSnapBindings.GroundContactAnchor;
+                return true;
+            }
+
+            if (visualBindings != null && visualBindings.GroundContactAnchor != null)
+            {
+                groundContactAnchor = visualBindings.GroundContactAnchor;
+                return true;
+            }
+
+            if (visualInstance != null)
+            {
+                groundContactAnchor = visualInstance.transform.Find("GroundContactAnchor");
+                if (groundContactAnchor != null)
+                    return true;
+            }
+
+            return false;
         }
 
         private bool TryGetPresentationBounds(out Bounds bounds)
@@ -315,18 +396,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             return hasBounds;
-        }
-
-        private int ResolveGroundLayerMask()
-        {
-            if (groundLayerMask.value != 0)
-                return groundLayerMask.value;
-
-            var worldMapLayer = LayerMask.NameToLayer("WorldMap");
-            if (worldMapLayer >= 0)
-                return 1 << worldMapLayer;
-
-            return Physics2D.DefaultRaycastLayers;
         }
 
         private void ConfigureTargetable(int rewardId)
@@ -409,6 +478,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             activeVisualPrefab = visualPrefab;
             visualInstance = null;
             visualBindings = null;
+            groundSnapBindings = null;
             iconRenderer = null;
             outlineRenderers = new SpriteRenderer[4];
             boundsRenderers = System.Array.Empty<Renderer>();
@@ -424,6 +494,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var bindings = visualInstance.GetComponent<GroundRewardVisualBindings>();
             visualBindings = bindings;
+            groundSnapBindings = visualInstance.GetComponentInChildren<GroundSnapBindings>(true);
             if (bindings != null)
             {
                 scaleRoot = bindings.ScaleRoot != null ? bindings.ScaleRoot : visualInstance.transform;
@@ -580,3 +651,4 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
     }
 }
+
