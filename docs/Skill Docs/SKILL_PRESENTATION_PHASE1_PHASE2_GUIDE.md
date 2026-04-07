@@ -1,4 +1,11 @@
-# Hệ Thống Skill Presentation Phase 1-2
+# Hệ Thống Trình Diễn Kỹ Năng Phase 1-2
+
+## Nên đọc kèm tài liệu nào
+
+- Nếu cần nắm hệ đang chạy, đọc hết file này trước.
+- Nếu cần định hướng mở rộng tương lai, đọc tiếp:
+  - `docs/Skill Docs/SKILL_PRESENTATION_PHASE3_ROADMAP.md`
+- File mục lục cũ đã được gộp vào đây để tránh lặp lại cùng một hướng dẫn ở nhiều nơi.
 
 ## Mục tiêu
 

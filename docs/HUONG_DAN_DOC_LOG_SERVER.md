@@ -1,4 +1,4 @@
-﻿# Hướng Dẫn Đọc Log Server
+# Hướng Dẫn Đọc Log Server
 
 Tài liệu này dùng để đọc các log và metrics hiện tại của server, đặc biệt là sau Phase 2.
 Mục tiêu là giúp phát hiện sớm các dấu hiệu lag, tick bị trễ, queue packet bị dồn và server bắt đầu quá tải.
@@ -10,17 +10,17 @@ Mục tiêu là giúp phát hiện sớm các dấu hiệu lag, tick bị trễ,
 - Ngoài ra khi chạy server, một phần thông tin cũng hiện trên console.
 
 Code liên quan:
-- [Logger.cs](/e:/PhamNhan/PhamNhanOnline/GameShared/Logging/Logger.cs)
-- [Program.cs](/e:/PhamNhan/PhamNhanOnline/GameServer/Program.cs)
+- [Logger.cs](/F:/PhamNhanOnline/GameShared/Logging/Logger.cs)
+- [Program.cs](/F:/PhamNhanOnline/GameServer/Program.cs)
 
 ## Log nào cần chú ý nhất
 
 Sau Phase 2, server sẽ định kỳ ghi một dòng `ServerMetrics ...`.
-Dòng này do `ServerMetricsLoggerService` ghi ra mỗi 30 giây.
+Dòng này do `ServerMetricsLoggerService` ghi ra mỗi 10 giây.
 
 Code liên quan:
-- [ServerMetricsLoggerService.cs](/e:/PhamNhan/PhamNhanOnline/GameServer/Diagnostics/ServerMetricsLoggerService.cs)
-- [ServerMetricsService.cs](/e:/PhamNhan/PhamNhanOnline/GameServer/Diagnostics/ServerMetricsService.cs)
+- [ServerMetricsLoggerService.cs](/F:/PhamNhanOnline/GameServer/Diagnostics/ServerMetricsLoggerService.cs)
+- [ServerMetricsService.cs](/F:/PhamNhanOnline/GameServer/Diagnostics/ServerMetricsService.cs)
 
 ## Cách đọc dòng `ServerMetrics`
 
@@ -42,6 +42,20 @@ Một dòng metrics hiện tại sẽ có các nhóm số chính sau:
   - tổng số packet bị drop trước khi vào xử lý
 - `InboundExceptions`
   - tổng số lỗi trong lúc xử lý packet
+- `InboundBytes`
+  - tổng số byte inbound đã nhận
+- `OutboundPackets`
+  - tổng số packet outbound đã gửi
+- `OutboundBytes`
+  - tổng số byte outbound đã gửi
+- `InboundPps`
+  - tốc độ packet inbound trung bình trong khoảng giữa hai lần log
+- `OutboundPps`
+  - tốc độ packet outbound trung bình trong khoảng giữa hai lần log
+- `InboundKBps`
+  - băng thông inbound trung bình theo KB/s trong khoảng giữa hai lần log
+- `OutboundKBps`
+  - băng thông outbound trung bình theo KB/s trong khoảng giữa hai lần log
 - `AvgInboundMs`
   - thời gian xử lý packet trung bình
 - `MaxInboundMs`
@@ -69,6 +83,13 @@ Một dòng metrics hiện tại sẽ có các nhóm số chính sau:
 - `MaintenanceRefreshes`
   - số lần maintenance đã chạy refresh time-derived state
 
+Ngoài `ServerMetrics`, logger hiện còn ghi thêm:
+
+- `TopInboundPackets`
+  - top loại packet inbound theo số lượng và byte
+- `TopOutboundPackets`
+  - top loại packet outbound theo số lượng và byte
+
 ## Dấu hiệu server đang khỏe
 
 Khi server đang ổn, thường thấy:
@@ -77,6 +98,7 @@ Khi server đang ổn, thường thấy:
 - `MaxQueueDepth` không tăng liên tục theo thời gian
 - `InboundDropped = 0`
 - `InboundExceptions = 0`
+- `InboundPps`, `OutboundPps`, `InboundKBps`, `OutboundKBps` tăng giảm hợp lý theo tải thật
 - `AvgWorldTickMs` thấp hơn khá xa so với mốc tick mục tiêu
 - `WorldTickOverruns` tăng rất ít hoặc gần như không tăng
 - `AvgMaintenanceTickMs` thấp và ổn định
@@ -100,7 +122,7 @@ Dấu hiệu:
 Nên kiểm tra:
 
 - handler nào đang làm việc nặng
-- packet loại nào bị spam nhiều
+- packet loại nào bị spam nhiều qua dòng `TopInboundPackets`
 - có chỗ nào đang gọi DB trực tiếp trong đường xử lý nóng hay không
 
 ### 2. World tick bị trễ
@@ -166,12 +188,12 @@ Hiện tại:
 
 - `GameLoop` chạy với mục tiêu `50ms` mỗi tick, tức khoảng `20 TPS`
 - `RuntimeMaintenanceService` cũng dùng chu kỳ nền `50ms`
-- metrics logger ghi log mỗi `30 giây`
+- metrics logger ghi log mỗi `10 giây`
 
 Code liên quan:
-- [GameLoop.cs](/e:/PhamNhan/PhamNhanOnline/GameServer/Runtime/GameLoop.cs)
-- [RuntimeMaintenanceService.cs](/e:/PhamNhan/PhamNhanOnline/GameServer/Runtime/RuntimeMaintenanceService.cs)
-- [ServerMetricsLoggerService.cs](/e:/PhamNhan/PhamNhanOnline/GameServer/Diagnostics/ServerMetricsLoggerService.cs)
+- [GameLoop.cs](/F:/PhamNhanOnline/GameServer/Runtime/GameLoop.cs)
+- [RuntimeMaintenanceService.cs](/F:/PhamNhanOnline/GameServer/Runtime/RuntimeMaintenanceService.cs)
+- [ServerMetricsLoggerService.cs](/F:/PhamNhanOnline/GameServer/Diagnostics/ServerMetricsLoggerService.cs)
 
 ## Khi nào cần debug sâu hơn
 
@@ -197,10 +219,12 @@ Thứ tự đọc nhanh khi nghi server chậm:
 
 1. Tìm dòng `ServerMetrics` mới nhất.
 2. Xem `QueuedInboundPackets`, `MaxQueueDepth`.
-3. Xem `WorldTickOverruns`, `AvgWorldTickMs`, `MaxWorldTickMs`.
-4. Xem `MaintenanceTickOverruns`, `AvgMaintenanceTickMs`.
-5. Xem `InboundDropped`, `InboundExceptions`.
-6. Nếu có bất thường, mới quay lại các dòng lỗi chi tiết trước đó trong log.
+3. Xem `InboundPps`, `OutboundPps`, `InboundKBps`, `OutboundKBps` để biết tải hiện tại có đột biến không.
+4. Xem `WorldTickOverruns`, `AvgWorldTickMs`, `MaxWorldTickMs`.
+5. Xem `MaintenanceTickOverruns`, `AvgMaintenanceTickMs`.
+6. Xem `InboundDropped`, `InboundExceptions`.
+7. Nếu có bất thường, xem tiếp `TopInboundPackets` và `TopOutboundPackets`.
+8. Sau đó mới quay lại các dòng lỗi chi tiết trước đó trong log.
 
 ## Ghi nhớ quan trọng
 

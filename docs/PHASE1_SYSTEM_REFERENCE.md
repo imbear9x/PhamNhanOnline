@@ -1,4 +1,4 @@
-﻿# PHASE 1 SYSTEM REFERENCE
+# Tài Liệu Tham Chiếu Hệ Thống Phase 1
 
 ## Mục tiêu tài liệu
 

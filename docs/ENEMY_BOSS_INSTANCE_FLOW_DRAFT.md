@@ -1,5 +1,7 @@
 # Thiết Kế Flow Enemy, Boss, Map Instance Và Reward
 
+> Lưu ý: đây là tài liệu thiết kế draft cho hướng gameplay/runtime tương lai. Nó không có nghĩa là toàn bộ flow bên dưới đã được implement đầy đủ trong code hiện tại.
+
 ## Mục tiêu
 
 File này chốt flow gameplay và luồng runtime cho các hệ:

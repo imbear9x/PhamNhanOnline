@@ -1,4 +1,6 @@
-# Roadmap Phase 3 Cho Skill Presentation
+# Lộ Trình Phase 3 Cho Hệ Trình Diễn Kỹ Năng
+
+> Lưu ý: đây là tài liệu định hướng tương lai, không phải danh sách những gì project đã implement ở thời điểm hiện tại.
 
 ## Mục tiêu của Phase 3
 

@@ -17,8 +17,8 @@ Tài liệu này chốt hướng thiết kế cho luồng `use item` trong inven
 
 Ghi chú cho phase hiện tại:
 
-- `PillRecipeBook` tạm thời chưa làm logic thật sự.
-- Khi người chơi bấm `Use` vào `PillRecipeBook`, server nên trả `ItemUseUnsupported` và không có side effect.
+- `PillRecipeBook` hiện đã đi qua generic `UseItemPacket`.
+- `Soil`, `HerbSeed`, `HerbPlant`, `Talisman` vẫn là nhóm cần packet chuyên biệt vì thiếu context nếu ép dùng generic packet.
 
 ## Packet generic
 
@@ -58,7 +58,7 @@ Ghi chú cho phase hiện tại:
 | `Equipment` | Trang bị item vào đúng slot của item | `UseItemPacket` | Item tồn tại; thuộc player; đang ở inventory; chưa expired; `quantity == 1`; item type đúng là `Equipment`; có `EquipmentSlotType`; slot metadata hợp lệ | `success=true`; `items` updated; `baseStats` updated; `currentState` được clamp nếu max stat thay đổi; `appliedQuantity=1` | Trang bị thành công; trang bị khi slot đang có item; trang bị item sai metadata slot; trang bị item không thuộc player; trang bị item expired; trang bị với `quantity > 1` |
 | `MartialArtBook` | Học công pháp từ sách | `UseItemPacket` | Item tồn tại; thuộc player; đang ở inventory; chưa expired; `quantity == 1`; item type là `MartialArtBook`; mapping sang martial art hợp lệ; player chưa học martial art đó | `success=true`; item bị consume; `items` updated; `baseStats` updated; `learnedMartialArt` filled; `cultivationPreview` updated; `appliedQuantity=1` | Học thành công; học sách trùng martial art đã có; item không phải martial art book; item expired; `quantity > 1`; inventory sync sau consume |
 | `Consumable` | Dùng trực tiếp, áp effect self-use | `UseItemPacket` | Item tồn tại; thuộc player; đang ở inventory; chưa expired; `quantity >= 1`; quantity không vượt stack; item type là `Consumable`; effect nằm trong danh sách support của phase hiện tại; nếu có cooldown thì cooldown pass | `success=true`; item giảm stack hoặc bị xóa; `items` updated; `currentState` updated nếu hồi HP/MP/Stamina; `baseStats` chỉ trả nếu consumable đổi stat lâu dài; `appliedQuantity = quantity thực dùng` | Dùng 1 item; dùng nhiều item trong stack; dùng quantity > stack; dùng item unsupported effect; dùng khi full HP/MP; stack về 0 sau khi dùng |
-| `PillRecipeBook` | Tạm thời chưa làm | `UseItemPacket` | Item tồn tại; thuộc player; đang ở inventory; phase hiện tại cố ý chưa support | `success=false`; `code=ItemUseUnsupported`; không consume; không đổi inventory/state | Bấm use trên client; server trả unsupported; verify không có side effect |
+| `PillRecipeBook` | Học công thức luyện đan từ sách | `UseItemPacket` | Item tồn tại; thuộc player; đang ở inventory; chưa expired; `quantity == 1`; item type là `PillRecipeBook`; mapping sang recipe hợp lệ; người chơi chưa học recipe đó | `success=true`; item bị consume; `items` updated; `appliedQuantity=1` | Học thành công; học trùng recipe; item không phải recipe book; item expired; `quantity > 1`; verify inventory sync sau consume |
 
 ## Consumable phase 1
 
@@ -106,11 +106,10 @@ Hướng xử lý:
 ## Thứ tự ưu tiên khi làm
 
 1. `Consumable`
-2. `PillRecipeBook` trả `unsupported` đúng spec
-3. `Soil`
-4. `HerbSeed`
-5. `HerbPlant`
-6. `Talisman`
+2. `Soil`
+3. `HerbSeed`
+4. `HerbPlant`
+5. `Talisman`
 
 ## Checklist chung cho mỗi type
 

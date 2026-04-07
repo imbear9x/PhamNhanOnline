@@ -1,4 +1,6 @@
-﻿# Lộ Trình Gia Cố Server
+# Lộ Trình Gia Cố Server
+
+> Lưu ý: đây là roadmap kỹ thuật cho các bước tiếp theo, không phải mô tả trạng thái đã hoàn thành của toàn bộ server hiện tại.
 
 Tài liệu này bám theo codebase hiện tại của `PhamNhanOnline`.
 Mục tiêu là gia cố nền tảng sớm để sau này thêm movement, multiplayer, combat, quest mà không làm vỡ kiến trúc.

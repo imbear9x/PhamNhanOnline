@@ -1,8 +1,8 @@
-# Game Config
+# Cấu Hình Game
 
 ## Mục đích
 
-Bảng `public.game_configs` dùng để chứa các giá trị gameplay-tunable trước đây đang hard code trong `GameServer`.
+Bảng `public.game_configs` dùng để chứa các giá trị gameplay có thể tinh chỉnh, thay cho phần trước đây đang hardcode trong `GameServer`.
 
 ## Cấu trúc bảng
 
@@ -24,6 +24,7 @@ Bảng `public.game_configs` dùng để chứa các giá trị gameplay-tunable
 | `item_drop.player_drop_free_for_all_seconds` | `GameConfigValues.ItemDropPlayerFreeForAllSeconds` | `int` | Số giây tồn tại thêm sau giai đoạn ownership của item vứt từ inventory. | `50` |
 | `item_drop.enemy_drop_default_ownership_seconds` | `GameConfigValues.ItemDropEnemyDefaultOwnershipSeconds` | `int` | Ownership mặc định cho item rơi từ enemy nếu reward rule không cấu hình riêng. | `30` |
 | `item_drop.enemy_drop_default_free_for_all_seconds` | `GameConfigValues.ItemDropEnemyDefaultFreeForAllSeconds` | `int` | Free-for-all mặc định cho item rơi từ enemy nếu reward rule không cấu hình riêng. | `30` |
+| `item_drop.ground_spawn_offset_server_units` | `GameConfigValues.ItemDropGroundSpawnOffsetServerUnits` | `float` | Khoảng lệch spawn item trên mặt đất tính theo đơn vị server khi văng reward ra map. | `30` |
 | `world.empty_public_instance_lifetime_seconds` | `GameConfigValues.WorldEmptyPublicInstanceLifetimeSeconds` | `int` | Số giây một public instance rỗng được giữ trước khi bị hủy. | `120` |
 | `cultivation.potential_per_cultivation_point` | `GameConfigValues.CultivationPotentialPerCultivationPoint` | `int` | Số potential quy đổi trên mỗi cultivation point khi settle cultivation. | `1` |
 | `cultivation.settlement_interval_seconds` | `GameConfigValues.CultivationSettlementIntervalSeconds` | `int` | Chu kỳ settle cultivation theo giây. | `300` |

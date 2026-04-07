@@ -1,44 +1,44 @@
-# Unity Client Scene Setup
+# Hướng Dẫn Thiết Lập Scene Client Unity
 
-## 1. Bootstrap scene
+## 1. Scene Bootstrap
 
-Create a scene named `Bootstrap` and add it to Build Settings.
+Tạo một scene tên `Bootstrap` và thêm vào Build Settings.
 
-Create these root objects:
+Tạo các root object sau:
 - `__App`
 
-Add components on `__App`:
+Gắn component lên `__App`:
 - `ClientBootstrap`
 
-Create one `ClientBootstrapSettings` asset from:
+Tạo một asset `ClientBootstrapSettings` từ:
 - `Assets/Game/Runtime/Infrastructure/Config/ClientBootstrapSettings.cs`
 
-Suggested asset location:
+Vị trí asset gợi ý:
 - `Assets/Game/Content/ScriptableObjects/Client/ClientBootstrapSettings.asset`
 
-Assign in the asset:
-- `Server Host`: your server IP or `127.0.0.1`
+Gán trong asset:
+- `Server Host`: IP server của bạn hoặc `127.0.0.1`
 - `Server Port`: `7777`
 - `Login Scene Name`: `Login`
 - `World Scene Name`: `World`
 - `Initial Scene Name`: `Login`
 
-Assign that asset into the `settings` field of `ClientBootstrap`.
+Kéo asset đó vào field `settings` của `ClientBootstrap`.
 
-Before opening Play Mode, sync shared contracts into Unity plugins:
-- Run `powershell -File .\scripts\sync-gameshared-to-unity.ps1`
+Trước khi vào Play Mode, nhớ sync shared contract sang plugin của Unity:
+- chạy `powershell -File .\scripts\sync-gameshared-to-unity.ps1`
 
-## 2. Login scene
+## 2. Scene Login
 
-Create a scene named `Login` and add it to Build Settings.
+Tạo scene tên `Login` và thêm vào Build Settings.
 
-Suggested roots:
+Root gợi ý:
 - `__Scene`
 - `__UI`
 
-Under `__UI`, create a canvas and a panel for login.
+Dưới `__UI`, tạo một canvas và panel cho màn login.
 
-Suggested login hierarchy:
+Hierarchy gợi ý cho login:
 - `Canvas`
 - `LoginPanel`
 - `UsernameInput`
@@ -47,48 +47,48 @@ Suggested login hierarchy:
 - `OpenWorldButton`
 - `StatusText`
 
-Add components:
-- On `LoginPanel`: `LoginScreenController`
-- On `UsernameInput`: `TMP_InputField`
-- On `PasswordInput`: `TMP_InputField`
-- On `ConnectButton`: `Button`
-- On `OpenWorldButton`: `Button`
-- On `StatusText`: `TMP_Text`
+Gắn component:
+- trên `LoginPanel`: `LoginScreenController`
+- trên `UsernameInput`: `TMP_InputField`
+- trên `PasswordInput`: `TMP_InputField`
+- trên `ConnectButton`: `Button`
+- trên `OpenWorldButton`: `Button`
+- trên `StatusText`: `TMP_Text`
 
-Wire serialized fields of `LoginScreenController` to those objects.
+Nối các serialized field của `LoginScreenController` tới các object tương ứng.
 
-## 3. World scene
+## 3. Scene World
 
-Create a scene named `World` and add it to Build Settings.
+Tạo scene tên `World` và thêm vào Build Settings.
 
-Suggested roots:
+Root gợi ý:
 - `__Scene`
 - `MapRoot`
 - `EntitiesRoot`
 - `WorldUiRoot`
 - `Main Camera`
 
-Create one empty object:
+Tạo một object rỗng:
 - `WorldRoot`
 
-Add component on `WorldRoot`:
+Gắn component lên `WorldRoot`:
 - `WorldSceneController`
 
-Wire serialized fields:
+Nối các serialized field:
 - `Map Root` -> `MapRoot`
 - `Entities Root` -> `EntitiesRoot`
 - `World Ui Root` -> `WorldUiRoot`
 - `World Camera` -> `Main Camera`
 
-### 3.1. World gameplay menu
+### 3.1. Menu gameplay trong World
 
-Do not generate gameplay UI by runtime code when the goal is editor-friendly scene wiring.
-For gameplay menu / HUD screens in `World`, prefer:
-- write controller code only
-- create the UI hierarchy manually in Unity
-- wire serialized references in Inspector
+Không nên sinh gameplay UI bằng runtime code nếu mục tiêu là scene wiring dễ thao tác trong Editor.
+Với menu gameplay hoặc HUD trong `World`, nên:
+- chỉ viết controller code
+- tự dựng hierarchy UI trong Unity
+- nối serialized reference trong Inspector
 
-Suggested hierarchy under `WorldUiRoot`:
+Hierarchy gợi ý dưới `WorldUiRoot`:
 - `HudCanvas`
 - `SafeAreaRoot`
 - `TopRightButtons`
@@ -120,15 +120,15 @@ Suggested hierarchy under `WorldUiRoot`:
 - `GuildPanel`
 - `GuildContentText`
 
-Suggested component placement:
-- On `MenuButton`: `Button`
-- On `CloseButton`: `Button`
-- On `DimmerButton`: `Button`
-- On each `*TabButton`: `Button`
-- On each `*ContentText`: `TMP_Text`
-- On `WorldMenuUiController`: `WorldMenuController`
+Vị trí component gợi ý:
+- trên `MenuButton`: `Button`
+- trên `CloseButton`: `Button`
+- trên `DimmerButton`: `Button`
+- trên mỗi `*TabButton`: `Button`
+- trên mỗi `*ContentText`: `TMP_Text`
+- trên `WorldMenuUiController`: `WorldMenuController`
 
-Wire `WorldMenuController` like this:
+Nối `WorldMenuController` như sau:
 - `Panel Root` -> `WorldMenuPanel`
 - `Menu Button` -> `MenuButton`
 - `Menu Button Text` -> `MenuButtonLabel`
@@ -137,7 +137,7 @@ Wire `WorldMenuController` like this:
 - `Title Text` -> `TitleText`
 - `Default Tab Id` -> `quest`
 
-Add 5 entries into `Tabs`:
+Thêm 5 entry vào `Tabs`:
 
 1. Quest
 - `Tab Id` -> `quest`
@@ -181,7 +181,7 @@ Setup note:
 - Place `WorldMenuPanel` in `ScreenCanvas` so it overlays gameplay cleanly.
 - If you want popup confirm dialogs later, put them in `ModalCanvas`, not inside `HudCanvas`.
 
-### 3.2. Inventory grid and tooltip checklist
+### 3.2. Checklist lưới inventory và tooltip
 
 Mục tiêu:
 - giữ `WorldInventoryPanelController` trên `InventoryPanel`
@@ -348,7 +348,7 @@ Checklist:
 - Hover hoặc click vào một item slot:
 - icon, tên, rarity/type, description, quantity, equipped state sẽ hiện trong tooltip.
 
-### 3.3. Equipment slots checklist
+### 3.3. Checklist ô trang bị
 
 Mục tiêu:
 - phần `ô trang bị` là UI cố định, tự dựng bằng scene hoặc prefab cho đẹp
@@ -480,7 +480,7 @@ Checklist:
 - Tooltip của item trong balo và item đang mặc dùng chung `InventoryItemTooltipView`.
 - Grid balo chỉ hiện item chưa mặc; item đang mặc sẽ xuất hiện ở 4 ô trang bị cố định.
 
-### 3.4. Potential panel checklist
+### 3.4. Checklist panel potential
 
 Mục tiêu:
 - dùng `StatsPanel` hiện tại làm panel tiềm năng
@@ -596,7 +596,7 @@ Checklist:
 - `HoverHighlight`, icon trang trí, background trang trí không cần bắt chuột thì nên tắt `Raycast Target`
 - popup root và nút lựa chọn nên bắt raycast để người chơi di chuột từ row sang popup mà không bị mất lựa chọn ngay
 
-### 3.5. Martial art and cultivation panel checklist
+### 3.5. Checklist panel công pháp và tu luyện
 
 Mục tiêu:
 - hiện danh sách công pháp đã học
@@ -745,7 +745,7 @@ Checklist:
 - When cultivation reaches realm cap, the server now auto-switches state back to idle.
 - When realm cap is reached, hide `StartCultivationButton` and show `BreakthroughSection` instead.
 
-### 3.6. Skill panel checklist
+### 3.6. Checklist panel kỹ năng
 
 Muc tieu:
 - panel rieng cho skill, tach khoi `StatsPanel` va `MartialArtPanel`
@@ -860,7 +860,7 @@ Checklist:
 - `SelectedHighlight` va object trang tri khong can bat chuot thi nen tat `Raycast Target`
 - Root cua tung `SkillSlot` nen co `Image` hoac `Graphic` de nhan `IDropHandler`
 
-### 3.7. Combat HUD skill buttons checklist
+### 3.7. Checklist nút kỹ năng trên combat HUD
 
 Muc tieu:
 - combat HUD dung du lieu loadout skill hien tai
@@ -949,7 +949,7 @@ Checklist:
 5. Packet/client state da co san
 - Client gui `AttackEnemyPacket` voi `SkillSlotIndex` va `CombatTarget`
 
-### 3.8. Target selection checklist
+### 3.8. Checklist chọn mục tiêu
 
 Muc tieu:
 - di gan doi tuong trong ban kinh thi tu dong tro vao muc tieu phu hop
@@ -1048,7 +1048,7 @@ Checklist:
 - Co equip thi bat nut.
 - Unequip thi tat nut.
 
-### 3.9. Home wood doll checklist
+### 3.9. Checklist mộc nhân trong home
 
 Muc tieu:
 - trong `Player Home` private se tu spawn 1 `wood_doll`
@@ -1109,7 +1109,7 @@ Checklist:
 - Sau khi seed DB xong, hay restart `GameServer` de `EnemyDefinitionCatalog` nap lai template/spawn group moi.
 - Sau khi restart server, vao lai `Player Home` de instance private moi duoc tao voi spawn group `wood_doll`.
 
-### 3.10. Map zone panel checklist
+### 3.10. Checklist panel khu vực bản đồ
 
 Mục tiêu:
 - có một panel riêng để xem danh sách khu của map public hiện tại
@@ -1186,7 +1186,7 @@ Ghi chú:
 - `wood_doll` hien dang dat tam o `x = 500`, `y = 125` theo he toa do server cua map home.
 - Sau khi ban chot prefab/home layout, ta se tinh tiep vi tri chinh xac trong map.
 
-### 3.11. Ground item pickup/drop checklist
+### 3.11. Checklist nhặt và vứt vật phẩm dưới đất
 
 Mục tiêu:
 - item rơi trên đất hiện trong world bằng chính item icon
@@ -1320,7 +1320,7 @@ Checklist:
 - placement hardening khi drop
 - Mục này để làm sau như đã thống nhất.
 
-## Naming rules
+## Quy ước đặt tên
 
 Use clear scene roots so another developer can understand quickly:
 - `__App`: persistent app/system object
@@ -1330,7 +1330,7 @@ Use clear scene roots so another developer can understand quickly:
 - `EntitiesRoot`: player, monster, npc instances go here
 - `WorldUiRoot`: HUD, nameplates, floating labels
 
-## Layer va sorting layer goi y
+## Layer và sorting layer gợi ý
 
 Project da duoc them san cac `Unity Layer`:
 - `WorldMap`: collider/background map
@@ -1363,12 +1363,12 @@ Goi y nhanh:
 - mui ten target trang/do -> `TargetIndicator`
 - world-space label, marker UI -> `WorldUi`
 
-## Important note
+## Lưu ý quan trọng
 
 The client runtime now expects `GameShared.dll` and `LiteNetLib.dll` in `Assets/Plugins`.
 Those are synced by the PowerShell script above, so packet contracts stay shared between server and Unity without copying source files.
 
-## 3.12. Combat dead return-home checklist
+## 3.12. Checklist hồi về home khi combat chết
 
 Mục này dùng để test flow:
 - quái đánh chết người chơi

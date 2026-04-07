@@ -1,4 +1,4 @@
-# World Scene Readiness
+# Cơ Chế World Scene Readiness Trong Scene World
 
 ## Mục tiêu
 

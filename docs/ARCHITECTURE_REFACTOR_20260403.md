@@ -1,4 +1,6 @@
-# Refactor kiến trúc 2026-04-03
+# Tổng Hợp Refactor Kiến Trúc Và UI 2026-04-03
+
+> Ghi chú: file này đã gộp nội dung đúng còn giá trị từ cả `ARCHITECTURE_REFACTOR_20260403.md` và `UI_REFACTOR_20260403.md` cũ để tránh trùng lặp doc lịch sử.
 
 ## Mục tiêu
 
@@ -139,6 +141,42 @@ Thiết kế này giữ đúng hướng cũ của project:
 - client dựng visual/presentation từ event có nghĩa nghiệp vụ.
 - generic hóa ở tầng event/state bus, không generic hóa ở tầng Unity component.
 
+### 6. Refactor UI panel
+
+#### Inventory
+
+File gốc sau refactor:
+- [WorldInventoryPanelController.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/UI/World/WorldInventoryPanelController.cs)
+
+Partial mới:
+- [WorldInventoryPanelController.ItemActions.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/UI/World/WorldInventoryPanelController.ItemActions.cs)
+- [WorldInventoryPanelController.ViewState.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/UI/World/WorldInventoryPanelController.ViewState.cs)
+
+Phân rã trách nhiệm:
+- file gốc: lifecycle, refresh runtime, inventory reload
+- `ItemActions`: click/hover/drop/equip/use item/popup actions
+- `ViewState`: render state, tooltip, popup visibility, snapshot helper
+
+#### Martial arts
+
+File gốc sau refactor:
+- [WorldMartialArtPanelController.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/UI/World/WorldMartialArtPanelController.cs)
+
+Partial mới:
+- [WorldMartialArtPanelController.Actions.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/UI/World/WorldMartialArtPanelController.Actions.cs)
+- [WorldMartialArtPanelController.ViewState.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/UI/World/WorldMartialArtPanelController.ViewState.cs)
+
+Phân rã trách nhiệm:
+- file gốc: lifecycle, refresh panel, reload trigger
+- `Actions`: set active, clear active, cultivation, breakthrough, action state
+- `ViewState`: render view, status, estimate, snapshot helper
+
+#### Tooling và doc đi kèm pass UI
+
+- bổ sung script [verify-solution-build.ps1](/F:/PhamNhanOnline/scripts/verify-solution-build.ps1)
+- cập nhật lại [WORKING_CONTEXT.md](/F:/PhamNhanOnline/docs/WORKING_CONTEXT.md)
+- gom quy ước tooling Unity vào [UNITY_TOOLING_NOTES.md](/F:/PhamNhanOnline/docs/UNITY_TOOLING_NOTES.md)
+
 ## Những gì cố ý chưa làm trong pass này
 
 - Không tách thêm `WorldClickTargetSelectionController`.
@@ -146,6 +184,8 @@ Thiết kế này giữ đúng hướng cũ của project:
 - Không đổi rule gameplay cho portal/item/combat.
 - Không thêm DB config, migration hay packet mới cho refactor này.
 - Không rewrite `MapInstance` thành nhiều class runtime service khác nhau. Pass này mới dừng ở partial split an toàn.
+- Không rename path lớn như `CientTest`.
+- Không đổi logic gameplay của các panel UI, chỉ đổi cấu trúc file để dễ đọc hơn.
 
 ## Khó khăn và lưu ý kỹ thuật
 
