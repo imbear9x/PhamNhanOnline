@@ -75,7 +75,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (itemOptionsPopupView == null || !itemOptionsPopupView.IsVisible)
             {
-                UpdateDropQuantityPopupVisibility();
+                UpdateQuantityPopupVisibility();
                 return;
             }
 
@@ -83,14 +83,14 @@ namespace PhamNhanOnline.Client.UI.World
                 (!ClientRuntime.IsInitialized || !ClientRuntime.Inventory.TryGetItem(popupPlayerItemId.Value, out _)))
             {
                 HideItemOptionsPopup(force: true);
-                UpdateDropQuantityPopupVisibility();
+                UpdateQuantityPopupVisibility();
                 return;
             }
 
             if (DidClickBlankSpaceInsideInventoryPanel())
                 HideItemOptionsPopup();
 
-            UpdateDropQuantityPopupVisibility();
+            UpdateQuantityPopupVisibility();
         }
 
         private bool DidClickBlankSpaceInsideInventoryPanel()

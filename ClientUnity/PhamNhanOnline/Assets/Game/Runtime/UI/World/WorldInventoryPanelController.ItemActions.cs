@@ -13,6 +13,13 @@ namespace PhamNhanOnline.Client.UI.World
 {
     public sealed partial class WorldInventoryPanelController
     {
+        private enum QuantityPopupAction
+        {
+            None = 0,
+            Drop = 1,
+            Use = 2
+        }
+
         private void HandleInventoryItemClicked(InventoryItemModel item)
         {
             if (inventoryActionInFlight)
@@ -186,8 +193,184 @@ namespace PhamNhanOnline.Client.UI.World
                 return false;
             }
 
-            blockedReason = string.Empty;
-            return true;
+            switch ((InventoryItemType)item.ItemType)
+            {
+                case InventoryItemType.Equipment:
+                case InventoryItemType.MartialArtBook:
+                case InventoryItemType.Consumable:
+                case InventoryItemType.PillRecipeBook:
+                    blockedReason = string.Empty;
+                    return true;
+                default:
+                    blockedReason = "chua ho tro";
+                    return false;
+            }
+        }
+
+        private bool TryResolveUseQuantityRequirement(InventoryItemModel item, out int suggestedQuantity)
+        {
+            if ((InventoryItemType)item.ItemType == InventoryItemType.Consumable && item.Quantity > 1)
+            {
+                suggestedQuantity = Mathf.Max(1, item.Quantity);
+                return true;
+            }
+
+            suggestedQuantity = 1;
+            return false;
+        }
+
+        private static string ResolveUseSuccessText(InventoryItemModel item, int quantity)
+        {
+            switch ((InventoryItemType)item.ItemType)
+            {
+                case InventoryItemType.Equipment:
+                    return "Da trang bi vat pham.";
+                case InventoryItemType.MartialArtBook:
+                    return "Da su dung sach cong phap.";
+                case InventoryItemType.PillRecipeBook:
+                    return "Da su dung sach cong thuc.";
+                case InventoryItemType.Consumable:
+                    return quantity > 1
+                        ? string.Format(CultureInfo.InvariantCulture, "Da su dung {0} vat pham.", quantity)
+                        : "Da su dung vat pham.";
+                default:
+                    return "Da su dung vat pham.";
+            }
+        }
+
+        private static string ResolveQuantityPopupTitle(QuantityPopupAction action)
+        {
+            switch (action)
+            {
+                case QuantityPopupAction.Use:
+                    return "So luong su dung";
+                default:
+                    return null;
+            }
+        }
+
+        private static bool IsUseActionSupported(InventoryItemModel item)
+        {
+            switch ((InventoryItemType)item.ItemType)
+            {
+                case InventoryItemType.Equipment:
+                case InventoryItemType.MartialArtBook:
+                case InventoryItemType.Consumable:
+                case InventoryItemType.PillRecipeBook:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private async System.Threading.Tasks.Task ExecuteUseItemAsync(InventoryItemModel item, int quantity)
+        {
+            if (inventoryActionInFlight || !ClientRuntime.IsInitialized)
+                return;
+
+            inventoryActionInFlight = true;
+            HideItemOptionsPopup(force: true);
+            HideQuantityPopup(force: true);
+            ApplyInventoryStatus(inventoryUseActionText, force: true);
+
+            try
+            {
+                var result = await ClientRuntime.InventoryService.UseItemAsync(item.PlayerItemId, quantity);
+                if (!result.Success)
+                {
+                    ClientLog.Warn($"WorldInventoryPanelController failed to use item: {result.Message}");
+                    ApplyInventoryStatus(result.Message, force: true);
+                    return;
+                }
+
+                previewPlayerItemId = null;
+                ApplyInventoryStatus(ResolveUseSuccessText(item, quantity), force: true);
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Warn($"WorldInventoryPanelController use item execution exception: {ex.Message}");
+                ApplyInventoryStatus(ex.Message, force: true);
+            }
+            finally
+            {
+                inventoryActionInFlight = false;
+                RefreshFromRuntime(force: true);
+                RefreshInventory(force: true);
+            }
+        }
+
+        private void ShowQuantityPopup(InventoryItemModel item, QuantityPopupAction action)
+        {
+            if (dropQuantityPopupView == null)
+            {
+                if (action == QuantityPopupAction.Drop)
+                    _ = DropItemAsync(item.PlayerItemId, 1);
+                else if (action == QuantityPopupAction.Use)
+                    _ = ExecuteUseItemAsync(item, 1);
+
+                return;
+            }
+
+            quantityPopupPlayerItemId = item.PlayerItemId;
+            quantityPopupAction = action;
+            dropQuantityPopupView.Show(
+                item.Name,
+                Mathf.Max(1, item.Quantity),
+                HandleQuantityConfirmed,
+                HandleQuantityCancelled,
+                ResolveQuantityPopupTitle(action));
+        }
+
+        private void HideQuantityPopup(bool force = false)
+        {
+            quantityPopupPlayerItemId = null;
+            quantityPopupAction = QuantityPopupAction.None;
+            if (dropQuantityPopupView != null)
+                dropQuantityPopupView.Hide(force);
+        }
+
+        private void UpdateQuantityPopupVisibility()
+        {
+            if (dropQuantityPopupView == null || !dropQuantityPopupView.IsVisible)
+                return;
+
+            if (!quantityPopupPlayerItemId.HasValue ||
+                !ClientRuntime.IsInitialized ||
+                !ClientRuntime.Inventory.TryGetItem(quantityPopupPlayerItemId.Value, out _))
+            {
+                HideQuantityPopup(force: true);
+            }
+        }
+
+        private void HandleQuantityConfirmed(int quantity)
+        {
+            InventoryItemModel item;
+            if (!quantityPopupPlayerItemId.HasValue ||
+                !ClientRuntime.IsInitialized ||
+                !ClientRuntime.Inventory.TryGetItem(quantityPopupPlayerItemId.Value, out item))
+            {
+                HideQuantityPopup(force: true);
+                return;
+            }
+
+            var action = quantityPopupAction;
+            HideQuantityPopup(force: true);
+
+            var resolvedQuantity = Mathf.Clamp(quantity, 1, Mathf.Max(1, item.Quantity));
+            switch (action)
+            {
+                case QuantityPopupAction.Drop:
+                    _ = DropItemAsync(item.PlayerItemId, resolvedQuantity);
+                    break;
+                case QuantityPopupAction.Use:
+                    _ = ExecuteUseItemAsync(item, resolvedQuantity);
+                    break;
+            }
+        }
+
+        private void HandleQuantityCancelled()
+        {
+            HideQuantityPopup(force: true);
         }
 
         private bool HasLearnedMartialArt(int martialArtId)
@@ -210,9 +393,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (inventoryActionInFlight || !ClientRuntime.IsInitialized)
                 return;
 
-            inventoryActionInFlight = true;
             HideItemOptionsPopup(force: true);
-            ApplyInventoryStatus(inventoryActionInProgressText, force: true);
 
             try
             {
@@ -242,12 +423,6 @@ namespace PhamNhanOnline.Client.UI.World
             {
                 ClientLog.Warn($"WorldInventoryPanelController use item exception: {ex.Message}");
                 ApplyInventoryStatus(ex.Message, force: true);
-            }
-            finally
-            {
-                inventoryActionInFlight = false;
-                RefreshFromRuntime(force: true);
-                RefreshInventory(force: true);
             }
         }
 
@@ -306,16 +481,7 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
             }
 
-            var result = await ClientRuntime.InventoryService.EquipItemAsync(item.PlayerItemId, item.EquipmentSlotType.Value);
-            if (!result.Success)
-            {
-                ClientLog.Warn($"WorldInventoryPanelController failed to equip item from popup: {result.Message}");
-                ApplyInventoryStatus(result.Message, force: true);
-                return;
-            }
-
-            previewPlayerItemId = null;
-            ApplyInventoryStatus("Da trang bi vat pham.", force: true);
+            await ExecuteUseItemAsync(item, 1);
         }
 
         private async System.Threading.Tasks.Task UseMartialArtBookItemAsync(InventoryItemModel item)
@@ -326,34 +492,41 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
             }
 
-            var result = await ClientRuntime.InventoryService.UseMartialArtBookAsync(item.PlayerItemId);
-            if (!result.Success)
-            {
-                ClientLog.Warn($"WorldInventoryPanelController failed to use martial art book: {result.Message}");
-                ApplyInventoryStatus(result.Message, force: true);
-                return;
-            }
-
-            previewPlayerItemId = null;
-            ApplyInventoryStatus("Da su dung sach cong phap.", force: true);
+            await ExecuteUseItemAsync(item, 1);
         }
 
         private System.Threading.Tasks.Task UseConsumableItemAsync(InventoryItemModel item)
         {
-            ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
-            return System.Threading.Tasks.Task.CompletedTask;
+            int suggestedQuantity;
+            if (TryResolveUseQuantityRequirement(item, out suggestedQuantity))
+            {
+                ShowQuantityPopup(item, QuantityPopupAction.Use);
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
+
+            return ExecuteUseItemAsync(item, suggestedQuantity);
         }
 
         private System.Threading.Tasks.Task UseTalismanItemAsync(InventoryItemModel item)
         {
-            ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
-            return System.Threading.Tasks.Task.CompletedTask;
+            if (!IsUseActionSupported(item))
+            {
+                ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
+
+            return ExecuteUseItemAsync(item, 1);
         }
 
         private System.Threading.Tasks.Task UseBookItemAsync(InventoryItemModel item)
         {
-            ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
-            return System.Threading.Tasks.Task.CompletedTask;
+            if (!IsUseActionSupported(item))
+            {
+                ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
+
+            return ExecuteUseItemAsync(item, 1);
         }
 
         private void HandleDropItemClicked(InventoryItemModel item)
@@ -367,7 +540,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (item.Quantity > 1)
             {
-                ShowDropQuantityPopup(item);
+                ShowQuantityPopup(item, QuantityPopupAction.Drop);
                 return;
             }
 
@@ -384,62 +557,6 @@ namespace PhamNhanOnline.Client.UI.World
                 itemTooltipView.Hide(force: true);
         }
 
-        private void ShowDropQuantityPopup(InventoryItemModel item)
-        {
-            if (dropQuantityPopupView == null)
-            {
-                _ = DropItemAsync(item.PlayerItemId, 1);
-                return;
-            }
-
-            dropQuantityPopupPlayerItemId = item.PlayerItemId;
-            dropQuantityPopupView.Show(
-                item.Name,
-                Mathf.Max(1, item.Quantity),
-                HandleDropQuantityConfirmed,
-                HandleDropQuantityCancelled);
-        }
-
-        private void HideDropQuantityPopup(bool force = false)
-        {
-            dropQuantityPopupPlayerItemId = null;
-            if (dropQuantityPopupView != null)
-                dropQuantityPopupView.Hide(force);
-        }
-
-        private void UpdateDropQuantityPopupVisibility()
-        {
-            if (dropQuantityPopupView == null || !dropQuantityPopupView.IsVisible)
-                return;
-
-            if (!dropQuantityPopupPlayerItemId.HasValue ||
-                !ClientRuntime.IsInitialized ||
-                !ClientRuntime.Inventory.TryGetItem(dropQuantityPopupPlayerItemId.Value, out _))
-            {
-                HideDropQuantityPopup(force: true);
-            }
-        }
-
-        private void HandleDropQuantityConfirmed(int quantity)
-        {
-            InventoryItemModel item;
-            if (!dropQuantityPopupPlayerItemId.HasValue ||
-                !ClientRuntime.IsInitialized ||
-                !ClientRuntime.Inventory.TryGetItem(dropQuantityPopupPlayerItemId.Value, out item))
-            {
-                HideDropQuantityPopup(force: true);
-                return;
-            }
-
-            HideDropQuantityPopup(force: true);
-            _ = DropItemAsync(item.PlayerItemId, Mathf.Clamp(quantity, 1, Mathf.Max(1, item.Quantity)));
-        }
-
-        private void HandleDropQuantityCancelled()
-        {
-            HideDropQuantityPopup(force: true);
-        }
-
         private async System.Threading.Tasks.Task DropItemAsync(long playerItemId, int quantity)
         {
             if (inventoryActionInFlight || !ClientRuntime.IsInitialized)
@@ -454,7 +571,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             inventoryActionInFlight = true;
             HideItemOptionsPopup(force: true);
-            HideDropQuantityPopup(force: true);
+            HideQuantityPopup(force: true);
             ApplyInventoryStatus(inventoryDropActionText, force: true);
 
             try

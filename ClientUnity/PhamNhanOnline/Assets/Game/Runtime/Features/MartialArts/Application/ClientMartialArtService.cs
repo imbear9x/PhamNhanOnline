@@ -28,6 +28,7 @@ namespace PhamNhanOnline.Client.Features.MartialArts.Application
 
             connection.Packets.Subscribe<GetOwnedMartialArtsResultPacket>(HandleGetOwnedMartialArtsResult);
             connection.Packets.Subscribe<SetActiveMartialArtResultPacket>(HandleSetActiveMartialArtResult);
+            connection.Packets.Subscribe<UseItemResultPacket>(HandleUseItemResult);
             connection.Packets.Subscribe<UseMartialArtBookResultPacket>(HandleUseMartialArtBookResult);
             connection.StateChanged += HandleConnectionStateChanged;
         }
@@ -149,6 +150,22 @@ namespace PhamNhanOnline.Client.Features.MartialArts.Application
                 packet.Success == true
                     ? "Active martial art updated."
                     : string.Format("Failed to set active martial art: {0}", packet.Code ?? MessageCode.UnknownError)));
+        }
+
+        private void HandleUseItemResult(UseItemResultPacket packet)
+        {
+            if (packet.BaseStats.HasValue)
+                characterState.ApplyBaseStats(packet.BaseStats);
+
+            if (packet.Success == true && packet.LearnedMartialArt.HasValue)
+            {
+                martialArtState.AppendLearnedMartialArt(
+                    packet.LearnedMartialArt.Value,
+                    packet.BaseStats.HasValue ? NormalizeActiveMartialArtId(packet.BaseStats.Value.ActiveMartialArtId) : martialArtState.ActiveMartialArtId,
+                    packet.CultivationPreview,
+                    packet.Code ?? MessageCode.None,
+                    "Learned martial art.");
+            }
         }
 
         private void HandleUseMartialArtBookResult(UseMartialArtBookResultPacket packet)

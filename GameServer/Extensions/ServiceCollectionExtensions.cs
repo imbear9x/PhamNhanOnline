@@ -33,6 +33,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<MartialArtService>();
         services.AddScoped<SkillService>();
         services.AddScoped<EquipmentService>();
+        services.AddScoped<ItemUseService>();
         services.AddScoped<CraftService>();
         services.AddScoped<EquipmentStatService>();
         services.AddScoped<CharacterFinalStatService>();
@@ -179,6 +180,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<EquipInventoryItemPacket>, EquipInventoryItemHandler>();
         services.AddScoped<IPacketHandler<UnequipInventoryItemPacket>, UnequipInventoryItemHandler>();
         services.AddScoped<IPacketHandler<DropInventoryItemPacket>, DropInventoryItemHandler>();
+        services.AddScoped<IPacketHandler<UseItemPacket>, UseItemHandler>();
         services.AddScoped<IPacketHandler<ReturnHomeAfterCombatDeathPacket>, ReturnHomeAfterCombatDeathHandler>();
         services.AddScoped<IPacketHandler<TravelToMapPacket>, TravelToMapHandler>();
         services.AddScoped<IPacketHandler<GetMapZonesPacket>, GetMapZonesHandler>();

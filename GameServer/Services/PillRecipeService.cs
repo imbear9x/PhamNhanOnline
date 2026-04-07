@@ -1,6 +1,8 @@
 using GameServer.Entities;
+using GameServer.Exceptions;
 using GameServer.Repositories;
 using GameServer.Runtime;
+using GameShared.Messages;
 
 namespace GameServer.Services;
 
@@ -29,16 +31,16 @@ public sealed class PillRecipeService
         CancellationToken cancellationToken = default)
     {
         var playerItem = await _playerItems.GetByIdAsync(playerItemId, cancellationToken)
-                         ?? throw new InvalidOperationException($"Player item {playerItemId} was not found.");
-        if (playerItem.PlayerId != playerId)
-            throw new InvalidOperationException($"Player item {playerItemId} does not belong to player {playerId}.");
+                         ?? throw new GameException(MessageCode.InventoryItemInvalid);
+        if (playerItem.PlayerId != playerId || playerItem.LocationType != (int)ItemLocationType.Inventory)
+            throw new GameException(MessageCode.InventoryItemInvalid);
 
         if (!_definitions.TryGetPillRecipeByBookItemTemplate(playerItem.ItemTemplateId, out var recipe))
-            throw new InvalidOperationException($"Item template {playerItem.ItemTemplateId} is not a valid pill recipe book.");
+            throw new GameException(MessageCode.ItemUseUnsupported);
 
         var existing = await _playerPillRecipes.GetByPlayerAndRecipeAsync(playerId, recipe.Id, cancellationToken);
         if (existing is not null)
-            throw new InvalidOperationException($"Player {playerId} already learned pill recipe {recipe.Id}.");
+            throw new GameException(MessageCode.PillRecipeAlreadyLearned);
 
         var entity = new PlayerPillRecipeEntity
         {
@@ -101,4 +103,3 @@ public sealed class PillRecipeService
         return (definition, progress);
     }
 }
-

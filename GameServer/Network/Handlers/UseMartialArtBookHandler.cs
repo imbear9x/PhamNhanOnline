@@ -1,7 +1,6 @@
 using GameServer.DTO;
 using GameServer.Exceptions;
 using GameServer.Network.Interface;
-using GameServer.Runtime;
 using GameServer.Services;
 using GameShared.Messages;
 using GameShared.Packets;
@@ -10,20 +9,14 @@ namespace GameServer.Network.Handlers;
 
 public sealed class UseMartialArtBookHandler : IPacketHandler<UseMartialArtBookPacket>
 {
-    private readonly MartialArtService _martialArtService;
-    private readonly CharacterCultivationService _cultivationService;
-    private readonly CharacterRuntimeNotifier _notifier;
+    private readonly ItemUseService _itemUseService;
     private readonly INetworkSender _network;
 
     public UseMartialArtBookHandler(
-        MartialArtService martialArtService,
-        CharacterCultivationService cultivationService,
-        CharacterRuntimeNotifier notifier,
+        ItemUseService itemUseService,
         INetworkSender network)
     {
-        _martialArtService = martialArtService;
-        _cultivationService = cultivationService;
-        _notifier = notifier;
+        _itemUseService = itemUseService;
         _network = network;
     }
 
@@ -41,18 +34,17 @@ public sealed class UseMartialArtBookHandler : IPacketHandler<UseMartialArtBookP
 
         try
         {
-            var result = await _martialArtService.UseMartialArtBookAsync(session.Player.CharacterData.CharacterId, packet.PlayerItemId!.Value);
-            session.Player.RuntimeState.UpdateBaseStats(_ => result.BaseStats);
-            _notifier.NotifyBaseStatsChanged(session.Player, result.BaseStats);
-            var cultivationPreview = await _cultivationService.BuildCultivationPreviewAsync(result.BaseStats);
+            var result = await _itemUseService.UseAsync(session.Player, packet.PlayerItemId!.Value, 1);
+            if (result.LearnedMartialArt is null)
+                throw new InvalidOperationException("Generic item use did not return a learned martial art for a martial art book request.");
 
             _network.Send(session.ConnectionId, new UseMartialArtBookResultPacket
             {
                 Success = true,
                 Code = MessageCode.None,
-                BaseStats = result.BaseStats.ToModel(),
+                BaseStats = result.BaseStats?.ToModel(),
                 LearnedMartialArt = result.LearnedMartialArt.ToModel(),
-                CultivationPreview = cultivationPreview?.ToModel()
+                CultivationPreview = result.CultivationPreview?.ToModel()
             });
         }
         catch (GameException ex)

@@ -81,6 +81,8 @@ public enum MessageCode : int
     SkillTargetInvalid = 3042,
     InventoryItemQuantityInvalid = 3043,
     CharacterNotCombatDead = 3044,
+    ItemUseUnsupported = 3045,
+    PillRecipeAlreadyLearned = 3046,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001,

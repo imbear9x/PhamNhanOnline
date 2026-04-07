@@ -41,6 +41,7 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private string inventoryLoadingText = "Dang tai kho do...";
         [SerializeField] private string emptyInventoryText = "Kho do dang trong.";
         [SerializeField] private string inventoryActionInProgressText = "Dang cap nhat trang bi...";
+        [SerializeField] private string inventoryUseActionText = "Dang su dung vat pham...";
         [SerializeField] private string inventoryDropActionText = "Dang vut vat pham...";
         [SerializeField] private string inventoryDropSuccessText = "Da vut vat pham.";
         [SerializeField] private string inventoryDropUnavailableText = "Vat pham nay khong the vut.";
@@ -71,7 +72,8 @@ namespace PhamNhanOnline.Client.UI.World
         private long? popupPlayerItemId;
         private bool suppressTooltipUntilHoverReset;
         private bool inventoryActionInFlight;
-        private long? dropQuantityPopupPlayerItemId;
+        private long? quantityPopupPlayerItemId;
+        private QuantityPopupAction quantityPopupAction;
 
         private void Awake()
         {
@@ -125,7 +127,7 @@ namespace PhamNhanOnline.Client.UI.World
         private void OnDisable()
         {
             HideItemOptionsPopup(force: true);
-            HideDropQuantityPopup(force: true);
+            HideQuantityPopup(force: true);
         }
 
         private void OnDestroy()

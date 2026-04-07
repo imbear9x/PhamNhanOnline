@@ -420,3 +420,35 @@ public partial class ReturnHomeAfterCombatDeathResultPacket : IPacket
     public CharacterBaseStatsModel? BaseStats { get; set; }
     public CharacterCurrentStateModel? CurrentState { get; set; }
 }
+
+[Packet(75)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class UseItemPacket : IPacket
+{
+    [ValidationCode(MessageCode.InventoryItemInvalid)]
+    [Required]
+    [Range(1, long.MaxValue)]
+    public long? PlayerItemId { get; set; }
+
+    [ValidationCode(MessageCode.InventoryItemQuantityInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? Quantity { get; set; }
+}
+
+[Packet(76)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class UseItemResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public long? PlayerItemId { get; set; }
+    public int? RequestedQuantity { get; set; }
+    public int? AppliedQuantity { get; set; }
+    public List<InventoryItemModel>? Items { get; set; }
+    public CharacterBaseStatsModel? BaseStats { get; set; }
+    public CharacterCurrentStateModel? CurrentState { get; set; }
+    public PlayerMartialArtModel? LearnedMartialArt { get; set; }
+    public CultivationPreviewModel? CultivationPreview { get; set; }
+}
