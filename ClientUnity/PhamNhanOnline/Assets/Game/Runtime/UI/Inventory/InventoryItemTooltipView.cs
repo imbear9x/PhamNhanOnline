@@ -105,20 +105,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 builder.Append("Dang trang bi");
             }
 
-            if (item.EnhanceLevel > 0)
-            {
-                builder.AppendLine();
-                builder.Append("Tang cap +");
-                builder.Append(item.EnhanceLevel.ToString(CultureInfo.InvariantCulture));
-            }
-
-            if (item.Durability.HasValue)
-            {
-                builder.AppendLine();
-                builder.Append("Do ben: ");
-                builder.Append(item.Durability.Value.ToString(CultureInfo.InvariantCulture));
-            }
-
             if (item.IsBound)
             {
                 builder.AppendLine();
@@ -144,10 +130,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 item.ItemType.ToString(CultureInfo.InvariantCulture),
                 "|",
                 item.IsEquipped ? "1" : "0",
-                "|",
-                item.EnhanceLevel.ToString(CultureInfo.InvariantCulture),
-                "|",
-                item.Durability.HasValue ? item.Durability.Value.ToString(CultureInfo.InvariantCulture) : "-",
                 "|",
                 presentation.IconSprite != null ? presentation.IconSprite.GetInstanceID().ToString(CultureInfo.InvariantCulture) : "0",
                 "|",

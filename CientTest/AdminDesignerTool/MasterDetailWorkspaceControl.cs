@@ -518,6 +518,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
         foreach (var child in definition.Children)
         {
             var editor = new TableEditorControl(_masterEditor.ConnectionString, showResourceHelpBox: false);
+            editor.TemplateTokenPicked += DetailEditorOnTemplateTokenPicked;
             _detailEditors[child.TabTitle] = editor;
 
             var page = new TabPage(child.TabTitle);
@@ -551,6 +552,17 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
 
             await _detailEditors[child.TabTitle].LoadRequestAsync(child.BuildRequest(parentRow));
         }
+    }
+
+    private void DetailEditorOnTemplateTokenPicked(object? sender, TemplateTokenPickedEventArgs e)
+    {
+        if (!string.Equals(_activeWorkspaceKey, "skill_workspace", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        if (!string.Equals(e.SourceTableName, "skill_effects", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _masterEditor.InsertIntoSelectedLongText("description_template", e.Token);
     }
 
     private sealed record WorkspaceDefinition(
@@ -610,8 +622,24 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             return new WorkspaceDefinition(
                 new AdminTableLoadRequest(
                     martialArts,
+                    SelectSql: """
+                        select
+                            id,
+                            code,
+                            name,
+                            icon,
+                            quality,
+                            category,
+                            description,
+                            description_template,
+                            qi_absorption_rate,
+                            max_stage,
+                            created_at
+                        from public.martial_arts
+                        order by id;
+                        """,
                     TitleOverride: "Danh Sach Cong Phap",
-                    HelpTextOverride: "Bang cha de game design tao va chon cong phap. Chon 1 dong de edit tang va skill unlock ben duoi."),
+                    HelpTextOverride: "Bang cha de game design tao va chon cong phap. Chon 1 dong de edit tang va skill unlock ben duoi. `description_template` la noi author mo ta hien thi runtime cho cong phap."),
                 [
                     new WorkspaceChildDefinition(
                         "Tang Cong Phap",
@@ -727,14 +755,28 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                 new AdminTableLoadRequest(
                     itemTemplates,
                     SelectSql: """
-                        select *
+                        select
+                            id,
+                            code,
+                            name,
+                            item_type,
+                            rarity,
+                            max_stack,
+                            is_tradeable,
+                            is_droppable,
+                            is_destroyable,
+                            icon,
+                            background_icon,
+                            description,
+                            description_template,
+                            created_at
                         from public.item_templates
                         where item_type = 1
                         order by id;
                         """,
                     TitleOverride: "Equipment Item Templates",
                     DescriptionOverride: "Chi hien thi item template co item_type = Equipment.",
-                    HelpTextOverride: "Bang cha de tao item template cho trang bi. Chon 1 dong de edit equipment core va base stat ben duoi.",
+                    HelpTextOverride: "Bang cha de tao item template cho trang bi. Chon 1 dong de edit equipment core va base stat ben duoi. `description_template` dung de author mo ta hien thi runtime cua item.",
                     NewRowDefaults: new Dictionary<string, object?>
                     {
                         ["item_type"] = 1,
@@ -1033,8 +1075,28 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             return new WorkspaceDefinition(
                 new AdminTableLoadRequest(
                     skills,
+                    SelectSql: """
+                        select
+                            id,
+                            code,
+                            name,
+                            skill_group_code,
+                            skill_level,
+                            skill_type,
+                            skill_category,
+                            target_type,
+                            cast_range,
+                            cast_time_ms,
+                            travel_time_ms,
+                            cooldown_ms,
+                            description,
+                            description_template,
+                            created_at
+                        from public.skills
+                        order by id;
+                        """,
                     TitleOverride: "Danh Sach Skill",
-                    HelpTextOverride: "Bang cha de tao va chon skill. Moi cap skill la mot row rieng trong bang skills va duoc gom bang skill_group_code."),
+                    HelpTextOverride: "Bang cha de tao va chon skill. Moi cap skill la mot row rieng trong bang skills va duoc gom bang skill_group_code. `description_template` la noi author mo ta hien thi runtime cua skill."),
                 [
                     new WorkspaceChildDefinition(
                         "Skill Effects",

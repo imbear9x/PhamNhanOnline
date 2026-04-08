@@ -58,12 +58,15 @@ namespace PhamNhanOnline.Client.UI.Skills
 
             if (detailText != null)
             {
-                detailText.text = string.Format(
+                var header = string.Format(
                     CultureInfo.InvariantCulture,
                     "{0} | Cap {1} | Mo tang {2}",
                     string.IsNullOrWhiteSpace(value.SourceMartialArtName) ? "Khong ro nguon" : value.SourceMartialArtName.Trim(),
                     Math.Max(1, value.SkillLevel),
                     Math.Max(0, value.UnlockStage));
+                detailText.text = string.IsNullOrWhiteSpace(value.Description)
+                    ? header
+                    : string.Concat(header, Environment.NewLine, value.Description.Trim());
             }
 
             if (cooldownText != null)

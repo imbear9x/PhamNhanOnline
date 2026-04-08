@@ -17,5 +17,6 @@ public sealed class ItemTemplateEntity
     [Column("icon")] public string? Icon { get; set; }
     [Column("background_icon")] public string? BackgroundIcon { get; set; }
     [Column("description")] public string? Description { get; set; }
+    [Column("description_template")] public string? DescriptionTemplate { get; set; }
     [Column("created_at")] public DateTime? CreatedAt { get; set; }
 }

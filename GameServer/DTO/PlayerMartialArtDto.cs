@@ -7,6 +7,7 @@ public sealed record PlayerMartialArtDto(
     string? Icon,
     int Quality,
     string? Category,
+    string? Description,
     int CurrentStage,
     long CurrentExp,
     int MaxStage,

@@ -1,3 +1,4 @@
+using GameServer.Descriptions;
 using GameServer.DTO;
 using GameServer.Entities;
 using GameServer.Exceptions;
@@ -15,6 +16,7 @@ public sealed class MartialArtService
     private readonly PlayerItemRepository _playerItems;
     private readonly PlayerMartialArtRepository _playerMartialArts;
     private readonly CharacterService _characterService;
+    private readonly GameplayDescriptionService _descriptions;
 
     public MartialArtService(
         ItemService itemService,
@@ -22,7 +24,8 @@ public sealed class MartialArtService
         CombatDefinitionCatalog combatDefinitions,
         PlayerItemRepository playerItems,
         PlayerMartialArtRepository playerMartialArts,
-        CharacterService characterService)
+        CharacterService characterService,
+        GameplayDescriptionService descriptions)
     {
         _itemService = itemService;
         _itemDefinitions = itemDefinitions;
@@ -30,6 +33,7 @@ public sealed class MartialArtService
         _playerItems = playerItems;
         _playerMartialArts = playerMartialArts;
         _characterService = characterService;
+        _descriptions = descriptions;
     }
 
     public async Task<IReadOnlyList<PlayerMartialArtDto>> GetOwnedMartialArtsAsync(Guid playerId, int? activeMartialArtId, CancellationToken cancellationToken = default)
@@ -80,6 +84,7 @@ public sealed class MartialArtService
                 martialArtDefinition.Icon,
                 martialArtDefinition.Quality,
                 martialArtDefinition.Category,
+                _descriptions.BuildMartialArtDescription(martialArtDefinition),
                 learned.CurrentStage,
                 learned.CurrentExp,
                 martialArtDefinition.MaxStage,
@@ -132,6 +137,7 @@ public sealed class MartialArtService
                     definition.Icon,
                     definition.Quality,
                     definition.Category,
+                    _descriptions.BuildMartialArtDescription(definition),
                     progress.CurrentStage,
                     progress.CurrentExp,
                     definition.MaxStage,

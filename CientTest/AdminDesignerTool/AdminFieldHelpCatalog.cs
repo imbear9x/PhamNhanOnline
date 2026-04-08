@@ -9,6 +9,31 @@ internal static class AdminFieldHelpCatalog
         DataColumn column,
         AdminColumnBinding? binding)
     {
+        if (string.Equals(column.ColumnName, "ratio_value", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Join(Environment.NewLine,
+            [
+                $"Truong `{column.ColumnName}` trong bang `{resource.TableName}`.",
+                "Y nghia: gia tri ti le dang multiplier, khong phai phan tram thuan.",
+                "Quy uoc thong nhat: `0.25 = 25%`, `1.0 = 100%`, `1.1 = 110%`, `2.0 = 200%`.",
+                "Khi viet `description_template`, voi field nay hay uu tien format `ratio_percent` de hien thi dung."
+            ]);
+        }
+
+        if (string.Equals(column.ColumnName, "description_template", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Join(Environment.NewLine,
+            [
+                $"Truong `{column.ColumnName}` trong bang `{resource.TableName}`.",
+                "Y nghia: template mo ta runtime se duoc server compile thanh text cuoi gui cho client.",
+                "Co the dung token nhu `{effects_summary}`, `{qi_summary}`, `{equipment_stats_summary}` tuy loai du lieu.",
+                "Khong nen dua cast time, cooldown, range vao description neu UI da co o hien thi rieng cho cac field do.",
+                "Skill co the author theo token presentation nhu `{effect1.ratio_value|ratio_percent}`, `{effect1.formula_subject_rich}`, `{effect1.target_label}`.",
+                "Voi field ratio nhu `ratio_value`, hay dung `|ratio_percent` de `1.1` hien thanh `110%`.",
+                "Neu de trong, he thong se fallback sang `description` cu hoac template mac dinh phia server."
+            ]);
+        }
+
         if (TryGetSpecificHelp(resource.TableName, column.ColumnName, out var specific))
             return specific;
 

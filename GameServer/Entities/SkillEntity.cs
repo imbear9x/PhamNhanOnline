@@ -18,5 +18,6 @@ public sealed class SkillEntity
     [Column("travel_time_ms"), NotNull] public int TravelTimeMs { get; set; }
     [Column("cooldown_ms"), NotNull] public int CooldownMs { get; set; }
     [Column("description")] public string? Description { get; set; }
+    [Column("description_template")] public string? DescriptionTemplate { get; set; }
     [Column("created_at")] public DateTime? CreatedAt { get; set; }
 }

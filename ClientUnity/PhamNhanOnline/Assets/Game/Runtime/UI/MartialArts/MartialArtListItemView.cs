@@ -66,12 +66,15 @@ namespace PhamNhanOnline.Client.UI.MartialArts
 
             if (detailText != null)
             {
-                detailText.text = string.Format(
+                var header = string.Format(
                     CultureInfo.InvariantCulture,
                     "{0} | Tang {1}/{2}",
                     string.IsNullOrWhiteSpace(value.Category) ? "Chua phan loai" : value.Category.Trim(),
                     Math.Max(0, value.CurrentStage),
                     Math.Max(0, value.MaxStage));
+                detailText.text = string.IsNullOrWhiteSpace(value.Description)
+                    ? header
+                    : string.Concat(header, Environment.NewLine, value.Description.Trim());
             }
 
             if (qiRateText != null)

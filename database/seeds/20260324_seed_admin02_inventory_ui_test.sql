@@ -17,18 +17,18 @@ with seeded_templates as (
     select *
     from (
         values
-            (910001, 'kim_huyen_kiem', 'Kim Huyen Kiem', 1, 3, 1, true, true, true, 'item_kim_huyen_kiem', 'bg_item_rare', 'Thanh phi kiem trung pham, thich hop de test icon, rarity va item equipment trong inventory.'),
-            (910002, 'thanh_van_phap_y', 'Thanh Van Phap Y', 1, 2, 1, true, true, true, 'item_thanh_van_phap_y', 'bg_item_uncommon', 'Phap y thanh sac cho tu si tan thu. Dung de test item ao trong inventory.'),
-            (910003, 'thanh_phong_huyen_khau', 'Thanh Phong Huyen Khau', 1, 1, 1, true, true, true, 'item_thanh_phong_huyen_khau', 'bg_item_common', 'Huyen khau gian di, dung de test item quan trong inventory.'),
-            (910004, 'van_hanh_bo', 'Van Hanh Bo', 1, 1, 1, true, true, true, 'item_van_hanh_bo', 'bg_item_common', 'Giay khinh than co ban, dung de test item giay trong inventory.'),
-            (910005, 'hoi_linh_dan', 'Hoi Linh Dan', 2, 4, 99, true, true, true, 'item_hoi_linh_dan', 'bg_item_epic', 'Dan duoc phuc hoi linh luc, dung de test stackable consumable va tooltip description.'),
-            (910006, 'truong_xuan_tam_phap_tan_ban', 'Truong Xuan Tam Phap - Tan Ban', 5, 3, 1, false, false, true, 'item_truong_xuan_tam_phap', 'bg_item_rare', 'Cong phap tan ban danh cho de tu moi nhap mon. Dung de test item loai Cong phap.'),
-            (910007, 'ha_pham_linh_thach', 'Ha Pham Linh Thach', 6, 1, 9999, true, true, true, 'item_ha_pham_linh_thach', 'bg_item_common', 'Don vi tien te co ban trong gioi tu chan. Dung de test item stack lon.'),
-            (910008, 'huyet_tinh_thao', 'Huyet Tinh Thao', 3, 2, 999, true, true, true, 'item_huyet_tinh_thao', 'bg_item_uncommon', 'Nguyen lieu duoc tinh co the dung cho luyen dan hoac che tao.'),
-            (910009, 'thanh_moc_phu', 'Thanh Moc Phu', 4, 4, 1, true, true, true, 'item_thanh_moc_phu', 'bg_item_epic', 'Phap bao dang phu luu chuyen moc linh khi. Dung de test item loai Phap bao.'),
-            (910010, 'xich_van_kiem', 'Xich Van Kiem', 1, 4, 1, true, true, true, 'item_xich_van_kiem', 'bg_item_epic', 'Kiem du phong de test keo tha thay the vu khi dang mac.'),
-            (910011, 'bach_ngan_phap_y', 'Bach Ngan Phap Y', 1, 3, 1, true, true, true, 'item_bach_ngan_phap_y', 'bg_item_rare', 'Phap y du phong de test keo sai slot va thay the trang bi giap.')
-    ) as v(id, code, name, item_type, rarity, max_stack, is_tradeable, is_droppable, is_destroyable, icon, background_icon, description)
+            (910001, 'kim_huyen_kiem', 'Kim Huyen Kiem', 1, 3, 1, true, true, true, 'item_kim_huyen_kiem', 'bg_item_rare', 'Thanh phi kiem trung pham, thich hop de test icon, rarity va item equipment trong inventory.', '{equipment_stats_summary}\n{requirements_summary}'),
+            (910002, 'thanh_van_phap_y', 'Thanh Van Phap Y', 1, 2, 1, true, true, true, 'item_thanh_van_phap_y', 'bg_item_uncommon', 'Phap y thanh sac cho tu si tan thu. Dung de test item ao trong inventory.', '{equipment_stats_summary}\n{requirements_summary}'),
+            (910003, 'thanh_phong_huyen_khau', 'Thanh Phong Huyen Khau', 1, 1, 1, true, true, true, 'item_thanh_phong_huyen_khau', 'bg_item_common', 'Huyen khau gian di, dung de test item quan trong inventory.', '{equipment_stats_summary}\n{requirements_summary}'),
+            (910004, 'van_hanh_bo', 'Van Hanh Bo', 1, 1, 1, true, true, true, 'item_van_hanh_bo', 'bg_item_common', 'Giay khinh than co ban, dung de test item giay trong inventory.', '{equipment_stats_summary}\n{requirements_summary}'),
+            (910005, 'hoi_linh_dan', 'Hoi Linh Dan', 2, 4, 99, true, true, true, 'item_hoi_linh_dan', 'bg_item_epic', 'Dan duoc phuc hoi linh luc, dung de test stackable consumable va tooltip description.', '{use_effects_summary}'),
+            (910006, 'truong_xuan_tam_phap_tan_ban', 'Truong Xuan Tam Phap - Tan Ban', 5, 3, 1, false, false, true, 'item_truong_xuan_tam_phap', 'bg_item_rare', 'Cong phap tan ban danh cho de tu moi nhap mon. Dung de test item loai Cong phap.', '{martial_art_book_summary}'),
+            (910007, 'ha_pham_linh_thach', 'Ha Pham Linh Thach', 6, 1, 9999, true, true, true, 'item_ha_pham_linh_thach', 'bg_item_common', 'Don vi tien te co ban trong gioi tu chan. Dung de test item stack lon.', 'Tien te co ban duoc dung trong giao dich va chi tieu.'),
+            (910008, 'huyet_tinh_thao', 'Huyet Tinh Thao', 3, 2, 999, true, true, true, 'item_huyet_tinh_thao', 'bg_item_uncommon', 'Nguyen lieu duoc tinh co the dung cho luyen dan hoac che tao.', 'Nguyen lieu co the dung de luyen dan hoac che tao.'),
+            (910009, 'thanh_moc_phu', 'Thanh Moc Phu', 4, 4, 1, true, true, true, 'item_thanh_moc_phu', 'bg_item_epic', 'Phap bao dang phu luu chuyen moc linh khi. Dung de test item loai Phap bao.', 'Phu bao chua moc linh khi, can target/context rieng de su dung.'),
+            (910010, 'xich_van_kiem', 'Xich Van Kiem', 1, 4, 1, true, true, true, 'item_xich_van_kiem', 'bg_item_epic', 'Kiem du phong de test keo tha thay the vu khi dang mac.', '{equipment_stats_summary}\n{requirements_summary}'),
+            (910011, 'bach_ngan_phap_y', 'Bach Ngan Phap Y', 1, 3, 1, true, true, true, 'item_bach_ngan_phap_y', 'bg_item_rare', 'Phap y du phong de test keo sai slot va thay the trang bi giap.', '{equipment_stats_summary}\n{requirements_summary}')
+    ) as v(id, code, name, item_type, rarity, max_stack, is_tradeable, is_droppable, is_destroyable, icon, background_icon, description, description_template)
 ),
 upsert_item_templates as (
     insert into public.item_templates (
@@ -44,6 +44,7 @@ upsert_item_templates as (
         icon,
         background_icon,
         description,
+        description_template,
         created_at
     )
     select
@@ -59,6 +60,7 @@ upsert_item_templates as (
         st.icon,
         st.background_icon,
         st.description,
+        st.description_template,
         timezone('utc', now())
     from seeded_templates st
     on conflict (id) do update
@@ -73,7 +75,8 @@ upsert_item_templates as (
         is_destroyable = excluded.is_destroyable,
         icon = excluded.icon,
         background_icon = excluded.background_icon,
-        description = excluded.description
+        description = excluded.description,
+        description_template = excluded.description_template
     returning id
 ),
 upsert_equipment_templates as (

@@ -1,3 +1,4 @@
+using GameServer.Descriptions;
 using GameServer.Entities;
 using GameServer.Repositories;
 using GameServer.Runtime;
@@ -11,19 +12,22 @@ public sealed class ItemService
     private readonly PlayerEquipmentRepository _playerEquipments;
     private readonly PlayerEquipmentStatBonusRepository _playerEquipmentBonuses;
     private readonly PlayerSoilRepository _playerSoils;
+    private readonly GameplayDescriptionService _descriptions;
 
     public ItemService(
         ItemDefinitionCatalog definitions,
         PlayerItemRepository playerItems,
         PlayerEquipmentRepository playerEquipments,
         PlayerEquipmentStatBonusRepository playerEquipmentBonuses,
-        PlayerSoilRepository playerSoils)
+        PlayerSoilRepository playerSoils,
+        GameplayDescriptionService descriptions)
     {
         _definitions = definitions;
         _playerItems = playerItems;
         _playerEquipments = playerEquipments;
         _playerEquipmentBonuses = playerEquipmentBonuses;
         _playerSoils = playerSoils;
+        _descriptions = descriptions;
     }
 
     public async Task<IReadOnlyList<PlayerItemEntity>> AddItemAsync(
@@ -393,6 +397,7 @@ public sealed class ItemService
                     item.Id,
                     item.PlayerId ?? throw new InvalidOperationException($"Inventory item {item.Id} is missing owner."),
                     definition,
+                    _descriptions.BuildItemDescription(definition),
                     item.Quantity,
                     item.IsBound,
                     item.AcquiredAt,

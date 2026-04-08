@@ -95,6 +95,7 @@ public sealed record ItemDefinition(
     string? Icon,
     string? BackgroundIcon,
     string? Description,
+    string? DescriptionTemplate,
     EquipmentDefinition? Equipment,
     MartialArtBookDefinition? MartialArtBook)
 {
@@ -129,6 +130,7 @@ public sealed record InventoryItemView(
     long PlayerItemId,
     Guid PlayerId,
     ItemDefinition Definition,
+    string? Description,
     int Quantity,
     bool IsBound,
     DateTime AcquiredAt,

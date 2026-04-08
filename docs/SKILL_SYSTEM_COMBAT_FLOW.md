@@ -393,7 +393,7 @@ Quy ước:
 - 1 effect:
   - `effect_type = Damage`
   - `formula_type = AttackRatio`
-  - `ratio_value = 1.0`
+  - `ratio_value = 1.0` tương ứng `100%`
   - `target_scope = Primary`
   - `trigger_timing = OnHit`
 
@@ -405,7 +405,7 @@ Quy ước:
 - 1 effect:
   - `Damage`
   - `AttackRatio`
-  - `ratio_value = 1.2`
+  - `ratio_value = 1.2` tương ứng `120%`
   - `Primary`
   - `OnHit`
 

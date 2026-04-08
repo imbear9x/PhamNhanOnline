@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.item_templates (
     is_destroyable boolean NOT NULL DEFAULT true,
     icon character varying(255) NULL,
     description text NULL,
+    description_template text NULL,
     created_at timestamp without time zone DEFAULT now(),
     CONSTRAINT item_templates_pkey PRIMARY KEY (id),
     CONSTRAINT item_templates_code_key UNIQUE (code)

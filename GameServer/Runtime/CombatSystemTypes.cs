@@ -143,6 +143,7 @@ public sealed record SkillDefinition(
     int TravelTimeMs,
     int CooldownMs,
     string? Description,
+    string? DescriptionTemplate,
     IReadOnlyList<SkillEffectDefinition> Effects);
 
 public sealed record MartialArtSkillUnlockDefinition(
@@ -160,6 +161,7 @@ public sealed record MartialArtDefinition(
     int Quality,
     string? Category,
     string? Description,
+    string? DescriptionTemplate,
     decimal QiAbsorptionRate,
     int MaxStage,
     IReadOnlyList<MartialArtStageDefinition> Stages,

@@ -213,7 +213,9 @@ namespace PhamNhanOnline.Client.UI.MartialArts
                     ":",
                     items[i].Name ?? string.Empty,
                     ":",
-                    items[i].Category ?? string.Empty);
+                    items[i].Category ?? string.Empty,
+                    ":",
+                    items[i].Description ?? string.Empty);
             }
 
             return string.Join("|", parts);

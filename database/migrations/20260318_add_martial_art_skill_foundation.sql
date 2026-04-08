@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS public.martial_arts (
     quality integer NOT NULL DEFAULT 1,
     category character varying(50) NULL,
     description text NULL,
+    description_template text NULL,
     qi_absorption_rate numeric(10,4) NOT NULL DEFAULT 1.0,
     max_stage integer NOT NULL,
     created_at timestamp without time zone DEFAULT now(),
@@ -48,6 +49,7 @@ CREATE TABLE IF NOT EXISTS public.skills (
     cast_range numeric(10, 4) NOT NULL DEFAULT 1.0,
     cooldown_ms integer NOT NULL DEFAULT 0,
     description text NULL,
+    description_template text NULL,
     created_at timestamp without time zone DEFAULT now(),
     CONSTRAINT skills_pkey PRIMARY KEY (id),
     CONSTRAINT skills_code_key UNIQUE (code)

@@ -11,6 +11,7 @@ public struct PlayerMartialArtModel
     public string? Name;
     public int Quality;
     public string? Category;
+    public string? Description;
     public int CurrentStage;
     public long CurrentExp;
     public int MaxStage;

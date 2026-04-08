@@ -207,7 +207,9 @@ namespace PhamNhanOnline.Client.UI.Skills
                     ":",
                     items[i].SkillGroupCode ?? string.Empty,
                     ":",
-                    items[i].SourceMartialArtName ?? string.Empty);
+                    items[i].SourceMartialArtName ?? string.Empty,
+                    ":",
+                    items[i].Description ?? string.Empty);
             }
 
             return string.Join("|", parts);

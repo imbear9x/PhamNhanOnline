@@ -30,6 +30,7 @@ insert into public.skills (
     cast_range,
     cooldown_ms,
     description,
+    description_template,
     created_at
 )
 values
@@ -42,6 +43,7 @@ values
         2000,
         2000,
         'Skill test của Sói lang băng. Gây 110% ATK lên một mục tiêu.',
+        'Gay {effect1.ratio_value|ratio_percent} {effect1.formula_subject_rich} len {effect1.target_label}.',
         timezone('utc', now())
     ),
     (
@@ -53,6 +55,7 @@ values
         2000,
         2000,
         'Skill test của Gấu nâu tinh. Gây 120% ATK lên một mục tiêu.',
+        'Gay {effect1.ratio_value|ratio_percent} {effect1.formula_subject_rich} len {effect1.target_label}.',
         timezone('utc', now())
     )
 on conflict (id) do update
@@ -63,7 +66,8 @@ set
     target_type = excluded.target_type,
     cast_range = excluded.cast_range,
     cooldown_ms = excluded.cooldown_ms,
-    description = excluded.description;
+    description = excluded.description,
+    description_template = excluded.description_template;
 
 insert into public.skill_effects (
     id,

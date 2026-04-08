@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using GameServer.Config;
 using GameServer.Database;
+using GameServer.Descriptions;
 using GameServer.Diagnostics;
 using GameServer.Network;
 using GameServer.Network.Handlers;
@@ -142,6 +143,8 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<ItemDefinitionCatalog>();
         services.AddSingleton<AlchemyDefinitionCatalog>();
         services.AddSingleton<EnemyDefinitionCatalog>();
+        services.AddSingleton<DescriptionTemplateCompiler>();
+        services.AddSingleton<GameplayDescriptionService>();
         services.AddSingleton<IRandomNumberProvider, CryptoRandomNumberProvider>();
         services.AddSingleton<IGameRandomService, GameRandomService>();
         services.AddSingleton<MartialArtProgressionService>();

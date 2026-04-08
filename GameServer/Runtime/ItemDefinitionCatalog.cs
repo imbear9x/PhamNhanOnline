@@ -3,8 +3,8 @@ using GameServer.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GameServer.Runtime;
-
 public sealed class ItemDefinitionCatalog
+
 {
     private readonly IReadOnlyDictionary<int, ItemDefinition> _itemsById;
     private readonly IReadOnlyDictionary<string, ItemDefinition> _itemsByCode;
@@ -88,6 +88,7 @@ public sealed class ItemDefinitionCatalog
                 template.Icon,
                 template.BackgroundIcon,
                 template.Description,
+                template.DescriptionTemplate,
                 equipmentByTemplateId.GetValueOrDefault(template.Id),
                 martialArtBooksByItemId.GetValueOrDefault(template.Id));
 

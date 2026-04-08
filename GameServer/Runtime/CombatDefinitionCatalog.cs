@@ -71,6 +71,7 @@ public sealed class CombatDefinitionCatalog
                 Math.Max(0, skill.TravelTimeMs),
                 skill.CooldownMs,
                 skill.Description,
+                skill.DescriptionTemplate,
                 effectsBySkillId.GetValueOrDefault(skill.Id, Array.Empty<SkillEffectDefinition>()));
         }
 
@@ -150,6 +151,7 @@ public sealed class CombatDefinitionCatalog
                 martialArt.Quality,
                 martialArt.Category,
                 martialArt.Description,
+                martialArt.DescriptionTemplate,
                 martialArt.QiAbsorptionRate,
                 martialArt.MaxStage,
                 stagesByMartialArtId.GetValueOrDefault(martialArt.Id, Array.Empty<MartialArtStageDefinition>()),

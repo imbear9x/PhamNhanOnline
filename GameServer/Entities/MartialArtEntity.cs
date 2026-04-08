@@ -12,6 +12,7 @@ public sealed class MartialArtEntity
     [Column("quality"), NotNull] public int Quality { get; set; }
     [Column("category")] public string? Category { get; set; }
     [Column("description")] public string? Description { get; set; }
+    [Column("description_template")] public string? DescriptionTemplate { get; set; }
     [Column("qi_absorption_rate"), NotNull] public decimal QiAbsorptionRate { get; set; }
     [Column("max_stage"), NotNull] public int MaxStage { get; set; }
     [Column("created_at")] public DateTime? CreatedAt { get; set; }

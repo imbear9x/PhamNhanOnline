@@ -1,3 +1,4 @@
+using GameServer.Descriptions;
 using GameServer.Config;
 using GameServer.DTO;
 using GameServer.Entities;
@@ -15,17 +16,20 @@ public sealed class SkillService
     private readonly GameConfigValues _gameConfig;
     private readonly PlayerSkillRepository _playerSkills;
     private readonly PlayerSkillLoadoutRepository _playerSkillLoadouts;
+    private readonly GameplayDescriptionService _descriptions;
 
     public SkillService(
         CombatDefinitionCatalog combatDefinitions,
         GameConfigValues gameConfig,
         PlayerSkillRepository playerSkills,
-        PlayerSkillLoadoutRepository playerSkillLoadouts)
+        PlayerSkillLoadoutRepository playerSkillLoadouts,
+        GameplayDescriptionService descriptions)
     {
         _combatDefinitions = combatDefinitions;
         _gameConfig = gameConfig;
         _playerSkills = playerSkills;
         _playerSkillLoadouts = playerSkillLoadouts;
+        _descriptions = descriptions;
     }
 
     public async Task<OwnedSkillsSnapshotDto> GetOwnedSkillsAsync(Guid playerId, CancellationToken cancellationToken = default)
@@ -194,7 +198,7 @@ public sealed class SkillService
             skillDefinition.CastTimeMs,
             skillDefinition.TravelTimeMs,
             skillDefinition.CooldownMs,
-            skillDefinition.Description,
+            _descriptions.BuildSkillDescription(skillDefinition),
             playerSkill.SourceType,
             playerSkill.SourceMartialArtId ?? 0,
             martialArtDefinition?.Name ?? string.Empty,

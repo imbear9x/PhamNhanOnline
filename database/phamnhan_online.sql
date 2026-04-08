@@ -680,6 +680,39 @@ ALTER TABLE ONLY public.account_security
 
 
 --
+-- Name: repo_schema_alignment_description_templates; Type: DO; Schema: -; Owner: -
+--
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'item_templates')
+    THEN
+        EXECUTE 'ALTER TABLE public.item_templates ADD COLUMN IF NOT EXISTS description_template text NULL';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'skills')
+    THEN
+        EXECUTE 'ALTER TABLE public.skills ADD COLUMN IF NOT EXISTS description_template text NULL';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'martial_arts')
+    THEN
+        EXECUTE 'ALTER TABLE public.martial_arts ADD COLUMN IF NOT EXISTS description_template text NULL';
+    END IF;
+END
+$$;
+
+
+--
 -- PostgreSQL database dump complete
 --
 

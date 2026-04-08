@@ -385,7 +385,9 @@ namespace PhamNhanOnline.Client.UI.World
                     ":",
                     martialArts[i].Name ?? string.Empty,
                     ":",
-                    martialArts[i].Category ?? string.Empty);
+                    martialArts[i].Category ?? string.Empty,
+                    ":",
+                    martialArts[i].Description ?? string.Empty);
             }
 
             return string.Join(";", parts);

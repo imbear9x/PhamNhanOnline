@@ -66,6 +66,15 @@ Những gì có thể tự suy ra từ code hoặc đọc ở doc chuyên đề 
   - [ClientPresentationReplicationService.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/PresentationReplication/Application/ClientPresentationReplicationService.cs)
 - Lớp này mới là foundation client-side, chưa phải full protocol replication mới.
 
+## Quy ước description gameplay
+
+- `item`, `skill`, `martial art` dùng `description_template` ở DB theo pipeline compile phía server.
+- Client không tự tính gameplay để dựng description.
+- Client chỉ render `Description` cuối cùng bằng TMP rich text.
+- Không thiết kế syntax icon custom ở client nếu chưa có nhu cầu thật sự; ưu tiên dùng tag TMP gốc mà UI đang support.
+- Doc chi tiết:
+  - [DESCRIPTION_TEMPLATE_SYSTEM.md](/F:/PhamNhanOnline/docs/DESCRIPTION_TEMPLATE_SYSTEM.md)
+
 ## Quy ước GameShared và build
 
 - Nếu đổi contract dùng chung trong `GameShared`, phải chạy:
