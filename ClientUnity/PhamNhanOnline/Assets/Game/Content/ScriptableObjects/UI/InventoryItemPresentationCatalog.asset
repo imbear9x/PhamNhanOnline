@@ -34,6 +34,8 @@ MonoBehaviour:
     sprite: {fileID: 21300000, guid: 222ad65f526e88b42b0228b6bb4fca0b, type: 3}
   - key: item_thanh_moc_phu
     sprite: {fileID: 21300000, guid: 5610271362c08b240b4e1abf9a5b612b, type: 3}
+  - key: icon_linh_thach
+    sprite: {fileID: 21300000, guid: 5cba3e808ff674f4d971bdb36346cb84, type: 3}
   backgroundEntries:
   - key: bg_item_common
     sprite: {fileID: 21300000, guid: 711fb7a2b8e1ff54da609e52c3e729b8, type: 3}
