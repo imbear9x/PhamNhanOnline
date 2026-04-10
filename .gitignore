@@ -34,6 +34,7 @@ Config/dbConfig.json
 tmp_tools/
 tmp_codex/
 artifacts/
+TempBuild/
 
 # Unity project generated files and local caches
 ClientUnity/**/[Ll]ibrary/
