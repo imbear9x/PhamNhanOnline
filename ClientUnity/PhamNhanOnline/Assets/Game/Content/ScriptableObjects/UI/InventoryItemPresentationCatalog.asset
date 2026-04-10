@@ -17,17 +17,17 @@ MonoBehaviour:
   defaultNameColor: {r: 0.990566, g: 0.990566, b: 0.990566, a: 1}
   iconEntries:
   - key: item_kim_huyen_kiem
-    sprite: {fileID: 21300000, guid: 719c2201c2f5f6c4aafffaeb5abdf5f9, type: 3}
+    sprite: {fileID: 21300000, guid: 388f99898b53f4f428c5340fd0579f2f, type: 3}
   - key: item_thanh_van_phap_y
-    sprite: {fileID: 21300000, guid: 9895f5f95566ceb47bb239149d90cb44, type: 3}
+    sprite: {fileID: 21300000, guid: 3042e2fa479e25f4d970826fef171a64, type: 3}
   - key: item_van_hanh_bo
-    sprite: {fileID: 21300000, guid: c51afa706b02a044694b30f33f81d239, type: 3}
+    sprite: {fileID: 21300000, guid: 530157abca9aa664e9b04768aebc82e3, type: 3}
   - key: item_thanh_phong_huyen_khau
     sprite: {fileID: 21300000, guid: cf6478ef684ce7f4c830edba147c7607, type: 3}
   - key: item_hoi_linh_dan
     sprite: {fileID: 21300000, guid: 5ccb3ac55f7859e41abd1ab2130a6057, type: 3}
   - key: item_truong_xuan_tam_phap
-    sprite: {fileID: 21300000, guid: 108ca3e7dda90d945b0914bf9259ec94, type: 3}
+    sprite: {fileID: 21300000, guid: ef0a86972142618488d8e09cd26fc64b, type: 3}
   - key: item_ha_pham_linh_thach
     sprite: {fileID: 21300000, guid: 3dbf86dd2916a37449591c2120b80c05, type: 3}
   - key: item_huyet_tinh_thao
@@ -36,6 +36,12 @@ MonoBehaviour:
     sprite: {fileID: 21300000, guid: 5610271362c08b240b4e1abf9a5b612b, type: 3}
   - key: icon_linh_thach
     sprite: {fileID: 21300000, guid: 5cba3e808ff674f4d971bdb36346cb84, type: 3}
+  - key: item_bo_huyet_dan
+    sprite: {fileID: 21300000, guid: 9cd45b2d09dde734591c4bde855c0c35, type: 3}
+  - key: item_bo_huyet_thao_la
+    sprite: {fileID: 21300000, guid: 52edd9b670e05084f9639ef4cd503d35, type: 3}
+  - key: dan_phuong_bo_huyet_dan
+    sprite: {fileID: 21300000, guid: 28d334ec17207884b928ac7d4969000a, type: 3}
   backgroundEntries:
   - key: bg_item_common
     sprite: {fileID: 21300000, guid: 711fb7a2b8e1ff54da609e52c3e729b8, type: 3}
