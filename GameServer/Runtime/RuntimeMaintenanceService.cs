@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using GameServer.Diagnostics;
+using GameServer.Services;
 using GameServer.Time;
 using GameServer.World;
 using GameShared.Logging;
@@ -9,10 +10,12 @@ namespace GameServer.Runtime;
 public sealed class RuntimeMaintenanceService
 {
     private static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(50);
+    private static readonly TimeSpan PracticeSettlementInterval = TimeSpan.FromSeconds(1);
 
     private readonly CharacterRuntimeService _runtimeService;
     private readonly CharacterRuntimeSaveService _runtimeSaveService;
     private readonly CharacterCultivationService _cultivationService;
+    private readonly AlchemyPracticeService _alchemyPracticeService;
     private readonly GameTimeService _gameTimeService;
     private readonly ServerMetricsService _metrics;
     private readonly WorldManager _worldManager;
@@ -22,12 +25,14 @@ public sealed class RuntimeMaintenanceService
     private DateTime _nextRuntimeSaveUtc = DateTime.UtcNow;
     private DateTime _nextDerivedStateRefreshUtc = DateTime.UtcNow;
     private DateTime _nextCultivationSettlementUtc = DateTime.UtcNow;
+    private DateTime _nextPracticeSettlementUtc = DateTime.UtcNow;
     private DateTime _nextEmptyInstanceCleanupUtc = DateTime.UtcNow;
 
     public RuntimeMaintenanceService(
         CharacterRuntimeService runtimeService,
         CharacterRuntimeSaveService runtimeSaveService,
         CharacterCultivationService cultivationService,
+        AlchemyPracticeService alchemyPracticeService,
         GameTimeService gameTimeService,
         ServerMetricsService metrics,
         WorldManager worldManager)
@@ -35,6 +40,7 @@ public sealed class RuntimeMaintenanceService
         _runtimeService = runtimeService;
         _runtimeSaveService = runtimeSaveService;
         _cultivationService = cultivationService;
+        _alchemyPracticeService = alchemyPracticeService;
         _gameTimeService = gameTimeService;
         _metrics = metrics;
         _worldManager = worldManager;
@@ -156,6 +162,23 @@ public sealed class RuntimeMaintenanceService
             }
 
             _nextCultivationSettlementUtc = DateTime.UtcNow.Add(_cultivationService.SettlementInterval);
+        }
+
+        if (utcNow >= _nextPracticeSettlementUtc)
+        {
+            try
+            {
+                _alchemyPracticeService.EnsureDueSessionsCompletedAsync(cancellationToken).GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Periodic alchemy practice settlement failed.");
+            }
+
+            _nextPracticeSettlementUtc = DateTime.UtcNow.Add(PracticeSettlementInterval);
         }
 
         if (utcNow >= _nextEmptyInstanceCleanupUtc)

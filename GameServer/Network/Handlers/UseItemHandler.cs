@@ -57,7 +57,9 @@ public sealed class UseItemHandler : IPacketHandler<UseItemPacket>
                 BaseStats = result.BaseStats?.ToModel(),
                 CurrentState = result.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot()),
                 LearnedMartialArt = result.LearnedMartialArt?.ToModel(),
-                CultivationPreview = result.CultivationPreview?.ToModel()
+                CultivationPreview = result.CultivationPreview?.ToModel(),
+                CooldownMs = result.CooldownMs,
+                CooldownEndsUnixMs = ToUnixMs(result.CooldownEndsAtUtc)
             });
         }
         catch (GameException ex)
@@ -71,5 +73,16 @@ public sealed class UseItemHandler : IPacketHandler<UseItemPacket>
                 AppliedQuantity = 0
             });
         }
+    }
+
+    private static long? ToUnixMs(DateTime? dateTime)
+    {
+        if (!dateTime.HasValue)
+            return null;
+
+        var utc = dateTime.Value.Kind == DateTimeKind.Utc
+            ? dateTime.Value
+            : DateTime.SpecifyKind(dateTime.Value, DateTimeKind.Utc);
+        return new DateTimeOffset(utc).ToUnixTimeMilliseconds();
     }
 }

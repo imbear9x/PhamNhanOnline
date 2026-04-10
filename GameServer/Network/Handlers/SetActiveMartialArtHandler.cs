@@ -43,12 +43,13 @@ public sealed class SetActiveMartialArtHandler : IPacketHandler<SetActiveMartial
         {
             var requestedMartialArtId = packet.MartialArtId!.Value;
             var currentSnapshot = session.Player.RuntimeState.CaptureSnapshot();
-            if (currentSnapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.Cultivating)
+            if (currentSnapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.Cultivating ||
+                currentSnapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.Practicing)
             {
                 _network.Send(session.ConnectionId, new SetActiveMartialArtResultPacket
                 {
                     Success = false,
-                    Code = MessageCode.CharacterActionsRestricted
+                    Code = MessageCode.PracticeAlreadyActive
                 });
                 return;
             }

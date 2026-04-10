@@ -29,6 +29,7 @@ public sealed class CharacterCultivationService
     private readonly CombatDefinitionCatalog _combatDefinitions;
     private readonly PotentialStatCatalog _potentialStatCatalog;
     private readonly IGameRandomService _gameRandomService;
+    private readonly PracticeService _practiceService;
 
     public CharacterCultivationService(
         GameConfigValues gameConfig,
@@ -40,7 +41,8 @@ public sealed class CharacterCultivationService
         MapCatalog mapCatalog,
         CombatDefinitionCatalog combatDefinitions,
         PotentialStatCatalog potentialStatCatalog,
-        IGameRandomService gameRandomService)
+        IGameRandomService gameRandomService,
+        PracticeService practiceService)
     {
         _gameConfig = gameConfig;
         _scopeFactory = scopeFactory;
@@ -52,32 +54,37 @@ public sealed class CharacterCultivationService
         _combatDefinitions = combatDefinitions;
         _potentialStatCatalog = potentialStatCatalog;
         _gameRandomService = gameRandomService;
+        _practiceService = practiceService;
     }
 
     public TimeSpan SettlementInterval => _gameConfig.CultivationSettlementInterval;
 
-    public Task<CultivationActionResult> StartCultivationAsync(ConnectionSession session, CancellationToken cancellationToken = default)
+    public async Task<CultivationActionResult> StartCultivationAsync(ConnectionSession session, CancellationToken cancellationToken = default)
     {
         if (session.Player is null)
-            return Task.FromResult(CultivationActionResult.Failed(MessageCode.CharacterMustEnterWorld));
+            return CultivationActionResult.Failed(MessageCode.CharacterMustEnterWorld);
 
         var player = session.Player;
         var snapshot = player.RuntimeState.CaptureSnapshot();
         if (snapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.Cultivating)
-            return Task.FromResult(CultivationActionResult.Failed(MessageCode.CultivationAlreadyActive));
+            return CultivationActionResult.Failed(MessageCode.CultivationAlreadyActive);
+
+        var blockingPractice = await _practiceService.GetBlockingSessionAsync(player.CharacterData.CharacterId, cancellationToken);
+        if (blockingPractice is not null)
+            return CultivationActionResult.Failed(MessageCode.PracticeAlreadyActive);
 
         if (!_worldManager.MapManager.TryGetInstance(player.MapId, player.InstanceId, out var instance) ||
             !instance.Definition.IsPrivatePerPlayer ||
             instance.Definition.Type != MapType.Home)
         {
-            return Task.FromResult(CultivationActionResult.Failed(MessageCode.CultivationRequiresPrivateHome));
+            return CultivationActionResult.Failed(MessageCode.CultivationRequiresPrivateHome);
         }
 
         if (snapshot.CurrentState.IsExpired || snapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired)
-            return Task.FromResult(CultivationActionResult.Failed(MessageCode.CharacterActionsRestricted));
+            return CultivationActionResult.Failed(MessageCode.CharacterActionsRestricted);
 
         if (!TryResolveQiAbsorptionRate(snapshot.BaseStats, out _))
-            return Task.FromResult(CultivationActionResult.Failed(MessageCode.CultivationRequiresActiveMartialArt));
+            return CultivationActionResult.Failed(MessageCode.CultivationRequiresActiveMartialArt);
 
         var utcNow = DateTime.UtcNow;
         var currentState = snapshot.CurrentState with
@@ -89,7 +96,7 @@ public sealed class CharacterCultivationService
         };
 
         _runtimeService.ApplyCurrentStateMutation(player, _ => currentState);
-        return Task.FromResult(CultivationActionResult.Succeeded(snapshot.BaseStats, currentState));
+        return CultivationActionResult.Succeeded(snapshot.BaseStats, currentState);
     }
 
     public async Task<CultivationActionResult> StopCultivationAsync(ConnectionSession session, CancellationToken cancellationToken = default)

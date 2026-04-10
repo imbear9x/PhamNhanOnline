@@ -111,7 +111,9 @@ public sealed class ItemUseService
             null,
             null,
             quantity,
-            1);
+            1,
+            null,
+            null);
     }
 
     private async Task<UseItemExecutionResult> UseMartialArtBookAsync(
@@ -139,7 +141,9 @@ public sealed class ItemUseService
             result.LearnedMartialArt,
             cultivationPreview,
             quantity,
-            1);
+            1,
+            null,
+            null);
     }
 
     private async Task<UseItemExecutionResult> UsePillRecipeBookAsync(
@@ -159,7 +163,9 @@ public sealed class ItemUseService
             null,
             null,
             quantity,
-            1);
+            1,
+            null,
+            null);
     }
 
     private async Task<UseItemExecutionResult> UseConsumableAsync(
@@ -173,6 +179,13 @@ public sealed class ItemUseService
             pillDefinition.UsageType != PillUsageType.ConsumeDirectly)
         {
             throw new GameException(MessageCode.ItemUseUnsupported);
+        }
+
+        var utcNow = DateTime.UtcNow;
+        if (pillDefinition.CooldownMs.GetValueOrDefault() > 0 &&
+            player.IsItemOnCooldown(itemDefinition.Id, utcNow, out _))
+        {
+            throw new GameException(MessageCode.ItemOnCooldown);
         }
 
         var currentSnapshot = player.RuntimeState.CaptureSnapshot();
@@ -198,6 +211,13 @@ public sealed class ItemUseService
         await _itemService.ConsumePlayerItemAsync(player.CharacterData.CharacterId, playerItemId, quantity, cancellationToken);
         var updatedSnapshot = _characterRuntimeService.ApplyResourceDelta(player, hpDelta, mpDelta, staminaDelta);
         await _characterService.UpdateCharacterCurrentStateAsync(updatedSnapshot.CurrentState, cancellationToken);
+        var cooldownMs = pillDefinition.CooldownMs.GetValueOrDefault();
+        DateTime? cooldownEndsAtUtc = null;
+        if (cooldownMs > 0)
+        {
+            cooldownEndsAtUtc = utcNow.AddMilliseconds(cooldownMs);
+            player.SetItemCooldown(itemDefinition.Id, cooldownEndsAtUtc.Value);
+        }
 
         var items = await _itemService.GetInventoryAsync(player.CharacterData.CharacterId, cancellationToken);
         return new UseItemExecutionResult(
@@ -207,7 +227,9 @@ public sealed class ItemUseService
             null,
             null,
             quantity,
-            quantity);
+            quantity,
+            cooldownMs > 0 ? cooldownMs : null,
+            cooldownEndsAtUtc);
     }
 
     private static int ResolveResourceDelta(PillEffectDefinition effect, int maxResource, int quantity)
@@ -257,4 +279,6 @@ public readonly record struct UseItemExecutionResult(
     PlayerMartialArtDto? LearnedMartialArt,
     CultivationPreviewDto? CultivationPreview,
     int RequestedQuantity,
-    int AppliedQuantity);
+    int AppliedQuantity,
+    int? CooldownMs,
+    DateTime? CooldownEndsAtUtc);

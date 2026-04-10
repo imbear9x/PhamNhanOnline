@@ -451,4 +451,224 @@ public partial class UseItemResultPacket : IPacket
     public CharacterCurrentStateModel? CurrentState { get; set; }
     public PlayerMartialArtModel? LearnedMartialArt { get; set; }
     public CultivationPreviewModel? CultivationPreview { get; set; }
+    public int? CooldownMs { get; set; }
+    public long? CooldownEndsUnixMs { get; set; }
+}
+
+[Packet(77)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
+public partial class GetLearnedPillRecipesPacket : IPacket
+{
+}
+
+[Packet(78)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class GetLearnedPillRecipesResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public List<LearnedPillRecipeModel>? Recipes { get; set; }
+}
+
+[Packet(79)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class GetPillRecipeDetailPacket : IPacket
+{
+    [ValidationCode(MessageCode.PillRecipeInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? PillRecipeTemplateId { get; set; }
+}
+
+[Packet(80)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class GetPillRecipeDetailResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public string? FailureReason { get; set; }
+    public PillRecipeDetailModel? Recipe { get; set; }
+}
+
+[Packet(81)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class PreviewCraftPillPacket : IPacket
+{
+    [ValidationCode(MessageCode.PillRecipeInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? PillRecipeTemplateId { get; set; }
+
+    public List<long>? SelectedPlayerItemIds { get; set; }
+    public List<int>? SelectedOptionalInputIds { get; set; }
+}
+
+[Packet(82)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class PreviewCraftPillResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public string? FailureReason { get; set; }
+    public AlchemyCraftPreviewModel? Preview { get; set; }
+}
+
+[Packet(83)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class CraftPillPacket : IPacket
+{
+    [ValidationCode(MessageCode.PillRecipeInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? PillRecipeTemplateId { get; set; }
+
+    public List<long>? SelectedPlayerItemIds { get; set; }
+    public List<int>? SelectedOptionalInputIds { get; set; }
+}
+
+[Packet(84)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class CraftPillResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public string? FailureReason { get; set; }
+    public int? PillRecipeTemplateId { get; set; }
+    public PracticeSessionModel? Session { get; set; }
+    public List<AlchemyConsumedItemModel>? ConsumedItems { get; set; }
+    public List<InventoryItemModel>? Items { get; set; }
+    public PillRecipeDetailModel? Recipe { get; set; }
+}
+
+[Packet(85)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class GetAlchemyPracticeStatusPacket : IPacket
+{
+}
+
+[Packet(86)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class GetAlchemyPracticeStatusResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public AlchemyPracticeStatusModel? Status { get; set; }
+}
+
+[Packet(87)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class PausePracticePacket : IPacket
+{
+    [ValidationCode(MessageCode.PracticeInvalid)]
+    [Required]
+    [Range(1, long.MaxValue)]
+    public long? PracticeSessionId { get; set; }
+}
+
+[Packet(88)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class PausePracticeResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public PracticeSessionModel? Session { get; set; }
+}
+
+[Packet(89)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class ResumePracticePacket : IPacket
+{
+    [ValidationCode(MessageCode.PracticeInvalid)]
+    [Required]
+    [Range(1, long.MaxValue)]
+    public long? PracticeSessionId { get; set; }
+}
+
+[Packet(90)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class ResumePracticeResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public PracticeSessionModel? Session { get; set; }
+}
+
+[Packet(91)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class CancelPracticePacket : IPacket
+{
+    [ValidationCode(MessageCode.PracticeInvalid)]
+    [Required]
+    [Range(1, long.MaxValue)]
+    public long? PracticeSessionId { get; set; }
+}
+
+[Packet(92)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class CancelPracticeResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+}
+
+[Packet(93)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class AcknowledgePracticeResultPacket : IPacket
+{
+    [ValidationCode(MessageCode.PracticeInvalid)]
+    [Required]
+    [Range(1, long.MaxValue)]
+    public long? PracticeSessionId { get; set; }
+}
+
+[Packet(94)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class AcknowledgePracticeResultResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+}
+
+[Packet(95)]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class PracticeCompletedPacket : IPacket
+{
+    public PracticeSessionModel? Session { get; set; }
+    public PracticeCompletionResultModel? Result { get; set; }
+}
+
+[Packet(96)]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class PlayerNotificationReceivedPacket : IPacket
+{
+    public PlayerNotificationModel? Notification { get; set; }
+}
+
+[Packet(97)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class AcknowledgePlayerNotificationPacket : IPacket
+{
+    [ValidationCode(MessageCode.NotificationInvalid)]
+    [Required]
+    [Range(1, long.MaxValue)]
+    public long? NotificationId { get; set; }
+}
+
+[Packet(98)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class AcknowledgePlayerNotificationResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public long? NotificationId { get; set; }
 }

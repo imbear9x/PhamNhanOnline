@@ -158,9 +158,12 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             var currentState = ClientRuntime.Character.CurrentState;
-            if (currentState.HasValue && currentState.Value.CurrentState == CharacterStateCultivating)
+            if (currentState.HasValue &&
+                (currentState.Value.CurrentState == CharacterStateCultivating ||
+                 currentState.Value.CurrentState == CharacterStatePracticing))
             {
-                _ = StopCultivationAsync();
+                if (currentState.Value.CurrentState == CharacterStateCultivating)
+                    _ = StopCultivationAsync();
                 return;
             }
 

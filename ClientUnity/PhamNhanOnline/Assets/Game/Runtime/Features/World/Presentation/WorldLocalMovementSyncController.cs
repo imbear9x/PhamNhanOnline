@@ -91,7 +91,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             var currentState = ClientRuntime.Character.CurrentState;
-            if (currentState.HasValue && currentState.Value.CurrentState == CultivatingStateCode)
+            if (currentState.HasValue &&
+                (currentState.Value.CurrentState == CultivatingStateCode ||
+                 currentState.Value.CurrentState == PracticingStateCode))
                 return;
 
             var playerTransform = localPlayerPresenter.CurrentPlayerTransform;
@@ -359,6 +361,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
 
         private const int CultivatingStateCode = 3;
+        private const int PracticingStateCode = 5;
     }
 }
 

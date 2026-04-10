@@ -236,6 +236,72 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.UseItemResultPacket:
                 id = 76;
                 return true;
+            case global::GameShared.Packets.GetLearnedPillRecipesPacket:
+                id = 77;
+                return true;
+            case global::GameShared.Packets.GetLearnedPillRecipesResultPacket:
+                id = 78;
+                return true;
+            case global::GameShared.Packets.GetPillRecipeDetailPacket:
+                id = 79;
+                return true;
+            case global::GameShared.Packets.GetPillRecipeDetailResultPacket:
+                id = 80;
+                return true;
+            case global::GameShared.Packets.PreviewCraftPillPacket:
+                id = 81;
+                return true;
+            case global::GameShared.Packets.PreviewCraftPillResultPacket:
+                id = 82;
+                return true;
+            case global::GameShared.Packets.CraftPillPacket:
+                id = 83;
+                return true;
+            case global::GameShared.Packets.CraftPillResultPacket:
+                id = 84;
+                return true;
+            case global::GameShared.Packets.GetAlchemyPracticeStatusPacket:
+                id = 85;
+                return true;
+            case global::GameShared.Packets.GetAlchemyPracticeStatusResultPacket:
+                id = 86;
+                return true;
+            case global::GameShared.Packets.PausePracticePacket:
+                id = 87;
+                return true;
+            case global::GameShared.Packets.PausePracticeResultPacket:
+                id = 88;
+                return true;
+            case global::GameShared.Packets.ResumePracticePacket:
+                id = 89;
+                return true;
+            case global::GameShared.Packets.ResumePracticeResultPacket:
+                id = 90;
+                return true;
+            case global::GameShared.Packets.CancelPracticePacket:
+                id = 91;
+                return true;
+            case global::GameShared.Packets.CancelPracticeResultPacket:
+                id = 92;
+                return true;
+            case global::GameShared.Packets.AcknowledgePracticeResultPacket:
+                id = 93;
+                return true;
+            case global::GameShared.Packets.AcknowledgePracticeResultResultPacket:
+                id = 94;
+                return true;
+            case global::GameShared.Packets.PracticeCompletedPacket:
+                id = 95;
+                return true;
+            case global::GameShared.Packets.PlayerNotificationReceivedPacket:
+                id = 96;
+                return true;
+            case global::GameShared.Packets.AcknowledgePlayerNotificationPacket:
+                id = 97;
+                return true;
+            case global::GameShared.Packets.AcknowledgePlayerNotificationResultPacket:
+                id = 98;
+                return true;
             default:
                 id = default;
                 return false;
@@ -322,6 +388,28 @@ internal static class PacketGeneratedRegistry
             74 => new global::GameShared.Packets.ReturnHomeAfterCombatDeathResultPacket(),
             75 => new global::GameShared.Packets.UseItemPacket(),
             76 => new global::GameShared.Packets.UseItemResultPacket(),
+            77 => new global::GameShared.Packets.GetLearnedPillRecipesPacket(),
+            78 => new global::GameShared.Packets.GetLearnedPillRecipesResultPacket(),
+            79 => new global::GameShared.Packets.GetPillRecipeDetailPacket(),
+            80 => new global::GameShared.Packets.GetPillRecipeDetailResultPacket(),
+            81 => new global::GameShared.Packets.PreviewCraftPillPacket(),
+            82 => new global::GameShared.Packets.PreviewCraftPillResultPacket(),
+            83 => new global::GameShared.Packets.CraftPillPacket(),
+            84 => new global::GameShared.Packets.CraftPillResultPacket(),
+            85 => new global::GameShared.Packets.GetAlchemyPracticeStatusPacket(),
+            86 => new global::GameShared.Packets.GetAlchemyPracticeStatusResultPacket(),
+            87 => new global::GameShared.Packets.PausePracticePacket(),
+            88 => new global::GameShared.Packets.PausePracticeResultPacket(),
+            89 => new global::GameShared.Packets.ResumePracticePacket(),
+            90 => new global::GameShared.Packets.ResumePracticeResultPacket(),
+            91 => new global::GameShared.Packets.CancelPracticePacket(),
+            92 => new global::GameShared.Packets.CancelPracticeResultPacket(),
+            93 => new global::GameShared.Packets.AcknowledgePracticeResultPacket(),
+            94 => new global::GameShared.Packets.AcknowledgePracticeResultResultPacket(),
+            95 => new global::GameShared.Packets.PracticeCompletedPacket(),
+            96 => new global::GameShared.Packets.PlayerNotificationReceivedPacket(),
+            97 => new global::GameShared.Packets.AcknowledgePlayerNotificationPacket(),
+            98 => new global::GameShared.Packets.AcknowledgePlayerNotificationResultPacket(),
             _ => null
         };
     }

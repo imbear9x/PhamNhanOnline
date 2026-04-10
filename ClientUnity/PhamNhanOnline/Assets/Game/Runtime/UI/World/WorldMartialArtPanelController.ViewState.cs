@@ -28,7 +28,9 @@ namespace PhamNhanOnline.Client.UI.World
             var visibleMartialArts = BuildVisibleMartialArtList(martialArtState.OwnedMartialArts, martialArtState.ActiveMartialArtId);
             var preview = martialArtState.CultivationPreview;
             var breakthroughAvailable = baseStats.HasValue && CanAttemptBreakthrough(baseStats.Value);
-            var isCultivating = currentState.HasValue && currentState.Value.CurrentState == CharacterStateCultivating;
+            var isCultivating = currentState.HasValue &&
+                                (currentState.Value.CurrentState == CharacterStateCultivating ||
+                                 currentState.Value.CurrentState == CharacterStatePracticing);
             var canChangeActive = CanChangeActiveMartialArt(currentState);
 
             if (activeMartialArt.HasValue)
@@ -207,7 +209,9 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             var currentState = ClientRuntime.IsInitialized ? ClientRuntime.Character.CurrentState : null;
-            var isCultivating = currentState.HasValue && currentState.Value.CurrentState == CharacterStateCultivating;
+            var isCultivating = currentState.HasValue &&
+                                (currentState.Value.CurrentState == CharacterStateCultivating ||
+                                 currentState.Value.CurrentState == CharacterStatePracticing);
             return isCultivating ? stopCultivationIdleText : startCultivationIdleText;
         }
 
@@ -229,7 +233,9 @@ namespace PhamNhanOnline.Client.UI.World
                 return "Nhan vat da dat nguong dot pha.";
 
             if (isCultivating)
-                return "Nhan vat dang tu luyen.";
+                return currentState.HasValue && currentState.Value.CurrentState == CharacterStatePracticing
+                    ? "Nhan vat dang luyen che."
+                    : "Nhan vat dang tu luyen.";
 
             if (!activeMartialArt.HasValue)
                 return noActiveMartialArtText;
@@ -274,6 +280,7 @@ namespace PhamNhanOnline.Client.UI.World
                 return false;
 
             if (currentState.Value.CurrentState == CharacterStateCultivating ||
+                currentState.Value.CurrentState == CharacterStatePracticing ||
                 currentState.Value.CurrentState == CharacterStateLifespanExpired)
             {
                 return false;

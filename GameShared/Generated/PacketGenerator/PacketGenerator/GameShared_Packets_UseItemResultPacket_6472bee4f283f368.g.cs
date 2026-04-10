@@ -88,6 +88,22 @@ public partial class UseItemResultPacket
         return HasCultivationPreview;
     }
 
+    public bool HasCooldownMs => (_mask & (1UL << 10)) != 0;
+
+    public bool TryGetCooldownMs(out int? value)
+    {
+        value = CooldownMs;
+        return HasCooldownMs;
+    }
+
+    public bool HasCooldownEndsUnixMs => (_mask & (1UL << 11)) != 0;
+
+    public bool TryGetCooldownEndsUnixMs(out long? value)
+    {
+        value = CooldownEndsUnixMs;
+        return HasCooldownEndsUnixMs;
+    }
+
     public void Serialize(BinaryWriter writer)
     {
         ulong mask = 0;
@@ -102,6 +118,8 @@ public partial class UseItemResultPacket
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterCurrentStateModel?>.Default.Equals(CurrentState, default!)) mask |= 1UL << 7;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.PlayerMartialArtModel?>.Default.Equals(LearnedMartialArt, default!)) mask |= 1UL << 8;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CultivationPreviewModel?>.Default.Equals(CultivationPreview, default!)) mask |= 1UL << 9;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(CooldownMs, default!)) mask |= 1UL << 10;
+        if (!global::System.Collections.Generic.EqualityComparer<long?>.Default.Equals(CooldownEndsUnixMs, default!)) mask |= 1UL << 11;
 
         writer.Write(mask);
 
@@ -125,6 +143,10 @@ public partial class UseItemResultPacket
             global::GameShared.Packets.PacketModelSerializer.Write(writer, LearnedMartialArt.Value);
         if ((mask & (1UL << 9)) != 0)
             global::GameShared.Packets.PacketModelSerializer.Write(writer, CultivationPreview.Value);
+        if ((mask & (1UL << 10)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, CooldownMs.Value);
+        if ((mask & (1UL << 11)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, CooldownEndsUnixMs.Value);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -151,5 +173,9 @@ public partial class UseItemResultPacket
             LearnedMartialArt = (global::GameShared.Models.PlayerMartialArtModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.PlayerMartialArtModel>(reader));
         if ((_mask & (1UL << 9)) != 0)
             CultivationPreview = (global::GameShared.Models.CultivationPreviewModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CultivationPreviewModel>(reader));
+        if ((_mask & (1UL << 10)) != 0)
+            CooldownMs = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 11)) != 0)
+            CooldownEndsUnixMs = (long?)(global::GameShared.Packets.PacketReader.ReadLong(reader));
     }
 }

@@ -319,7 +319,7 @@ public sealed class MapCatalog
         IReadOnlyDictionary<int, IReadOnlyList<MapZoneSlotEntity>> zoneSlotEntitiesByMap,
         IReadOnlyDictionary<int, SpiritualEnergyTemplateEntity> spiritualEnergyById)
     {
-        if (mapEntity.IsPrivatePerPlayer || !mapEntity.SupportsCavePlacement || mapEntity.MaxPublicZoneCount <= 0)
+        if (mapEntity.IsPrivatePerPlayer || mapEntity.MaxPublicZoneCount <= 0)
             return Array.Empty<MapZoneSlotDefinition>();
 
         zoneSlotEntitiesByMap.TryGetValue(mapEntity.Id, out var configuredSlots);

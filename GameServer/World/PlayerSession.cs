@@ -9,6 +9,7 @@ public sealed class PlayerSession
     private readonly object _sync = new();
     private readonly HashSet<Guid> _visibleCharacterIds = new();
     private readonly Dictionary<long, DateTime> _skillCooldownsByPlayerSkillId = new();
+    private readonly Dictionary<int, DateTime> _itemCooldownsByItemTemplateId = new();
     private int _lastReportedRemainingLifespan = int.MinValue;
     private bool _lifespanExpiredProcessed;
     private bool _characterActionsRestricted;
@@ -252,6 +253,32 @@ public sealed class PlayerSession
                 return;
 
             _activeSkillCast = null;
+        }
+    }
+
+    public void SetItemCooldown(int itemTemplateId, DateTime cooldownUntilUtc)
+    {
+        lock (_sync)
+        {
+            _itemCooldownsByItemTemplateId[itemTemplateId] = cooldownUntilUtc;
+        }
+    }
+
+    public bool IsItemOnCooldown(int itemTemplateId, DateTime utcNow, out DateTime cooldownUntilUtc)
+    {
+        lock (_sync)
+        {
+            if (!_itemCooldownsByItemTemplateId.TryGetValue(itemTemplateId, out cooldownUntilUtc))
+                return false;
+
+            if (utcNow >= cooldownUntilUtc)
+            {
+                _itemCooldownsByItemTemplateId.Remove(itemTemplateId);
+                cooldownUntilUtc = default;
+                return false;
+            }
+
+            return true;
         }
     }
 }

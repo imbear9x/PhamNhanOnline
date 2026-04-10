@@ -1,11 +1,13 @@
 using System;
 using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.Features.Alchemy.Application;
 using PhamNhanOnline.Client.Features.Combat.Application;
 using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.Features.Auth.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Inventory.Application;
 using PhamNhanOnline.Client.Features.MartialArts.Application;
+using PhamNhanOnline.Client.Features.Notifications.Application;
 using PhamNhanOnline.Client.Features.PresentationReplication.Application;
 using PhamNhanOnline.Client.Features.Skills.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
@@ -34,6 +36,10 @@ namespace PhamNhanOnline.Client.Core.Application
         public static ClientCombatDeathRecoveryService CombatDeathRecoveryService { get; private set; }
         public static ClientInventoryState Inventory { get; private set; }
         public static ClientInventoryService InventoryService { get; private set; }
+        public static ClientNotificationState Notifications { get; private set; }
+        public static ClientNotificationService NotificationService { get; private set; }
+        public static ClientAlchemyState Alchemy { get; private set; }
+        public static ClientAlchemyService AlchemyService { get; private set; }
         public static ClientMartialArtState MartialArts { get; private set; }
         public static ClientMartialArtService MartialArtService { get; private set; }
         public static ClientSkillState Skills { get; private set; }
@@ -69,6 +75,8 @@ namespace PhamNhanOnline.Client.Core.Application
             Auth = new ClientAuthState();
             Character = new ClientCharacterState();
             Inventory = new ClientInventoryState();
+            Notifications = new ClientNotificationState();
+            Alchemy = new ClientAlchemyState();
             MartialArts = new ClientMartialArtState();
             Skills = new ClientSkillState();
             Combat = new ClientCombatState();
@@ -82,6 +90,8 @@ namespace PhamNhanOnline.Client.Core.Application
             CombatDeathRecoveryService = new ClientCombatDeathRecoveryService(Connection, Character);
             ConnectionRecovery = new ClientConnectionRecoveryService(Connection, AuthService, Auth, CharacterService, Character, SceneFlow, settings);
             InventoryService = new ClientInventoryService(Connection, Character, Inventory);
+            NotificationService = new ClientNotificationService(Connection, Notifications);
+            AlchemyService = new ClientAlchemyService(Connection, Inventory, Alchemy);
             MartialArtService = new ClientMartialArtService(Connection, Character, MartialArts);
             SkillService = new ClientSkillService(Connection, Skills);
             CombatService = new ClientCombatService(Connection, Combat, Character);

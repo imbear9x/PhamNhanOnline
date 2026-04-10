@@ -53,9 +53,10 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
             return Task.CompletedTask;
         }
 
-        if (_cultivationService.IsCultivating(player))
+        if (_cultivationService.IsCultivating(player) ||
+            currentState == CharacterRuntimeStateCodes.Practicing)
         {
-            SendFailure(session, packet, MessageCode.CharacterCannotMoveWhileCultivating, null, null);
+            SendFailure(session, packet, MessageCode.PracticeAlreadyActive, null, null);
             return Task.CompletedTask;
         }
 

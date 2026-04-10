@@ -361,7 +361,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private bool IsCultivating()
         {
             var currentState = ClientRuntime.Character.CurrentState;
-            return currentState.HasValue && currentState.Value.CurrentState == CharacterRuntimeStateCodes.Cultivating;
+            return currentState.HasValue &&
+                   (currentState.Value.CurrentState == CharacterRuntimeStateCodes.Cultivating ||
+                    currentState.Value.CurrentState == CharacterRuntimeStateCodes.Practicing);
         }
 
         private void RefreshCurrentStateText(bool force)
@@ -463,7 +465,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             var currentState = ClientRuntime.Character.CurrentState;
-            if (currentState.HasValue && currentState.Value.CurrentState == CharacterRuntimeStateCodes.Cultivating)
+            if (currentState.HasValue &&
+                (currentState.Value.CurrentState == CharacterRuntimeStateCodes.Cultivating ||
+                 currentState.Value.CurrentState == CharacterRuntimeStateCodes.Practicing))
             {
                 var lastRewardedLabel = FormatUnixMs(currentState.Value.LastCultivationRewardedUnixMs);
                 cultivationRewardText.text = string.IsNullOrEmpty(lastRewardedLabel)
@@ -912,6 +916,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 CharacterRuntimeStateCodes.Dead => "Trong thuong",
                 CharacterRuntimeStateCodes.LifespanExpired => "Tho nguyen can",
                 CharacterRuntimeStateCodes.Cultivating => "Dang tu luyen",
+                CharacterRuntimeStateCodes.Practicing => "Dang luyen che",
                 _ => "Khong ro"
             };
         }
@@ -923,6 +928,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             public const int Dead = 1;
             public const int LifespanExpired = 2;
             public const int Cultivating = 3;
+            public const int Practicing = 5;
         }
     }
 }

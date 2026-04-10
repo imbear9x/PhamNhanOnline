@@ -392,7 +392,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var shouldBlock =
                 (currentState.HasValue &&
                  ClientCharacterRuntimeStateCodes.IsDefeated(currentState.Value)) ||
-                (currentState.HasValue && currentState.Value.CurrentState == CultivatingStateCode) ||
+                (currentState.HasValue &&
+                 (currentState.Value.CurrentState == CultivatingStateCode ||
+                  currentState.Value.CurrentState == PracticingStateCode)) ||
                 WorldMenuController.IsAnyMenuOpen ||
                 (ClientRuntime.ConnectionRecovery != null && ClientRuntime.ConnectionRecovery.ShouldBlockGameplayInput);
             localActionController.SetInputBlocked(shouldBlock);
@@ -422,6 +424,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
 
         private const int CultivatingStateCode = ClientCharacterRuntimeStateCodes.Cultivating;
+        private const int PracticingStateCode = ClientCharacterRuntimeStateCodes.Practicing;
     }
 }
 

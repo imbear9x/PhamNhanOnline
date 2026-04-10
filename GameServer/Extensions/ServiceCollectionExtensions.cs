@@ -4,6 +4,7 @@ using GameServer.Config;
 using GameServer.Database;
 using GameServer.Descriptions;
 using GameServer.Diagnostics;
+using GameServer.DTO;
 using GameServer.Network;
 using GameServer.Network.Handlers;
 using GameServer.Network.Interface;
@@ -41,6 +42,11 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<PillRecipeService>();
         services.AddScoped<AlchemyService>();
         services.AddScoped<HerbService>();
+        services.AddScoped<AlchemyModelBuilder>();
+        services.AddScoped<PlayerNotificationModelBuilder>();
+        services.AddSingleton<PracticeService>();
+        services.AddSingleton<AlchemyPracticeService>();
+        services.AddSingleton<PlayerNotificationService>();
 
         return services;
     }
@@ -101,6 +107,8 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<PillRecipeInputRepository>();
         services.AddScoped<PlayerPillRecipeRepository>();
         services.AddScoped<PillRecipeMasteryStageRepository>();
+        services.AddScoped<PlayerPracticeSessionRepository>();
+        services.AddScoped<PlayerNotificationRepository>();
         services.AddScoped<EnemyTemplateRepository>();
         services.AddScoped<EnemyTemplateSkillRepository>();
         services.AddScoped<EnemyRewardRuleRepository>();
@@ -198,6 +206,16 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<SetActiveMartialArtPacket>, SetActiveMartialArtHandler>();
         services.AddScoped<IPacketHandler<GetOwnedSkillsPacket>, GetOwnedSkillsHandler>();
         services.AddScoped<IPacketHandler<SetSkillLoadoutSlotPacket>, SetSkillLoadoutSlotHandler>();
+        services.AddScoped<IPacketHandler<GetLearnedPillRecipesPacket>, GetLearnedPillRecipesHandler>();
+        services.AddScoped<IPacketHandler<GetPillRecipeDetailPacket>, GetPillRecipeDetailHandler>();
+        services.AddScoped<IPacketHandler<PreviewCraftPillPacket>, PreviewCraftPillHandler>();
+        services.AddScoped<IPacketHandler<GetAlchemyPracticeStatusPacket>, GetAlchemyPracticeStatusHandler>();
+        services.AddScoped<IPacketHandler<CraftPillPacket>, CraftPillHandler>();
+        services.AddScoped<IPacketHandler<PausePracticePacket>, PausePracticeHandler>();
+        services.AddScoped<IPacketHandler<ResumePracticePacket>, ResumePracticeHandler>();
+        services.AddScoped<IPacketHandler<CancelPracticePacket>, CancelPracticeHandler>();
+        services.AddScoped<IPacketHandler<AcknowledgePracticeResultPacket>, AcknowledgePracticeResultHandler>();
+        services.AddScoped<IPacketHandler<AcknowledgePlayerNotificationPacket>, AcknowledgePlayerNotificationHandler>();
         services.AddScoped<IPacketHandler<AttackEnemyPacket>, AttackEnemyHandler>();
         services.AddScoped<IPacketHandler<PickupGroundRewardPacket>, PickupGroundRewardHandler>();
 

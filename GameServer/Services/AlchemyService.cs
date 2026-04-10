@@ -238,8 +238,19 @@ public sealed class AlchemyService
         IReadOnlyCollection<int>? selectedOptionalInputIds = null,
         CancellationToken cancellationToken = default)
     {
-        var validation = await ValidateCraftPillAsync(playerId, recipeId, Array.Empty<long>(), selectedOptionalInputIds, cancellationToken);
-        return validation.EffectiveSuccessRate;
+        if (!_definitions.TryGetPillRecipe(recipeId, out var recipe))
+            return 0d;
+
+        var learned = await _playerPillRecipes.GetByPlayerAndRecipeAsync(playerId, recipeId, cancellationToken);
+        if (learned is null)
+            return 0d;
+
+        var selectedOptionalIds = new HashSet<int>(selectedOptionalInputIds ?? Array.Empty<int>());
+        var appliedOptionalInputs = recipe.Inputs
+            .Where(x => x.IsOptional && selectedOptionalIds.Contains(x.Id))
+            .ToArray();
+        var masteryBonus = ResolveMasteryBonus(recipe, learned.TotalCraftCount, learned.CurrentSuccessRateBonus);
+        return ResolveEffectiveSuccessRate(recipe, masteryBonus, appliedOptionalInputs);
     }
 
     public async Task UpdateRecipeMasteryAsync(Guid playerId, int recipeId, CancellationToken cancellationToken = default)
@@ -252,6 +263,14 @@ public sealed class AlchemyService
         learned.CurrentSuccessRateBonus = ResolveMasteryBonus(recipe, learned.TotalCraftCount, learned.CurrentSuccessRateBonus);
         learned.UpdatedAt = DateTime.UtcNow;
         await _playerPillRecipes.UpdateAsync(learned, cancellationToken);
+    }
+
+    public double ResolveMasteryBonusForCurrentProgress(
+        PillRecipeTemplateDefinition recipe,
+        int totalCraftCount,
+        double fallbackCurrentBonus)
+    {
+        return ResolveMasteryBonus(recipe, totalCraftCount, fallbackCurrentBonus);
     }
 
     private string? TryAllocateInput(

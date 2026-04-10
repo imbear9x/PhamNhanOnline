@@ -17,6 +17,9 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
     private readonly CharacterLifecycleService _lifecycleService;
     private readonly CharacterCombatDeathRecoveryService _deathRecoveryService;
     private readonly CharacterCultivationService _cultivationService;
+    private readonly PracticeService _practiceService;
+    private readonly AlchemyPracticeService _alchemyPracticeService;
+    private readonly PlayerNotificationService _notificationService;
     private readonly WorldInterestService _interestService;
     private readonly MapManager _mapManager;
     private readonly INetworkSender _server;
@@ -29,6 +32,9 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
         CharacterLifecycleService lifecycleService,
         CharacterCombatDeathRecoveryService deathRecoveryService,
         CharacterCultivationService cultivationService,
+        PracticeService practiceService,
+        AlchemyPracticeService alchemyPracticeService,
+        PlayerNotificationService notificationService,
         WorldInterestService interestService,
         MapManager mapManager,
         INetworkSender server,
@@ -40,6 +46,9 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
         _lifecycleService = lifecycleService;
         _deathRecoveryService = deathRecoveryService;
         _cultivationService = cultivationService;
+        _practiceService = practiceService;
+        _alchemyPracticeService = alchemyPracticeService;
+        _notificationService = notificationService;
         _interestService = interestService;
         _mapManager = mapManager;
         _server = server;
@@ -66,6 +75,8 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
 
             var cultivationSettlement = await _cultivationService.SettleSnapshotAsync(data);
             data = cultivationSettlement.Snapshot;
+            await _alchemyPracticeService.EnsureDueSessionCompletedAsync(data.Character.CharacterId);
+            data = await _practiceService.AlignSnapshotStateAsync(data);
             data = await _lifecycleService.PrepareSnapshotForWorldEntryAsync(data);
             data = await _deathRecoveryService.RecoverSnapshotToHomeAsync(data);
             var isLifespanExpired = _lifecycleService.IsLifespanExpired(data.CurrentState);
@@ -99,6 +110,8 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
 
             if (cultivationSettlement.RewardEvent is not null)
                 _server.Send(session.ConnectionId, cultivationSettlement.RewardEvent.ToPacket());
+
+            await _notificationService.PushUnreadAsync(session);
 
             if (isLifespanExpired)
                 _lifecycleService.NotifyLifespanExpired(session.ConnectionId, data.Character.CharacterId);

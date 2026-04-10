@@ -92,7 +92,9 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
     public void Send(int connectionId, IPacket packet)
     {
         if (!_sessions.TryGetValue(connectionId, out var session))
+        {
             return;
+        }
 
         var profile = PacketTransportPolicy.Resolve(packet);
         var data = PacketSerializer.Serialize(packet);

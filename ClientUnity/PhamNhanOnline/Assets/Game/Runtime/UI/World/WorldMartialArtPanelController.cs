@@ -18,6 +18,7 @@ namespace PhamNhanOnline.Client.UI.World
         private const int CharacterStateIdle = 0;
         private const int CharacterStateLifespanExpired = 2;
         private const int CharacterStateCultivating = 3;
+        private const int CharacterStatePracticing = 5;
 
         private enum PanelActionKind
         {

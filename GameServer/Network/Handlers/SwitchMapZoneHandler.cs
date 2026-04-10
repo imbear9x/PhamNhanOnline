@@ -60,12 +60,13 @@ public sealed class SwitchMapZoneHandler : IPacketHandler<SwitchMapZonePacket>
             return Task.CompletedTask;
         }
 
-        if (_cultivationService.IsCultivating(player))
+        if (_cultivationService.IsCultivating(player) ||
+            currentState == CharacterRuntimeStateCodes.Practicing)
         {
             _server.Send(session.ConnectionId, new SwitchMapZoneResultPacket
             {
                 Success = false,
-                Code = MessageCode.CharacterCannotMoveWhileCultivating,
+                Code = MessageCode.PracticeAlreadyActive,
                 MapId = packet.MapId,
                 ZoneIndex = packet.TargetZoneIndex
             });
@@ -96,7 +97,7 @@ public sealed class SwitchMapZoneHandler : IPacketHandler<SwitchMapZonePacket>
             return Task.CompletedTask;
         }
 
-        if (player.MapId != definition.MapId || definition.IsPrivatePerPlayer || !definition.SupportsCavePlacement || definition.MaxPublicZoneCount <= 0)
+        if (player.MapId != definition.MapId || definition.IsPrivatePerPlayer || definition.MaxPublicZoneCount <= 0)
         {
             _server.Send(session.ConnectionId, new SwitchMapZoneResultPacket
             {

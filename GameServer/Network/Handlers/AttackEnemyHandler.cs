@@ -71,6 +71,18 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
         }
 
         var runtimeSnapshot = player.RuntimeState.CaptureSnapshot();
+        if (runtimeSnapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.Practicing)
+        {
+            _network.Send(session.ConnectionId, new AttackEnemyResultPacket
+            {
+                Success = false,
+                Code = MessageCode.PracticeAlreadyActive,
+                Target = packet.Target,
+                SkillSlotIndex = packet.SkillSlotIndex
+            });
+            return;
+        }
+
         if (player.IsStunned(utcNow))
         {
             _network.Send(session.ConnectionId, new AttackEnemyResultPacket

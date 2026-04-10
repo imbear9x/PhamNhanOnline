@@ -95,10 +95,10 @@ public sealed class PillRecipeService
         CancellationToken cancellationToken = default)
     {
         if (!_definitions.TryGetPillRecipe(recipeId, out var definition))
-            throw new InvalidOperationException($"Pill recipe {recipeId} was not found.");
+            throw new GameException(MessageCode.PillRecipeInvalid);
 
         var progress = await _playerPillRecipes.GetByPlayerAndRecipeAsync(playerId, recipeId, cancellationToken)
-                       ?? throw new InvalidOperationException($"Player {playerId} has not learned pill recipe {recipeId}.");
+                       ?? throw new GameException(MessageCode.PillRecipeNotLearned);
 
         return (definition, progress);
     }

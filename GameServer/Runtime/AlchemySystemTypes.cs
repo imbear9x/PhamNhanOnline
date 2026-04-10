@@ -100,6 +100,7 @@ public sealed record PillRecipeTemplateDefinition(
     int RecipeBookItemTemplateId,
     int ResultPillItemTemplateId,
     string? Description,
+    long CraftDurationSeconds,
     double BaseSuccessRate,
     double? SuccessRateCap,
     double MutationRate,

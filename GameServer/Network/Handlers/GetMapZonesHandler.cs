@@ -46,7 +46,7 @@ public sealed class GetMapZonesHandler : IPacketHandler<GetMapZonesPacket>
             return Task.CompletedTask;
         }
 
-        if (definition.IsPrivatePerPlayer || !definition.SupportsCavePlacement || definition.MaxPublicZoneCount <= 0)
+        if (definition.IsPrivatePerPlayer || definition.MaxPublicZoneCount <= 0)
         {
             _server.Send(session.ConnectionId, new GetMapZonesResultPacket
             {

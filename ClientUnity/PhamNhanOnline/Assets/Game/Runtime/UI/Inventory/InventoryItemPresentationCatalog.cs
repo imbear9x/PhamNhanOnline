@@ -97,6 +97,14 @@ namespace PhamNhanOnline.Client.UI.Inventory
             return new InventoryItemPresentation(iconSprite, backgroundSprite, nameColor);
         }
 
+        public InventoryItemPresentation Resolve(ItemTemplateSummaryModel item)
+        {
+            var iconSprite = ResolveIcon(item.ItemTemplateId, item.Icon);
+            var backgroundSprite = ResolveBackground(item.ItemTemplateId, item.BackgroundIcon, item.Rarity, item.ItemType);
+            var nameColor = ResolveNameColor(item.Rarity);
+            return new InventoryItemPresentation(iconSprite, backgroundSprite, nameColor);
+        }
+
         public static string GetRarityLabel(int rarity)
         {
             switch ((InventoryItemRarity)rarity)

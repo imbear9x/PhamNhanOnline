@@ -10,6 +10,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
         public const int LifespanExpired = 2;
         public const int Cultivating = 3;
         public const int Casting = 4;
+        public const int Practicing = 5;
 
         public static bool IsCombatDead(int currentState)
         {

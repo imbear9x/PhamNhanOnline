@@ -144,6 +144,7 @@ public sealed class AlchemyDefinitionCatalog
                 x.RecipeBookItemTemplateId,
                 x.ResultPillItemTemplateId,
                 x.Description,
+                x.CraftDurationSeconds,
                 x.BaseSuccessRate,
                 x.SuccessRateCap,
                 x.MutationRate,
