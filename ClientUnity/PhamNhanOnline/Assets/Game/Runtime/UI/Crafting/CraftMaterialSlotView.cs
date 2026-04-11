@@ -6,9 +6,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace PhamNhanOnline.Client.UI.Alchemy
+namespace PhamNhanOnline.Client.UI.Crafting
 {
-    public sealed class AlchemyIngredientSlotView : MonoBehaviour, IDropHandler, IPointerClickHandler
+    public sealed class CraftMaterialSlotView : MonoBehaviour, IDropHandler, IPointerClickHandler
     {
         [Header("References")]
         [SerializeField] private Image iconImage;
@@ -156,7 +156,7 @@ namespace PhamNhanOnline.Client.UI.Alchemy
         private void ThrowIfMissing(UnityEngine.Object value, string fieldName)
         {
             if (value == null)
-                throw new InvalidOperationException($"{nameof(AlchemyIngredientSlotView)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
+                throw new InvalidOperationException($"{nameof(CraftMaterialSlotView)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
         }
     }
 }

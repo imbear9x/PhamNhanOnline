@@ -1016,9 +1016,9 @@ RectTransform:
   - {fileID: 647338183}
   m_Father: {fileID: 709546065}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 808.62494, y: -50}
   m_SizeDelta: {x: 162.45, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &37499202
@@ -4479,7 +4479,11 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 698110091}
+  - {fileID: 1116430123}
+  - {fileID: 1484887972}
+  - {fileID: 1505556474}
   m_Father: {fileID: 1039783701}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -7211,9 +7215,9 @@ RectTransform:
   - {fileID: 697924563}
   m_Father: {fileID: 709546065}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 626.77496, y: -50}
   m_SizeDelta: {x: 162.45, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &367681515
@@ -11547,13 +11551,14 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 643619683}
+  - component: {fileID: 643619684}
   m_Layer: 0
   m_Name: ' WorldMenuPanel'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &643619683
 RectTransform:
   m_ObjectHideFlags: 0
@@ -11573,7 +11578,6 @@ RectTransform:
   - {fileID: 545932735}
   - {fileID: 2071865517}
   - {fileID: 892916372}
-  - {fileID: 940380345}
   - {fileID: 1065213223}
   m_Father: {fileID: 1125274567}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -11582,6 +11586,55 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &643619684
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 643619682}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11cc50b7e49d4146a6e4cc0fe7cb2b59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  panelRoot: {fileID: 643619682}
+  closeButton: {fileID: 1686595755}
+  dimmerButton: {fileID: 1686595755}
+  titleText: {fileID: 159823227}
+  defaultTabId: inventory
+  tabs:
+  - tabId: inventory
+    title: "Kho \u0110\u1ED3"
+    button: {fileID: 885678956}
+    contentRoot: {fileID: 263533381}
+    contentText: {fileID: 0}
+  - tabId: skill
+    title: "K\u1EF9 N\u0103ng"
+    button: {fileID: 367681517}
+    contentRoot: {fileID: 892916371}
+    contentText: {fileID: 0}
+  - tabId: GongPhap
+    title: "C\xF4ng Ph\xE1o"
+    button: {fileID: 676568616}
+    contentRoot: {fileID: 2071865516}
+    contentText: {fileID: 0}
+  - tabId: StatsPanel
+    title: "Ch\u1EC9 S\u1ED1"
+    button: {fileID: 1930198751}
+    contentRoot: {fileID: 545932734}
+    contentText: {fileID: 0}
+  - tabId: "Khu v\u1EF1c"
+    title: "Khu v\u1EF1c"
+    button: {fileID: 2084414448}
+    contentRoot: {fileID: 1065213222}
+    contentText: {fileID: 0}
+  - tabId: Craff
+    title: "Luy\u1EC7n Ch\u1EBF"
+    button: {fileID: 37499202}
+    contentRoot: {fileID: 940380344}
+    contentText: {fileID: 0}
+  closeKey: 27
 --- !u!1 &647338182
 GameObject:
   m_ObjectHideFlags: 0
@@ -12334,9 +12387,9 @@ RectTransform:
   - {fileID: 9866078}
   m_Father: {fileID: 709546065}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 444.925, y: -50}
   m_SizeDelta: {x: 162.45, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &676568614
@@ -13298,7 +13351,7 @@ RectTransform:
   - {fileID: 46310952}
   - {fileID: 256927049}
   - {fileID: 1537487372}
-  m_Father: {fileID: 1014835117}
+  m_Father: {fileID: 242163324}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -14808,7 +14861,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 769176872}
-  - component: {fileID: 769176873}
   m_Layer: 0
   m_Name: SkillPanelRoot
   m_TagString: Untagged
@@ -14838,31 +14890,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &769176873
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 769176871}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 65edb8112aaa9a746b0470b83fff02b3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ownedCountText: {fileID: 1090481598}
-  statusText: {fileID: 1179261103}
-  presentationCatalog: {fileID: 11400000, guid: 1001e3abd232f134b9f135f08e0b97ca, type: 2}
-  skillListView: {fileID: 477479036}
-  loadoutSlotsView: {fileID: 762233358}
-  autoLoadMissingSkills: 1
-  reloadRetryCooldownSeconds: 2
-  missingOwnedCountText: 'Skill: 0'
-  loadingOwnedCountText: Dang tai skill...
-  missingStatusText: Chua tai danh sach skill.
-  emptySkillListText: Chua so huu skill nao.
-  emptyLoadoutText: Keo skill vao o de trang bi.
-  actionInFlightText: Dang cap nhat skill...
 --- !u!1 &769799971
 GameObject:
   m_ObjectHideFlags: 0
@@ -17246,9 +17273,9 @@ RectTransform:
   - {fileID: 381521263}
   m_Father: {fileID: 709546065}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 81.225, y: -50}
   m_SizeDelta: {x: 162.45, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &885678954
@@ -17419,6 +17446,7 @@ GameObject:
   - component: {fileID: 892916372}
   - component: {fileID: 892916374}
   - component: {fileID: 892916373}
+  - component: {fileID: 892916375}
   m_Layer: 0
   m_Name: SkillPanel
   m_TagString: Untagged
@@ -17484,6 +17512,31 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 892916371}
   m_CullTransparentMesh: 1
+--- !u!114 &892916375
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 892916371}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 65edb8112aaa9a746b0470b83fff02b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ownedCountText: {fileID: 1090481598}
+  statusText: {fileID: 1179261103}
+  presentationCatalog: {fileID: 11400000, guid: 1001e3abd232f134b9f135f08e0b97ca, type: 2}
+  skillListView: {fileID: 477479036}
+  loadoutSlotsView: {fileID: 762233358}
+  autoLoadMissingSkills: 1
+  reloadRetryCooldownSeconds: 2
+  missingOwnedCountText: 'Skill: 0'
+  loadingOwnedCountText: Dang tai skill...
+  missingStatusText: Chua tai danh sach skill.
+  emptySkillListText: Chua so huu skill nao.
+  emptyLoadoutText: Keo skill vao o de trang bi.
+  actionInFlightText: Dang cap nhat skill...
 --- !u!1 &894198982
 GameObject:
   m_ObjectHideFlags: 0
@@ -18621,7 +18674,7 @@ GameObject:
   - component: {fileID: 940380347}
   - component: {fileID: 940380346}
   m_Layer: 0
-  m_Name: ' AlchemyPanel'
+  m_Name: ' WorldCraffPanel'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -18634,7 +18687,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 940380344}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -18644,12 +18697,12 @@ RectTransform:
   - {fileID: 1719222774}
   - {fileID: 1685466472}
   - {fileID: 1716842230}
-  m_Father: {fileID: 643619683}
+  m_Father: {fileID: 1125274567}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -100}
-  m_SizeDelta: {x: -500, y: -400}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &940380346
 MonoBehaviour:
@@ -18690,6 +18743,9 @@ MonoBehaviour:
   countdownText: {fileID: 2002710842}
   autoLoadOnEnable: 1
   clearDraftWhenClosedWithoutPractice: 1
+  detachFromMainMenuOnAwake: 1
+  hideOnAwake: 1
+  closeKey: 27
   loadingRecipesText: Dang tai dan phuong...
   missingRecipesText: Chua tai danh sach dan phuong.
   emptyRecipesText: Chua hoc dan phuong nao.
@@ -18714,15 +18770,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 21300000, guid: 4f033cdd2b09f9a43b139729d09d002c, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -19305,7 +19361,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 7092324b93851a14c858530cca4a6b26, type: 3}
+  m_Sprite: {fileID: 21300000, guid: e142750757a2c514191c01176c7c26d2, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -19514,45 +19570,6 @@ MonoBehaviour:
   contentRoot: {fileID: 1012725804}
   itemTemplate: {fileID: 1041597106}
   hideTemplateObject: 1
---- !u!1 &1014835116
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1014835117}
-  m_Layer: 0
-  m_Name: Tooltip_PopupRoot
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1014835117
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1014835116}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 698110091}
-  - {fileID: 1116430123}
-  - {fileID: 1484887972}
-  - {fileID: 1505556474}
-  m_Father: {fileID: 1125274567}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1015584323
 GameObject:
   m_ObjectHideFlags: 0
@@ -21117,7 +21134,7 @@ RectTransform:
   - {fileID: 13697756}
   - {fileID: 1979270131}
   - {fileID: 1389450816}
-  m_Father: {fileID: 1014835117}
+  m_Father: {fileID: 242163324}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -21409,7 +21426,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 643619683}
-  - {fileID: 1014835117}
+  - {fileID: 940380345}
   m_Father: {fileID: 264287796}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -23105,8 +23122,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1200508312}
   - component: {fileID: 1200508313}
-  - component: {fileID: 1200508314}
   - component: {fileID: 1200508315}
+  - component: {fileID: 1200508316}
   m_Layer: 0
   m_Name: WorldUiRoot
   m_TagString: Untagged
@@ -23167,57 +23184,6 @@ MonoBehaviour:
     priority: 2
   - kind: 1
     priority: 3
---- !u!114 &1200508314
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1200508311}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 11cc50b7e49d4146a6e4cc0fe7cb2b59, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  panelRoot: {fileID: 643619682}
-  menuButton: {fileID: 982059060}
-  menuButtonText: {fileID: 0}
-  closeButton: {fileID: 1686595755}
-  dimmerButton: {fileID: 1686595755}
-  titleText: {fileID: 159823227}
-  defaultTabId: inventory
-  tabs:
-  - tabId: inventory
-    title: "Kho \u0110\u1ED3"
-    button: {fileID: 885678956}
-    contentRoot: {fileID: 263533381}
-    contentText: {fileID: 0}
-  - tabId: skill
-    title: "K\u1EF9 N\u0103ng"
-    button: {fileID: 367681517}
-    contentRoot: {fileID: 892916371}
-    contentText: {fileID: 0}
-  - tabId: GongPhap
-    title: "C\xF4ng Ph\xE1o"
-    button: {fileID: 676568616}
-    contentRoot: {fileID: 2071865516}
-    contentText: {fileID: 0}
-  - tabId: StatsPanel
-    title: "Ch\u1EC9 S\u1ED1"
-    button: {fileID: 1930198751}
-    contentRoot: {fileID: 545932734}
-    contentText: {fileID: 0}
-  - tabId: "Khu v\u1EF1c"
-    title: "Khu v\u1EF1c"
-    button: {fileID: 2084414448}
-    contentRoot: {fileID: 1065213222}
-    contentText: {fileID: 0}
-  - tabId: Craff
-    title: "Luy\u1EC7n Ch\u1EBF"
-    button: {fileID: 37499202}
-    contentRoot: {fileID: 940380344}
-    contentText: {fileID: 0}
-  closeKey: 27
 --- !u!114 &1200508315
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -23231,8 +23197,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   panelView: {fileID: 318101143}
-  worldMenuController: {fileID: 1200508314}
   actionInProgressText: Dang tro ve dong phu...
+--- !u!114 &1200508316
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1200508311}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edf5610bf84641f1bf9702d29a336cb2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  worldMenuController: {fileID: 643619684}
+  worldCraftingPanelController: {fileID: 940380346}
 --- !u!1 &1204762400
 GameObject:
   m_ObjectHideFlags: 0
@@ -24086,6 +24065,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1241527032}
   - component: {fileID: 1241527034}
+  - component: {fileID: 1241527035}
   m_Layer: 0
   m_Name: PersistentHud
   m_TagString: Untagged
@@ -24123,6 +24103,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1241527031}
   m_CullTransparentMesh: 1
+--- !u!114 &1241527035
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1241527031}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cfc8dc10694095547a3eb962d0a64063, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  quickMenuOpenButton: {fileID: 982059060}
+  quickMenuOpenButtonText: {fileID: 0}
+  menuClosedLabel: Menu
+  menuOpenLabel: Dong
 --- !u!1 &1245989731
 GameObject:
   m_ObjectHideFlags: 0
@@ -28227,7 +28223,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 768651890}
-  m_Father: {fileID: 1014835117}
+  m_Father: {fileID: 242163324}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -28361,7 +28357,7 @@ RectTransform:
   m_Children:
   - {fileID: 1878136139}
   - {fileID: 350121670}
-  m_Father: {fileID: 1014835117}
+  m_Father: {fileID: 242163324}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
@@ -32103,7 +32099,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1730135807}
-  - component: {fileID: 1730135808}
   m_Layer: 0
   m_Name: GongPhapRoot
   m_TagString: Untagged
@@ -32133,46 +32128,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1730135808
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1730135806}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41762406a9c6ef048b1a8afe15dbc1b6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ownedCountText: {fileID: 373521597}
-  statusText: {fileID: 263962124}
-  presentationCatalog: {fileID: 11400000, guid: 7dd431ffe9996914588a2dead8dd9b5f, type: 2}
-  activeMartialArtSlotView: {fileID: 1328543900}
-  martialArtListView: {fileID: 31821545}
-  estimateRoot: {fileID: 1699691290}
-  cultivationProgressFillImage: {fileID: 15693186}
-  cultivationProgressText: {fileID: 1400147313}
-  estimateText: {fileID: 1699691292}
-  estimateDetailText: {fileID: 1717337388}
-  startCultivationButton: {fileID: 212593962}
-  startCultivationButtonText: {fileID: 476440481}
-  breakthroughRoot: {fileID: 946690802}
-  breakthroughChanceText: {fileID: 681767511}
-  breakthroughButton: {fileID: 944099808}
-  breakthroughButtonText: {fileID: 778612610}
-  autoLoadMissingCharacterData: 1
-  autoLoadMissingMartialArts: 1
-  reloadRetryCooldownSeconds: 2
-  missingOwnedCountText: 'Cong phap: 0'
-  loadingOwnedCountText: Dang tai cong phap...
-  missingStatusText: Chua tai danh sach cong phap.
-  noActiveMartialArtText: Keo 1 cong phap da hoc vao o chu tu de xem uoc tinh.
-  startCultivationIdleText: Tu luyen
-  stopCultivationIdleText: Dung tu luyen
-  cultivationActionInFlightText: Dang gui...
-  breakthroughIdleText: Dot pha
-  breakthroughInFlightText: Dang dot pha...
 --- !u!1 &1730262546
 GameObject:
   m_ObjectHideFlags: 0
@@ -34248,9 +34203,9 @@ RectTransform:
   - {fileID: 493891765}
   m_Father: {fileID: 709546065}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 263.07498, y: -50}
   m_SizeDelta: {x: 162.45, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1930198751
@@ -36772,6 +36727,7 @@ GameObject:
   - component: {fileID: 2071865517}
   - component: {fileID: 2071865519}
   - component: {fileID: 2071865518}
+  - component: {fileID: 2071865520}
   m_Layer: 0
   m_Name: GongPhapPanel
   m_TagString: Untagged
@@ -36837,6 +36793,46 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2071865516}
   m_CullTransparentMesh: 1
+--- !u!114 &2071865520
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2071865516}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41762406a9c6ef048b1a8afe15dbc1b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ownedCountText: {fileID: 373521597}
+  statusText: {fileID: 263962124}
+  presentationCatalog: {fileID: 11400000, guid: 7dd431ffe9996914588a2dead8dd9b5f, type: 2}
+  activeMartialArtSlotView: {fileID: 1328543900}
+  martialArtListView: {fileID: 31821545}
+  estimateRoot: {fileID: 1699691290}
+  cultivationProgressFillImage: {fileID: 15693186}
+  cultivationProgressText: {fileID: 1400147313}
+  estimateText: {fileID: 1699691292}
+  estimateDetailText: {fileID: 1717337388}
+  startCultivationButton: {fileID: 212593962}
+  startCultivationButtonText: {fileID: 476440481}
+  breakthroughRoot: {fileID: 946690802}
+  breakthroughChanceText: {fileID: 681767511}
+  breakthroughButton: {fileID: 944099808}
+  breakthroughButtonText: {fileID: 778612610}
+  autoLoadMissingCharacterData: 1
+  autoLoadMissingMartialArts: 1
+  reloadRetryCooldownSeconds: 2
+  missingOwnedCountText: 'Cong phap: 0'
+  loadingOwnedCountText: Dang tai cong phap...
+  missingStatusText: Chua tai danh sach cong phap.
+  noActiveMartialArtText: Keo 1 cong phap da hoc vao o chu tu de xem uoc tinh.
+  startCultivationIdleText: Tu luyen
+  stopCultivationIdleText: Dung tu luyen
+  cultivationActionInFlightText: Dang gui...
+  breakthroughIdleText: Dot pha
+  breakthroughInFlightText: Dang dot pha...
 --- !u!1 &2083482051
 GameObject:
   m_ObjectHideFlags: 0
@@ -37005,9 +37001,9 @@ RectTransform:
   - {fileID: 19301176}
   m_Father: {fileID: 709546065}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 990.4749, y: -50}
   m_SizeDelta: {x: 162.45, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2084414448

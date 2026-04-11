@@ -6,9 +6,9 @@ using TMPro;
 using UnityEngine;
 using PhamNhanOnline.Client.UI.World;
 
-namespace PhamNhanOnline.Client.UI.Alchemy
+namespace PhamNhanOnline.Client.UI.Crafting
 {
-    public sealed class AlchemyRecipeTooltipView : MonoBehaviour
+    public sealed class CraftRecipeTooltipView : MonoBehaviour
     {
         [Header("References")]
         [SerializeField] private GameObject panelRoot;
@@ -210,14 +210,14 @@ namespace PhamNhanOnline.Client.UI.Alchemy
             ThrowIfMissing(metaText, nameof(metaText));
             ThrowIfMissing(ingredientsText, nameof(ingredientsText));
 
-            if (panelRoot.GetComponent<WorldAlchemyPanelController>() != null)
-                throw new InvalidOperationException($"{nameof(AlchemyRecipeTooltipView)} on '{gameObject.name}' must use its own tooltip root, not the alchemy panel root.");
+            if (panelRoot.GetComponent<WorldCraftingPanelController>() != null)
+                throw new InvalidOperationException($"{nameof(CraftRecipeTooltipView)} on '{gameObject.name}' must use its own tooltip root, not the crafting panel root.");
         }
 
         private void ThrowIfMissing(UnityEngine.Object value, string fieldName)
         {
             if (value == null)
-                throw new InvalidOperationException($"{nameof(AlchemyRecipeTooltipView)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
+                throw new InvalidOperationException($"{nameof(CraftRecipeTooltipView)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
         }
     }
 }

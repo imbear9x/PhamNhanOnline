@@ -6,18 +6,18 @@ using PhamNhanOnline.Client.UI.Inventory;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace PhamNhanOnline.Client.UI.Alchemy
+namespace PhamNhanOnline.Client.UI.Crafting
 {
-    public sealed class AlchemyRecipeListView : MonoBehaviour, IDropHandler
+    public sealed class CraftRecipeListView : MonoBehaviour, IDropHandler
     {
         [Header("References")]
         [SerializeField] private Transform contentRoot;
-        [SerializeField] private AlchemyRecipeListItemView itemTemplate;
+        [SerializeField] private CraftRecipeListItemView itemTemplate;
 
         [Header("Behavior")]
         [SerializeField] private bool hideTemplateObject = true;
 
-        private readonly List<AlchemyRecipeListItemView> spawnedItems = new List<AlchemyRecipeListItemView>(8);
+        private readonly List<CraftRecipeListItemView> spawnedItems = new List<CraftRecipeListItemView>(8);
         private string lastSnapshot = string.Empty;
         private int lastItemCount = -1;
         private int? selectedRecipeId;
@@ -106,7 +106,7 @@ namespace PhamNhanOnline.Client.UI.Alchemy
         public void OnDrop(PointerEventData eventData)
         {
             var slotView = eventData.pointerDrag != null
-                ? eventData.pointerDrag.GetComponentInParent<AlchemyRecipeSlotView>()
+                ? eventData.pointerDrag.GetComponentInParent<CraftRecipeSlotView>()
                 : null;
             if (slotView == null || !slotView.HasRecipe)
                 return;
@@ -121,7 +121,7 @@ namespace PhamNhanOnline.Client.UI.Alchemy
 
             if (itemTemplate == null)
             {
-                Debug.LogWarning("AlchemyRecipeListView is missing itemTemplate.");
+                Debug.LogWarning("CraftRecipeListView is missing itemTemplate.");
                 return;
             }
 
@@ -152,7 +152,7 @@ namespace PhamNhanOnline.Client.UI.Alchemy
             }
         }
 
-        private void HandleItemClicked(AlchemyRecipeListItemView itemView)
+        private void HandleItemClicked(CraftRecipeListItemView itemView)
         {
             if (itemView == null || !itemView.HasRecipe)
                 return;
@@ -160,7 +160,7 @@ namespace PhamNhanOnline.Client.UI.Alchemy
             ItemClicked?.Invoke(itemView.Recipe);
         }
 
-        private void HandleItemHovered(AlchemyRecipeListItemView itemView)
+        private void HandleItemHovered(CraftRecipeListItemView itemView)
         {
             if (itemView == null || !itemView.HasRecipe)
                 return;
@@ -168,7 +168,7 @@ namespace PhamNhanOnline.Client.UI.Alchemy
             ItemHovered?.Invoke(itemView.Recipe);
         }
 
-        private void HandleItemHoverExited(AlchemyRecipeListItemView itemView)
+        private void HandleItemHoverExited(CraftRecipeListItemView itemView)
         {
             ItemHoverExited?.Invoke();
         }

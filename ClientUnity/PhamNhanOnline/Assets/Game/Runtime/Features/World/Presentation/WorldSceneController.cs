@@ -121,6 +121,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return RequestPrimaryTargetAction(currentTarget.Value);
         }
 
+        public WorldTargetActionController TryResolveWorldTargetActionController()
+        {
+            return EnsureWorldTargetActionController();
+        }
+
         private void Update()
         {
             if (!ClientRuntime.IsInitialized)
@@ -217,6 +222,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return presenter;
         }
 
+
         private void AutoWireReferences()
         {
             if (worldMapPresenter == null)
@@ -276,5 +282,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (Instance == this)
                 Instance = null;
         }
+
     }
 }

@@ -9,7 +9,6 @@ namespace PhamNhanOnline.Client.UI.World
     {
         [Header("View")]
         [SerializeField] private CombatDeadPanelView panelView;
-        [SerializeField] private WorldMenuController worldMenuController;
 
         [Header("Status Text")]
         [SerializeField] private string actionInProgressText = "Dang tro ve dong phu...";
@@ -111,8 +110,8 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (isCombatDead)
             {
-                if (worldMenuController != null)
-                    worldMenuController.HideMenu();
+                if (WorldUiController.Instance != null)
+                    WorldUiController.Instance.HideMenuIfVisible();
 
                 panelView.Show();
                 panelView.SetBusy(actionInFlight);

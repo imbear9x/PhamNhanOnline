@@ -3,22 +3,22 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace PhamNhanOnline.Client.UI.Alchemy
+namespace PhamNhanOnline.Client.UI.Crafting
 {
-    public sealed class AlchemyRecipeDragGhost
+    public sealed class CraftRecipeDragGhost
     {
         private readonly RectTransform rootRect;
         private readonly RectTransform canvasRect;
         private readonly GameObject rootObject;
 
-        private AlchemyRecipeDragGhost(GameObject rootObject, RectTransform rootRect, RectTransform canvasRect)
+        private CraftRecipeDragGhost(GameObject rootObject, RectTransform rootRect, RectTransform canvasRect)
         {
             this.rootObject = rootObject;
             this.rootRect = rootRect;
             this.canvasRect = canvasRect;
         }
 
-        public static AlchemyRecipeDragGhost Create(Transform source, Sprite iconSprite, string label, PointerEventData eventData)
+        public static CraftRecipeDragGhost Create(Transform source, Sprite iconSprite, string label, PointerEventData eventData)
         {
             if (source == null)
                 return null;
@@ -28,7 +28,7 @@ namespace PhamNhanOnline.Client.UI.Alchemy
                 return null;
 
             var rootCanvas = canvas.rootCanvas;
-            var rootObject = new GameObject("AlchemyRecipeDragGhost", typeof(RectTransform), typeof(CanvasGroup));
+            var rootObject = new GameObject("CraftRecipeDragGhost", typeof(RectTransform), typeof(CanvasGroup));
             var rootRect = rootObject.GetComponent<RectTransform>();
             rootRect.SetParent(rootCanvas.transform, false);
             rootRect.SetAsLastSibling();
@@ -82,7 +82,7 @@ namespace PhamNhanOnline.Client.UI.Alchemy
             labelText.enableWordWrapping = true;
             labelText.overflowMode = TextOverflowModes.Ellipsis;
 
-            var ghost = new AlchemyRecipeDragGhost(rootObject, rootRect, rootCanvas.transform as RectTransform);
+            var ghost = new CraftRecipeDragGhost(rootObject, rootRect, rootCanvas.transform as RectTransform);
             ghost.UpdatePosition(eventData);
             return ghost;
         }

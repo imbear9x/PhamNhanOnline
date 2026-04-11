@@ -395,7 +395,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 (currentState.HasValue &&
                  (currentState.Value.CurrentState == CultivatingStateCode ||
                   currentState.Value.CurrentState == PracticingStateCode)) ||
-                WorldMenuController.IsAnyMenuOpen ||
+                WorldUiController.IsAnyMenuOpen ||
                 (ClientRuntime.ConnectionRecovery != null && ClientRuntime.ConnectionRecovery.ShouldBlockGameplayInput);
             localActionController.SetInputBlocked(shouldBlock);
         }

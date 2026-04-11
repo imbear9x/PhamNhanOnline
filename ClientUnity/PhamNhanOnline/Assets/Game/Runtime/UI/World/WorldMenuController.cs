@@ -40,9 +40,6 @@ namespace PhamNhanOnline.Client.UI.World
         [Header("Screen Roots")]
         [SerializeField] private GameObject panelRoot;
 
-        [Header("Buttons")]
-        [SerializeField] private Button menuButton;
-        [SerializeField] private TMP_Text menuButtonText;
         [SerializeField] private Button closeButton;
         [SerializeField] private Button dimmerButton;
 
@@ -57,8 +54,8 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private KeyCode closeKey = KeyCode.Escape;
 
         private bool isRegistered;
+        private bool isInitialized;
         private string activeTabId = string.Empty;
-
         public static bool IsAnyMenuOpen
         {
             get
@@ -78,16 +75,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void Awake()
         {
-            activeInstance = this;
-            if (panelRoot == null)
-                panelRoot = gameObject;
-
-            WireUi();
-            RefreshAllTabContent();
-
-            activeTabId = ResolveInitialTabId();
-            ApplyTabSelection(activeTabId);
-            SetMenuVisible(false);
+            EnsureInitialized(hideAfterInitialize: true);
         }
 
         private void Start()
@@ -112,9 +100,6 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void OnDestroy()
         {
-            if (menuButton != null)
-                menuButton.onClick.RemoveListener(ToggleMenu);
-
             if (closeButton != null)
                 closeButton.onClick.RemoveListener(HideMenu);
 
@@ -140,21 +125,25 @@ namespace PhamNhanOnline.Client.UI.World
 
         public void ToggleMenu()
         {
+            EnsureInitialized(hideAfterInitialize: false);
             SetMenuVisible(!IsMenuVisible);
         }
 
         public void ShowMenu()
         {
+            EnsureInitialized(hideAfterInitialize: false);
             SetMenuVisible(true);
         }
 
         public void HideMenu()
         {
+            EnsureInitialized(hideAfterInitialize: false);
             SetMenuVisible(false);
         }
 
         public void ShowTab(string tabId)
         {
+            EnsureInitialized(hideAfterInitialize: false);
             if (string.IsNullOrWhiteSpace(tabId))
                 return;
 
@@ -182,12 +171,6 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void WireUi()
         {
-            if (menuButton != null)
-            {
-                menuButton.onClick.RemoveListener(ToggleMenu);
-                menuButton.onClick.AddListener(ToggleMenu);
-            }
-
             if (closeButton != null)
             {
                 closeButton.onClick.RemoveListener(HideMenu);
@@ -210,6 +193,29 @@ namespace PhamNhanOnline.Client.UI.World
                 tab.Button.onClick.RemoveAllListeners();
                 tab.Button.onClick.AddListener(delegate { ShowTab(capturedTabId); });
             }
+        }
+
+        private void EnsureInitialized(bool hideAfterInitialize)
+        {
+            if (isInitialized)
+            {
+                activeInstance = this;
+                return;
+            }
+
+            activeInstance = this;
+            if (panelRoot == null)
+                panelRoot = gameObject;
+
+            WireUi();
+            RefreshAllTabContent();
+
+            activeTabId = ResolveInitialTabId();
+            ApplyTabSelection(activeTabId);
+            isInitialized = true;
+
+            if (hideAfterInitialize)
+                SetMenuVisible(false);
         }
 
         private void TryRegisterScreen()
@@ -267,16 +273,6 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (visible)
                 RefreshAllTabContent();
-
-            UpdateMenuButtonLabel();
-        }
-
-        private void UpdateMenuButtonLabel()
-        {
-            if (menuButtonText == null)
-                return;
-
-            menuButtonText.text = IsMenuVisible ? "Dong" : "Menu";
         }
 
         private void RefreshAllTabContent()
@@ -423,5 +419,6 @@ namespace PhamNhanOnline.Client.UI.World
 
             return QuestTabId;
         }
+
     }
 }

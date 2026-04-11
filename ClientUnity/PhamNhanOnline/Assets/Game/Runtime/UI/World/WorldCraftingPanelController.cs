@@ -8,7 +8,7 @@ using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Network.Session;
-using PhamNhanOnline.Client.UI.Alchemy;
+using PhamNhanOnline.Client.UI.Crafting;
 using PhamNhanOnline.Client.UI.Inventory;
 using TMPro;
 using UnityEngine;
@@ -17,7 +17,7 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.World
 {
-    public sealed class WorldAlchemyPanelController : MonoBehaviour
+    public sealed class WorldCraftingPanelController : MonoBehaviour
     {
         private sealed class IngredientSelection
         {
@@ -27,9 +27,9 @@ namespace PhamNhanOnline.Client.UI.World
 
         [Header("Recipe References")]
         [SerializeField] private TMP_Text recipeListStatusText;
-        [SerializeField] private AlchemyRecipeListView recipeListView;
-        [SerializeField] private AlchemyRecipeSlotView selectedRecipeSlotView;
-        [SerializeField] private AlchemyRecipeTooltipView recipeTooltipView;
+        [SerializeField] private CraftRecipeListView recipeListView;
+        [SerializeField] private CraftRecipeSlotView selectedRecipeSlotView;
+        [SerializeField] private CraftRecipeTooltipView recipeTooltipView;
 
         [Header("Inventory References")]
         [SerializeField] private TMP_Text inventoryStatusText;
@@ -38,7 +38,7 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
 
         [Header("Ingredient References")]
-        [SerializeField] private AlchemyIngredientSlotView ingredientSlotView;
+        [SerializeField] private CraftMaterialSlotView ingredientSlotView;
         [SerializeField] private TMP_Text ingredientStatusText;
 
         [Header("Recipe Detail Text")]
@@ -63,6 +63,9 @@ namespace PhamNhanOnline.Client.UI.World
         [Header("Behavior")]
         [SerializeField] private bool autoLoadOnEnable = true;
         [SerializeField] private bool clearDraftWhenClosedWithoutPractice = true;
+        [SerializeField] private bool detachFromMainMenuOnAwake = true;
+        [SerializeField] private bool hideOnAwake = true;
+        [SerializeField] private KeyCode closeKey = KeyCode.Escape;
 
         [Header("Display Text")]
         [SerializeField] private string loadingRecipesText = "Dang tai dan phuong...";
@@ -78,6 +81,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private readonly Dictionary<int, IngredientSelection> selectionsByInputId = new Dictionary<int, IngredientSelection>();
 
+        private bool isInitialized;
         private int? selectedRecipeId;
         private float liveSessionAnchorTime;
         private long liveSessionRemainingSeconds;
@@ -86,54 +90,11 @@ namespace PhamNhanOnline.Client.UI.World
         private bool sessionActionInFlight;
         private long lastDisplayPracticeSessionId;
 
+        public bool IsPanelVisible => gameObject.activeSelf;
+
         private void Awake()
         {
-            if (recipeListView != null)
-            {
-                recipeListView.ItemClicked += HandleRecipeListClicked;
-                recipeListView.ItemHovered += HandleRecipeListHovered;
-                recipeListView.ItemHoverExited += HandleRecipeHoverExited;
-                recipeListView.SelectedRecipeDroppedBackToList += HandleRecipeDroppedBackToList;
-            }
-
-            if (selectedRecipeSlotView != null)
-            {
-                selectedRecipeSlotView.RecipeDropped += HandleSelectedRecipeDropped;
-                selectedRecipeSlotView.Clicked += HandleSelectedRecipeClicked;
-                selectedRecipeSlotView.Hovered += HandleSelectedRecipeHovered;
-                selectedRecipeSlotView.HoverExited += HandleRecipeHoverExited;
-            }
-
-            if (inventoryGridView != null)
-            {
-                inventoryGridView.ItemHovered += HandleInventoryItemHovered;
-                inventoryGridView.ItemHoverExited += HandleInventoryItemHoverExited;
-                inventoryGridView.ItemClicked += HandleInventoryItemClicked;
-            }
-
-            if (ingredientSlotView != null)
-            {
-                ingredientSlotView.InventoryItemDropped += HandleIngredientInventoryItemDropped;
-                ingredientSlotView.Clicked += HandleIngredientSlotClicked;
-            }
-
-            if (craftButton != null)
-            {
-                craftButton.onClick.RemoveListener(HandleCraftButtonClicked);
-                craftButton.onClick.AddListener(HandleCraftButtonClicked);
-            }
-
-            if (pauseResumeButton != null)
-            {
-                pauseResumeButton.onClick.RemoveListener(HandlePauseResumeButtonClicked);
-                pauseResumeButton.onClick.AddListener(HandlePauseResumeButtonClicked);
-            }
-
-            if (cancelButton != null)
-            {
-                cancelButton.onClick.RemoveListener(HandleCancelButtonClicked);
-                cancelButton.onClick.AddListener(HandleCancelButtonClicked);
-            }
+            EnsureInitialized(hideAfterInitialize: hideOnAwake);
         }
 
         private void Start()
@@ -150,6 +111,12 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void Update()
         {
+            if (gameObject.activeSelf && Input.GetKeyDown(closeKey))
+            {
+                HidePanel();
+                return;
+            }
+
             Refresh(force: false);
         }
 
@@ -203,6 +170,86 @@ namespace PhamNhanOnline.Client.UI.World
                 cancelButton.onClick.RemoveListener(HandleCancelButtonClicked);
         }
 
+        public void ShowPanel()
+        {
+            EnsureInitialized(hideAfterInitialize: false);
+            if (!gameObject.activeSelf)
+            {
+                gameObject.SetActive(true);
+                return;
+            }
+
+            Refresh(force: true);
+        }
+
+        public void HidePanel()
+        {
+            EnsureInitialized(hideAfterInitialize: false);
+            if (gameObject.activeSelf)
+                gameObject.SetActive(false);
+        }
+
+        private void EnsureInitialized(bool hideAfterInitialize)
+        {
+            if (isInitialized)
+                return;
+
+            if (detachFromMainMenuOnAwake)
+                DetachFromMainMenuRoot();
+
+            if (recipeListView != null)
+            {
+                recipeListView.ItemClicked += HandleRecipeListClicked;
+                recipeListView.ItemHovered += HandleRecipeListHovered;
+                recipeListView.ItemHoverExited += HandleRecipeHoverExited;
+                recipeListView.SelectedRecipeDroppedBackToList += HandleRecipeDroppedBackToList;
+            }
+
+            if (selectedRecipeSlotView != null)
+            {
+                selectedRecipeSlotView.RecipeDropped += HandleSelectedRecipeDropped;
+                selectedRecipeSlotView.Clicked += HandleSelectedRecipeClicked;
+                selectedRecipeSlotView.Hovered += HandleSelectedRecipeHovered;
+                selectedRecipeSlotView.HoverExited += HandleRecipeHoverExited;
+            }
+
+            if (inventoryGridView != null)
+            {
+                inventoryGridView.ItemHovered += HandleInventoryItemHovered;
+                inventoryGridView.ItemHoverExited += HandleInventoryItemHoverExited;
+                inventoryGridView.ItemClicked += HandleInventoryItemClicked;
+            }
+
+            if (ingredientSlotView != null)
+            {
+                ingredientSlotView.InventoryItemDropped += HandleIngredientInventoryItemDropped;
+                ingredientSlotView.Clicked += HandleIngredientSlotClicked;
+            }
+
+            if (craftButton != null)
+            {
+                craftButton.onClick.RemoveListener(HandleCraftButtonClicked);
+                craftButton.onClick.AddListener(HandleCraftButtonClicked);
+            }
+
+            if (pauseResumeButton != null)
+            {
+                pauseResumeButton.onClick.RemoveListener(HandlePauseResumeButtonClicked);
+                pauseResumeButton.onClick.AddListener(HandlePauseResumeButtonClicked);
+            }
+
+            if (cancelButton != null)
+            {
+                cancelButton.onClick.RemoveListener(HandleCancelButtonClicked);
+                cancelButton.onClick.AddListener(HandleCancelButtonClicked);
+            }
+
+            isInitialized = true;
+
+            if (hideAfterInitialize)
+                gameObject.SetActive(false);
+        }
+
         private void Refresh(bool force)
         {
             if (!ClientRuntime.IsInitialized)
@@ -238,7 +285,7 @@ namespace PhamNhanOnline.Client.UI.World
             }
             catch (Exception ex)
             {
-                ClientLog.Warn($"WorldAlchemyPanelController reload exception: {ex.Message}");
+                ClientLog.Warn($"WorldCraftingPanelController reload exception: {ex.Message}");
             }
             finally
             {
@@ -726,11 +773,11 @@ namespace PhamNhanOnline.Client.UI.World
                     BuildSelectedPlayerItemIds(),
                     BuildSelectedOptionalInputIds());
                 if (!result.Success)
-                    ClientLog.Warn($"WorldAlchemyPanelController failed to start craft: {result.Message}");
+                    ClientLog.Warn($"WorldCraftingPanelController failed to start craft: {result.Message}");
             }
             catch (Exception ex)
             {
-                ClientLog.Warn($"WorldAlchemyPanelController craft exception: {ex.Message}");
+                ClientLog.Warn($"WorldCraftingPanelController craft exception: {ex.Message}");
             }
             finally
             {
@@ -751,14 +798,14 @@ namespace PhamNhanOnline.Client.UI.World
                     ? await ClientRuntime.AlchemyService.ResumePracticeAsync(session.PracticeSessionId)
                     : await ClientRuntime.AlchemyService.PausePracticeAsync(session.PracticeSessionId);
                 if (!result.Success)
-                    ClientLog.Warn($"WorldAlchemyPanelController practice toggle failed: {result.Message}");
+                    ClientLog.Warn($"WorldCraftingPanelController practice toggle failed: {result.Message}");
 
                 liveSessionAnchorTime = 0f;
                 liveSessionRemainingSeconds = 0L;
             }
             catch (Exception ex)
             {
-                ClientLog.Warn($"WorldAlchemyPanelController practice toggle exception: {ex.Message}");
+                ClientLog.Warn($"WorldCraftingPanelController practice toggle exception: {ex.Message}");
             }
             finally
             {
@@ -776,7 +823,7 @@ namespace PhamNhanOnline.Client.UI.World
                 var result = await ClientRuntime.AlchemyService.CancelPracticeAsync(practiceSessionId);
                 if (!result.Success)
                 {
-                    ClientLog.Warn($"WorldAlchemyPanelController cancel practice failed: {result.Message}");
+                    ClientLog.Warn($"WorldCraftingPanelController cancel practice failed: {result.Message}");
                 }
                 else
                 {
@@ -788,7 +835,7 @@ namespace PhamNhanOnline.Client.UI.World
             }
             catch (Exception ex)
             {
-                ClientLog.Warn($"WorldAlchemyPanelController cancel practice exception: {ex.Message}");
+                ClientLog.Warn($"WorldCraftingPanelController cancel practice exception: {ex.Message}");
             }
             finally
             {
@@ -824,7 +871,7 @@ namespace PhamNhanOnline.Client.UI.World
             }
             catch (Exception ex)
             {
-                ClientLog.Warn($"WorldAlchemyPanelController load detail exception: {ex.Message}");
+                ClientLog.Warn($"WorldCraftingPanelController load detail exception: {ex.Message}");
                 return null;
             }
         }
@@ -843,7 +890,7 @@ namespace PhamNhanOnline.Client.UI.World
             }
             catch (Exception ex)
             {
-                ClientLog.Warn($"WorldAlchemyPanelController preview exception: {ex.Message}");
+                ClientLog.Warn($"WorldCraftingPanelController preview exception: {ex.Message}");
             }
             finally
             {
@@ -1370,7 +1417,22 @@ namespace PhamNhanOnline.Client.UI.World
         private void ThrowIfMissing(UnityEngine.Object value, string fieldName)
         {
             if (value == null)
-                throw new InvalidOperationException($"{nameof(WorldAlchemyPanelController)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
+                throw new InvalidOperationException($"{nameof(WorldCraftingPanelController)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
+        }
+
+        private void DetachFromMainMenuRoot()
+        {
+            var currentTransform = transform;
+            var parent = currentTransform.parent;
+            if (parent == null || parent.parent == null)
+                return;
+
+            var parentName = (parent.name ?? string.Empty).Trim();
+            if (!string.Equals(parentName, "WorldMenuPanel", StringComparison.Ordinal))
+                return;
+
+            currentTransform.SetParent(parent.parent, false);
+            currentTransform.SetAsLastSibling();
         }
     }
 }

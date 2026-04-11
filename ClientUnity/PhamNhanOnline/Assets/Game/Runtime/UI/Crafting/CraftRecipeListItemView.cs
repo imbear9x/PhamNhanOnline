@@ -6,13 +6,12 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace PhamNhanOnline.Client.UI.Alchemy
+namespace PhamNhanOnline.Client.UI.Crafting
 {
-    public sealed class AlchemyRecipeSlotView : MonoBehaviour,
-        IDropHandler,
-        IPointerClickHandler,
+    public sealed class CraftRecipeListItemView : MonoBehaviour,
         IPointerEnterHandler,
         IPointerExitHandler,
+        IPointerClickHandler,
         IBeginDragHandler,
         IDragHandler,
         IEndDragHandler
@@ -22,29 +21,22 @@ namespace PhamNhanOnline.Client.UI.Alchemy
         [SerializeField] private Image backgroundImage;
         [SerializeField] private TMP_Text nameText;
         [SerializeField] private TMP_Text detailText;
-        [SerializeField] private GameObject emptyStateRoot;
-        [SerializeField] private GameObject occupiedStateRoot;
-        [SerializeField] private GameObject lockedRoot;
-
-        [Header("Text")]
-        [SerializeField] private string emptyName = "Keo dan phuong vao day";
-        [SerializeField] private string emptyDetail = "Dan phuong da hoc khong bi mat di khi dua vao o nay.";
+        [SerializeField] private TMP_Text durationText;
+        [SerializeField] private GameObject selectedHighlightRoot;
 
         [Header("Drag")]
         [SerializeField] private float draggingAlpha = 0.65f;
 
         private LearnedPillRecipeModel recipe;
         private bool hasRecipe;
-        private bool dragEnabled = true;
-        private bool dropEnabled = true;
+        private bool isSelected;
         private CanvasGroup canvasGroup;
-        private AlchemyRecipeDragGhost dragGhost;
+        private CraftRecipeDragGhost dragGhost;
         private InventoryItemPresentation currentPresentation;
 
-        public event Action<LearnedPillRecipeModel> RecipeDropped;
-        public event Action Clicked;
-        public event Action Hovered;
-        public event Action HoverExited;
+        public event Action<CraftRecipeListItemView> Clicked;
+        public event Action<CraftRecipeListItemView> Hovered;
+        public event Action<CraftRecipeListItemView> HoverExited;
 
         public LearnedPillRecipeModel Recipe => recipe;
         public bool HasRecipe => hasRecipe;
@@ -54,8 +46,6 @@ namespace PhamNhanOnline.Client.UI.Alchemy
             canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null)
                 canvasGroup = gameObject.AddComponent<CanvasGroup>();
-
-            ApplyEmptyState();
         }
 
         private void Start()
@@ -63,7 +53,7 @@ namespace PhamNhanOnline.Client.UI.Alchemy
             ValidateSerializedReferences();
         }
 
-        public void SetRecipe(LearnedPillRecipeModel value, InventoryItemPresentation presentation)
+        public void SetRecipe(LearnedPillRecipeModel value, InventoryItemPresentation presentation, bool force = false)
         {
             recipe = value;
             hasRecipe = true;
@@ -85,20 +75,25 @@ namespace PhamNhanOnline.Client.UI.Alchemy
             }
 
             if (detailText != null)
-                detailText.text = string.Concat("Ket qua: ", string.IsNullOrWhiteSpace(value.ResultPill.Name) ? "?" : value.ResultPill.Name.Trim());
+            {
+                var resultName = string.IsNullOrWhiteSpace(value.ResultPill.Name)
+                    ? "Khong ro ket qua"
+                    : value.ResultPill.Name.Trim();
+                detailText.text = string.Concat("Ket qua: ", resultName);
+            }
 
-            if (emptyStateRoot != null)
-                emptyStateRoot.SetActive(false);
-            if (occupiedStateRoot != null)
-                occupiedStateRoot.SetActive(true);
+            if (durationText != null)
+                durationText.text = string.Concat("T/g: ", FormatDuration(value.CraftDurationSeconds));
+
+            if (force)
+                SetSelected(isSelected, force: true);
         }
 
-        public void Clear()
+        public void Clear(bool force = false)
         {
             hasRecipe = false;
             recipe = default;
             currentPresentation = default;
-
             if (iconImage != null)
             {
                 iconImage.sprite = null;
@@ -108,72 +103,59 @@ namespace PhamNhanOnline.Client.UI.Alchemy
             if (backgroundImage != null)
                 backgroundImage.sprite = null;
 
-            ApplyEmptyState();
+            if (nameText != null)
+                nameText.text = string.Empty;
+            if (detailText != null)
+                detailText.text = string.Empty;
+            if (durationText != null)
+                durationText.text = string.Empty;
+
             ResetDragVisuals();
+            SetSelected(false, force);
         }
 
-        public void SetInteractionLocked(bool locked)
+        public void SetSelected(bool selected, bool force = false)
         {
-            dragEnabled = !locked;
-            dropEnabled = !locked;
-            if (lockedRoot != null)
-                lockedRoot.SetActive(locked);
-
-            if (locked)
-                ResetDragVisuals();
-        }
-
-        public void OnDrop(PointerEventData eventData)
-        {
-            if (!dropEnabled)
+            if (!force && isSelected == selected)
                 return;
 
-            if (eventData.pointerDrag == null)
-                return;
-
-            var listItemView = eventData.pointerDrag.GetComponentInParent<AlchemyRecipeListItemView>();
-            if (listItemView != null && listItemView.HasRecipe)
-            {
-                RecipeDropped?.Invoke(listItemView.Recipe);
-                return;
-            }
-
-            var slotView = eventData.pointerDrag.GetComponentInParent<AlchemyRecipeSlotView>();
-            if (slotView != null && slotView != this && slotView.HasRecipe)
-            {
-                RecipeDropped?.Invoke(slotView.Recipe);
-                return;
-            }
-        }
-
-        public void OnPointerClick(PointerEventData eventData)
-        {
-            Clicked?.Invoke();
+            isSelected = selected;
+            if (selectedHighlightRoot != null)
+                selectedHighlightRoot.SetActive(selected);
         }
 
         public void OnPointerEnter(PointerEventData eventData)
         {
-            if (hasRecipe)
-                Hovered?.Invoke();
+            if (!hasRecipe)
+                return;
+
+            Hovered?.Invoke(this);
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
-            if (hasRecipe)
-                HoverExited?.Invoke();
+            if (!hasRecipe)
+                return;
+
+            HoverExited?.Invoke(this);
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (!hasRecipe)
+                return;
+
+            Clicked?.Invoke(this);
         }
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (!dragEnabled)
-                return;
-
             if (!hasRecipe)
                 return;
 
             canvasGroup.blocksRaycasts = false;
             canvasGroup.alpha = draggingAlpha;
-            dragGhost = AlchemyRecipeDragGhost.Create(transform, currentPresentation.IconSprite, recipe.Name, eventData);
+            dragGhost = CraftRecipeDragGhost.Create(transform, currentPresentation.IconSprite, recipe.Name, eventData);
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -185,18 +167,6 @@ namespace PhamNhanOnline.Client.UI.Alchemy
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
-        }
-
-        private void ApplyEmptyState()
-        {
-            if (nameText != null)
-                nameText.text = emptyName;
-            if (detailText != null)
-                detailText.text = emptyDetail;
-            if (emptyStateRoot != null)
-                emptyStateRoot.SetActive(true);
-            if (occupiedStateRoot != null)
-                occupiedStateRoot.SetActive(false);
         }
 
         private void ResetDragVisuals()
@@ -214,6 +184,15 @@ namespace PhamNhanOnline.Client.UI.Alchemy
             }
         }
 
+        private static string FormatDuration(long totalSeconds)
+        {
+            var clamped = Math.Max(0L, totalSeconds);
+            if (clamped >= 3600L)
+                return TimeSpan.FromSeconds(clamped).ToString(@"hh\:mm\:ss");
+
+            return TimeSpan.FromSeconds(clamped).ToString(@"mm\:ss");
+        }
+
         private void ValidateSerializedReferences()
         {
             ThrowIfMissing(iconImage, nameof(iconImage));
@@ -223,7 +202,7 @@ namespace PhamNhanOnline.Client.UI.Alchemy
         private void ThrowIfMissing(UnityEngine.Object value, string fieldName)
         {
             if (value == null)
-                throw new InvalidOperationException($"{nameof(AlchemyRecipeSlotView)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
+                throw new InvalidOperationException($"{nameof(CraftRecipeListItemView)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
         }
     }
 }
