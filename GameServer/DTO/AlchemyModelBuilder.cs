@@ -79,11 +79,22 @@ public sealed class AlchemyModelBuilder
         return new AlchemyCraftPreviewModel
         {
             PillRecipeTemplateId = recipeId,
-            CanCraft = validation.Success,
+            RequestedCraftCount = Math.Max(1, validation.RequestedCraftCount),
+            MaxCraftableCount = Math.Max(0, validation.MaxCraftableCount),
+            CanCraft = validation.Success && validation.MaxCraftableCount > 0,
             FailureReason = validation.FailureReason,
             EffectiveSuccessRate = NormalizeRate(validation.EffectiveSuccessRate),
+            BoostedSuccessRate = NormalizeRate(validation.BoostedSuccessRate),
             EffectiveMutationRate = NormalizeRate(validation.EffectiveMutationRate),
-            AppliedOptionalInputIds = validation.AppliedOptionalInputs.Select(static input => input.Id).ToList(),
+            BoostedMutationRate = NormalizeRate(validation.BoostedMutationRate),
+            BoostedCraftCount = Math.Max(0, validation.BoostedCraftCount),
+            AppliedOptionalInputs = validation.AppliedOptionalInputs
+                .Select(selection => new AlchemyOptionalInputSelectionModel
+                {
+                    InputId = selection.Input.Id,
+                    Quantity = Math.Max(0, selection.AppliedCount)
+                })
+                .ToList(),
             ConsumedItems = consumedItems
         };
     }
@@ -103,6 +114,9 @@ public sealed class AlchemyModelBuilder
 
     public PracticeSessionModel BuildPracticeSessionModel(PlayerPracticeSessionEntity session)
     {
+        var payload = string.IsNullOrWhiteSpace(session.RequestPayloadJson)
+            ? null
+            : JsonSerializer.Deserialize<PracticeSessionPayload>(session.RequestPayloadJson, JsonOptions);
         var utcNow = DateTime.UtcNow;
         var accumulated = Math.Max(0L, session.AccumulatedActiveSeconds);
         if (session.PracticeState == (int)PracticeSessionState.Active && session.LastResumedAtUtc.HasValue)
@@ -122,15 +136,18 @@ public sealed class AlchemyModelBuilder
             PracticeType = session.PracticeType,
             PracticeState = session.PracticeState,
             DefinitionId = session.DefinitionId,
+            RequestedCraftCount = payload?.RequestedCraftCount ?? 1,
+            BoostedCraftCount = payload?.SelectedOptionalInputs?.Sum(static entry => Math.Max(0, entry.AppliedCount)) ?? 0,
             Title = session.Title,
             TotalDurationSeconds = Math.Max(0L, session.TotalDurationSeconds),
             AccumulatedActiveSeconds = accumulated,
             RemainingDurationSeconds = remaining,
             Progress = progress,
+            CanPause = session.PracticeState == (int)PracticeSessionState.Active &&
+                       progress < Math.Clamp(session.CancelLockedProgress, 0d, 1d),
             CanCancel = session.PracticeState != (int)PracticeSessionState.ResultPendingAcknowledgement &&
                         session.PracticeState != (int)PracticeSessionState.Completed &&
-                        session.PracticeState != (int)PracticeSessionState.Cancelled &&
-                        progress < Math.Clamp(session.CancelLockedProgress, 0d, 1d),
+                        session.PracticeState != (int)PracticeSessionState.Cancelled,
             IsPaused = session.PracticeState == (int)PracticeSessionState.Paused,
             StartedUnixMs = ToUnixMs(session.StartedAtUtc),
             LastResumedUnixMs = ToUnixMs(session.LastResumedAtUtc),
@@ -161,6 +178,9 @@ public sealed class AlchemyModelBuilder
             PracticeSessionId = session.Id,
             PracticeType = session.PracticeType,
             Success = payload.Success,
+            RequestedCraftCount = Math.Max(1, payload.RequestedCraftCount),
+            SuccessCount = Math.Max(0, payload.SuccessCount),
+            FailedCount = Math.Max(0, payload.FailedCount),
             Title = payload.Title,
             Message = payload.Message,
             DisplayItem = payload.DisplayItemTemplateId.HasValue

@@ -16,7 +16,15 @@ public partial class PreviewCraftPillPacket
         return HasPillRecipeTemplateId;
     }
 
-    public bool HasSelectedPlayerItemIds => (_mask & (1UL << 1)) != 0;
+    public bool HasRequestedCraftCount => (_mask & (1UL << 1)) != 0;
+
+    public bool TryGetRequestedCraftCount(out int? value)
+    {
+        value = RequestedCraftCount;
+        return HasRequestedCraftCount;
+    }
+
+    public bool HasSelectedPlayerItemIds => (_mask & (1UL << 2)) != 0;
 
     public bool TryGetSelectedPlayerItemIds(out global::System.Collections.Generic.List<long>? value)
     {
@@ -24,12 +32,12 @@ public partial class PreviewCraftPillPacket
         return HasSelectedPlayerItemIds;
     }
 
-    public bool HasSelectedOptionalInputIds => (_mask & (1UL << 2)) != 0;
+    public bool HasSelectedOptionalInputs => (_mask & (1UL << 3)) != 0;
 
-    public bool TryGetSelectedOptionalInputIds(out global::System.Collections.Generic.List<int>? value)
+    public bool TryGetSelectedOptionalInputs(out global::System.Collections.Generic.List<global::GameShared.Models.AlchemyOptionalInputSelectionModel>? value)
     {
-        value = SelectedOptionalInputIds;
-        return HasSelectedOptionalInputIds;
+        value = SelectedOptionalInputs;
+        return HasSelectedOptionalInputs;
     }
 
     public void Serialize(BinaryWriter writer)
@@ -37,17 +45,20 @@ public partial class PreviewCraftPillPacket
         ulong mask = 0;
 
         if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(PillRecipeTemplateId, default!)) mask |= 1UL << 0;
-        if (!global::System.Collections.Generic.EqualityComparer<global::System.Collections.Generic.List<long>?>.Default.Equals(SelectedPlayerItemIds, default!)) mask |= 1UL << 1;
-        if (!global::System.Collections.Generic.EqualityComparer<global::System.Collections.Generic.List<int>?>.Default.Equals(SelectedOptionalInputIds, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(RequestedCraftCount, default!)) mask |= 1UL << 1;
+        if (!global::System.Collections.Generic.EqualityComparer<global::System.Collections.Generic.List<long>?>.Default.Equals(SelectedPlayerItemIds, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<global::System.Collections.Generic.List<global::GameShared.Models.AlchemyOptionalInputSelectionModel>?>.Default.Equals(SelectedOptionalInputs, default!)) mask |= 1UL << 3;
 
         writer.Write(mask);
 
         if ((mask & (1UL << 0)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, PillRecipeTemplateId.Value);
         if ((mask & (1UL << 1)) != 0)
-            global::GameShared.Packets.PacketModelSerializer.WriteList(writer, SelectedPlayerItemIds);
+            global::GameShared.Packets.PacketWriter.Write(writer, RequestedCraftCount.Value);
         if ((mask & (1UL << 2)) != 0)
-            global::GameShared.Packets.PacketModelSerializer.WriteList(writer, SelectedOptionalInputIds);
+            global::GameShared.Packets.PacketModelSerializer.WriteList(writer, SelectedPlayerItemIds);
+        if ((mask & (1UL << 3)) != 0)
+            global::GameShared.Packets.PacketModelSerializer.WriteList(writer, SelectedOptionalInputs);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -57,8 +68,10 @@ public partial class PreviewCraftPillPacket
         if ((_mask & (1UL << 0)) != 0)
             PillRecipeTemplateId = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 1)) != 0)
-            SelectedPlayerItemIds = (global::System.Collections.Generic.List<long>?)global::GameShared.Packets.PacketModelSerializer.ReadList<long>(reader)!;
+            RequestedCraftCount = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 2)) != 0)
-            SelectedOptionalInputIds = (global::System.Collections.Generic.List<int>?)global::GameShared.Packets.PacketModelSerializer.ReadList<int>(reader)!;
+            SelectedPlayerItemIds = (global::System.Collections.Generic.List<long>?)global::GameShared.Packets.PacketModelSerializer.ReadList<long>(reader)!;
+        if ((_mask & (1UL << 3)) != 0)
+            SelectedOptionalInputs = (global::System.Collections.Generic.List<global::GameShared.Models.AlchemyOptionalInputSelectionModel>?)global::GameShared.Packets.PacketModelSerializer.ReadList<global::GameShared.Models.AlchemyOptionalInputSelectionModel>(reader)!;
     }
 }

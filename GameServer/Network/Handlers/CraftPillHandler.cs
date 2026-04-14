@@ -38,8 +38,9 @@ public sealed class CraftPillHandler : IPacketHandler<CraftPillPacket>
         var result = await _alchemyPracticeService.StartCraftAsync(
             session,
             packet.PillRecipeTemplateId!.Value,
+            packet.RequestedCraftCount!.Value,
             packet.SelectedPlayerItemIds,
-            packet.SelectedOptionalInputIds);
+            packet.SelectedOptionalInputs);
 
         _network.Send(session.ConnectionId, new CraftPillResultPacket
         {

@@ -116,8 +116,9 @@ namespace PhamNhanOnline.Client.Features.Alchemy.Application
 
         public Task<AlchemyCraftPreviewResult> PreviewCraftAsync(
             int recipeId,
+            int requestedCraftCount = 1,
             long[] selectedPlayerItemIds = null,
-            int[] selectedOptionalInputIds = null)
+            AlchemyOptionalInputSelectionModel[] selectedOptionalInputs = null)
         {
             if (connection.State != ClientConnectionState.Connected)
             {
@@ -136,16 +137,18 @@ namespace PhamNhanOnline.Client.Features.Alchemy.Application
             connection.Send(new PreviewCraftPillPacket
             {
                 PillRecipeTemplateId = recipeId,
+                RequestedCraftCount = Math.Max(1, requestedCraftCount),
                 SelectedPlayerItemIds = selectedPlayerItemIds != null ? selectedPlayerItemIds.ToList() : null,
-                SelectedOptionalInputIds = selectedOptionalInputIds != null ? selectedOptionalInputIds.ToList() : null
+                SelectedOptionalInputs = selectedOptionalInputs != null ? selectedOptionalInputs.ToList() : null
             });
             return previewCompletionSource.Task;
         }
 
         public Task<AlchemyCraftExecuteResult> CraftPillAsync(
             int recipeId,
+            int requestedCraftCount,
             long[] selectedPlayerItemIds = null,
-            int[] selectedOptionalInputIds = null)
+            AlchemyOptionalInputSelectionModel[] selectedOptionalInputs = null)
         {
             if (connection.State != ClientConnectionState.Connected)
             {
@@ -167,8 +170,9 @@ namespace PhamNhanOnline.Client.Features.Alchemy.Application
             connection.Send(new CraftPillPacket
             {
                 PillRecipeTemplateId = recipeId,
+                RequestedCraftCount = Math.Max(1, requestedCraftCount),
                 SelectedPlayerItemIds = selectedPlayerItemIds != null ? selectedPlayerItemIds.ToList() : null,
-                SelectedOptionalInputIds = selectedOptionalInputIds != null ? selectedOptionalInputIds.ToList() : null
+                SelectedOptionalInputs = selectedOptionalInputs != null ? selectedOptionalInputs.ToList() : null
             });
             return craftCompletionSource.Task;
         }

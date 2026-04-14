@@ -8,6 +8,9 @@ public struct PracticeCompletionResultModel
     public long PracticeSessionId;
     public int PracticeType;
     public bool Success;
+    public int RequestedCraftCount;
+    public int SuccessCount;
+    public int FailedCount;
     public string? Title;
     public string? Message;
     public ItemTemplateSummaryModel? DisplayItem;

@@ -49,8 +49,9 @@ public sealed class PreviewCraftPillHandler : IPacketHandler<PreviewCraftPillPac
             var validation = await _alchemyService.ValidateCraftPillAsync(
                 playerId,
                 packet.PillRecipeTemplateId.Value,
+                packet.RequestedCraftCount ?? 1,
                 packet.SelectedPlayerItemIds,
-                packet.SelectedOptionalInputIds);
+                packet.SelectedOptionalInputs);
             var inventory = await _itemService.GetInventoryAsync(playerId);
             var inventoryByPlayerItemId = inventory.ToDictionary(static item => item.PlayerItemId);
 

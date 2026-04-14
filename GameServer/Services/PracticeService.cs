@@ -114,23 +114,32 @@ public sealed class PracticeService
         return CalculateProgress(session, utcNow) >= Math.Clamp(session.CancelLockedProgress, 0d, 1d);
     }
 
+    public bool IsPauseLocked(PlayerPracticeSessionEntity session, DateTime utcNow)
+    {
+        return CalculateProgress(session, utcNow) >= Math.Clamp(session.CancelLockedProgress, 0d, 1d);
+    }
+
     public PracticeSessionModel BuildSessionModel(PlayerPracticeSessionEntity session, DateTime utcNow)
     {
+        var requestPayload = DeserializeRequestPayload(session);
         return new PracticeSessionModel
         {
             PracticeSessionId = session.Id,
             PracticeType = session.PracticeType,
             PracticeState = session.PracticeState,
             DefinitionId = session.DefinitionId,
+            RequestedCraftCount = requestPayload?.RequestedCraftCount ?? 1,
+            BoostedCraftCount = requestPayload?.SelectedOptionalInputs?.Sum(static entry => Math.Max(0, entry.AppliedCount)) ?? 0,
             Title = session.Title,
             TotalDurationSeconds = Math.Max(0L, session.TotalDurationSeconds),
             AccumulatedActiveSeconds = CalculateAccumulatedActiveSeconds(session, utcNow),
             RemainingDurationSeconds = CalculateRemainingDurationSeconds(session, utcNow),
             Progress = CalculateProgress(session, utcNow),
+            CanPause = session.PracticeState == (int)PracticeSessionState.Active &&
+                       !IsPauseLocked(session, utcNow),
             CanCancel = session.PracticeState != (int)PracticeSessionState.ResultPendingAcknowledgement &&
                         session.PracticeState != (int)PracticeSessionState.Completed &&
-                        session.PracticeState != (int)PracticeSessionState.Cancelled &&
-                        !IsCancelLocked(session, utcNow),
+                        session.PracticeState != (int)PracticeSessionState.Cancelled,
             IsPaused = session.PracticeState == (int)PracticeSessionState.Paused,
             StartedUnixMs = ToUnixMs(session.StartedAtUtc),
             LastResumedUnixMs = ToUnixMs(session.LastResumedAtUtc),
@@ -218,6 +227,9 @@ public sealed class PracticeService
             return PracticeMutationResult.Failed(MessageCode.PracticeNotActive);
 
         var utcNow = DateTime.UtcNow;
+        if (IsPauseLocked(entity, utcNow))
+            return PracticeMutationResult.Failed(MessageCode.PracticeCancelLocked);
+
         entity.AccumulatedActiveSeconds = CalculateAccumulatedActiveSeconds(entity, utcNow);
         entity.PracticeState = (int)PracticeSessionState.Paused;
         entity.LastResumedAtUtc = null;
@@ -286,9 +298,6 @@ public sealed class PracticeService
         {
             return PracticeMutationResult.Failed(MessageCode.PracticeNotActive);
         }
-
-        if (IsCancelLocked(entity, DateTime.UtcNow))
-            return PracticeMutationResult.Failed(MessageCode.PracticeCancelLocked);
 
         if (entity.PracticeState == (int)PracticeSessionState.Active)
             entity.AccumulatedActiveSeconds = CalculateAccumulatedActiveSeconds(entity, DateTime.UtcNow);

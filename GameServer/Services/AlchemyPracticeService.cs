@@ -37,8 +37,9 @@ public sealed class AlchemyPracticeService
     public async Task<AlchemyPracticeStartResult> StartCraftAsync(
         ConnectionSession session,
         int recipeId,
+        int requestedCraftCount,
         IReadOnlyCollection<long>? selectedPlayerItemIds,
-        IReadOnlyCollection<int>? selectedOptionalInputIds,
+        IReadOnlyCollection<AlchemyOptionalInputSelectionModel>? selectedOptionalInputs,
         CancellationToken cancellationToken = default)
     {
         if (session.Player is null)
@@ -78,8 +79,9 @@ public sealed class AlchemyPracticeService
             var validation = await alchemyService.ValidateCraftPillAsync(
                 player.CharacterData.CharacterId,
                 recipeId,
+                requestedCraftCount,
                 selectedPlayerItemIds,
-                selectedOptionalInputIds,
+                selectedOptionalInputs,
                 cancellationToken);
             if (!validation.Success)
             {
@@ -93,7 +95,11 @@ public sealed class AlchemyPracticeService
             var utcNow = DateTime.UtcNow;
             var requestPayload = new PracticeSessionPayload(
                 recipeId,
-                (selectedOptionalInputIds ?? Array.Empty<int>()).Distinct().OrderBy(static x => x).ToArray(),
+                Math.Max(1, validation.RequestedCraftCount),
+                validation.AppliedOptionalInputs
+                    .Select(selection => new PracticeOptionalInputEntry(selection.Input.Id, Math.Max(0, selection.AppliedCount)))
+                    .OrderBy(static entry => entry.InputId)
+                    .ToArray(),
                 BuildConsumedEntries(validation, inventoryBeforeByPlayerItemId));
 
             await using var tx = await db.BeginTransactionAsync(cancellationToken);
@@ -112,7 +118,7 @@ public sealed class AlchemyPracticeService
                 DefinitionId = recipeId,
                 CurrentMapId = player.MapId,
                 Title = detail.Definition.Name,
-                TotalDurationSeconds = Math.Max(1L, detail.Definition.CraftDurationSeconds),
+                TotalDurationSeconds = Math.Max(1L, detail.Definition.CraftDurationSeconds) * Math.Max(1, validation.RequestedCraftCount),
                 AccumulatedActiveSeconds = 0L,
                 CancelLockedProgress = 0.8d,
                 RequestPayloadJson = _practiceService.SerializePayload(requestPayload),
@@ -244,21 +250,31 @@ public sealed class AlchemyPracticeService
         try
         {
             var detail = await pillRecipeService.GetRecipeDetailAsync(session.PlayerId, session.DefinitionId, cancellationToken);
-            var successRate = await alchemyService.CalculateFinalSuccessRateAsync(
+            var successRates = await alchemyService.BuildSuccessRollRatesAsync(
                 session.PlayerId,
                 session.DefinitionId,
-                requestPayload.SelectedOptionalInputIds,
+                requestPayload.RequestedCraftCount,
+                requestPayload.SelectedOptionalInputs,
                 cancellationToken);
-            var success = random.CheckChance(ToPartsPerMillion(successRate)).Success;
+            var successCount = 0;
+            for (var index = 0; index < successRates.Count; index++)
+            {
+                if (random.CheckChance(ToPartsPerMillion(successRates[index])).Success)
+                    successCount++;
+            }
+
+            var requestedCraftCount = Math.Max(1, requestPayload.RequestedCraftCount);
+            var failedCount = Math.Max(0, requestedCraftCount - successCount);
+            var success = successCount > 0;
 
             await using var tx = await db.BeginTransactionAsync(cancellationToken);
             var rewards = new List<PracticeRewardEntry>();
-            if (success)
+            if (successCount > 0)
             {
                 await itemService.AddItemAsync(
                     session.PlayerId,
                     detail.Definition.ResultPillItemTemplateId,
-                    1,
+                    successCount,
                     false,
                     null,
                     cancellationToken);
@@ -266,7 +282,7 @@ public sealed class AlchemyPracticeService
                 var learned = await playerRecipes.GetByPlayerAndRecipeAsync(session.PlayerId, session.DefinitionId, cancellationToken);
                 if (learned is not null)
                 {
-                    learned.TotalCraftCount += 1;
+                    learned.TotalCraftCount += successCount;
                     learned.CurrentSuccessRateBonus = alchemyService.ResolveMasteryBonusForCurrentProgress(
                         detail.Definition,
                         learned.TotalCraftCount,
@@ -275,15 +291,18 @@ public sealed class AlchemyPracticeService
                     await playerRecipes.UpdateAsync(learned, cancellationToken);
                 }
 
-                rewards.Add(new PracticeRewardEntry(detail.Definition.ResultPillItemTemplateId, 1));
+                rewards.Add(new PracticeRewardEntry(detail.Definition.ResultPillItemTemplateId, successCount));
             }
 
             var completionPayload = new PracticeCompletionPayload(
                 success,
+                requestedCraftCount,
+                successCount,
+                failedCount,
                 success ? "Luyen che thanh cong" : "Luyen che that bai",
-                success
-                    ? $"Luyen che thanh cong {detail.Definition.Name}."
-                    : $"Luyen che {detail.Definition.Name} that bai.",
+                successCount > 0
+                    ? $"Nhan duoc {successCount} {detail.Definition.Name}."
+                    : $"Khong nhan duoc {detail.Definition.Name}.",
                 detail.Definition.ResultPillItemTemplateId,
                 rewards);
 

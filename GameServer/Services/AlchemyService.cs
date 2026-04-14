@@ -1,21 +1,18 @@
 using GameServer.Entities;
-using GameServer.Randomness;
 using GameServer.Repositories;
 using GameServer.Runtime;
+using GameShared.Models;
 
 namespace GameServer.Services;
 
 public sealed class AlchemyService
 {
-    private readonly GameDb _db;
     private readonly AlchemyDefinitionCatalog _definitions;
     private readonly ItemDefinitionCatalog _itemDefinitions;
     private readonly PlayerPillRecipeRepository _playerPillRecipes;
     private readonly PlayerItemRepository _playerItems;
     private readonly PlayerEquipmentRepository _playerEquipments;
     private readonly PlayerSoilRepository _playerSoils;
-    private readonly ItemService _itemService;
-    private readonly IGameRandomService _randomService;
 
     public AlchemyService(
         GameDb db,
@@ -26,243 +23,195 @@ public sealed class AlchemyService
         PlayerEquipmentRepository playerEquipments,
         PlayerSoilRepository playerSoils,
         ItemService itemService,
-        IGameRandomService randomService)
+        GameServer.Randomness.IGameRandomService randomService)
     {
-        _db = db;
         _definitions = definitions;
         _itemDefinitions = itemDefinitions;
         _playerPillRecipes = playerPillRecipes;
         _playerItems = playerItems;
         _playerEquipments = playerEquipments;
         _playerSoils = playerSoils;
-        _itemService = itemService;
-        _randomService = randomService;
     }
 
     public async Task<AlchemyValidationResult> ValidateCraftPillAsync(
         Guid playerId,
         int recipeId,
+        int requestedCraftCount,
         IReadOnlyCollection<long>? selectedPlayerItemIds,
-        IReadOnlyCollection<int>? selectedOptionalInputIds = null,
+        IReadOnlyCollection<AlchemyOptionalInputSelectionModel>? selectedOptionalInputs = null,
         CancellationToken cancellationToken = default)
     {
+        var normalizedRequestedCraftCount = Math.Max(1, requestedCraftCount);
         if (!_definitions.TryGetPillRecipe(recipeId, out var recipe))
-            return new AlchemyValidationResult(false, "Dan phuong khong ton tai.", null, Array.Empty<long>(), new Dictionary<long, int>(), Array.Empty<PillRecipeInputDefinition>(), 0d, 0d);
+            return Failed("Dan phuong khong ton tai.", null, normalizedRequestedCraftCount);
 
         var learned = await _playerPillRecipes.GetByPlayerAndRecipeAsync(playerId, recipeId, cancellationToken);
         if (learned is null)
-            return new AlchemyValidationResult(false, "Player chua hoc dan phuong nay.", recipe, Array.Empty<long>(), new Dictionary<long, int>(), Array.Empty<PillRecipeInputDefinition>(), 0d, 0d);
+            return Failed("Player chua hoc dan phuong nay.", recipe, normalizedRequestedCraftCount);
 
-        if (recipe.Inputs.Any(x => x.RequiredHerbMaturity != HerbMaturityRequirement.None))
-        {
-            return new AlchemyValidationResult(
-                false,
-                "Recipe co required_herb_maturity, tinh nang nay de phase sau.",
-                recipe,
-                Array.Empty<long>(),
-                new Dictionary<long, int>(),
-                Array.Empty<PillRecipeInputDefinition>(),
-                0d,
-                0d);
-        }
+        if (recipe.Inputs.Any(static x => x.RequiredHerbMaturity != HerbMaturityRequirement.None))
+            return Failed("Recipe co required_herb_maturity, tinh nang nay de phase sau.", recipe, normalizedRequestedCraftCount);
 
         var inventory = (await _playerItems.ListByPlayerIdAsync(playerId, cancellationToken))
-            .Where(x => !IsExpired(x.ExpireAt))
+            .Where(static x => !IsExpired(x.ExpireAt))
             .ToArray();
         var selectedIds = (selectedPlayerItemIds ?? Array.Empty<long>()).Distinct().ToArray();
-        var selectedOptionalIds = new HashSet<int>(selectedOptionalInputIds ?? Array.Empty<int>());
-        var selectedItems = inventory.Where(x => selectedIds.Contains(x.Id)).ToDictionary(x => x.Id);
+        var selectedItems = inventory.Where(x => selectedIds.Contains(x.Id)).ToDictionary(static x => x.Id);
         if (selectedItems.Count != selectedIds.Length)
+            return Failed("Co player_item_id khong hop le hoac khong thuoc player.", recipe, normalizedRequestedCraftCount);
+
+        var optionalSelectionByInputId = NormalizeOptionalSelections(selectedOptionalInputs);
+        var unknownOptionalInputId = optionalSelectionByInputId.Keys
+            .FirstOrDefault(inputId => !recipe.Inputs.Any(input => input.IsOptional && input.Id == inputId));
+        if (unknownOptionalInputId > 0)
+            return Failed("Catalyst khong hop le voi dan phuong nay.", recipe, normalizedRequestedCraftCount);
+
+        var inventoryIds = inventory.Select(static x => x.Id).ToArray();
+        var equipmentRows = await _playerEquipments.ListByPlayerItemIdsAsync(inventoryIds, cancellationToken);
+        var equipmentByItemId = equipmentRows.ToDictionary(static x => x.PlayerItemId);
+        var soilRows = await _playerSoils.ListByPlayerItemIdsAsync(inventoryIds, cancellationToken);
+        var soilByItemId = soilRows.ToDictionary(static x => x.PlayerItemId);
+        var mandatoryInputs = recipe.Inputs.Where(static x => !x.IsOptional).ToArray();
+        var maxCraftableCount = mandatoryInputs.Length == 0
+            ? 0
+            : mandatoryInputs.Min(input => CalculateMaxCraftableCount(
+                input,
+                inventory,
+                selectedItems,
+                equipmentByItemId,
+                soilByItemId));
+        if (maxCraftableCount <= 0)
+            return Failed("Khong du nguyen lieu bat buoc de luyen dan.", recipe, normalizedRequestedCraftCount);
+        if (normalizedRequestedCraftCount > maxCraftableCount)
         {
-            return new AlchemyValidationResult(
-                false,
-                "Co player_item_id khong hop le hoac khong thuoc player.",
+            return Failed(
+                $"Khong du nguyen lieu de luyen {normalizedRequestedCraftCount} vien. Toi da {maxCraftableCount} vien.",
                 recipe,
-                Array.Empty<long>(),
-                new Dictionary<long, int>(),
-                Array.Empty<PillRecipeInputDefinition>(),
-                0d,
-                0d);
+                normalizedRequestedCraftCount,
+                maxCraftableCount);
         }
 
-        var equipmentRows = await _playerEquipments.ListByPlayerItemIdsAsync(inventory.Select(x => x.Id).ToArray(), cancellationToken);
-        var equipmentByItemId = equipmentRows.ToDictionary(x => x.PlayerItemId);
-        var soilRows = await _playerSoils.ListByPlayerItemIdsAsync(inventory.Select(x => x.Id).ToArray(), cancellationToken);
-        var soilByItemId = soilRows.ToDictionary(x => x.PlayerItemId);
         var consumedPlayerItemIds = new List<long>();
         var consumedStackQuantities = new Dictionary<long, int>();
-        var appliedOptionalInputs = new List<PillRecipeInputDefinition>();
+        var appliedOptionalInputs = new List<AlchemyOptionalInputSelection>();
         var allocatedSelectedItemIds = new HashSet<long>();
 
-        foreach (var input in recipe.Inputs.Where(x => !x.IsOptional))
+        foreach (var input in mandatoryInputs)
         {
             var failure = TryAllocateInput(
                 input,
+                normalizedRequestedCraftCount,
                 inventory,
                 selectedItems,
                 equipmentByItemId,
                 soilByItemId,
                 allocatedSelectedItemIds,
                 consumedPlayerItemIds,
-                consumedStackQuantities);
+                consumedStackQuantities,
+                allowPartial: false,
+                out _);
             if (failure is not null)
-                return new AlchemyValidationResult(false, failure, recipe, Array.Empty<long>(), new Dictionary<long, int>(), Array.Empty<PillRecipeInputDefinition>(), 0d, 0d);
+                return Failed(failure, recipe, normalizedRequestedCraftCount, maxCraftableCount);
         }
 
-        foreach (var input in recipe.Inputs.Where(x => x.IsOptional && selectedOptionalIds.Contains(x.Id)))
+        var remainingBoostableCrafts = normalizedRequestedCraftCount;
+        foreach (var input in recipe.Inputs.Where(static x => x.IsOptional))
         {
+            if (!optionalSelectionByInputId.TryGetValue(input.Id, out var requestedApplications) || requestedApplications <= 0)
+                continue;
+
             var failure = TryAllocateInput(
                 input,
+                Math.Min(requestedApplications, remainingBoostableCrafts),
                 inventory,
                 selectedItems,
                 equipmentByItemId,
                 soilByItemId,
                 allocatedSelectedItemIds,
                 consumedPlayerItemIds,
-                consumedStackQuantities);
+                consumedStackQuantities,
+                allowPartial: true,
+                out var appliedApplications);
             if (failure is not null)
-                return new AlchemyValidationResult(false, failure, recipe, Array.Empty<long>(), new Dictionary<long, int>(), Array.Empty<PillRecipeInputDefinition>(), 0d, 0d);
+                return Failed(failure, recipe, normalizedRequestedCraftCount, maxCraftableCount);
+            if (appliedApplications <= 0)
+                continue;
 
-            appliedOptionalInputs.Add(input);
+            appliedOptionalInputs.Add(new AlchemyOptionalInputSelection(input, appliedApplications));
+            remainingBoostableCrafts -= appliedApplications;
+            if (remainingBoostableCrafts <= 0)
+                break;
         }
 
-        var masteryBonus = ResolveMasteryBonus(recipe, learned.TotalCraftCount, learned.CurrentSuccessRateBonus);
-        var effectiveSuccessRate = ResolveEffectiveSuccessRate(recipe, masteryBonus, appliedOptionalInputs);
-        var effectiveMutationRate = ResolveEffectiveMutationRate(recipe, appliedOptionalInputs);
+        var ratePlan = BuildCraftRatePlan(recipe, learned.TotalCraftCount, learned.CurrentSuccessRateBonus, normalizedRequestedCraftCount, appliedOptionalInputs);
         return new AlchemyValidationResult(
             true,
             null,
             recipe,
+            normalizedRequestedCraftCount,
+            maxCraftableCount,
             consumedPlayerItemIds.ToArray(),
             new Dictionary<long, int>(consumedStackQuantities),
             appliedOptionalInputs.ToArray(),
-            effectiveSuccessRate,
-            effectiveMutationRate);
+            ratePlan.EffectiveSuccessRate,
+            ratePlan.EffectiveMutationRate,
+            ratePlan.BoostedSuccessRate,
+            ratePlan.BoostedMutationRate,
+            ratePlan.BoostedCraftCount);
     }
 
-    public async Task<AlchemyExecutionResult> ExecuteCraftPillAsync(
+    public async Task<AlchemyCraftRatePlan> BuildCraftRatePlanAsync(
         Guid playerId,
         int recipeId,
-        IReadOnlyCollection<long>? selectedPlayerItemIds,
-        IReadOnlyCollection<int>? selectedOptionalInputIds = null,
-        CancellationToken cancellationToken = default)
-    {
-        var validation = await ValidateCraftPillAsync(playerId, recipeId, selectedPlayerItemIds, selectedOptionalInputIds, cancellationToken);
-        if (!validation.Success)
-        {
-            return new AlchemyExecutionResult(
-                false,
-                validation.FailureReason,
-                validation.Recipe,
-                Array.Empty<InventoryItemView>(),
-                validation.ConsumedPlayerItemIds,
-                validation.ConsumedStackQuantities,
-                validation.EffectiveSuccessRate,
-                validation.EffectiveMutationRate);
-        }
-
-        var recipe = validation.Recipe ?? throw new InvalidOperationException("Validated alchemy recipe is missing.");
-        await using var tx = await _db.BeginTransactionAsync(cancellationToken);
-        foreach (var playerItemId in validation.ConsumedPlayerItemIds)
-            await _itemService.RemovePlayerItemAsync(playerId, playerItemId, cancellationToken);
-
-        foreach (var stackReduction in validation.ConsumedStackQuantities)
-        {
-            var playerItem = await _playerItems.GetByIdAsync(stackReduction.Key, cancellationToken)
-                             ?? throw new InvalidOperationException($"Player item {stackReduction.Key} was not found during alchemy execution.");
-            if (playerItem.PlayerId != playerId)
-                throw new InvalidOperationException($"Player item {stackReduction.Key} does not belong to player {playerId}.");
-
-            playerItem.Quantity -= stackReduction.Value;
-            playerItem.UpdatedAt = DateTime.UtcNow;
-            if (playerItem.Quantity <= 0)
-            {
-                await _itemService.RemovePlayerItemAsync(playerId, playerItem.Id, cancellationToken);
-            }
-            else
-            {
-                await _playerItems.UpdateAsync(playerItem, cancellationToken);
-            }
-        }
-
-        var successCheck = _randomService.CheckChance(ToPartsPerMillion(validation.EffectiveSuccessRate));
-        if (!successCheck.Success)
-        {
-            await tx.CommitAsync(cancellationToken);
-            return new AlchemyExecutionResult(
-                false,
-                "Luyen dan that bai.",
-                recipe,
-                Array.Empty<InventoryItemView>(),
-                validation.ConsumedPlayerItemIds,
-                validation.ConsumedStackQuantities,
-                validation.EffectiveSuccessRate,
-                validation.EffectiveMutationRate);
-        }
-
-        var createdItems = await _itemService.AddItemAsync(
-            playerId,
-            recipe.ResultPillItemTemplateId,
-            1,
-            false,
-            null,
-            cancellationToken);
-
-        var learned = await _playerPillRecipes.GetByPlayerAndRecipeAsync(playerId, recipe.Id, cancellationToken)
-                      ?? throw new InvalidOperationException($"Player {playerId} lost learned recipe {recipe.Id} during execution.");
-        learned.TotalCraftCount += 1;
-        learned.CurrentSuccessRateBonus = ResolveMasteryBonus(recipe, learned.TotalCraftCount, learned.CurrentSuccessRateBonus);
-        learned.UpdatedAt = DateTime.UtcNow;
-        await _playerPillRecipes.UpdateAsync(learned, cancellationToken);
-
-        await tx.CommitAsync(cancellationToken);
-
-        var createdViews = (await _itemService.GetInventoryAsync(playerId, cancellationToken))
-            .Where(x => createdItems.Any(created => created.Id == x.PlayerItemId))
-            .ToArray();
-
-        return new AlchemyExecutionResult(
-            true,
-            null,
-            recipe,
-            createdViews,
-            validation.ConsumedPlayerItemIds,
-            validation.ConsumedStackQuantities,
-            validation.EffectiveSuccessRate,
-            validation.EffectiveMutationRate);
-    }
-
-    public async Task<double> CalculateFinalSuccessRateAsync(
-        Guid playerId,
-        int recipeId,
-        IReadOnlyCollection<int>? selectedOptionalInputIds = null,
+        int requestedCraftCount,
+        IReadOnlyCollection<PracticeOptionalInputEntry>? selectedOptionalInputs = null,
         CancellationToken cancellationToken = default)
     {
         if (!_definitions.TryGetPillRecipe(recipeId, out var recipe))
-            return 0d;
+            return new AlchemyCraftRatePlan(0d, 0d, 0d, 0d, 0);
 
         var learned = await _playerPillRecipes.GetByPlayerAndRecipeAsync(playerId, recipeId, cancellationToken);
         if (learned is null)
-            return 0d;
+            return new AlchemyCraftRatePlan(0d, 0d, 0d, 0d, 0);
 
-        var selectedOptionalIds = new HashSet<int>(selectedOptionalInputIds ?? Array.Empty<int>());
-        var appliedOptionalInputs = recipe.Inputs
-            .Where(x => x.IsOptional && selectedOptionalIds.Contains(x.Id))
-            .ToArray();
-        var masteryBonus = ResolveMasteryBonus(recipe, learned.TotalCraftCount, learned.CurrentSuccessRateBonus);
-        return ResolveEffectiveSuccessRate(recipe, masteryBonus, appliedOptionalInputs);
+        var optionalSelections = NormalizeOptionalSelections(recipe, selectedOptionalInputs);
+        return BuildCraftRatePlan(
+            recipe,
+            learned.TotalCraftCount,
+            learned.CurrentSuccessRateBonus,
+            Math.Max(1, requestedCraftCount),
+            optionalSelections);
     }
 
-    public async Task UpdateRecipeMasteryAsync(Guid playerId, int recipeId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<double>> BuildSuccessRollRatesAsync(
+        Guid playerId,
+        int recipeId,
+        int requestedCraftCount,
+        IReadOnlyCollection<PracticeOptionalInputEntry>? selectedOptionalInputs = null,
+        CancellationToken cancellationToken = default)
     {
-        var learned = await _playerPillRecipes.GetByPlayerAndRecipeAsync(playerId, recipeId, cancellationToken)
-                      ?? throw new InvalidOperationException($"Player {playerId} has not learned pill recipe {recipeId}.");
         if (!_definitions.TryGetPillRecipe(recipeId, out var recipe))
-            throw new InvalidOperationException($"Pill recipe {recipeId} was not found.");
+            return Array.Empty<double>();
 
-        learned.CurrentSuccessRateBonus = ResolveMasteryBonus(recipe, learned.TotalCraftCount, learned.CurrentSuccessRateBonus);
-        learned.UpdatedAt = DateTime.UtcNow;
-        await _playerPillRecipes.UpdateAsync(learned, cancellationToken);
+        var learned = await _playerPillRecipes.GetByPlayerAndRecipeAsync(playerId, recipeId, cancellationToken);
+        if (learned is null)
+            return Array.Empty<double>();
+
+        var normalizedRequestedCraftCount = Math.Max(1, requestedCraftCount);
+        var masteryBonus = ResolveMasteryBonus(recipe, learned.TotalCraftCount, learned.CurrentSuccessRateBonus);
+        var baseRate = ResolveEffectiveSuccessRate(recipe, masteryBonus, null);
+        var optionalSelections = NormalizeOptionalSelections(recipe, selectedOptionalInputs);
+        var rates = new List<double>(normalizedRequestedCraftCount);
+        foreach (var selection in optionalSelections)
+        {
+            var boostedRate = ResolveEffectiveSuccessRate(recipe, masteryBonus, selection.Input);
+            for (var count = 0; count < selection.AppliedCount && rates.Count < normalizedRequestedCraftCount; count++)
+                rates.Add(boostedRate);
+        }
+
+        while (rates.Count < normalizedRequestedCraftCount)
+            rates.Add(baseRate);
+        return rates;
     }
 
     public double ResolveMasteryBonusForCurrentProgress(
@@ -273,63 +222,212 @@ public sealed class AlchemyService
         return ResolveMasteryBonus(recipe, totalCraftCount, fallbackCurrentBonus);
     }
 
+    private static AlchemyValidationResult Failed(
+        string failureReason,
+        PillRecipeTemplateDefinition? recipe,
+        int requestedCraftCount,
+        int maxCraftableCount = 0)
+    {
+        return new AlchemyValidationResult(
+            false,
+            failureReason,
+            recipe,
+            requestedCraftCount,
+            maxCraftableCount,
+            Array.Empty<long>(),
+            new Dictionary<long, int>(),
+            Array.Empty<AlchemyOptionalInputSelection>(),
+            0d,
+            0d,
+            0d,
+            0d,
+            0);
+    }
+
+    private static Dictionary<int, int> NormalizeOptionalSelections(IReadOnlyCollection<AlchemyOptionalInputSelectionModel>? selectedOptionalInputs)
+    {
+        var result = new Dictionary<int, int>();
+        if (selectedOptionalInputs is null)
+            return result;
+
+        foreach (var selection in selectedOptionalInputs)
+        {
+            if (selection.InputId <= 0 || selection.Quantity <= 0)
+                continue;
+
+            result[selection.InputId] = result.TryGetValue(selection.InputId, out var current)
+                ? current + selection.Quantity
+                : selection.Quantity;
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<AlchemyOptionalInputSelection> NormalizeOptionalSelections(
+        PillRecipeTemplateDefinition recipe,
+        IReadOnlyCollection<PracticeOptionalInputEntry>? selectedOptionalInputs)
+    {
+        if (selectedOptionalInputs is null || selectedOptionalInputs.Count == 0)
+            return Array.Empty<AlchemyOptionalInputSelection>();
+
+        var optionalInputsById = recipe.Inputs
+            .Where(static input => input.IsOptional)
+            .ToDictionary(static input => input.Id);
+        return selectedOptionalInputs
+            .Where(static selection => selection is not null && selection.AppliedCount > 0)
+            .Where(selection => optionalInputsById.ContainsKey(selection.InputId))
+            .Select(selection => new AlchemyOptionalInputSelection(
+                optionalInputsById[selection.InputId],
+                Math.Max(0, selection.AppliedCount)))
+            .Where(static selection => selection.AppliedCount > 0)
+            .ToArray();
+    }
+
+    private int CalculateMaxCraftableCount(
+        PillRecipeInputDefinition input,
+        IReadOnlyCollection<PlayerItemEntity> inventory,
+        IReadOnlyDictionary<long, PlayerItemEntity> selectedItems,
+        IReadOnlyDictionary<long, PlayerEquipmentEntity> equipmentByItemId,
+        IReadOnlyDictionary<long, PlayerSoilEntity> soilByItemId)
+    {
+        if (!_itemDefinitions.TryGetItem(input.RequiredItemTemplateId, out var requiredItemDefinition))
+            return 0;
+
+        var requiredQuantityPerCraft = Math.Max(1, input.RequiredQuantity);
+        if (requiredItemDefinition.IsStackable)
+        {
+            var totalQuantity = inventory
+                .Where(item => item.ItemTemplateId == input.RequiredItemTemplateId)
+                .Sum(static item => Math.Max(0, item.Quantity));
+            return totalQuantity / requiredQuantityPerCraft;
+        }
+
+        var eligibleSelectedCount = selectedItems.Values
+            .Where(item => item.ItemTemplateId == input.RequiredItemTemplateId)
+            .Count(item => IsEligibleSelectedItem(item, equipmentByItemId, soilByItemId));
+        return eligibleSelectedCount / requiredQuantityPerCraft;
+    }
+
     private string? TryAllocateInput(
         PillRecipeInputDefinition input,
+        int requestedApplicationCount,
         IReadOnlyCollection<PlayerItemEntity> inventory,
         IReadOnlyDictionary<long, PlayerItemEntity> selectedItems,
         IReadOnlyDictionary<long, PlayerEquipmentEntity> equipmentByItemId,
         IReadOnlyDictionary<long, PlayerSoilEntity> soilByItemId,
         ISet<long> allocatedSelectedItemIds,
         IList<long> consumedPlayerItemIds,
-        IDictionary<long, int> consumedStackQuantities)
+        IDictionary<long, int> consumedStackQuantities,
+        bool allowPartial,
+        out int appliedApplicationCount)
     {
+        appliedApplicationCount = 0;
+        if (requestedApplicationCount <= 0)
+            return null;
+
         if (!_itemDefinitions.TryGetItem(input.RequiredItemTemplateId, out var requiredItemDefinition))
             return $"Item template {input.RequiredItemTemplateId} cua dan phuong khong ton tai.";
 
+        var quantityPerApplication = Math.Max(1, input.RequiredQuantity);
         if (requiredItemDefinition.IsStackable)
         {
-            var remaining = input.RequiredQuantity;
-            foreach (var item in inventory.Where(x => x.ItemTemplateId == input.RequiredItemTemplateId).OrderBy(x => x.AcquiredAt).ThenBy(x => x.Id))
+            var maxAvailableApplications = inventory
+                .Where(item => item.ItemTemplateId == input.RequiredItemTemplateId)
+                .Sum(item =>
+                {
+                    var alreadyAllocated = consumedStackQuantities.TryGetValue(item.Id, out var allocated) ? allocated : 0;
+                    return Math.Max(0, item.Quantity - alreadyAllocated);
+                }) / quantityPerApplication;
+            if (!allowPartial && maxAvailableApplications < requestedApplicationCount)
+                return $"Khong du so luong item template {input.RequiredItemTemplateId} de luyen dan.";
+
+            appliedApplicationCount = allowPartial
+                ? Math.Min(requestedApplicationCount, maxAvailableApplications)
+                : requestedApplicationCount;
+            var quantityToConsume = appliedApplicationCount * quantityPerApplication;
+            foreach (var item in inventory.Where(item => item.ItemTemplateId == input.RequiredItemTemplateId).OrderBy(item => item.AcquiredAt).ThenBy(item => item.Id))
             {
+                if (quantityToConsume <= 0)
+                    break;
+
                 var alreadyAllocated = consumedStackQuantities.TryGetValue(item.Id, out var allocated) ? allocated : 0;
-                var available = item.Quantity - alreadyAllocated;
+                var available = Math.Max(0, item.Quantity - alreadyAllocated);
                 if (available <= 0)
                     continue;
 
-                var consumed = Math.Min(remaining, available);
+                var consumed = Math.Min(quantityToConsume, available);
                 consumedStackQuantities[item.Id] = alreadyAllocated + consumed;
-                remaining -= consumed;
-                if (remaining <= 0)
-                    break;
+                quantityToConsume -= consumed;
             }
 
-            return remaining > 0
+            return quantityToConsume > 0
                 ? $"Khong du so luong item template {input.RequiredItemTemplateId} de luyen dan."
                 : null;
         }
 
-        var selectedMatches = selectedItems.Values
-            .Where(x => x.ItemTemplateId == input.RequiredItemTemplateId && !allocatedSelectedItemIds.Contains(x.Id))
-            .OrderBy(x => x.AcquiredAt)
-            .ThenBy(x => x.Id)
-            .Take(input.RequiredQuantity)
+        var eligibleSelectedItems = selectedItems.Values
+            .Where(item => item.ItemTemplateId == input.RequiredItemTemplateId && !allocatedSelectedItemIds.Contains(item.Id))
+            .Where(item => IsEligibleSelectedItem(item, equipmentByItemId, soilByItemId))
+            .OrderBy(item => item.AcquiredAt)
+            .ThenBy(item => item.Id)
             .ToArray();
-        if (selectedMatches.Length < input.RequiredQuantity)
+        var maxSelectableApplications = eligibleSelectedItems.Length / quantityPerApplication;
+        if (!allowPartial && maxSelectableApplications < requestedApplicationCount)
             return $"Can chi dinh du player_item_id cho item khong stackable template {input.RequiredItemTemplateId}.";
 
-        foreach (var selected in selectedMatches)
+        appliedApplicationCount = allowPartial
+            ? Math.Min(requestedApplicationCount, maxSelectableApplications)
+            : requestedApplicationCount;
+        var requiredSelectionCount = appliedApplicationCount * quantityPerApplication;
+        for (var index = 0; index < requiredSelectionCount; index++)
         {
-            if (equipmentByItemId.TryGetValue(selected.Id, out var equipment) && equipment.EquippedSlot.HasValue)
-                return $"Player item {selected.Id} dang duoc equip, khong the dung de luyen dan.";
-
-            if (soilByItemId.TryGetValue(selected.Id, out var soil) && soil.State == (int)PlayerSoilState.Inserted)
-                return $"Player item {selected.Id} dang la linh tho duoc cam trong plot, khong the dung de luyen dan.";
-
+            var selected = eligibleSelectedItems[index];
             allocatedSelectedItemIds.Add(selected.Id);
             consumedPlayerItemIds.Add(selected.Id);
         }
 
         return null;
+    }
+
+    private static bool IsEligibleSelectedItem(
+        PlayerItemEntity item,
+        IReadOnlyDictionary<long, PlayerEquipmentEntity> equipmentByItemId,
+        IReadOnlyDictionary<long, PlayerSoilEntity> soilByItemId)
+    {
+        if (equipmentByItemId.TryGetValue(item.Id, out var equipment) && equipment.EquippedSlot.HasValue)
+            return false;
+        if (soilByItemId.TryGetValue(item.Id, out var soil) && soil.State == (int)PlayerSoilState.Inserted)
+            return false;
+
+        return true;
+    }
+
+    private static AlchemyCraftRatePlan BuildCraftRatePlan(
+        PillRecipeTemplateDefinition recipe,
+        int totalCraftCount,
+        double fallbackCurrentBonus,
+        int requestedCraftCount,
+        IReadOnlyCollection<AlchemyOptionalInputSelection> appliedOptionalInputs)
+    {
+        var masteryBonus = ResolveMasteryBonus(recipe, totalCraftCount, fallbackCurrentBonus);
+        var effectiveSuccessRate = ResolveEffectiveSuccessRate(recipe, masteryBonus, null);
+        var effectiveMutationRate = ResolveEffectiveMutationRate(recipe, null);
+        var boostedSelection = appliedOptionalInputs.FirstOrDefault(static selection => selection.AppliedCount > 0);
+        var boostedSuccessRate = boostedSelection is null
+            ? effectiveSuccessRate
+            : ResolveEffectiveSuccessRate(recipe, masteryBonus, boostedSelection.Input);
+        var boostedMutationRate = boostedSelection is null
+            ? effectiveMutationRate
+            : ResolveEffectiveMutationRate(recipe, boostedSelection.Input);
+        var boostedCraftCount = Math.Min(
+            Math.Max(1, requestedCraftCount),
+            appliedOptionalInputs.Sum(static selection => Math.Max(0, selection.AppliedCount)));
+        return new AlchemyCraftRatePlan(
+            effectiveSuccessRate,
+            effectiveMutationRate,
+            boostedSuccessRate,
+            boostedMutationRate,
+            boostedCraftCount);
     }
 
     private static double ResolveMasteryBonus(PillRecipeTemplateDefinition recipe, int totalCraftCount, double fallbackCurrentBonus)
@@ -344,11 +442,11 @@ public sealed class AlchemyService
     private static double ResolveEffectiveSuccessRate(
         PillRecipeTemplateDefinition recipe,
         double masteryBonus,
-        IReadOnlyCollection<PillRecipeInputDefinition> appliedOptionalInputs)
+        PillRecipeInputDefinition? optionalInput)
     {
         var rate = NormalizeRate(recipe.BaseSuccessRate)
-                   + appliedOptionalInputs.Sum(x => NormalizeRate(x.SuccessRateBonus))
-                   + NormalizeRate(masteryBonus);
+                   + NormalizeRate(masteryBonus)
+                   + (optionalInput is null ? 0d : NormalizeRate(optionalInput.SuccessRateBonus));
         if (recipe.SuccessRateCap.HasValue)
             rate = Math.Min(rate, NormalizeRate(recipe.SuccessRateCap.Value));
 
@@ -357,10 +455,10 @@ public sealed class AlchemyService
 
     private static double ResolveEffectiveMutationRate(
         PillRecipeTemplateDefinition recipe,
-        IReadOnlyCollection<PillRecipeInputDefinition> appliedOptionalInputs)
+        PillRecipeInputDefinition? optionalInput)
     {
         var rate = NormalizeRate(recipe.MutationRate)
-                   + appliedOptionalInputs.Sum(x => NormalizeRate(x.MutationBonusRate));
+                   + (optionalInput is null ? 0d : NormalizeRate(optionalInput.MutationBonusRate));
         if (recipe.MutationRateCap > 0)
             rate = Math.Min(rate, NormalizeRate(recipe.MutationRateCap));
 
@@ -370,12 +468,6 @@ public sealed class AlchemyService
     private static bool IsExpired(DateTime? expireAtUtc)
     {
         return expireAtUtc.HasValue && expireAtUtc.Value <= DateTime.UtcNow;
-    }
-
-    private static int ToPartsPerMillion(double rawRate)
-    {
-        var normalized = NormalizeRate(rawRate);
-        return (int)Math.Round(normalized * 1_000_000d, MidpointRounding.AwayFromZero);
     }
 
     private static double NormalizeRate(double rawRate)

@@ -22,17 +22,25 @@ public sealed record PracticeConsumedEntry(
     int ItemTemplateId,
     int Quantity);
 
+public sealed record PracticeOptionalInputEntry(
+    int InputId,
+    int AppliedCount);
+
 public sealed record PracticeRewardEntry(
     int ItemTemplateId,
     int Quantity);
 
 public sealed record PracticeSessionPayload(
     int DefinitionId,
-    IReadOnlyList<int> SelectedOptionalInputIds,
+    int RequestedCraftCount,
+    IReadOnlyList<PracticeOptionalInputEntry> SelectedOptionalInputs,
     IReadOnlyList<PracticeConsumedEntry> ConsumedEntries);
 
 public sealed record PracticeCompletionPayload(
     bool Success,
+    int RequestedCraftCount,
+    int SuccessCount,
+    int FailedCount,
     string Title,
     string Message,
     int? DisplayItemTemplateId,

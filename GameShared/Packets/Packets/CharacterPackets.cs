@@ -502,8 +502,12 @@ public partial class PreviewCraftPillPacket : IPacket
     [Range(1, int.MaxValue)]
     public int? PillRecipeTemplateId { get; set; }
 
+    [ValidationCode(MessageCode.InventoryItemQuantityInvalid)]
+    [Range(1, int.MaxValue)]
+    public int? RequestedCraftCount { get; set; }
+
     public List<long>? SelectedPlayerItemIds { get; set; }
-    public List<int>? SelectedOptionalInputIds { get; set; }
+    public List<AlchemyOptionalInputSelectionModel>? SelectedOptionalInputs { get; set; }
 }
 
 [Packet(82)]
@@ -526,8 +530,13 @@ public partial class CraftPillPacket : IPacket
     [Range(1, int.MaxValue)]
     public int? PillRecipeTemplateId { get; set; }
 
+    [ValidationCode(MessageCode.InventoryItemQuantityInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? RequestedCraftCount { get; set; }
+
     public List<long>? SelectedPlayerItemIds { get; set; }
-    public List<int>? SelectedOptionalInputIds { get; set; }
+    public List<AlchemyOptionalInputSelectionModel>? SelectedOptionalInputs { get; set; }
 }
 
 [Packet(84)]
