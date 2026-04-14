@@ -1,5 +1,6 @@
 using System;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Inventory;
 using TMPro;
 using UnityEngine;
@@ -8,7 +9,7 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Crafting
 {
-    public sealed class CraftRecipeListItemView : MonoBehaviour,
+    public sealed class CraftRecipeListItemView : LoopScrollViewItem,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerClickHandler,
@@ -17,11 +18,9 @@ namespace PhamNhanOnline.Client.UI.Crafting
         IEndDragHandler
     {
         [Header("References")]
+        [SerializeField] private Transform dragVisualRoot;
         [SerializeField] private Image iconImage;
-        [SerializeField] private Image backgroundImage;
         [SerializeField] private TMP_Text nameText;
-        [SerializeField] private TMP_Text detailText;
-        [SerializeField] private TMP_Text durationText;
         [SerializeField] private GameObject selectedHighlightRoot;
 
         [Header("Drag")]
@@ -46,6 +45,9 @@ namespace PhamNhanOnline.Client.UI.Crafting
             canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null)
                 canvasGroup = gameObject.AddComponent<CanvasGroup>();
+
+            if (dragVisualRoot == null && iconImage != null)
+                dragVisualRoot = iconImage.transform.parent != null ? iconImage.transform.parent : iconImage.transform;
         }
 
         private void Start()
@@ -65,25 +67,8 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 iconImage.enabled = presentation.IconSprite != null;
             }
 
-            if (backgroundImage != null)
-                backgroundImage.sprite = presentation.BackgroundSprite;
-
             if (nameText != null)
-            {
                 nameText.text = string.IsNullOrWhiteSpace(value.Name) ? "Dan phuong" : value.Name.Trim();
-                nameText.color = presentation.NameColor;
-            }
-
-            if (detailText != null)
-            {
-                var resultName = string.IsNullOrWhiteSpace(value.ResultPill.Name)
-                    ? "Khong ro ket qua"
-                    : value.ResultPill.Name.Trim();
-                detailText.text = string.Concat("Ket qua: ", resultName);
-            }
-
-            if (durationText != null)
-                durationText.text = string.Concat("T/g: ", FormatDuration(value.CraftDurationSeconds));
 
             if (force)
                 SetSelected(isSelected, force: true);
@@ -100,15 +85,8 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 iconImage.enabled = false;
             }
 
-            if (backgroundImage != null)
-                backgroundImage.sprite = null;
-
             if (nameText != null)
                 nameText.text = string.Empty;
-            if (detailText != null)
-                detailText.text = string.Empty;
-            if (durationText != null)
-                durationText.text = string.Empty;
 
             ResetDragVisuals();
             SetSelected(false, force);
@@ -155,7 +133,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
             canvasGroup.blocksRaycasts = false;
             canvasGroup.alpha = draggingAlpha;
-            dragGhost = CraftRecipeDragGhost.Create(transform, currentPresentation.IconSprite, recipe.Name, eventData);
+            dragGhost = CraftRecipeDragGhost.Create(transform, dragVisualRoot, currentPresentation.IconSprite, recipe.Name, eventData);
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -184,19 +162,9 @@ namespace PhamNhanOnline.Client.UI.Crafting
             }
         }
 
-        private static string FormatDuration(long totalSeconds)
-        {
-            var clamped = Math.Max(0L, totalSeconds);
-            if (clamped >= 3600L)
-                return TimeSpan.FromSeconds(clamped).ToString(@"hh\:mm\:ss");
-
-            return TimeSpan.FromSeconds(clamped).ToString(@"mm\:ss");
-        }
-
         private void ValidateSerializedReferences()
         {
             ThrowIfMissing(iconImage, nameof(iconImage));
-            ThrowIfMissing(backgroundImage, nameof(backgroundImage));
         }
 
         private void ThrowIfMissing(UnityEngine.Object value, string fieldName)

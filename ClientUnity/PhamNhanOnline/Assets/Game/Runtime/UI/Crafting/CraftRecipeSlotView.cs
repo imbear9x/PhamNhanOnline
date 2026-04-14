@@ -18,17 +18,18 @@ namespace PhamNhanOnline.Client.UI.Crafting
         IEndDragHandler
     {
         [Header("References")]
+        [SerializeField] private Transform dragVisualRoot;
         [SerializeField] private Image iconImage;
-        [SerializeField] private Image backgroundImage;
         [SerializeField] private TMP_Text nameText;
-        [SerializeField] private TMP_Text detailText;
+        [SerializeField] private TMP_Text durationText;
+        [SerializeField] private TMP_Text successRateText;
+        [SerializeField] private GameObject detailsRoot;
         [SerializeField] private GameObject emptyStateRoot;
         [SerializeField] private GameObject occupiedStateRoot;
         [SerializeField] private GameObject lockedRoot;
 
         [Header("Text")]
-        [SerializeField] private string emptyName = "Keo dan phuong vao day";
-        [SerializeField] private string emptyDetail = "Dan phuong da hoc khong bi mat di khi dua vao o nay.";
+        [SerializeField] private string emptyName = "Empty Name";
 
         [Header("Drag")]
         [SerializeField] private float draggingAlpha = 0.65f;
@@ -55,6 +56,9 @@ namespace PhamNhanOnline.Client.UI.Crafting
             if (canvasGroup == null)
                 canvasGroup = gameObject.AddComponent<CanvasGroup>();
 
+            if (dragVisualRoot == null && iconImage != null)
+                dragVisualRoot = iconImage.transform.parent != null ? iconImage.transform.parent : iconImage.transform;
+
             ApplyEmptyState();
         }
 
@@ -63,7 +67,11 @@ namespace PhamNhanOnline.Client.UI.Crafting
             ValidateSerializedReferences();
         }
 
-        public void SetRecipe(LearnedPillRecipeModel value, InventoryItemPresentation presentation)
+        public void SetRecipe(
+            LearnedPillRecipeModel value,
+            InventoryItemPresentation presentation,
+            string durationLabel,
+            string successRateLabel)
         {
             recipe = value;
             hasRecipe = true;
@@ -75,17 +83,20 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 iconImage.enabled = presentation.IconSprite != null;
             }
 
-            if (backgroundImage != null)
-                backgroundImage.sprite = presentation.BackgroundSprite;
-
             if (nameText != null)
             {
                 nameText.text = string.IsNullOrWhiteSpace(value.Name) ? "Dan phuong" : value.Name.Trim();
                 nameText.color = presentation.NameColor;
             }
 
-            if (detailText != null)
-                detailText.text = string.Concat("Ket qua: ", string.IsNullOrWhiteSpace(value.ResultPill.Name) ? "?" : value.ResultPill.Name.Trim());
+            if (durationText != null)
+                durationText.text = string.IsNullOrWhiteSpace(durationLabel) ? string.Empty : durationLabel.Trim();
+
+            if (successRateText != null)
+                successRateText.text = string.IsNullOrWhiteSpace(successRateLabel) ? string.Empty : successRateLabel.Trim();
+
+            if (detailsRoot != null)
+                detailsRoot.SetActive(true);
 
             if (emptyStateRoot != null)
                 emptyStateRoot.SetActive(false);
@@ -104,9 +115,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 iconImage.sprite = null;
                 iconImage.enabled = false;
             }
-
-            if (backgroundImage != null)
-                backgroundImage.sprite = null;
 
             ApplyEmptyState();
             ResetDragVisuals();
@@ -173,7 +181,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
             canvasGroup.blocksRaycasts = false;
             canvasGroup.alpha = draggingAlpha;
-            dragGhost = CraftRecipeDragGhost.Create(transform, currentPresentation.IconSprite, recipe.Name, eventData);
+            dragGhost = CraftRecipeDragGhost.Create(transform, dragVisualRoot, currentPresentation.IconSprite, recipe.Name, eventData);
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -191,8 +199,12 @@ namespace PhamNhanOnline.Client.UI.Crafting
         {
             if (nameText != null)
                 nameText.text = emptyName;
-            if (detailText != null)
-                detailText.text = emptyDetail;
+            if (durationText != null)
+                durationText.text = string.Empty;
+            if (successRateText != null)
+                successRateText.text = string.Empty;
+            if (detailsRoot != null)
+                detailsRoot.SetActive(false);
             if (emptyStateRoot != null)
                 emptyStateRoot.SetActive(true);
             if (occupiedStateRoot != null)
@@ -217,7 +229,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
         private void ValidateSerializedReferences()
         {
             ThrowIfMissing(iconImage, nameof(iconImage));
-            ThrowIfMissing(backgroundImage, nameof(backgroundImage));
         }
 
         private void ThrowIfMissing(UnityEngine.Object value, string fieldName)

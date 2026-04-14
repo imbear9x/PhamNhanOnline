@@ -110,7 +110,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 builder.Append("* ");
                 builder.Append(string.IsNullOrWhiteSpace(input.RequiredItem.Name) ? "Nguyen lieu" : input.RequiredItem.Name.Trim());
                 builder.Append(' ');
-                builder.Append(Math.Min(Math.Max(1, input.RequiredQuantity), currentQuantity).ToString(CultureInfo.InvariantCulture));
+                builder.Append(currentQuantity.ToString(CultureInfo.InvariantCulture));
                 builder.Append('/');
                 builder.Append(Math.Max(1, input.RequiredQuantity).ToString(CultureInfo.InvariantCulture));
                 if (input.IsOptional)

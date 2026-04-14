@@ -18,7 +18,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
             this.canvasRect = canvasRect;
         }
 
-        public static CraftRecipeDragGhost Create(Transform source, Sprite iconSprite, string label, PointerEventData eventData)
+        public static CraftRecipeDragGhost Create(Transform source, Transform visualSource, Sprite iconSprite, string label, PointerEventData eventData)
         {
             if (source == null)
                 return null;
@@ -28,6 +28,9 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 return null;
 
             var rootCanvas = canvas.rootCanvas;
+            if (visualSource != null && TryCreateClonedVisualGhost(rootCanvas, visualSource, eventData, out var clonedGhost))
+                return clonedGhost;
+
             var rootObject = new GameObject("CraftRecipeDragGhost", typeof(RectTransform), typeof(CanvasGroup));
             var rootRect = rootObject.GetComponent<RectTransform>();
             rootRect.SetParent(rootCanvas.transform, false);
@@ -108,6 +111,63 @@ namespace PhamNhanOnline.Client.UI.Crafting
         {
             if (rootObject != null)
                 Object.Destroy(rootObject);
+        }
+
+        private static bool TryCreateClonedVisualGhost(Canvas rootCanvas, Transform visualSource, PointerEventData eventData, out CraftRecipeDragGhost ghost)
+        {
+            ghost = null;
+            if (rootCanvas == null || visualSource == null)
+                return false;
+
+            var sourceRect = visualSource as RectTransform;
+            if (sourceRect == null)
+                return false;
+
+            var rootObject = new GameObject("CraftRecipeDragGhost", typeof(RectTransform), typeof(CanvasGroup));
+            var rootRect = rootObject.GetComponent<RectTransform>();
+            rootRect.SetParent(rootCanvas.transform, false);
+            rootRect.SetAsLastSibling();
+            rootRect.anchorMin = new Vector2(0.5f, 0.5f);
+            rootRect.anchorMax = new Vector2(0.5f, 0.5f);
+            rootRect.pivot = new Vector2(0.5f, 0.5f);
+            rootRect.sizeDelta = sourceRect.rect.size;
+
+            var clone = Object.Instantiate(sourceRect.gameObject, rootRect.transform, false);
+            clone.name = sourceRect.gameObject.name;
+            clone.SetActive(true);
+
+            var cloneRect = clone.transform as RectTransform;
+            if (cloneRect != null)
+            {
+                cloneRect.anchorMin = new Vector2(0.5f, 0.5f);
+                cloneRect.anchorMax = new Vector2(0.5f, 0.5f);
+                cloneRect.pivot = sourceRect.pivot;
+                cloneRect.sizeDelta = sourceRect.rect.size;
+                cloneRect.anchoredPosition = Vector2.zero;
+                cloneRect.localScale = Vector3.one;
+                cloneRect.localRotation = Quaternion.identity;
+            }
+
+            DisableRaycasts(clone.transform);
+
+            var canvasGroup = rootObject.GetComponent<CanvasGroup>();
+            canvasGroup.blocksRaycasts = false;
+            canvasGroup.interactable = false;
+            canvasGroup.alpha = 0.82f;
+
+            ghost = new CraftRecipeDragGhost(rootObject, rootRect, rootCanvas.transform as RectTransform);
+            ghost.UpdatePosition(eventData);
+            return true;
+        }
+
+        private static void DisableRaycasts(Transform root)
+        {
+            if (root == null)
+                return;
+
+            var graphics = root.GetComponentsInChildren<Graphic>(true);
+            for (var i = 0; i < graphics.Length; i++)
+                graphics[i].raycastTarget = false;
         }
     }
 }

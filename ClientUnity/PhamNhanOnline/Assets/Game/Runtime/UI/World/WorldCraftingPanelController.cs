@@ -23,6 +23,14 @@ namespace PhamNhanOnline.Client.UI.World
         {
             public readonly List<long> SelectedPlayerItemIds = new List<long>(4);
             public bool Armed;
+            public int AssignedQuantity;
+        }
+
+        private enum QuantityPopupMode
+        {
+            None = 0,
+            CraftCount = 1,
+            OptionalInputQuantity = 2
         }
 
         [Header("Recipe References")]
@@ -38,14 +46,14 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
 
         [Header("Ingredient References")]
-        [SerializeField] private CraftMaterialSlotView ingredientSlotView;
+        [SerializeField] private RectTransform requiredIngredientSlotsRoot;
+        [SerializeField] private CraftMaterialSlotView requiredIngredientSlotTemplate;
         [SerializeField] private TMP_Text ingredientStatusText;
+        [SerializeField] private RectTransform optionalIngredientSlotsRoot;
+        [SerializeField] private CraftMaterialSlotView optionalIngredientSlotTemplate;
+        [SerializeField] private InventoryDropQuantityPopupView quantityPopupView;
 
         [Header("Recipe Detail Text")]
-        [SerializeField] private TMP_Text selectedRecipeNameText;
-        [SerializeField] private TMP_Text selectedRecipeDescriptionText;
-        [SerializeField] private TMP_Text durationText;
-        [SerializeField] private TMP_Text successRateText;
         [SerializeField] private TMP_Text masteryText;
         [SerializeField] private TMP_Text practiceStatusText;
 
@@ -71,15 +79,18 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private string loadingRecipesText = "Dang tai dan phuong...";
         [SerializeField] private string missingRecipesText = "Chua tai danh sach dan phuong.";
         [SerializeField] private string emptyRecipesText = "Chua hoc dan phuong nao.";
-        [SerializeField] private string emptyRecipeName = "Chua dat dan phuong";
-        [SerializeField] private string emptyRecipeDescription = "Keo dan phuong da hoc vao o ben phai de bat dau chuan bi luyen che.";
         [SerializeField] private string emptyIngredientsText = "Keo nguyen lieu hop le vao tung o.";
         [SerializeField] private string craftIdleText = "Luyen che";
         [SerializeField] private string pauseIdleText = "Tam dung";
         [SerializeField] private string resumeIdleText = "Tiep tuc";
         [SerializeField] private string cancelIdleText = "Huy bo";
+        [SerializeField] [Range(1, 6)] private int maxRequiredIngredientSlots = 6;
 
         private readonly Dictionary<int, IngredientSelection> selectionsByInputId = new Dictionary<int, IngredientSelection>();
+        private readonly List<CraftMaterialSlotView> requiredIngredientSlotViews = new List<CraftMaterialSlotView>();
+        private readonly Dictionary<CraftMaterialSlotView, int> requiredInputIdBySlotView = new Dictionary<CraftMaterialSlotView, int>();
+        private readonly List<CraftMaterialSlotView> optionalIngredientSlotViews = new List<CraftMaterialSlotView>();
+        private readonly Dictionary<CraftMaterialSlotView, int> optionalInputIdBySlotView = new Dictionary<CraftMaterialSlotView, int>();
 
         private bool isInitialized;
         private int? selectedRecipeId;
@@ -89,6 +100,8 @@ namespace PhamNhanOnline.Client.UI.World
         private bool craftActionInFlight;
         private bool sessionActionInFlight;
         private long lastDisplayPracticeSessionId;
+        private QuantityPopupMode quantityPopupMode;
+        private int? quantityPopupInputId;
 
         public bool IsPanelVisible => gameObject.activeSelf;
 
@@ -122,6 +135,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void OnDisable()
         {
+            HideQuantityPopup(force: true);
             if (clearDraftWhenClosedWithoutPractice && !HasBlockingAlchemySession())
                 ResetToIdleDraftState();
             else
@@ -156,11 +170,8 @@ namespace PhamNhanOnline.Client.UI.World
                 inventoryGridView.ItemClicked -= HandleInventoryItemClicked;
             }
 
-            if (ingredientSlotView != null)
-            {
-                ingredientSlotView.InventoryItemDropped -= HandleIngredientInventoryItemDropped;
-                ingredientSlotView.Clicked -= HandleIngredientSlotClicked;
-            }
+            UnbindRequiredIngredientSlots();
+            UnbindOptionalIngredientSlots();
 
             if (craftButton != null)
                 craftButton.onClick.RemoveListener(HandleCraftButtonClicked);
@@ -220,11 +231,8 @@ namespace PhamNhanOnline.Client.UI.World
                 inventoryGridView.ItemClicked += HandleInventoryItemClicked;
             }
 
-            if (ingredientSlotView != null)
-            {
-                ingredientSlotView.InventoryItemDropped += HandleIngredientInventoryItemDropped;
-                ingredientSlotView.Clicked += HandleIngredientSlotClicked;
-            }
+            RebuildRequiredIngredientSlots(0);
+            RebuildOptionalIngredientSlots(0);
 
             if (craftButton != null)
             {
@@ -297,11 +305,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             ApplyText(recipeListStatusText, missingRecipesText, force);
             ApplyText(inventoryStatusText, "Kho do chua san sang.", force);
-            ApplyText(selectedRecipeNameText, emptyRecipeName, force);
-            ApplyText(selectedRecipeDescriptionText, emptyRecipeDescription, force);
             ApplyText(ingredientStatusText, emptyIngredientsText, force);
-            ApplyText(durationText, "Thoi gian: -", force);
-            ApplyText(successRateText, "Ti le thanh cong: -", force);
             ApplyText(masteryText, "Thu tay: -", force);
             ApplyText(practiceStatusText, "Trang thai: -", force);
             ApplyText(progressText, "0%", force);
@@ -389,13 +393,16 @@ namespace PhamNhanOnline.Client.UI.World
 
                 if (input.RequiredItem.IsStackable)
                 {
-                    if (input.RequiredQuantity <= 0)
+                    var reservedQuantity = input.IsOptional
+                        ? Math.Max(0, selection.AssignedQuantity)
+                        : Math.Max(0, input.RequiredQuantity);
+                    if (reservedQuantity <= 0)
                         continue;
 
                     reservedStackQuantitiesByTemplateId[input.RequiredItem.ItemTemplateId] =
                         reservedStackQuantitiesByTemplateId.TryGetValue(input.RequiredItem.ItemTemplateId, out var existing)
-                            ? existing + Math.Max(0, input.RequiredQuantity)
-                            : Math.Max(0, input.RequiredQuantity);
+                            ? existing + reservedQuantity
+                            : reservedQuantity;
                     continue;
                 }
 
@@ -440,10 +447,6 @@ namespace PhamNhanOnline.Client.UI.World
                 if (selectedRecipeSlotView != null)
                     selectedRecipeSlotView.Clear();
 
-                ApplyText(selectedRecipeNameText, emptyRecipeName, force);
-                ApplyText(selectedRecipeDescriptionText, emptyRecipeDescription, force);
-                ApplyText(durationText, "Thoi gian: -", force);
-                ApplyText(successRateText, "Ti le thanh cong: -", force);
                 ApplyText(masteryText, "Thu tay: -", force);
                 return;
             }
@@ -454,14 +457,14 @@ namespace PhamNhanOnline.Client.UI.World
                 var presentation = itemPresentationCatalog != null
                     ? itemPresentationCatalog.Resolve(learnedRecipe.ResultPill)
                     : new InventoryItemPresentation(null, null, Color.white);
-                selectedRecipeSlotView.SetRecipe(learnedRecipe, presentation);
+                selectedRecipeSlotView.SetRecipe(
+                    learnedRecipe,
+                    presentation,
+                    ResolveDurationText(detail.Value, activeSession, preview),
+                    ResolveSuccessRateText(detail.Value, preview));
                 selectedRecipeSlotView.SetInteractionLocked(activeSession.HasValue);
             }
 
-            ApplyText(selectedRecipeNameText, learnedRecipe.Name ?? emptyRecipeName, force);
-            ApplyText(selectedRecipeDescriptionText, string.IsNullOrWhiteSpace(detail.Value.Description) ? emptyRecipeDescription : detail.Value.Description.Trim(), force);
-            ApplyText(durationText, string.Concat("Thoi gian: ", FormatDuration(detail.Value.CraftDurationSeconds)), force);
-            ApplyText(successRateText, string.Concat("Ti le thanh cong: ", ResolveSuccessRateText(detail.Value, preview)), force);
             ApplyText(
                 masteryText,
                 string.Concat(
@@ -484,25 +487,11 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
             }
 
-            if (ingredientSlotView != null)
-            {
-                var aggregate = ResolveAggregateIngredientProgress(inputs, activeSession);
-                var primaryItem = ResolvePrimaryIngredientItem(inputs);
-                var presentation = itemPresentationCatalog != null && primaryItem.HasValue
-                    ? itemPresentationCatalog.Resolve(primaryItem.Value)
-                    : new InventoryItemPresentation(null, null, Color.white);
+            var requiredInputs = inputs.Where(static input => !input.IsOptional).ToArray();
+            var optionalInputs = inputs.Where(static input => input.IsOptional).ToArray();
 
-                ingredientSlotView.gameObject.SetActive(true);
-                ingredientSlotView.SetState(
-                    "Tong hop nguyen lieu",
-                    presentation,
-                    aggregate.current,
-                    aggregate.required,
-                    aggregate.hasSelection,
-                    activeSession.HasValue,
-                    aggregate.stateLabel);
-            }
-
+            ApplyRequiredIngredientSlots(requiredInputs, activeSession);
+            ApplyOptionalIngredientSlots(optionalInputs, activeSession);
             ApplyText(ingredientStatusText, BuildIngredientSummary(inputs, activeSession), force);
         }
 
@@ -550,7 +539,12 @@ namespace PhamNhanOnline.Client.UI.World
             if (progressFillImage != null)
                 progressFillImage.fillAmount = progress;
 
-            ApplyText(practiceStatusText, displaySession.Value.IsPaused ? "Dang tam dung luyen che." : "Dang luyen che...", force);
+            ApplyText(
+                practiceStatusText,
+                displaySession.Value.IsPaused
+                    ? string.Concat("Dang tam dung lo ", displaySession.Value.RequestedCraftCount.ToString(CultureInfo.InvariantCulture), " vien.")
+                    : string.Concat("Dang luyen lo ", displaySession.Value.RequestedCraftCount.ToString(CultureInfo.InvariantCulture), " vien..."),
+                force);
             ApplyText(progressText, string.Concat(Mathf.RoundToInt(progress * 100f).ToString(CultureInfo.InvariantCulture), "%"), force);
             ApplyText(countdownText, FormatDuration(remainingSeconds), force);
         }
@@ -565,7 +559,9 @@ namespace PhamNhanOnline.Client.UI.World
                 var showPracticeButtons = displaySession.Value.PracticeState == 1 || displaySession.Value.PracticeState == 2;
                 ApplyButtons(
                     craftInteractable: false,
-                    pauseResumeInteractable: showPracticeButtons && !sessionActionInFlight,
+                    pauseResumeInteractable: showPracticeButtons &&
+                                             !sessionActionInFlight &&
+                                             (displaySession.Value.IsPaused || displaySession.Value.CanPause),
                     cancelInteractable: showPracticeButtons && !sessionActionInFlight && displaySession.Value.CanCancel,
                     showPracticeButtons: showPracticeButtons,
                     pauseButtonLabel: displaySession.Value.IsPaused ? resumeIdleText : pauseIdleText);
@@ -577,6 +573,7 @@ namespace PhamNhanOnline.Client.UI.World
                            preview.HasValue &&
                            preview.Value.PillRecipeTemplateId == selectedDetail.Value.PillRecipeTemplateId &&
                            preview.Value.CanCraft &&
+                           preview.Value.MaxCraftableCount > 0 &&
                            !craftActionInFlight;
             ApplyButtons(
                 craftInteractable: canCraft,
@@ -702,20 +699,62 @@ namespace PhamNhanOnline.Client.UI.World
             HandleInventoryItemHovered(item);
         }
 
-        private void HandleIngredientInventoryItemDropped(InventoryItemModel item)
+        private void HandleIngredientInventoryItemDropped(CraftMaterialSlotView slotView, InventoryItemModel item)
         {
             if (HasBlockingAlchemySession() || !TryGetSelectedRecipeDetail(out var detail) || detail.Inputs == null)
                 return;
 
-            if (!TryAssignInventoryItemToRecipe(detail.Inputs, item))
+            if (requiredInputIdBySlotView.TryGetValue(slotView, out var requiredInputId))
+            {
+                if (!TryAssignInventoryItemToInput(detail.Inputs, requiredInputId, item))
+                    return;
+
+                _ = RefreshPreviewAsync();
+                Refresh(force: true);
+                return;
+            }
+
+            if (!optionalInputIdBySlotView.TryGetValue(slotView, out var optionalInputId))
+                return;
+
+            if (!TryAssignInventoryItemToInput(detail.Inputs, optionalInputId, item))
                 return;
 
             _ = RefreshPreviewAsync();
             Refresh(force: true);
         }
 
-        private void HandleIngredientSlotClicked(PointerEventData.InputButton button)
+        private void HandleIngredientSlotClicked(CraftMaterialSlotView slotView, PointerEventData.InputButton button)
         {
+            if (button == PointerEventData.InputButton.Right)
+            {
+                if ((requiredInputIdBySlotView.TryGetValue(slotView, out var requiredInputId) ||
+                     optionalInputIdBySlotView.TryGetValue(slotView, out requiredInputId)) &&
+                    selectionsByInputId.Remove(requiredInputId))
+                {
+                    HideQuantityPopup(force: true);
+                    _ = RefreshPreviewAsync();
+                    Refresh(force: true);
+                }
+
+                return;
+            }
+
+            if (optionalInputIdBySlotView.TryGetValue(slotView, out var inputId) &&
+                TryGetSelectedRecipeDetail(out var detail) &&
+                detail.Inputs != null)
+            {
+                var optionalInput = detail.Inputs.FirstOrDefault(input => input.InputId == inputId);
+                if (optionalInput.InputId > 0 &&
+                    optionalInput.RequiredItem.IsStackable &&
+                    selectionsByInputId.TryGetValue(inputId, out var selection) &&
+                    selection.Armed)
+                {
+                    ShowOptionalInputQuantityPopup(optionalInput, selection);
+                    return;
+                }
+            }
+
             if (selectedRecipeId.HasValue)
                 _ = ShowRecipeTooltipAsync(selectedRecipeId.Value);
         }
@@ -735,7 +774,8 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
             }
 
-            _ = StartCraftAsync(selectedRecipeId.Value);
+            var maxCraftableCount = Mathf.Max(1, preview.Value.MaxCraftableCount);
+            ShowCraftCountPopup(detail, preview.Value, maxCraftableCount);
         }
 
         private void HandlePauseResumeButtonClicked()
@@ -762,7 +802,7 @@ namespace PhamNhanOnline.Client.UI.World
             _ = CancelPracticeAsync(session.Value.PracticeSessionId);
         }
 
-        private async Task StartCraftAsync(int recipeId)
+        private async Task StartCraftAsync(int recipeId, int requestedCraftCount)
         {
             craftActionInFlight = true;
             Refresh(force: true);
@@ -770,8 +810,9 @@ namespace PhamNhanOnline.Client.UI.World
             {
                 var result = await ClientRuntime.AlchemyService.CraftPillAsync(
                     recipeId,
+                    Mathf.Max(1, requestedCraftCount),
                     BuildSelectedPlayerItemIds(),
-                    BuildSelectedOptionalInputIds());
+                    BuildSelectedOptionalInputs());
                 if (!result.Success)
                     ClientLog.Warn($"WorldCraftingPanelController failed to start craft: {result.Message}");
             }
@@ -878,15 +919,16 @@ namespace PhamNhanOnline.Client.UI.World
 
         private async Task RefreshPreviewAsync()
         {
-            if (!ClientRuntime.IsInitialized || !selectedRecipeId.HasValue || HasBlockingAlchemySession())
+            if (!ClientRuntime.IsInitialized || !selectedRecipeId.HasValue || HasBlockingAlchemySession() || !TryGetSelectedRecipeDetail(out var detail))
                 return;
 
             try
             {
                 await ClientRuntime.AlchemyService.PreviewCraftAsync(
                     selectedRecipeId.Value,
+                    ResolvePreviewRequestedCraftCount(detail),
                     BuildSelectedPlayerItemIds(),
-                    BuildSelectedOptionalInputIds());
+                    BuildSelectedOptionalInputs());
             }
             catch (Exception ex)
             {
@@ -896,6 +938,30 @@ namespace PhamNhanOnline.Client.UI.World
             {
                 Refresh(force: true);
             }
+        }
+
+        private int ResolvePreviewRequestedCraftCount(PillRecipeDetailModel detail)
+        {
+            if (detail.Inputs == null || detail.Inputs.Count == 0)
+                return 1;
+
+            var maxCraftableCount = int.MaxValue;
+            for (var i = 0; i < detail.Inputs.Count; i++)
+            {
+                var input = detail.Inputs[i];
+                if (input.IsOptional)
+                    continue;
+
+                var availableQuantity = input.RequiredItem.IsStackable
+                    ? ResolveInventoryQuantity(input.RequiredItem.ItemTemplateId)
+                    : (selectionsByInputId.TryGetValue(input.InputId, out var selection)
+                        ? selection.SelectedPlayerItemIds.Count
+                        : 0);
+                var craftableForInput = availableQuantity / Math.Max(1, input.RequiredQuantity);
+                maxCraftableCount = Math.Min(maxCraftableCount, craftableForInput);
+            }
+
+            return Math.Max(1, maxCraftableCount == int.MaxValue ? 1 : maxCraftableCount);
         }
 
         private void SetSelectedRecipe(int recipeId)
@@ -1014,6 +1080,9 @@ namespace PhamNhanOnline.Client.UI.World
             if (!input.RequiredItem.IsStackable)
                 return selection.SelectedPlayerItemIds.Count;
 
+            if (input.IsOptional)
+                return Math.Max(0, selection.AssignedQuantity);
+
             return ResolveInventoryQuantity(input.RequiredItem.ItemTemplateId);
         }
 
@@ -1059,54 +1128,62 @@ namespace PhamNhanOnline.Client.UI.World
             return total;
         }
 
-        private (int current, int required, bool hasSelection, string stateLabel) ResolveAggregateIngredientProgress(
-            IReadOnlyList<PillRecipeInputModel> inputs,
-            PracticeSessionModel? activeSession)
+        private void ApplyRequiredIngredientSlots(IReadOnlyList<PillRecipeInputModel> requiredInputs, PracticeSessionModel? activeSession)
         {
-            var current = 0;
-            var required = 0;
-            var hasSelection = false;
-
-            for (var i = 0; i < inputs.Count; i++)
+            if (requiredInputs == null || requiredInputs.Count == 0)
             {
-                var input = inputs[i];
-                var resolvedRequired = Math.Max(1, input.RequiredQuantity);
-                var resolvedCurrent = Math.Min(resolvedRequired, ResolveAssignedQuantity(input, activeSession));
-                required += resolvedRequired;
-                current += resolvedCurrent;
-                hasSelection |= resolvedCurrent > 0 || ResolveInputArmed(input, activeSession);
+                ClearRequiredIngredientViews();
+                return;
             }
 
-            string stateLabel;
-            if (activeSession.HasValue)
-                stateLabel = activeSession.Value.IsPaused ? "Dang tam dung" : "Dang khoa";
-            else if (current >= required)
-                stateLabel = "Da du";
-            else if (hasSelection)
-                stateLabel = "Dang them";
-            else
-                stateLabel = "Keo nguyen lieu vao day";
+            var slotCount = Math.Min(Math.Max(1, maxRequiredIngredientSlots), requiredInputs.Count);
+            if (requiredInputs.Count > slotCount)
+                ClientLog.Error($"WorldCraftingPanelController recipe {selectedRecipeId} requires {requiredInputs.Count} mandatory inputs but UI supports only {slotCount}.");
 
-            return (current, required, hasSelection, stateLabel);
+            RebuildRequiredIngredientSlots(slotCount);
+            for (var i = 0; i < requiredIngredientSlotViews.Count; i++)
+            {
+                var slotView = requiredIngredientSlotViews[i];
+                if (i >= requiredInputs.Count)
+                {
+                    slotView.gameObject.SetActive(false);
+                    continue;
+                }
+
+                var input = requiredInputs[i];
+                requiredInputIdBySlotView[slotView] = input.InputId;
+                var presentation = itemPresentationCatalog != null
+                    ? itemPresentationCatalog.Resolve(input.RequiredItem)
+                    : new InventoryItemPresentation(null, null, Color.white);
+                var currentQuantity = ResolveAssignedQuantity(input, activeSession);
+                var hasSelection = ResolveInputArmed(input, activeSession);
+                var stateLabel = activeSession.HasValue
+                    ? (activeSession.Value.IsPaused ? "Dang tam dung" : "Dang khoa")
+                    : (currentQuantity >= Math.Max(1, input.RequiredQuantity)
+                        ? "Da du"
+                        : hasSelection ? "Dang them" : "Keo vao day");
+                slotView.gameObject.SetActive(true);
+                slotView.SetState(
+                    input.RequiredItem.Name,
+                    presentation,
+                    currentQuantity,
+                    Math.Max(1, input.RequiredQuantity),
+                    hasSelection,
+                    activeSession.HasValue,
+                    stateLabel,
+                    showOptionalBadge: false);
+            }
         }
 
-        private ItemTemplateSummaryModel? ResolvePrimaryIngredientItem(IReadOnlyList<PillRecipeInputModel> inputs)
+        private bool TryAssignInventoryItemToInput(IReadOnlyList<PillRecipeInputModel> inputs, int inputId, InventoryItemModel item)
         {
-            if (inputs == null || inputs.Count == 0)
-                return null;
-
-            return inputs[0].RequiredItem;
-        }
-
-        private bool TryAssignInventoryItemToRecipe(IReadOnlyList<PillRecipeInputModel> inputs, InventoryItemModel item)
-        {
-            if (inputs == null || item.ItemTemplateId <= 0)
+            if (inputs == null)
                 return false;
 
             for (var i = 0; i < inputs.Count; i++)
             {
                 var input = inputs[i];
-                if (input.RequiredItem.ItemTemplateId != item.ItemTemplateId)
+                if (input.InputId != inputId || input.RequiredItem.ItemTemplateId != item.ItemTemplateId)
                     continue;
 
                 if (!selectionsByInputId.TryGetValue(input.InputId, out var selection))
@@ -1115,20 +1192,21 @@ namespace PhamNhanOnline.Client.UI.World
                     selectionsByInputId[input.InputId] = selection;
                 }
 
+                selection.Armed = true;
                 if (input.RequiredItem.IsStackable)
                 {
-                    selection.Armed = true;
+                    if (selection.AssignedQuantity <= 0)
+                        selection.AssignedQuantity = Math.Max(1, input.RequiredQuantity);
+
+                    ShowOptionalInputQuantityPopup(input, selection);
                     return true;
                 }
 
                 if (selection.SelectedPlayerItemIds.Contains(item.PlayerItemId))
                     return false;
 
-                if (selection.SelectedPlayerItemIds.Count >= Math.Max(1, input.RequiredQuantity))
-                    continue;
-
-                selection.Armed = true;
                 selection.SelectedPlayerItemIds.Add(item.PlayerItemId);
+                selection.AssignedQuantity = selection.SelectedPlayerItemIds.Count;
                 return true;
             }
 
@@ -1167,11 +1245,24 @@ namespace PhamNhanOnline.Client.UI.World
                 builder.Append("* ");
                 builder.Append(string.IsNullOrWhiteSpace(input.RequiredItem.Name) ? "Nguyen lieu" : input.RequiredItem.Name.Trim());
                 builder.Append(' ');
-                builder.Append(Math.Min(Math.Max(1, input.RequiredQuantity), currentQuantity).ToString(CultureInfo.InvariantCulture));
+                builder.Append(currentQuantity.ToString(CultureInfo.InvariantCulture));
                 builder.Append('/');
                 builder.Append(Math.Max(1, input.RequiredQuantity).ToString(CultureInfo.InvariantCulture));
                 if (input.IsOptional)
                     builder.Append(" (tuy chon)");
+            }
+
+            var preview = ClientRuntime.Alchemy.LastPreview;
+            if (!activeSession.HasValue &&
+                selectedRecipeId.HasValue &&
+                preview.HasValue &&
+                preview.Value.PillRecipeTemplateId == selectedRecipeId.Value &&
+                preview.Value.MaxCraftableCount > 0)
+            {
+                builder.AppendLine();
+                builder.Append("* Toi da ");
+                builder.Append(preview.Value.MaxCraftableCount.ToString(CultureInfo.InvariantCulture));
+                builder.Append(" vien");
             }
 
             return builder.ToString();
@@ -1186,22 +1277,39 @@ namespace PhamNhanOnline.Client.UI.World
                 .ToArray();
         }
 
-        private int[] BuildSelectedOptionalInputIds()
+        private AlchemyOptionalInputSelectionModel[] BuildSelectedOptionalInputs()
         {
             if (!TryGetSelectedRecipeDetail(out var detail) || detail.Inputs == null)
-                return Array.Empty<int>();
+                return Array.Empty<AlchemyOptionalInputSelectionModel>();
 
             return detail.Inputs
                 .Where(static input => input.IsOptional)
                 .Where(input => selectionsByInputId.TryGetValue(input.InputId, out var selection) && selection.Armed)
-                .Select(static input => input.InputId)
-                .OrderBy(static id => id)
+                .Select(input => new AlchemyOptionalInputSelectionModel
+                {
+                    InputId = input.InputId,
+                    Quantity = ResolveOptionalApplicationCount(input)
+                })
+                .Where(static selection => selection.Quantity > 0)
+                .OrderBy(static selection => selection.InputId)
                 .ToArray();
         }
 
         private int ResolveAssignedQuantityForTooltip(PillRecipeInputModel input)
         {
             return ResolveAssignedQuantity(input, GetDisplayAlchemySession());
+        }
+
+        private int ResolveOptionalApplicationCount(PillRecipeInputModel input)
+        {
+            if (!input.IsOptional ||
+                !selectionsByInputId.TryGetValue(input.InputId, out var selection) ||
+                !selection.Armed)
+            {
+                return 0;
+            }
+
+            return Math.Max(0, ResolveAssignedQuantity(input, null) / Math.Max(1, input.RequiredQuantity));
         }
 
         private long ResolveLiveRemainingSeconds(PracticeSessionModel session)
@@ -1230,13 +1338,280 @@ namespace PhamNhanOnline.Client.UI.World
             return FormatPercent(rate);
         }
 
-        private void ClearIngredientViews()
+        private string ResolveDurationText(
+            PillRecipeDetailModel detail,
+            PracticeSessionModel? activeSession,
+            AlchemyCraftPreviewModel? preview)
         {
-            if (ingredientSlotView == null)
+            if (activeSession.HasValue)
+                return FormatDuration(activeSession.Value.TotalDurationSeconds);
+
+            return FormatDuration(detail.CraftDurationSeconds);
+        }
+
+        private void ApplyOptionalIngredientSlots(IReadOnlyList<PillRecipeInputModel> optionalInputs, PracticeSessionModel? activeSession)
+        {
+            if (optionalInputs == null || optionalInputs.Count == 0)
+            {
+                ClearOptionalIngredientViews();
+                return;
+            }
+
+            RebuildOptionalIngredientSlots(optionalInputs.Count);
+            for (var i = 0; i < optionalIngredientSlotViews.Count; i++)
+            {
+                var slotView = optionalIngredientSlotViews[i];
+                if (i >= optionalInputs.Count)
+                {
+                    slotView.gameObject.SetActive(false);
+                    continue;
+                }
+
+                var input = optionalInputs[i];
+                optionalInputIdBySlotView[slotView] = input.InputId;
+                var presentation = itemPresentationCatalog != null
+                    ? itemPresentationCatalog.Resolve(input.RequiredItem)
+                    : new InventoryItemPresentation(null, null, Color.white);
+                var currentQuantity = ResolveAssignedQuantity(input, activeSession);
+                var hasSelection = ResolveInputArmed(input, activeSession);
+                var stateLabel = activeSession.HasValue
+                    ? (activeSession.Value.IsPaused ? "Dang tam dung" : "Dang khoa")
+                    : (hasSelection ? "Da gan" : "Keo catalyst vao day");
+                slotView.gameObject.SetActive(true);
+                slotView.SetState(
+                    input.RequiredItem.Name,
+                    presentation,
+                    currentQuantity,
+                    Math.Max(1, input.RequiredQuantity),
+                    hasSelection,
+                    activeSession.HasValue,
+                    stateLabel,
+                    showOptionalBadge: true);
+            }
+        }
+
+        private void RebuildRequiredIngredientSlots(int requiredCount)
+        {
+            if (requiredIngredientSlotsRoot == null || requiredIngredientSlotTemplate == null)
                 return;
 
-            ingredientSlotView.gameObject.SetActive(false);
-            ingredientSlotView.Clear();
+            requiredIngredientSlotTemplate.gameObject.SetActive(false);
+            while (requiredIngredientSlotViews.Count < requiredCount)
+            {
+                var slotView = Instantiate(requiredIngredientSlotTemplate, requiredIngredientSlotsRoot);
+                slotView.name = string.Concat(requiredIngredientSlotTemplate.name, "_", requiredIngredientSlotViews.Count.ToString(CultureInfo.InvariantCulture));
+                slotView.gameObject.SetActive(true);
+                slotView.InventoryItemDropped += HandleIngredientInventoryItemDropped;
+                slotView.Clicked += HandleIngredientSlotClicked;
+                requiredIngredientSlotViews.Add(slotView);
+            }
+
+            while (requiredIngredientSlotViews.Count > requiredCount)
+            {
+                var index = requiredIngredientSlotViews.Count - 1;
+                var slotView = requiredIngredientSlotViews[index];
+                requiredIngredientSlotViews.RemoveAt(index);
+                requiredInputIdBySlotView.Remove(slotView);
+                slotView.InventoryItemDropped -= HandleIngredientInventoryItemDropped;
+                slotView.Clicked -= HandleIngredientSlotClicked;
+                Destroy(slotView.gameObject);
+            }
+
+            requiredIngredientSlotsRoot.gameObject.SetActive(requiredCount > 0);
+        }
+
+        private void RebuildOptionalIngredientSlots(int requiredCount)
+        {
+            if (optionalIngredientSlotsRoot == null || optionalIngredientSlotTemplate == null)
+                return;
+
+            optionalIngredientSlotTemplate.gameObject.SetActive(false);
+            while (optionalIngredientSlotViews.Count < requiredCount)
+            {
+                var slotView = Instantiate(optionalIngredientSlotTemplate, optionalIngredientSlotsRoot);
+                slotView.name = string.Concat(optionalIngredientSlotTemplate.name, "_", optionalIngredientSlotViews.Count.ToString(CultureInfo.InvariantCulture));
+                slotView.gameObject.SetActive(true);
+                slotView.InventoryItemDropped += HandleIngredientInventoryItemDropped;
+                slotView.Clicked += HandleIngredientSlotClicked;
+                optionalIngredientSlotViews.Add(slotView);
+            }
+
+            while (optionalIngredientSlotViews.Count > requiredCount)
+            {
+                var index = optionalIngredientSlotViews.Count - 1;
+                var slotView = optionalIngredientSlotViews[index];
+                optionalIngredientSlotViews.RemoveAt(index);
+                optionalInputIdBySlotView.Remove(slotView);
+                slotView.InventoryItemDropped -= HandleIngredientInventoryItemDropped;
+                slotView.Clicked -= HandleIngredientSlotClicked;
+                Destroy(slotView.gameObject);
+            }
+
+            optionalIngredientSlotsRoot.gameObject.SetActive(requiredCount > 0);
+        }
+
+        private void UnbindRequiredIngredientSlots()
+        {
+            for (var i = 0; i < requiredIngredientSlotViews.Count; i++)
+            {
+                var slotView = requiredIngredientSlotViews[i];
+                if (slotView == null)
+                    continue;
+
+                slotView.InventoryItemDropped -= HandleIngredientInventoryItemDropped;
+                slotView.Clicked -= HandleIngredientSlotClicked;
+            }
+        }
+
+        private void UnbindOptionalIngredientSlots()
+        {
+            for (var i = 0; i < optionalIngredientSlotViews.Count; i++)
+            {
+                var slotView = optionalIngredientSlotViews[i];
+                if (slotView == null)
+                    continue;
+
+                slotView.InventoryItemDropped -= HandleIngredientInventoryItemDropped;
+                slotView.Clicked -= HandleIngredientSlotClicked;
+            }
+        }
+
+        private void ClearRequiredIngredientViews()
+        {
+            if (requiredIngredientSlotsRoot != null)
+                requiredIngredientSlotsRoot.gameObject.SetActive(false);
+
+            for (var i = 0; i < requiredIngredientSlotViews.Count; i++)
+            {
+                var slotView = requiredIngredientSlotViews[i];
+                if (slotView == null)
+                    continue;
+
+                slotView.gameObject.SetActive(false);
+                slotView.Clear();
+            }
+        }
+
+        private void ClearOptionalIngredientViews()
+        {
+            if (optionalIngredientSlotsRoot != null)
+                optionalIngredientSlotsRoot.gameObject.SetActive(false);
+
+            for (var i = 0; i < optionalIngredientSlotViews.Count; i++)
+            {
+                var slotView = optionalIngredientSlotViews[i];
+                if (slotView == null)
+                    continue;
+
+                slotView.gameObject.SetActive(false);
+                slotView.Clear();
+            }
+        }
+
+        private void ShowCraftCountPopup(PillRecipeDetailModel detail, AlchemyCraftPreviewModel preview, int maxCraftableCount)
+        {
+            if (quantityPopupView == null)
+            {
+                _ = StartCraftAsync(detail.PillRecipeTemplateId, maxCraftableCount);
+                return;
+            }
+
+            quantityPopupMode = QuantityPopupMode.CraftCount;
+            quantityPopupInputId = null;
+            quantityPopupView.Show(
+                string.IsNullOrWhiteSpace(detail.Name) ? "Luyen che" : detail.Name,
+                Mathf.Max(1, maxCraftableCount),
+                HandleQuantityPopupConfirmed,
+                HandleQuantityPopupCancelled,
+                "Chon so vien luyen che",
+                initialQuantity: Mathf.Clamp(preview.RequestedCraftCount > 0 ? preview.RequestedCraftCount : 1, 1, Mathf.Max(1, maxCraftableCount)),
+                hintOverride: ResolveCraftCountHint(preview),
+                confirmLabelOverride: "Luyen");
+        }
+
+        private string ResolveCraftCountHint(AlchemyCraftPreviewModel preview)
+        {
+            var boostedCraftCount = BuildSelectedOptionalInputs().Sum(static selection => Math.Max(0, selection.Quantity));
+            if (boostedCraftCount > 0)
+            {
+                return string.Concat(
+                    "Toi da ",
+                    preview.MaxCraftableCount.ToString(CultureInfo.InvariantCulture),
+                    " vien. Catalyst hien tai buff duoc ",
+                    Math.Min(preview.MaxCraftableCount, boostedCraftCount).ToString(CultureInfo.InvariantCulture),
+                    " vien.");
+            }
+
+            return string.Concat("Toi da ", preview.MaxCraftableCount.ToString(CultureInfo.InvariantCulture), " vien.");
+        }
+
+        private void ShowOptionalInputQuantityPopup(PillRecipeInputModel input, IngredientSelection selection)
+        {
+            if (quantityPopupView == null)
+                return;
+
+            quantityPopupMode = QuantityPopupMode.OptionalInputQuantity;
+            quantityPopupInputId = input.InputId;
+            var maxQuantity = Math.Max(
+                Math.Max(0, selection.AssignedQuantity),
+                Math.Max(0, selection.AssignedQuantity) + ResolveInventoryQuantity(input.RequiredItem.ItemTemplateId));
+            quantityPopupView.Show(
+                string.IsNullOrWhiteSpace(input.RequiredItem.Name) ? "Catalyst" : input.RequiredItem.Name,
+                Mathf.Max(1, maxQuantity),
+                HandleQuantityPopupConfirmed,
+                HandleQuantityPopupCancelled,
+                "Chon so luong catalyst",
+                initialQuantity: Mathf.Clamp(selection.AssignedQuantity > 0 ? selection.AssignedQuantity : Math.Max(1, input.RequiredQuantity), 1, Mathf.Max(1, maxQuantity)),
+                hintOverride: string.Concat("Moi ", Math.Max(1, input.RequiredQuantity).ToString(CultureInfo.InvariantCulture), " catalyst buff 1 vien."),
+                confirmLabelOverride: "Gan");
+        }
+
+        private void HandleQuantityPopupConfirmed(int quantity)
+        {
+            var mode = quantityPopupMode;
+            var inputId = quantityPopupInputId;
+            HideQuantityPopup(force: true);
+
+            switch (mode)
+            {
+                case QuantityPopupMode.CraftCount:
+                    if (selectedRecipeId.HasValue)
+                        _ = StartCraftAsync(selectedRecipeId.Value, quantity);
+                    break;
+                case QuantityPopupMode.OptionalInputQuantity:
+                    if (inputId.HasValue &&
+                        selectionsByInputId.TryGetValue(inputId.Value, out var selection))
+                    {
+                        selection.Armed = quantity > 0;
+                        selection.AssignedQuantity = Math.Max(0, quantity);
+                        if (selection.AssignedQuantity <= 0 && selection.SelectedPlayerItemIds.Count == 0)
+                            selectionsByInputId.Remove(inputId.Value);
+
+                        _ = RefreshPreviewAsync();
+                        Refresh(force: true);
+                    }
+                    break;
+            }
+        }
+
+        private void HandleQuantityPopupCancelled()
+        {
+            HideQuantityPopup(force: true);
+            Refresh(force: true);
+        }
+
+        private void HideQuantityPopup(bool force)
+        {
+            quantityPopupMode = QuantityPopupMode.None;
+            quantityPopupInputId = null;
+            if (quantityPopupView != null)
+                quantityPopupView.Hide(force);
+        }
+
+        private void ClearIngredientViews()
+        {
+            ClearRequiredIngredientViews();
+            ClearOptionalIngredientViews();
         }
 
         private void ClearDraft()
@@ -1256,6 +1631,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             HideRecipeTooltip(force: true);
             HideInventoryTooltip(force: true);
+            HideQuantityPopup(force: true);
         }
 
         private void HideRecipeTooltip(bool force)
@@ -1350,6 +1726,8 @@ namespace PhamNhanOnline.Client.UI.World
                         ":",
                         pair.Value.Armed ? "1" : "0",
                         ":",
+                        pair.Value.AssignedQuantity.ToString(CultureInfo.InvariantCulture),
+                        ":",
                         string.Join(",", pair.Value.SelectedPlayerItemIds.OrderBy(static id => id).Select(static id => id.ToString(CultureInfo.InvariantCulture))))));
         }
 
@@ -1365,7 +1743,13 @@ namespace PhamNhanOnline.Client.UI.World
                 ":",
                 session.Value.DefinitionId.ToString(CultureInfo.InvariantCulture),
                 ":",
+                session.Value.RequestedCraftCount.ToString(CultureInfo.InvariantCulture),
+                ":",
+                session.Value.BoostedCraftCount.ToString(CultureInfo.InvariantCulture),
+                ":",
                 session.Value.RemainingDurationSeconds.ToString(CultureInfo.InvariantCulture),
+                ":",
+                session.Value.CanPause ? "1" : "0",
                 ":",
                 session.Value.CanCancel ? "1" : "0",
                 ":",
@@ -1383,6 +1767,10 @@ namespace PhamNhanOnline.Client.UI.World
                 ":",
                 preview.Value.CanCraft ? "1" : "0",
                 ":",
+                preview.Value.MaxCraftableCount.ToString(CultureInfo.InvariantCulture),
+                ":",
+                preview.Value.BoostedCraftCount.ToString(CultureInfo.InvariantCulture),
+                ":",
                 preview.Value.EffectiveSuccessRate.ToString("0.####", CultureInfo.InvariantCulture),
                 ":",
                 preview.Value.FailureReason ?? string.Empty);
@@ -1398,10 +1786,11 @@ namespace PhamNhanOnline.Client.UI.World
             ThrowIfMissing(inventoryGridView, nameof(inventoryGridView));
             ThrowIfMissing(inventoryItemTooltipView, nameof(inventoryItemTooltipView));
             ThrowIfMissing(itemPresentationCatalog, nameof(itemPresentationCatalog));
-            ThrowIfMissing(ingredientSlotView, nameof(ingredientSlotView));
-            ThrowIfMissing(selectedRecipeNameText, nameof(selectedRecipeNameText));
-            ThrowIfMissing(durationText, nameof(durationText));
-            ThrowIfMissing(successRateText, nameof(successRateText));
+            ThrowIfMissing(requiredIngredientSlotsRoot, nameof(requiredIngredientSlotsRoot));
+            ThrowIfMissing(requiredIngredientSlotTemplate, nameof(requiredIngredientSlotTemplate));
+            ThrowIfMissing(optionalIngredientSlotsRoot, nameof(optionalIngredientSlotsRoot));
+            ThrowIfMissing(optionalIngredientSlotTemplate, nameof(optionalIngredientSlotTemplate));
+            ThrowIfMissing(quantityPopupView, nameof(quantityPopupView));
             ThrowIfMissing(practiceStatusText, nameof(practiceStatusText));
             ThrowIfMissing(craftButton, nameof(craftButton));
             ThrowIfMissing(craftButtonText, nameof(craftButtonText));

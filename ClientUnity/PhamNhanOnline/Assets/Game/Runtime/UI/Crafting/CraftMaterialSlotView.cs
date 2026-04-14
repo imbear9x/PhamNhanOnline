@@ -24,10 +24,12 @@ namespace PhamNhanOnline.Client.UI.Crafting
         [Header("Text")]
         [SerializeField] private string emptyName = "Nguyen lieu";
         [SerializeField] private string emptyState = "Chua chon";
+        [SerializeField] [Range(0.05f, 1f)] private float ghostIconAlpha = 0.35f;
+        [SerializeField] [Range(0.05f, 1f)] private float activeIconAlpha = 1f;
         private bool interactionLocked;
 
-        public event Action<InventoryItemModel> InventoryItemDropped;
-        public event Action<PointerEventData.InputButton> Clicked;
+        public event Action<CraftMaterialSlotView, InventoryItemModel> InventoryItemDropped;
+        public event Action<CraftMaterialSlotView, PointerEventData.InputButton> Clicked;
 
         private void Awake()
         {
@@ -45,7 +47,8 @@ namespace PhamNhanOnline.Client.UI.Crafting
             int requiredQuantity,
             bool hasSelection,
             bool locked,
-            string stateLabel = null)
+            string stateLabel = null,
+            bool showOptionalBadge = false)
         {
             interactionLocked = locked;
 
@@ -53,10 +56,14 @@ namespace PhamNhanOnline.Client.UI.Crafting
             {
                 iconImage.sprite = presentation.IconSprite;
                 iconImage.enabled = presentation.IconSprite != null;
+                SetImageAlpha(iconImage, hasSelection || locked ? activeIconAlpha : ghostIconAlpha);
             }
 
             if (backgroundImage != null)
+            {
                 backgroundImage.sprite = presentation.BackgroundSprite;
+                SetImageAlpha(backgroundImage, hasSelection || locked ? activeIconAlpha : ghostIconAlpha);
+            }
 
             if (nameText != null)
                 nameText.text = string.IsNullOrWhiteSpace(itemName) ? emptyName : itemName.Trim();
@@ -68,7 +75,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 fillImage.fillAmount = fill;
 
             if (countText != null)
-                countText.text = string.Concat(Math.Min(resolvedRequiredQuantity, resolvedCurrentQuantity), "/", resolvedRequiredQuantity);
+                countText.text = string.Concat(resolvedCurrentQuantity, "/", resolvedRequiredQuantity);
 
             if (stateText != null)
             {
@@ -91,7 +98,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
             }
 
             if (optionalBadgeRoot != null)
-                optionalBadgeRoot.SetActive(false);
+                optionalBadgeRoot.SetActive(showOptionalBadge);
             if (selectedRoot != null)
                 selectedRoot.SetActive(hasSelection);
             if (lockedRoot != null)
@@ -106,10 +113,14 @@ namespace PhamNhanOnline.Client.UI.Crafting
             {
                 iconImage.sprite = null;
                 iconImage.enabled = false;
+                SetImageAlpha(iconImage, activeIconAlpha);
             }
 
             if (backgroundImage != null)
+            {
                 backgroundImage.sprite = null;
+                SetImageAlpha(backgroundImage, activeIconAlpha);
+            }
             if (fillImage != null)
                 fillImage.fillAmount = 0f;
             if (nameText != null)
@@ -135,12 +146,12 @@ namespace PhamNhanOnline.Client.UI.Crafting
             if (inventorySlotView == null || !inventorySlotView.HasItem)
                 return;
 
-            InventoryItemDropped?.Invoke(inventorySlotView.Item);
+            InventoryItemDropped?.Invoke(this, inventorySlotView.Item);
         }
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            Clicked?.Invoke(eventData.button);
+            Clicked?.Invoke(this, eventData.button);
         }
 
         private void ValidateSerializedReferences()
@@ -157,6 +168,16 @@ namespace PhamNhanOnline.Client.UI.Crafting
         {
             if (value == null)
                 throw new InvalidOperationException($"{nameof(CraftMaterialSlotView)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
+        }
+
+        private static void SetImageAlpha(Graphic graphic, float alpha)
+        {
+            if (graphic == null)
+                return;
+
+            var color = graphic.color;
+            color.a = Mathf.Clamp01(alpha);
+            graphic.color = color;
         }
     }
 }

@@ -2,25 +2,31 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Inventory;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 namespace PhamNhanOnline.Client.UI.Crafting
 {
+    [RequireComponent(typeof(LoopVerticalListView))]
     public sealed class CraftRecipeListView : MonoBehaviour, IDropHandler
     {
         [Header("References")]
-        [SerializeField] private Transform contentRoot;
-        [SerializeField] private CraftRecipeListItemView itemTemplate;
+        [SerializeField] private LoopVerticalListView loopListView;
 
-        [Header("Behavior")]
-        [SerializeField] private bool hideTemplateObject = true;
+        [Header("Debug")]
+        [SerializeField] private bool debugUsePlaceholderItems = true;
+        [SerializeField, Min(0)] private int debugPlaceholderItemCount = 100;
 
-        private readonly List<CraftRecipeListItemView> spawnedItems = new List<CraftRecipeListItemView>(8);
+        private readonly HashSet<CraftRecipeListItemView> subscribedItems = new HashSet<CraftRecipeListItemView>();
+        private LearnedPillRecipeModel[] debugItems = Array.Empty<LearnedPillRecipeModel>();
+        private IReadOnlyList<LearnedPillRecipeModel> items = Array.Empty<LearnedPillRecipeModel>();
+        private InventoryItemPresentationCatalog presentationCatalog;
         private string lastSnapshot = string.Empty;
         private int lastItemCount = -1;
         private int? selectedRecipeId;
+        private bool loopInitialized;
 
         public event Action<LearnedPillRecipeModel> ItemClicked;
         public event Action<LearnedPillRecipeModel> ItemHovered;
@@ -29,78 +35,60 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         private void Awake()
         {
-            if (contentRoot == null && itemTemplate != null)
-                contentRoot = itemTemplate.transform.parent;
+            if (loopListView == null)
+                loopListView = GetComponent<LoopVerticalListView>();
+        }
 
-            if (hideTemplateObject && itemTemplate != null)
-                itemTemplate.gameObject.SetActive(false);
+        private void Start()
+        {
+            ValidateSerializedReferences();
+            EnsureLoopInitialized();
         }
 
         public void SetItems(
-            IReadOnlyList<LearnedPillRecipeModel> items,
+            IReadOnlyList<LearnedPillRecipeModel> value,
             int? selectedPillRecipeTemplateId,
-            InventoryItemPresentationCatalog presentationCatalog,
+            InventoryItemPresentationCatalog valuePresentationCatalog,
             bool force = false)
         {
-            items ??= Array.Empty<LearnedPillRecipeModel>();
-            var snapshot = BuildSnapshot(items);
+            value ??= Array.Empty<LearnedPillRecipeModel>();
+            var resolvedItems = ResolveDisplayItems(value);
+            var snapshot = BuildSnapshot(resolvedItems);
             var selectionChanged = selectedRecipeId != selectedPillRecipeTemplateId;
+
+            items = resolvedItems;
+            presentationCatalog = valuePresentationCatalog;
             selectedRecipeId = selectedPillRecipeTemplateId;
+
+            EnsureLoopInitialized();
+
             if (!force &&
                 !selectionChanged &&
-                lastItemCount == items.Count &&
+                lastItemCount == resolvedItems.Count &&
                 string.Equals(lastSnapshot, snapshot, StringComparison.Ordinal))
             {
-                UpdateSelectionVisuals(force: false);
+                UpdateVisibleSelectionVisuals(force: false);
                 return;
             }
 
-            lastItemCount = items.Count;
+            lastItemCount = resolvedItems.Count;
             lastSnapshot = snapshot;
 
-            EnsureItemCount(items.Count);
-            for (var i = 0; i < spawnedItems.Count; i++)
-            {
-                var itemView = spawnedItems[i];
-                if (itemView == null)
-                    continue;
-
-                var shouldBeVisible = i < items.Count;
-                if (itemView.gameObject.activeSelf != shouldBeVisible)
-                    itemView.gameObject.SetActive(shouldBeVisible);
-
-                if (!shouldBeVisible)
-                {
-                    itemView.Clear(force: true);
-                    continue;
-                }
-
-                var presentation = presentationCatalog != null
-                    ? presentationCatalog.Resolve(items[i].ResultPill)
-                    : new InventoryItemPresentation(null, null, Color.white);
-                itemView.SetRecipe(items[i], presentation, force: true);
-                itemView.SetSelected(
-                    selectedRecipeId.HasValue && items[i].PillRecipeTemplateId == selectedRecipeId.Value,
-                    force: true);
-            }
+            loopListView.SetListItemCount(resolvedItems.Count, keepPosition: true);
+            loopListView.RefreshAllShownItem();
         }
 
         public void Clear(bool force = false)
         {
-            lastItemCount = 0;
-            lastSnapshot = string.Empty;
+            items = ResolveDisplayItems(Array.Empty<LearnedPillRecipeModel>());
+            presentationCatalog = null;
+            lastItemCount = items.Count;
+            lastSnapshot = BuildSnapshot(items);
             selectedRecipeId = null;
 
-            for (var i = 0; i < spawnedItems.Count; i++)
-            {
-                var itemView = spawnedItems[i];
-                if (itemView == null)
-                    continue;
-
-                itemView.Clear(force: true);
-                if (itemView.gameObject.activeSelf)
-                    itemView.gameObject.SetActive(false);
-            }
+            EnsureLoopInitialized();
+            loopListView.SetListItemCount(items.Count, keepPosition: false);
+            loopListView.RefreshAllShownItem();
         }
 
         public void OnDrop(PointerEventData eventData)
@@ -114,36 +102,56 @@ namespace PhamNhanOnline.Client.UI.Crafting
             SelectedRecipeDroppedBackToList?.Invoke();
         }
 
-        private void EnsureItemCount(int targetCount)
+        private void EnsureLoopInitialized()
         {
-            if (targetCount <= spawnedItems.Count)
+            if (loopInitialized || loopListView == null)
                 return;
 
-            if (itemTemplate == null)
-            {
-                Debug.LogWarning("CraftRecipeListView is missing itemTemplate.");
-                return;
-            }
-
-            var parent = contentRoot != null ? contentRoot : itemTemplate.transform.parent;
-            for (var i = spawnedItems.Count; i < targetCount; i++)
-            {
-                var instance = Instantiate(itemTemplate, parent);
-                instance.name = string.Concat(itemTemplate.name, "_", i.ToString(CultureInfo.InvariantCulture));
-                instance.gameObject.SetActive(true);
-                instance.Clicked += HandleItemClicked;
-                instance.Hovered += HandleItemHovered;
-                instance.HoverExited += HandleItemHoverExited;
-                spawnedItems.Add(instance);
-            }
+            loopListView.InitListView(items.Count, OnGetItemByIndex);
+            loopInitialized = true;
         }
 
-        private void UpdateSelectionVisuals(bool force)
+        private LoopScrollViewItem OnGetItemByIndex(LoopVerticalListView listView, int itemIndex)
         {
-            for (var i = 0; i < spawnedItems.Count; i++)
+            if (itemIndex < 0 || itemIndex >= items.Count)
+                return null;
+
+            var itemView = listView.NewListViewItem() as CraftRecipeListItemView;
+            if (itemView == null)
+                return null;
+
+            SubscribeItem(itemView);
+
+            var item = items[itemIndex];
+            var presentation = presentationCatalog != null
+                ? presentationCatalog.Resolve(item.ResultPill)
+                : new InventoryItemPresentation(null, null, default);
+            itemView.SetRecipe(item, presentation, force: true);
+            itemView.SetSelected(
+                selectedRecipeId.HasValue && item.PillRecipeTemplateId == selectedRecipeId.Value,
+                force: true);
+            return itemView;
+        }
+
+        private void SubscribeItem(CraftRecipeListItemView itemView)
+        {
+            if (itemView == null || !subscribedItems.Add(itemView))
+                return;
+
+            itemView.Clicked += HandleItemClicked;
+            itemView.Hovered += HandleItemHovered;
+            itemView.HoverExited += HandleItemHoverExited;
+        }
+
+        private void UpdateVisibleSelectionVisuals(bool force)
+        {
+            if (loopListView == null || items == null || items.Count == 0)
+                return;
+
+            for (var i = 0; i < items.Count; i++)
             {
-                var itemView = spawnedItems[i];
-                if (itemView == null || !itemView.gameObject.activeSelf || !itemView.HasRecipe)
+                var itemView = loopListView.GetShownItemByItemIndex(i) as CraftRecipeListItemView;
+                if (itemView == null || !itemView.HasRecipe)
                     continue;
 
                 itemView.SetSelected(
@@ -173,28 +181,63 @@ namespace PhamNhanOnline.Client.UI.Crafting
             ItemHoverExited?.Invoke();
         }
 
-        private static string BuildSnapshot(IReadOnlyList<LearnedPillRecipeModel> items)
+        private void ValidateSerializedReferences()
         {
-            if (items == null || items.Count == 0)
+            if (loopListView == null)
+                throw new InvalidOperationException($"{nameof(CraftRecipeListView)} on '{gameObject.name}' is missing required reference '{nameof(loopListView)}'.");
+        }
+
+        private IReadOnlyList<LearnedPillRecipeModel> ResolveDisplayItems(IReadOnlyList<LearnedPillRecipeModel> sourceItems)
+        {
+            if (sourceItems != null && sourceItems.Count > 0)
+                return sourceItems;
+
+            if (!debugUsePlaceholderItems || debugPlaceholderItemCount <= 0)
+                return Array.Empty<LearnedPillRecipeModel>();
+
+            if (debugItems.Length == debugPlaceholderItemCount)
+                return debugItems;
+
+            debugItems = new LearnedPillRecipeModel[debugPlaceholderItemCount];
+            for (var i = 0; i < debugItems.Length; i++)
+            {
+                debugItems[i] = new LearnedPillRecipeModel
+                {
+                    PillRecipeTemplateId = 100000 + i,
+                    Code = string.Concat("debug_recipe_", (i + 1).ToString(CultureInfo.InvariantCulture)),
+                    Name = string.Concat("Dan phuong test ", (i + 1).ToString(CultureInfo.InvariantCulture)),
+                    Description = "Placeholder recipe for loop scroll UI test.",
+                    CraftDurationSeconds = 30,
+                    TotalCraftCount = 0,
+                    BaseSuccessRate = 0.5d,
+                };
+            }
+
+            return debugItems;
+        }
+
+        private static string BuildSnapshot(IReadOnlyList<LearnedPillRecipeModel> value)
+        {
+            if (value == null || value.Count == 0)
                 return string.Empty;
 
-            var parts = new string[items.Count];
-            for (var i = 0; i < items.Count; i++)
+            var parts = new string[value.Count];
+            for (var i = 0; i < value.Count; i++)
             {
                 parts[i] = string.Concat(
-                    items[i].PillRecipeTemplateId.ToString(CultureInfo.InvariantCulture),
+                    value[i].PillRecipeTemplateId.ToString(CultureInfo.InvariantCulture),
                     ":",
-                    items[i].Code ?? string.Empty,
+                    value[i].Code ?? string.Empty,
                     ":",
-                    items[i].Name ?? string.Empty,
+                    value[i].Name ?? string.Empty,
                     ":",
-                    items[i].Description ?? string.Empty,
+                    value[i].Description ?? string.Empty,
                     ":",
-                    items[i].CraftDurationSeconds.ToString(CultureInfo.InvariantCulture),
+                    value[i].CraftDurationSeconds.ToString(CultureInfo.InvariantCulture),
                     ":",
-                    items[i].ResultPill.ItemTemplateId.ToString(CultureInfo.InvariantCulture),
+                    value[i].ResultPill.ItemTemplateId.ToString(CultureInfo.InvariantCulture),
                     ":",
-                    items[i].TotalCraftCount.ToString(CultureInfo.InvariantCulture));
+                    value[i].TotalCraftCount.ToString(CultureInfo.InvariantCulture));
             }
 
             return string.Join("|", parts);

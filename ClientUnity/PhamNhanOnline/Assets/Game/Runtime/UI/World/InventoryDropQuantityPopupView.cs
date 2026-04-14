@@ -11,12 +11,15 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private TMP_Text titleText;
         [SerializeField] private TMP_Text itemNameText;
         [SerializeField] private TMP_Text quantityText;
+        [SerializeField] private TMP_Text hintText;
+        [SerializeField] private TMP_Text confirmButtonText;
         [SerializeField] private Slider quantitySlider;
         [SerializeField] private TMP_InputField quantityInput;
         [SerializeField] private Button confirmButton;
         [SerializeField] private Button cancelButton;
         [SerializeField] private Button dimmerButton;
-        [SerializeField] private string defaultTitle = "So luong vut";
+        [SerializeField] private string defaultTitle = "Chon so luong";
+        [SerializeField] private string defaultConfirmLabel = "OK";
 
         private bool suppressCallbacks;
         private int maxQuantity;
@@ -41,22 +44,36 @@ namespace PhamNhanOnline.Client.UI.World
         }
 
         public void Show(
-            string itemName,
-            int maxDropQuantity,
+            string subjectName,
+            int maxQuantityValue,
             Action<int> onConfirm,
             Action onCancel = null,
-            string titleOverride = null)
+            string titleOverride = null,
+            int initialQuantity = 1,
+            string hintOverride = null,
+            string confirmLabelOverride = null)
         {
             confirmAction = onConfirm;
             cancelAction = onCancel;
-            maxQuantity = Mathf.Max(1, maxDropQuantity);
-            currentQuantity = Mathf.Clamp(1, 1, maxQuantity);
+            maxQuantity = Mathf.Max(1, maxQuantityValue);
+            currentQuantity = Mathf.Clamp(initialQuantity, 1, maxQuantity);
 
             if (titleText != null)
                 titleText.text = string.IsNullOrWhiteSpace(titleOverride) ? defaultTitle : titleOverride;
 
             if (itemNameText != null)
-                itemNameText.text = string.IsNullOrWhiteSpace(itemName) ? "Vat pham" : itemName;
+                itemNameText.text = string.IsNullOrWhiteSpace(subjectName) ? "Muc tieu" : subjectName;
+
+            if (hintText != null)
+            {
+                var hasHint = !string.IsNullOrWhiteSpace(hintOverride);
+                hintText.gameObject.SetActive(hasHint);
+                if (hasHint)
+                    hintText.text = hintOverride.Trim();
+            }
+
+            if (confirmButtonText != null)
+                confirmButtonText.text = string.IsNullOrWhiteSpace(confirmLabelOverride) ? defaultConfirmLabel : confirmLabelOverride;
 
             if (quantitySlider != null)
             {
