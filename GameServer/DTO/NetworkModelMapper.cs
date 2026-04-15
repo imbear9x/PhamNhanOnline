@@ -157,15 +157,24 @@ public static class NetworkModelMapper
         };
     }
 
-    public static CharacterCurrentStateModel ToModel(this CharacterCurrentStateDto dto, GameTimeSnapshot gameTime)
+    public static CharacterCurrentStateModel ToModel(
+        this CharacterCurrentStateDto dto,
+        CharacterDto character,
+        CharacterBaseStatsDto? baseStats,
+        GameTimeSnapshot gameTime,
+        int fallbackRealmLifespanDays = 120)
     {
+        var lifespanEndUtc = CharacterLifespanRules.ResolveLifespanEndUtc(
+            character.FirstEnterWorldAtUtc,
+            baseStats,
+            fallbackRealmLifespanDays);
         return new CharacterCurrentStateModel
         {
             CharacterId = dto.CharacterId,
             CurrentHp = dto.CurrentHp,
             CurrentMp = dto.CurrentMp,
             CurrentStamina = dto.CurrentStamina,
-            RemainingLifespan = CharacterLifespanRules.CalculateRemainingLifespanYears(dto.LifespanEndGameMinute, gameTime),
+            LifespanEndUnixMs = ToUnixMs(lifespanEndUtc),
             CurrentMapId = dto.CurrentMapId,
             CurrentZoneIndex = dto.CurrentZoneIndex,
             CurrentPosX = dto.CurrentPosX,
@@ -265,7 +274,7 @@ public static class NetworkModelMapper
         return new ObservedCharacterModel
         {
             Character = player.CharacterData.ToModel(),
-            CurrentState = snapshot.CurrentState.ToModel(gameTime),
+            CurrentState = snapshot.CurrentState.ToModel(player.CharacterData, snapshot.BaseStats, gameTime),
             MaxHp = snapshot.BaseStats.GetEffectiveHp(),
             MaxMp = snapshot.BaseStats.GetEffectiveMp(),
             MapId = player.MapId,

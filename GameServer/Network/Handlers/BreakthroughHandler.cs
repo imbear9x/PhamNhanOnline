@@ -43,7 +43,9 @@ public sealed class BreakthroughHandler : IPacketHandler<BreakthroughPacket>
             Success = result.Success,
             Code = result.Code,
             BaseStats = responseBaseStats?.ToModel(),
-            CurrentState = responseCurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot())
+            CurrentState = responseCurrentState is null || responseBaseStats is null || session.Player is null
+                ? null
+                : responseCurrentState.ToModel(session.Player.CharacterData, responseBaseStats, _gameTimeService.GetCurrentSnapshot())
         });
     }
 }

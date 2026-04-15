@@ -77,9 +77,11 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
             data = cultivationSettlement.Snapshot;
             await _alchemyPracticeService.EnsureDueSessionCompletedAsync(data.Character.CharacterId);
             data = await _practiceService.AlignSnapshotStateAsync(data);
+            var ensuredCharacter = await _characterService.EnsureFirstEnterWorldAtUtcAsync(data.Character.CharacterId);
+            data = data with { Character = ensuredCharacter };
             data = await _lifecycleService.PrepareSnapshotForWorldEntryAsync(data);
             data = await _deathRecoveryService.RecoverSnapshotToHomeAsync(data);
-            var isLifespanExpired = _lifecycleService.IsLifespanExpired(data.CurrentState);
+            var isLifespanExpired = _lifecycleService.IsLifespanExpired(data);
 
             session.SelectedCharacterId = data.Character.CharacterId;
             var player = _runtimeService.AttachPlayerSession(session, data);
@@ -103,7 +105,7 @@ public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
                 Code = isLifespanExpired ? MessageCode.CharacterLifespanExpired : MessageCode.None,
                 Character = player.CharacterData.ToModel(),
                 BaseStats = runtimeSnapshot.BaseStats.ToModel(),
-                CurrentState = runtimeSnapshot.CurrentState.ToModel(_gameTimeService.GetCurrentSnapshot())
+                CurrentState = runtimeSnapshot.CurrentState.ToModel(player.CharacterData, runtimeSnapshot.BaseStats, _gameTimeService.GetCurrentSnapshot())
             });
 
             _interestService.PublishWorldSnapshot(player);

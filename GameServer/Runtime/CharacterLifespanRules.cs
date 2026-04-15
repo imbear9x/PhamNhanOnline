@@ -1,55 +1,90 @@
 using GameServer.DTO;
-using GameServer.Time;
 
 namespace GameServer.Runtime;
 
 public static class CharacterLifespanRules
 {
     public const int Unlimited = -1;
+    public static readonly DateTime UnlimitedUtc = DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
 
-    public static int ResolveMaxLifespanYears(CharacterBaseStatsDto baseStats, int fallback)
+    public static int ResolveMaxLifespanDays(CharacterBaseStatsDto baseStats, int fallbackDays)
     {
         if (baseStats.RealmLifespan == Unlimited)
             return Unlimited;
 
         if (!baseStats.RealmLifespan.HasValue)
-            return fallback;
+            return fallbackDays;
 
         var lifespanBonus = baseStats.LifespanBonus ?? 0;
         return Math.Max(0, baseStats.RealmLifespan.Value + lifespanBonus);
     }
 
-    public static long CreateLifespanEndGameMinute(CharacterBaseStatsDto baseStats, GameTimeSnapshot snapshot, int fallbackRealmLifespan)
+    public static DateTime CreateLifespanEndUtc(CharacterBaseStatsDto baseStats, DateTime utcNow, int fallbackRealmLifespanDays)
     {
-        var maxLifespanYears = ResolveMaxLifespanYears(baseStats, fallbackRealmLifespan);
-        if (maxLifespanYears == Unlimited)
-            return Unlimited;
+        var maxLifespanDays = ResolveMaxLifespanDays(baseStats, fallbackRealmLifespanDays);
+        if (maxLifespanDays == Unlimited)
+            return UnlimitedUtc;
 
-        return checked(snapshot.CurrentGameMinute + snapshot.YearsToGameMinutes(maxLifespanYears));
+        return NormalizeUtc(utcNow).AddDays(maxLifespanDays);
     }
 
-    public static int CalculateRemainingLifespanYears(long lifespanEndGameMinute, GameTimeSnapshot snapshot)
+    public static DateTime? ResolveLifespanEndUtc(DateTime? firstEnterWorldAtUtc, CharacterBaseStatsDto? baseStats, int fallbackRealmLifespanDays)
     {
-        return snapshot.RemainingLifespanYears(lifespanEndGameMinute);
+        if (!firstEnterWorldAtUtc.HasValue || baseStats is null)
+            return null;
+
+        return CreateLifespanEndUtc(baseStats, firstEnterWorldAtUtc.Value, fallbackRealmLifespanDays);
     }
 
-    public static long AdjustLifespanEndGameMinute(
+    public static TimeSpan CalculateRemainingLifespan(DateTime lifespanEndUtc, DateTime utcNow)
+    {
+        if (IsUnlimited(lifespanEndUtc))
+            return TimeSpan.MaxValue;
+
+        return NormalizeUtc(lifespanEndUtc) - NormalizeUtc(utcNow);
+    }
+
+    public static bool IsExpired(DateTime lifespanEndUtc, DateTime utcNow)
+    {
+        if (IsUnlimited(lifespanEndUtc))
+            return false;
+
+        return NormalizeUtc(lifespanEndUtc) <= NormalizeUtc(utcNow);
+    }
+
+    public static DateTime AdjustLifespanEndUtc(
         CharacterBaseStatsDto previousBaseStats,
         CharacterBaseStatsDto nextBaseStats,
-        long currentLifespanEndGameMinute,
-        GameTimeSnapshot snapshot)
+        DateTime currentLifespanEndUtc,
+        DateTime utcNow)
     {
-        var previousMaxYears = ResolveMaxLifespanYears(previousBaseStats, 0);
-        var nextMaxYears = ResolveMaxLifespanYears(nextBaseStats, 0);
+        var previousMaxDays = ResolveMaxLifespanDays(previousBaseStats, 0);
+        var nextMaxDays = ResolveMaxLifespanDays(nextBaseStats, 0);
 
-        if (nextMaxYears == Unlimited)
-            return Unlimited;
+        if (nextMaxDays == Unlimited)
+            return UnlimitedUtc;
 
-        if (previousMaxYears == Unlimited)
-            return checked(snapshot.CurrentGameMinute + snapshot.YearsToGameMinutes(nextMaxYears));
+        var normalizedNow = NormalizeUtc(utcNow);
+        if (previousMaxDays == Unlimited)
+            return normalizedNow.AddDays(nextMaxDays);
 
-        var deltaYears = nextMaxYears - previousMaxYears;
-        var adjusted = checked(currentLifespanEndGameMinute + snapshot.YearsToGameMinutes(deltaYears));
-        return Math.Max(snapshot.CurrentGameMinute, adjusted);
+        var deltaDays = nextMaxDays - previousMaxDays;
+        var adjusted = NormalizeUtc(currentLifespanEndUtc).AddDays(deltaDays);
+        return adjusted < normalizedNow ? normalizedNow : adjusted;
+    }
+
+    public static bool IsUnlimited(DateTime lifespanEndUtc)
+    {
+        return NormalizeUtc(lifespanEndUtc) >= UnlimitedUtc;
+    }
+
+    private static DateTime NormalizeUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
     }
 }

@@ -73,7 +73,7 @@ public sealed class UnequipInventoryItemHandler : IPacketHandler<UnequipInventor
             Code = MessageCode.None,
             Items = items.Select(x => x.ToModel()).ToList(),
             BaseStats = runtimeSnapshot.BaseStats.ToModel(),
-            CurrentState = runtimeSnapshot.CurrentState.ToModel(_gameTimeService.GetCurrentSnapshot())
+            CurrentState = runtimeSnapshot.CurrentState.ToModel(session.Player.CharacterData, runtimeSnapshot.BaseStats, _gameTimeService.GetCurrentSnapshot())
         });
     }
 }

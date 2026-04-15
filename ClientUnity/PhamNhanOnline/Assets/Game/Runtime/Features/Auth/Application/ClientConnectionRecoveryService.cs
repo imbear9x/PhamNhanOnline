@@ -139,6 +139,24 @@ namespace PhamNhanOnline.Client.Features.Auth.Application
             await CompleteForcedLogoutAsync();
         }
 
+        public async void ForceLogoutToLogin()
+        {
+            CancelRecovery();
+            IsRecovering = false;
+            IsForcedLogoutPending = false;
+            pendingLoginPopupMessage = string.Empty;
+            forcedLogoutMessage = string.Empty;
+            RaiseRecoveryStateChanged();
+
+            await ResetConnectionAsync(CancellationToken.None);
+            authState.Clear();
+            lastWorldCharacterId = null;
+            ClearPreservedRuntimeState();
+
+            if (!string.Equals(sceneFlow.ActiveSceneName, settings.LoginSceneName, StringComparison.Ordinal))
+                await sceneFlow.LoadSceneAsync(settings.LoginSceneName, LoadSceneMode.Single);
+        }
+
         private void HandleCharacterCurrentStateChanged(CharacterCurrentStateChangeNotice notice)
         {
             if (!notice.CurrentState.HasValue || !characterState.SelectedCharacterId.HasValue)

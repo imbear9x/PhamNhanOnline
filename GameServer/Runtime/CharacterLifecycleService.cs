@@ -5,50 +5,72 @@ using GameServer.Time;
 using GameServer.World;
 using GameShared.Packets;
 using Microsoft.Extensions.DependencyInjection;
+using GameServer.Config;
 
 namespace GameServer.Runtime;
 
 public sealed class CharacterLifecycleService
 {
+    private const string LifespanExpiredNotificationTitle = "Tho nguyen da can";
+    private const string LifespanExpiredNotificationMessage = "Nhan vat da het tho nguyen. Nhan xac nhan de quay lai man hinh dang nhap.";
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly CharacterRuntimeSaveService _runtimeSaveService;
     private readonly INetworkSender _network;
     private readonly GameTimeService _gameTimeService;
     private readonly WorldInterestService _interestService;
+    private readonly PlayerNotificationService _notificationService;
+    private readonly CharacterCreateConfig _characterCreateConfig;
 
     public CharacterLifecycleService(
         IServiceScopeFactory scopeFactory,
         CharacterRuntimeSaveService runtimeSaveService,
         INetworkSender network,
         GameTimeService gameTimeService,
-        WorldInterestService interestService)
+        WorldInterestService interestService,
+        PlayerNotificationService notificationService,
+        CharacterCreateConfig characterCreateConfig)
     {
         _scopeFactory = scopeFactory;
         _runtimeSaveService = runtimeSaveService;
         _network = network;
         _gameTimeService = gameTimeService;
         _interestService = interestService;
+        _notificationService = notificationService;
+        _characterCreateConfig = characterCreateConfig;
     }
 
-    public bool IsLifespanExpired(CharacterCurrentStateDto? currentState)
+    public bool IsLifespanExpired(CharacterSnapshotDto? snapshot)
     {
-        if (currentState is null)
+        if (snapshot is null || snapshot.BaseStats is null || snapshot.CurrentState is null)
             return false;
 
-        return CharacterLifespanRules.CalculateRemainingLifespanYears(
-                   currentState.LifespanEndGameMinute,
-                   _gameTimeService.GetCurrentSnapshot()) <= 0;
+        var lifespanEndUtc = CharacterLifespanRules.ResolveLifespanEndUtc(
+            snapshot.Character.FirstEnterWorldAtUtc,
+            snapshot.BaseStats,
+            _characterCreateConfig.FallbackRealmLifespanDays);
+        return lifespanEndUtc.HasValue && CharacterLifespanRules.IsExpired(lifespanEndUtc.Value, DateTime.UtcNow);
     }
 
     public async Task<CharacterSnapshotDto> PrepareSnapshotForWorldEntryAsync(
         CharacterSnapshotDto snapshot,
         CancellationToken cancellationToken = default)
     {
-        if (!IsLifespanExpired(snapshot.CurrentState) || snapshot.CurrentState is null)
+        if (!IsLifespanExpired(snapshot) || snapshot.CurrentState is null)
             return snapshot;
 
         var updatedState = await PersistLifespanExpiredStateIfNeededAsync(snapshot.CurrentState, cancellationToken);
+        await EnsureLifespanExpiredNotificationAsync(snapshot.Character.CharacterId, pushIfOnline: false, cancellationToken);
         return snapshot with { CurrentState = updatedState };
+    }
+
+    public bool IsLifespanExpired(CharacterDto character, CharacterBaseStatsDto? baseStats, CharacterCurrentStateDto? currentState)
+    {
+        if (baseStats is null || currentState is null)
+            return false;
+
+        var snapshot = new CharacterSnapshotDto(character, baseStats, currentState);
+        return IsLifespanExpired(snapshot);
     }
 
     public async Task HandleLifespanExpiredAsync(PlayerSession player, CancellationToken cancellationToken = default)
@@ -61,9 +83,14 @@ public sealed class CharacterLifecycleService
             return;
 
         player.MarkLifespanExpiredProcessed();
+        await EnsureLifespanExpiredNotificationAsync(player.CharacterData.CharacterId, pushIfOnline: true, cancellationToken);
         _network.Send(player.ConnectionId, new CharacterCurrentStateChangedPacket
         {
-            CurrentState = snapshot.CurrentState.ToModel(_gameTimeService.GetCurrentSnapshot())
+            CurrentState = snapshot.CurrentState.ToModel(
+                player.CharacterData,
+                player.RuntimeState.CaptureSnapshot().BaseStats,
+                _gameTimeService.GetCurrentSnapshot(),
+                _characterCreateConfig.FallbackRealmLifespanDays)
         });
         _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
         _network.Send(player.ConnectionId, new CharacterStateTransitionPacket
@@ -113,5 +140,24 @@ public sealed class CharacterLifecycleService
             CurrentState = CharacterRuntimeStateCodes.LifespanExpired,
             LastSavedAt = DateTime.UtcNow
         };
+    }
+
+    private Task<long> EnsureLifespanExpiredNotificationAsync(
+        Guid characterId,
+        bool pushIfOnline,
+        CancellationToken cancellationToken)
+    {
+        return _notificationService.EnsureUnreadAsync(
+            new Entities.PlayerNotificationEntity
+            {
+                PlayerId = characterId,
+                NotificationType = (int)PlayerNotificationType.LifespanExpired,
+                SourceType = (int)PlayerNotificationSourceType.CharacterLifecycle,
+                Title = LifespanExpiredNotificationTitle,
+                Message = LifespanExpiredNotificationMessage,
+                CreatedAtUtc = DateTime.UtcNow
+            },
+            pushIfOnline,
+            cancellationToken);
     }
 }

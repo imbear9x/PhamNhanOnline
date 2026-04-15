@@ -51,7 +51,9 @@ public sealed class AllocatePotentialHandler : IPacketHandler<AllocatePotentialP
             Success = result.Success,
             Code = result.Code,
             BaseStats = responseBaseStats?.ToModel(),
-            CurrentState = responseCurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot()),
+            CurrentState = responseCurrentState is null || responseBaseStats is null || session.Player is null
+                ? null
+                : responseCurrentState.ToModel(session.Player.CharacterData, responseBaseStats, _gameTimeService.GetCurrentSnapshot()),
             RequestedPotentialAmount = result.PotentialAllocation?.RequestedPotentialAmount,
             SpentPotentialAmount = result.PotentialAllocation?.SpentPotentialAmount,
             AppliedUpgradeCount = result.PotentialAllocation?.AppliedUpgradeCount

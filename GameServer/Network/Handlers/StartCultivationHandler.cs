@@ -25,11 +25,14 @@ public sealed class StartCultivationHandler : IPacketHandler<StartCultivationPac
     public async Task HandleAsync(ConnectionSession session, StartCultivationPacket packet)
     {
         var result = await _cultivationService.StartCultivationAsync(session);
+        var baseStats = session.Player?.RuntimeState.CaptureSnapshot().BaseStats;
         _network.Send(session.ConnectionId, new StartCultivationResultPacket
         {
             Success = result.Success,
             Code = result.Code,
-            CurrentState = result.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot())
+            CurrentState = result.CurrentState is null || session.Player is null
+                ? null
+                : result.CurrentState.ToModel(session.Player.CharacterData, baseStats, _gameTimeService.GetCurrentSnapshot())
         });
     }
 }

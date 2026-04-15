@@ -8,6 +8,7 @@ public sealed record CharacterDto(
     int WorldServerId,
     string Name,
     CharacterAppearanceDto Appearance,
+    DateTime? FirstEnterWorldAtUtc,
     DateTime? CreatedUtc)
 {
     public static CharacterDto FromEntity(Character entity) =>
@@ -17,6 +18,7 @@ public sealed record CharacterDto(
             entity.ServerId,
             entity.Name,
             new CharacterAppearanceDto(entity.ModelId, entity.Gender, entity.HairColor, entity.EyeColor, entity.FaceId),
+            entity.FirstEnterWorldAtUtc,
             entity.CreatedAt);
 }
 

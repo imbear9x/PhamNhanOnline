@@ -10,7 +10,6 @@ public sealed class PlayerSession
     private readonly HashSet<Guid> _visibleCharacterIds = new();
     private readonly Dictionary<long, DateTime> _skillCooldownsByPlayerSkillId = new();
     private readonly Dictionary<int, DateTime> _itemCooldownsByItemTemplateId = new();
-    private int _lastReportedRemainingLifespan = int.MinValue;
     private bool _lifespanExpiredProcessed;
     private bool _characterActionsRestricted;
     private (int ExecutionId, long PlayerSkillId, DateTime CastCompletedAtUtc)? _activeSkillCast;
@@ -151,18 +150,6 @@ public sealed class PlayerSession
         lock (_sync)
         {
             _lastMapEntryContext = entryContext;
-        }
-    }
-
-    public bool TryUpdateReportedRemainingLifespan(int remainingLifespan)
-    {
-        lock (_sync)
-        {
-            if (_lastReportedRemainingLifespan == remainingLifespan)
-                return false;
-
-            _lastReportedRemainingLifespan = remainingLifespan;
-            return true;
         }
     }
 

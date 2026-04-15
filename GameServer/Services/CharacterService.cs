@@ -345,7 +345,6 @@ public sealed class CharacterService
         existing.CurrentHp = state.CurrentHp;
         existing.CurrentMp = state.CurrentMp;
         existing.CurrentStamina = state.CurrentStamina;
-        existing.LifespanEndGameMinute = state.LifespanEndGameMinute;
         existing.CurrentMapId = state.CurrentMapId;
         existing.CurrentZoneIndex = state.CurrentZoneIndex;
         existing.CurrentPosX = state.CurrentPosX;
@@ -358,6 +357,23 @@ public sealed class CharacterService
 
         await _currentStates.UpdateAsync(existing, cancellationToken);
         return CharacterCurrentStateDto.FromEntity(existing);
+    }
+
+    public async Task<CharacterDto> EnsureFirstEnterWorldAtUtcAsync(
+        Guid characterId,
+        CancellationToken cancellationToken = default)
+    {
+        var character = await _characters.GetByIdAsync(characterId, cancellationToken);
+        if (character is null)
+            throw new GameException(MessageCode.CharacterNotFound);
+
+        if (!character.FirstEnterWorldAtUtc.HasValue)
+        {
+            character.FirstEnterWorldAtUtc = DateTime.UtcNow;
+            await _characters.UpdateAsync(character, cancellationToken);
+        }
+
+        return CharacterDto.FromEntity(character);
     }
 
     public async Task<CharacterSnapshotDto> UpdateCharacterCultivationAsync(
@@ -397,11 +413,7 @@ public sealed class CharacterService
     {
         var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(CharacterBaseStatsDto.FromEntity(
             baseStat ?? BuildDefaultCharacterBaseStats(characterId),
-            realmLifespan ?? _characterCreateConfig.FallbackRealmLifespan));
-        var lifespanEndGameMinute = CharacterLifespanRules.CreateLifespanEndGameMinute(
-            effectiveBaseStats,
-            gameTime,
-            _characterCreateConfig.FallbackRealmLifespan);
+            realmLifespan ?? _characterCreateConfig.FallbackRealmLifespanDays));
         var homeDefinition = _mapCatalog.ResolveHomeDefinition();
 
         return new CharacterCurrentState
@@ -410,7 +422,6 @@ public sealed class CharacterService
             CurrentHp = effectiveBaseStats.GetEffectiveHp(),
             CurrentMp = effectiveBaseStats.GetEffectiveMp(),
             CurrentStamina = effectiveBaseStats.GetEffectiveStamina(),
-            LifespanEndGameMinute = lifespanEndGameMinute,
             CurrentMapId = homeDefinition.MapId,
             CurrentZoneIndex = homeDefinition.DefaultZoneIndex,
             CurrentPosX = homeDefinition.DefaultSpawnPosition.X,
@@ -437,7 +448,7 @@ public sealed class CharacterService
             BaseSpeed = _characterCreateConfig.BaseSpeed,
             BaseSpiritualSense = _characterCreateConfig.BaseSpiritualSense,
             BaseStamina = _characterCreateConfig.BaseStamina,
-            LifespanBonus = _characterCreateConfig.LifespanBonus,
+            LifespanBonus = _characterCreateConfig.LifespanBonusDays,
             BaseFortune = _characterCreateConfig.BaseFortune,
             BasePotential = _characterCreateConfig.BasePotential,
             UnallocatedPotential = _characterCreateConfig.UnallocatedPotential,

@@ -1,4 +1,5 @@
 using GameServer.DTO;
+using GameServer.Entities;
 using GameServer.Network;
 using GameServer.Network.Interface;
 using GameServer.Repositories;
@@ -51,6 +52,44 @@ public sealed class PlayerNotificationService
             return;
 
         Send(player.ConnectionId, builder.Build(entity));
+    }
+
+    public async Task<long> CreateAsync(PlayerNotificationEntity entity, bool pushIfOnline, CancellationToken cancellationToken = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var repository = scope.ServiceProvider.GetRequiredService<PlayerNotificationRepository>();
+        var notificationId = await repository.CreateAsync(entity, cancellationToken);
+        if (pushIfOnline)
+            await PushToOnlinePlayerAsync(entity.PlayerId, notificationId, cancellationToken);
+
+        return notificationId;
+    }
+
+    public async Task<long> EnsureUnreadAsync(
+        PlayerNotificationEntity entity,
+        bool pushIfOnline,
+        CancellationToken cancellationToken = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var repository = scope.ServiceProvider.GetRequiredService<PlayerNotificationRepository>();
+        var existing = await repository.GetLatestUnreadByTypeAsync(
+            entity.PlayerId,
+            entity.NotificationType,
+            entity.SourceType,
+            cancellationToken);
+        if (existing is not null)
+        {
+            if (pushIfOnline)
+                await PushToOnlinePlayerAsync(entity.PlayerId, existing.Id, cancellationToken);
+
+            return existing.Id;
+        }
+
+        var notificationId = await repository.CreateAsync(entity, cancellationToken);
+        if (pushIfOnline)
+            await PushToOnlinePlayerAsync(entity.PlayerId, notificationId, cancellationToken);
+
+        return notificationId;
     }
 
     public async Task<PlayerNotificationAcknowledgeResult> AcknowledgeAsync(

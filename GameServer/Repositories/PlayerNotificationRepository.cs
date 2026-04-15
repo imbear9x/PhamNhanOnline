@@ -23,6 +23,21 @@ public sealed class PlayerNotificationRepository
             .ThenBy(x => x.Id)
             .ToListAsync(cancellationToken);
 
+    public Task<PlayerNotificationEntity?> GetLatestUnreadByTypeAsync(
+        Guid playerId,
+        int notificationType,
+        int sourceType,
+        CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerNotificationEntity>()
+            .Where(x =>
+                x.PlayerId == playerId &&
+                x.ReadAtUtc == null &&
+                x.NotificationType == notificationType &&
+                x.SourceType == sourceType)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ThenByDescending(x => x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public Task<long> CreateAsync(PlayerNotificationEntity entity, CancellationToken cancellationToken = default) =>
         _db.InsertWithInt64IdentityAsync(entity, token: cancellationToken);
 

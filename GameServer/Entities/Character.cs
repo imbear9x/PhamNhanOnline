@@ -26,6 +26,7 @@ namespace GameServer.Entities
 		[Column("hair_color"                      )] public int?      HairColor { get; set; } // integer
 		[Column("eye_color"                       )] public int?      EyeColor  { get; set; } // integer
 		[Column("face_id"                         )] public int?      FaceId    { get; set; } // integer
+		[Column("first_enter_world_at_utc"        )] public DateTime? FirstEnterWorldAtUtc { get; set; } // timestamp (6) without time zone
 		[Column("created_at"                      )] public DateTime? CreatedAt { get; set; } // timestamp (6) without time zone
 
 		#region Associations

@@ -55,7 +55,7 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
             data = cultivationSettlement.Snapshot;
             data = await _lifecycleService.PrepareSnapshotForWorldEntryAsync(data);
             data = await _characterFinalStatService.ApplyFinalStatsToSnapshotAsync(data);
-            var isLifespanExpired = _lifecycleService.IsLifespanExpired(data.CurrentState);
+            var isLifespanExpired = _lifecycleService.IsLifespanExpired(data);
 
             _server.Send(session.ConnectionId, new GetCharacterDataResultPacket
             {
@@ -63,7 +63,9 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
                 Code = isLifespanExpired ? MessageCode.CharacterLifespanExpired : MessageCode.None,
                 Character = data.Character.ToModel(),
                 BaseStats = data.BaseStats?.ToModel(),
-                CurrentState = data.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot())
+                CurrentState = data.CurrentState is null
+                    ? null
+                    : data.CurrentState.ToModel(data.Character, data.BaseStats, _gameTimeService.GetCurrentSnapshot())
             });
 
             if (cultivationSettlement.RewardEvent is not null)

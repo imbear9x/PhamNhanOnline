@@ -55,7 +55,9 @@ public sealed class UseItemHandler : IPacketHandler<UseItemPacket>
                 AppliedQuantity = result.AppliedQuantity,
                 Items = result.Items.Select(x => x.ToModel()).ToList(),
                 BaseStats = result.BaseStats?.ToModel(),
-                CurrentState = result.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot()),
+                CurrentState = result.CurrentState is null || result.BaseStats is null
+                    ? null
+                    : result.CurrentState.ToModel(session.Player.CharacterData, result.BaseStats, _gameTimeService.GetCurrentSnapshot()),
                 LearnedMartialArt = result.LearnedMartialArt?.ToModel(),
                 CultivationPreview = result.CultivationPreview?.ToModel(),
                 CooldownMs = result.CooldownMs,

@@ -14,7 +14,6 @@ public sealed class CharacterRuntimeService
     private readonly CharacterRuntimeCalculator _calculator;
     private readonly CharacterRuntimeNotifier _notifier;
     private readonly WorldInterestService _interestService;
-    private readonly GameTimeService _gameTimeService;
     private readonly CharacterLifecycleService _lifecycleService;
 
     public CharacterRuntimeService(
@@ -22,14 +21,12 @@ public sealed class CharacterRuntimeService
         CharacterRuntimeCalculator calculator,
         CharacterRuntimeNotifier notifier,
         WorldInterestService interestService,
-        GameTimeService gameTimeService,
         CharacterLifecycleService lifecycleService)
     {
         _worldManager = worldManager;
         _calculator = calculator;
         _notifier = notifier;
         _interestService = interestService;
-        _gameTimeService = gameTimeService;
         _lifecycleService = lifecycleService;
     }
 
@@ -52,12 +49,8 @@ public sealed class CharacterRuntimeService
 
         session.Player = player;
         session.SelectedCharacterId = snapshot.Character.CharacterId;
-        var currentRemaining = CharacterLifespanRules.CalculateRemainingLifespanYears(
-            clampedCurrentState.LifespanEndGameMinute,
-            _gameTimeService.GetCurrentSnapshot());
-        player.TryUpdateReportedRemainingLifespan(currentRemaining);
         var isRestricted =
-            currentRemaining <= 0 ||
+            _lifecycleService.IsLifespanExpired(player.CharacterData, baseStats, clampedCurrentState) ||
             clampedCurrentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired ||
             clampedCurrentState.CurrentState == CharacterRuntimeStateCodes.CombatDead ||
             clampedCurrentState.IsExpired;
@@ -116,19 +109,9 @@ public sealed class CharacterRuntimeService
         PlayerSession player,
         Func<CharacterBaseStatsDto, CharacterBaseStatsDto> mutation)
     {
-        var previousSnapshot = player.RuntimeState.CaptureSnapshot();
         var baseStatsSnapshot = player.RuntimeState.UpdateBaseStats(mutation);
         var currentStateSnapshot = player.RuntimeState.UpdateCurrentState(
-            current =>
-            {
-                var clamped = _calculator.ClampCurrentStateToBaseStats(baseStatsSnapshot.BaseStats, current);
-                var lifespanAdjusted = CharacterLifespanRules.AdjustLifespanEndGameMinute(
-                    previousSnapshot.BaseStats,
-                    baseStatsSnapshot.BaseStats,
-                    clamped.LifespanEndGameMinute,
-                    _gameTimeService.GetCurrentSnapshot());
-                return clamped with { LifespanEndGameMinute = lifespanAdjusted };
-            });
+            current => _calculator.ClampCurrentStateToBaseStats(baseStatsSnapshot.BaseStats, current));
 
         player.SynchronizeFromCurrentState(currentStateSnapshot.CurrentState);
         SyncCharacterActionRestriction(player, currentStateSnapshot.CurrentState);
@@ -190,28 +173,15 @@ public sealed class CharacterRuntimeService
         foreach (var player in _worldManager.GetOnlinePlayersSnapshot())
         {
             var snapshot = player.RuntimeState.CaptureSnapshot();
-            if (_lifecycleService.IsLifespanExpired(snapshot.CurrentState))
-            {
+            if (_lifecycleService.IsLifespanExpired(player.CharacterData, snapshot.BaseStats, snapshot.CurrentState))
                 await _lifecycleService.HandleLifespanExpiredAsync(player, cancellationToken);
-                continue;
-            }
-
-            if (_notifier.TryNotifyTimeDerivedCurrentStateChanged(player, snapshot.CurrentState))
-            {
-                _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
-            }
         }
     }
 
     private void SyncCharacterActionRestriction(PlayerSession player, CharacterCurrentStateDto currentState)
     {
-        var currentRemaining = CharacterLifespanRules.CalculateRemainingLifespanYears(
-            currentState.LifespanEndGameMinute,
-            _gameTimeService.GetCurrentSnapshot());
-        player.TryUpdateReportedRemainingLifespan(currentRemaining);
-
         var restricted =
-            currentRemaining <= 0 ||
+            _lifecycleService.IsLifespanExpired(player.CharacterData, player.RuntimeState.CaptureSnapshot().BaseStats, currentState) ||
             currentState.CurrentState == CharacterRuntimeStateCodes.LifespanExpired ||
             currentState.CurrentState == CharacterRuntimeStateCodes.CombatDead ||
             currentState.IsExpired;

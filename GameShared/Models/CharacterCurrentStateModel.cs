@@ -9,7 +9,7 @@ public struct CharacterCurrentStateModel
     public int CurrentHp;
     public int CurrentMp;
     public int CurrentStamina;
-    public int RemainingLifespan;
+    public long? LifespanEndUnixMs;
     public int? CurrentMapId;
     public int CurrentZoneIndex;
     public float CurrentPosX;

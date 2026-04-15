@@ -40,7 +40,9 @@ public sealed class CreateCharacterHandler : IPacketHandler<CreateCharacterPacke
                 Code = MessageCode.None,
                 Character = created.Character.ToModel(),
                 BaseStats = created.BaseStats?.ToModel(),
-                CurrentState = created.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot())
+                CurrentState = created.CurrentState is null
+                    ? null
+                    : created.CurrentState.ToModel(created.Character, created.BaseStats, _gameTimeService.GetCurrentSnapshot())
             });
         }
         catch (GameException ex)

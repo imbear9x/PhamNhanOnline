@@ -11,6 +11,8 @@ namespace PhamNhanOnline.Client.UI.Common
 {
     public class NotificationInboxController : MonoBehaviour
     {
+        private const int LifespanExpiredNotificationType = 4;
+
         [Header("References")]
         [SerializeField] private NotificationPopupView popupView;
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
@@ -149,16 +151,19 @@ namespace PhamNhanOnline.Client.UI.Common
 
         protected virtual void HandlePopupConfirmed()
         {
+            var currentNotification = ClientRuntime.IsInitialized
+                ? ClientRuntime.Notifications.CurrentNotification
+                : (PlayerNotificationModel?)null;
             if (!showingNotificationId.HasValue || acknowledgeInFlight || !ClientRuntime.IsInitialized)
             {
                 popupView.Hide(force: true);
                 return;
             }
 
-            _ = AcknowledgeAsync(showingNotificationId.Value);
+            _ = AcknowledgeAsync(showingNotificationId.Value, currentNotification);
         }
 
-        protected virtual async Task AcknowledgeAsync(long notificationId)
+        protected virtual async Task AcknowledgeAsync(long notificationId, PlayerNotificationModel? notification)
         {
             acknowledgeInFlight = true;
             try
@@ -171,6 +176,13 @@ namespace PhamNhanOnline.Client.UI.Common
 
                 showingNotificationId = null;
                 popupView.Hide(force: true);
+
+                if (notification.HasValue &&
+                    notification.Value.NotificationType == LifespanExpiredNotificationType &&
+                    ClientRuntime.ConnectionRecovery != null)
+                {
+                    ClientRuntime.ConnectionRecovery.ForceLogoutToLogin();
+                }
             }
             catch (Exception ex)
             {

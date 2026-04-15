@@ -25,11 +25,14 @@ public sealed class StopCultivationHandler : IPacketHandler<StopCultivationPacke
     public async Task HandleAsync(ConnectionSession session, StopCultivationPacket packet)
     {
         var result = await _cultivationService.StopCultivationAsync(session);
+        var baseStats = session.Player?.RuntimeState.CaptureSnapshot().BaseStats;
         _network.Send(session.ConnectionId, new StopCultivationResultPacket
         {
             Success = result.Success,
             Code = result.Code,
-            CurrentState = result.CurrentState?.ToModel(_gameTimeService.GetCurrentSnapshot())
+            CurrentState = result.CurrentState is null || session.Player is null
+                ? null
+                : result.CurrentState.ToModel(session.Player.CharacterData, baseStats, _gameTimeService.GetCurrentSnapshot())
         });
     }
 }

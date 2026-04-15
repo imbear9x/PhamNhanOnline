@@ -51,7 +51,7 @@ public sealed class ReturnHomeAfterCombatDeathHandler : IPacketHandler<ReturnHom
             Success = true,
             Code = MessageCode.None,
             BaseStats = runtimeSnapshot.BaseStats.ToModel(),
-            CurrentState = runtimeSnapshot.CurrentState.ToModel(_gameTimeService.GetCurrentSnapshot())
+            CurrentState = runtimeSnapshot.CurrentState.ToModel(player.CharacterData, runtimeSnapshot.BaseStats, _gameTimeService.GetCurrentSnapshot())
         });
     }
 

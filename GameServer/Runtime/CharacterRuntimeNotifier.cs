@@ -28,30 +28,12 @@ public sealed class CharacterRuntimeNotifier
     public void NotifyCurrentStateChanged(PlayerSession player, CharacterCurrentStateDto currentState)
     {
         var gameTime = _gameTimeService.GetCurrentSnapshot();
-        var remainingLifespan = CharacterLifespanRules.CalculateRemainingLifespanYears(currentState.LifespanEndGameMinute, gameTime);
-        player.TryUpdateReportedRemainingLifespan(remainingLifespan);
-
+        var baseStats = player.RuntimeState.CaptureSnapshot().BaseStats;
         _network.Send(player.ConnectionId, new CharacterCurrentStateChangedPacket
         {
-            CurrentState = currentState.ToModel(gameTime)
+            CurrentState = currentState.ToModel(player.CharacterData, baseStats, gameTime)
         });
     }
-
-    public bool TryNotifyTimeDerivedCurrentStateChanged(PlayerSession player, CharacterCurrentStateDto currentState)
-    {
-        var gameTime = _gameTimeService.GetCurrentSnapshot();
-        var remainingLifespan = CharacterLifespanRules.CalculateRemainingLifespanYears(currentState.LifespanEndGameMinute, gameTime);
-        if (!player.TryUpdateReportedRemainingLifespan(remainingLifespan))
-            return false;
-
-        _network.Send(player.ConnectionId, new CharacterCurrentStateChangedPacket
-        {
-            CurrentState = currentState.ToModel(gameTime)
-        });
-
-        return true;
-    }
-
     public void NotifyStateTransition(PlayerSession player, int reason)
     {
         _network.Send(player.ConnectionId, new CharacterStateTransitionPacket

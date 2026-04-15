@@ -1,6 +1,6 @@
 {
   "RealmTemplateId": 1,
-  "FallbackRealmLifespan": 120,
+  "FallbackRealmLifespanDays": 120,
   "Cultivation": 0,
   "BaseHp": 100,
   "BaseMp": 100,
@@ -9,7 +9,7 @@
   "BaseSpeed": 100,
   "BaseSpiritualSense": 10,
   "BaseStamina": 100,
-  "LifespanBonus": 0,
+  "LifespanBonusDays": 0,
   "BaseFortune": 0.01,
   "BasePotential": 0,
   "UnallocatedPotential": 0,

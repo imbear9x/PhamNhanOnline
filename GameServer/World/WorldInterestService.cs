@@ -222,7 +222,7 @@ public sealed class WorldInterestService
         {
             _network.Send(observer.ConnectionId, new ObservedCharacterCurrentStateChangedPacket
             {
-                CurrentState = currentState.ToModel(_gameTimeService.GetCurrentSnapshot()),
+                CurrentState = currentState.ToModel(player.CharacterData, snapshot.BaseStats, _gameTimeService.GetCurrentSnapshot()),
                 MaxHp = maxHp,
                 MaxMp = maxMp,
                 ZoneIndex = player.ZoneIndex
