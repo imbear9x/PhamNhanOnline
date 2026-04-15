@@ -17,8 +17,7 @@ namespace PhamNhanOnline.Client.UI.World
     public sealed partial class WorldInventoryPanelController : MonoBehaviour
     {
         [Header("Character References")]
-        [SerializeField] private TMP_Text characterNameText;
-        [SerializeField] private StatLineListView statListView;
+        [SerializeField] private InventoryCharacterSummaryView characterSummaryView;
 
         [Header("Inventory References")]
         [SerializeField] private RectTransform inventoryPanelBounds;
@@ -26,9 +25,8 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private InventoryItemGridView inventoryGridView;
         [SerializeField] private EquipmentSlotsPanelView equipmentSlotsView;
         [SerializeField] private InventoryDropZoneView inventoryDropZoneView;
-        [SerializeField] private InventoryItemTooltipView itemTooltipView;
         [SerializeField] private PotentialUpgradeOptionsPopupView itemOptionsPopupView;
-        [SerializeField] private InventoryDropQuantityPopupView dropQuantityPopupView;
+        [SerializeField] private InventoryUseQuantityPopupView dropQuantityPopupView;
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
 
         [Header("Character Display")]
@@ -62,15 +60,12 @@ namespace PhamNhanOnline.Client.UI.World
         private Guid? lastRequestedCharacterId;
         private float lastReloadAttemptTime = float.NegativeInfinity;
         private bool reloadInFlight;
-        private string lastCharacterName = string.Empty;
-        private string lastStatsSnapshot = string.Empty;
         private float lastInventoryReloadAttemptTime = float.NegativeInfinity;
         private bool inventoryReloadInFlight;
         private string lastInventorySnapshot = string.Empty;
         private string lastInventoryStatus = string.Empty;
         private long? previewPlayerItemId;
         private long? popupPlayerItemId;
-        private bool suppressTooltipUntilHoverReset;
         private bool inventoryActionInFlight;
         private long? quantityPopupPlayerItemId;
         private QuantityPopupAction quantityPopupAction;
@@ -82,7 +77,6 @@ namespace PhamNhanOnline.Client.UI.World
                 inventoryGridView.ItemClicked += HandleInventoryItemClicked;
                 inventoryGridView.ItemHovered += HandleInventoryItemHovered;
                 inventoryGridView.ItemHoverExited += HandleInventoryItemHoverExited;
-                inventoryGridView.EquippedItemDropped += HandleEquippedItemDroppedOnInventory;
             }
 
             if (equipmentSlotsView != null)
@@ -137,7 +131,6 @@ namespace PhamNhanOnline.Client.UI.World
                 inventoryGridView.ItemClicked -= HandleInventoryItemClicked;
                 inventoryGridView.ItemHovered -= HandleInventoryItemHovered;
                 inventoryGridView.ItemHoverExited -= HandleInventoryItemHoverExited;
-                inventoryGridView.EquippedItemDropped -= HandleEquippedItemDroppedOnInventory;
             }
 
             if (equipmentSlotsView != null)
@@ -158,6 +151,7 @@ namespace PhamNhanOnline.Client.UI.World
             {
                 ApplyCharacterName(missingCharacterName, force);
                 ApplyStatEntries(Array.Empty<StatLineListView.Entry>(), force);
+                ApplyLifespan(null, force);
                 return;
             }
 
@@ -171,6 +165,7 @@ namespace PhamNhanOnline.Client.UI.World
                 : ResolveCharacterName(selectedCharacter.Value.Name);
 
             ApplyCharacterName(displayName, force);
+            ApplyLifespan(currentState.HasValue ? currentState.Value.LifespanEndUnixMs : null, force);
 
             if (!baseStats.HasValue)
             {
@@ -244,11 +239,6 @@ namespace PhamNhanOnline.Client.UI.World
             if (popupPlayerItemId.HasValue && !TryFindInventoryItemById(allItems, popupPlayerItemId, out _))
                 HideItemOptionsPopup(force: true);
 
-            InventoryItemModel activeTooltipItem;
-            if (TryResolveActiveTooltipItem(allItems, out activeTooltipItem))
-                ShowTooltip(activeTooltipItem, force: true);
-            else if (itemTooltipView != null)
-                itemTooltipView.Hide(force: true);
         }
 
         private void TryReloadMissingData()

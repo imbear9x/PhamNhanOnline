@@ -1,5 +1,6 @@
 using System;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,7 +8,7 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Skills
 {
-    public sealed class SkillLoadoutSlotView : MonoBehaviour, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+    public sealed class SkillLoadoutSlotView : MonoBehaviour, IUiDragPayloadSource, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         [Header("References")]
         [SerializeField] private Image iconImage;
@@ -101,19 +102,27 @@ namespace PhamNhanOnline.Client.UI.Skills
 
         public void OnDrop(PointerEventData eventData)
         {
-            if (eventData.pointerDrag == null)
-                return;
-
-            var listItemView = eventData.pointerDrag.GetComponentInParent<SkillListItemView>();
-            if (listItemView != null && listItemView.HasItem)
+            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UiDragPayloadKind.Skill ||
+                !payload.HasSkill)
             {
-                DispatchDroppedSkill(listItemView.Item);
                 return;
             }
 
-            var slotView = eventData.pointerDrag.GetComponentInParent<SkillLoadoutSlotView>();
-            if (slotView != null && slotView != this && slotView.HasItem)
-                DispatchDroppedSkill(slotView.Item);
+            if (payload.SourceKind != UiDragSourceKind.SkillListItem &&
+                payload.SourceKind != UiDragSourceKind.SkillLoadoutSlot)
+            {
+                return;
+            }
+
+            if (payload.SourceKind == UiDragSourceKind.SkillLoadoutSlot &&
+                payload.HasSourceIndex &&
+                payload.SourceIndex == slotIndex)
+            {
+                return;
+            }
+
+            DispatchDroppedSkill(payload.Skill);
         }
 
         public void OnBeginDrag(PointerEventData eventData)
@@ -135,6 +144,18 @@ namespace PhamNhanOnline.Client.UI.Skills
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
+        }
+
+        public bool TryCreateDragPayload(out UiDragPayload payload)
+        {
+            if (!hasItem)
+            {
+                payload = default;
+                return false;
+            }
+
+            payload = UiDragPayload.FromSkill(item, UiDragSourceKind.SkillLoadoutSlot, slotIndex);
+            return true;
         }
 
         private void DispatchDroppedSkill(PlayerSkillModel skill)

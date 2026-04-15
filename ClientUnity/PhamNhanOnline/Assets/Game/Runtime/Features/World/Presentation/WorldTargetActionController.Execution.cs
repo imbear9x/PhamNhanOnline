@@ -179,6 +179,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                     out worldPosition);
             }
 
+            if (LocalFixPortalPresenter.TryResolveActionWorldPosition(target, out worldPosition))
+                return true;
+
             WorldTargetable targetable;
             if (WorldTargetableRegistry.TryGet(target, out targetable) &&
                 targetable != null &&

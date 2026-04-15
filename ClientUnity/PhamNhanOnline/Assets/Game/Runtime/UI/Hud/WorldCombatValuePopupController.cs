@@ -14,10 +14,8 @@ namespace PhamNhanOnline.Client.UI.Hud
         private const float DefaultAnchorHeightOffset = 0.35f;
 
         [Header("References")]
-        [SerializeField] private WorldSceneController worldSceneController;
         [SerializeField] private WorldLocalPlayerPresenter localPlayerPresenter;
         [SerializeField] private Transform popupRoot;
-        [SerializeField] private ClientPoolService poolService;
 
         [Header("Popup Prefabs")]
         [SerializeField] private CombatValuePopupView defaultPopupPrefab;
@@ -38,9 +36,20 @@ namespace PhamNhanOnline.Client.UI.Hud
         private bool runtimeEventsBound;
         private bool prefabsPrewarmed;
 
+        private static WorldSceneController SceneController => WorldSceneController.Instance;
+
+        private static ClientPoolService ResolvePoolService()
+        {
+            var instance = ClientPoolService.Instance;
+            if (instance != null)
+                return instance;
+
+            var sceneController = SceneController;
+            return ClientPoolService.Ensure(sceneController != null ? sceneController.transform : null);
+        }
+
         private void Awake()
         {
-            AutoWireReferences();
         }
 
         private void Start()
@@ -202,8 +211,9 @@ namespace PhamNhanOnline.Client.UI.Hud
                 return;
 
             AutoWireReferences();
+            var poolService = ResolvePoolService();
             if (poolService == null)
-                poolService = ClientPoolService.Ensure(worldSceneController != null ? worldSceneController.transform : null);
+                return;
 
             var parent = popupRoot != null ? popupRoot : transform;
             var popup = poolService.Spawn(prefab, parent, worldPositionStays: false);
@@ -219,18 +229,19 @@ namespace PhamNhanOnline.Client.UI.Hud
                 return;
 
             AutoWireReferences();
+            var poolService = ResolvePoolService();
             if (poolService == null)
-                poolService = ClientPoolService.Ensure(worldSceneController != null ? worldSceneController.transform : null);
+                return;
 
-            WarmPrefab(defaultPopupPrefab);
-            WarmPrefab(hpDamagePopupPrefab);
-            WarmPrefab(hpHealPopupPrefab);
-            WarmPrefab(mpDamagePopupPrefab);
-            WarmPrefab(mpRestorePopupPrefab);
+            WarmPrefab(poolService, defaultPopupPrefab);
+            WarmPrefab(poolService, hpDamagePopupPrefab);
+            WarmPrefab(poolService, hpHealPopupPrefab);
+            WarmPrefab(poolService, mpDamagePopupPrefab);
+            WarmPrefab(poolService, mpRestorePopupPrefab);
             prefabsPrewarmed = true;
         }
 
-        private void WarmPrefab(CombatValuePopupView prefab)
+        private void WarmPrefab(ClientPoolService poolService, CombatValuePopupView prefab)
         {
             if (prefab == null || poolService == null || prewarmPerAssignedPrefab <= 0)
                 return;
@@ -280,17 +291,13 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         private void AutoWireReferences()
         {
-            if (worldSceneController == null)
-                worldSceneController = WorldSceneController.Instance;
+            var worldSceneController = SceneController;
 
             if (localPlayerPresenter == null && worldSceneController != null)
                 localPlayerPresenter = worldSceneController.WorldLocalPlayerPresenter;
 
             if (popupRoot == null && worldSceneController != null)
                 popupRoot = worldSceneController.WorldUiRoot != null ? worldSceneController.WorldUiRoot : transform;
-
-            if (poolService == null)
-                poolService = ClientPoolService.Instance;
         }
 
         private static string FormatSignedValue(int delta, bool includePlusSign, string suffix)

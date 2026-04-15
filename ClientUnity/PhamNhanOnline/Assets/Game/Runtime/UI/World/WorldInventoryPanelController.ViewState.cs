@@ -7,7 +7,6 @@ using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Inventory.Application;
 using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Inventory;
-using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -17,24 +16,20 @@ namespace PhamNhanOnline.Client.UI.World
     {
         private void ApplyCharacterName(string characterName, bool force)
         {
-            characterName = ResolveCharacterName(characterName);
-            if (!force && string.Equals(lastCharacterName, characterName, StringComparison.Ordinal))
-                return;
-
-            lastCharacterName = characterName;
-            if (characterNameText != null)
-                characterNameText.text = characterName;
+            if (characterSummaryView != null)
+                characterSummaryView.SetCharacterName(ResolveCharacterName(characterName), force);
         }
 
         private void ApplyStatEntries(IReadOnlyList<StatLineListView.Entry> entries, bool force)
         {
-            var snapshot = BuildStatSnapshot(entries);
-            if (!force && string.Equals(lastStatsSnapshot, snapshot, StringComparison.Ordinal))
-                return;
+            if (characterSummaryView != null)
+                characterSummaryView.SetStatEntries(entries, force);
+        }
 
-            lastStatsSnapshot = snapshot;
-            if (statListView != null)
-                statListView.SetEntries(entries, force: true);
+        private void ApplyLifespan(long? lifespanEndUnixMs, bool force)
+        {
+            if (characterSummaryView != null)
+                characterSummaryView.SetLifespanEndUnixMs(lifespanEndUnixMs, force);
         }
 
         private void ApplyInventoryStatus(string status, bool force)
@@ -55,20 +50,6 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (equipmentSlotsView != null)
                 equipmentSlotsView.Clear(force: true);
-
-            if (itemTooltipView != null)
-                itemTooltipView.Hide(force: true);
-        }
-
-        private void ShowTooltip(InventoryItemModel item, bool force)
-        {
-            if (itemTooltipView == null)
-                return;
-
-            var presentation = itemPresentationCatalog != null
-                ? itemPresentationCatalog.Resolve(item)
-                : new InventoryItemPresentation(null, null, Color.white);
-            itemTooltipView.Show(item, presentation, force);
         }
 
         private void UpdateItemPopupVisibility()
@@ -169,21 +150,6 @@ namespace PhamNhanOnline.Client.UI.World
             return string.Format(CultureInfo.InvariantCulture, "{0} vat pham | {1} trang bi dang mac", bagItemCount, equippedItemCount);
         }
 
-        private bool TryResolveActiveTooltipItem(IReadOnlyList<InventoryItemModel> items, out InventoryItemModel item)
-        {
-            if (popupPlayerItemId.HasValue || suppressTooltipUntilHoverReset)
-            {
-                item = default;
-                return false;
-            }
-
-            if (TryFindInventoryItemById(items, previewPlayerItemId, out item))
-                return true;
-
-            item = default;
-            return false;
-        }
-
         private static bool TryFindInventoryItemById(IReadOnlyList<InventoryItemModel> items, long? playerItemId, out InventoryItemModel item)
         {
             if (!playerItemId.HasValue)
@@ -216,19 +182,6 @@ namespace PhamNhanOnline.Client.UI.World
         private static int GetTotalSpeed(CharacterBaseStatsModel stats) => stats.FinalSpeed;
         private static int GetTotalSpiritualSense(CharacterBaseStatsModel stats) => stats.FinalSpiritualSense;
         private static double GetTotalFortune(CharacterBaseStatsModel stats) => stats.FinalFortune;
-
-        private static string BuildStatSnapshot(IReadOnlyList<StatLineListView.Entry> entries)
-        {
-            if (entries == null || entries.Count == 0)
-                return string.Empty;
-
-            var parts = new List<string>(entries.Count);
-            for (var i = 0; i < entries.Count; i++)
-                parts.Add(string.Concat(entries[i].Name ?? string.Empty, "=", entries[i].Value ?? string.Empty));
-
-            return string.Join("|", parts);
-        }
-
         private static string BuildInventorySnapshot(ClientInventoryState inventoryState, IReadOnlyList<InventoryItemModel> items, bool inventoryActionInFlight)
         {
             var parts = new List<string>(items.Count + 3)

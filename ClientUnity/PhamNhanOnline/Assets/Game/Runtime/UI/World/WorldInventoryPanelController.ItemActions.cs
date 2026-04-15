@@ -43,7 +43,8 @@ namespace PhamNhanOnline.Client.UI.World
             if (popupPlayerItemId.HasValue)
                 return;
 
-            suppressTooltipUntilHoverReset = false;
+            if (inventoryGridView != null)
+                inventoryGridView.SetTooltipSuppressed(false);
             previewPlayerItemId = item.PlayerItemId;
             RefreshInventory(force: true);
         }
@@ -53,7 +54,8 @@ namespace PhamNhanOnline.Client.UI.World
             if (popupPlayerItemId.HasValue)
                 return;
 
-            suppressTooltipUntilHoverReset = false;
+            if (inventoryGridView != null)
+                inventoryGridView.SetTooltipSuppressed(false);
             previewPlayerItemId = null;
             RefreshInventory(force: true);
         }
@@ -133,9 +135,11 @@ namespace PhamNhanOnline.Client.UI.World
 
             popupPlayerItemId = item.PlayerItemId;
             previewPlayerItemId = item.PlayerItemId;
-            suppressTooltipUntilHoverReset = true;
-            if (itemTooltipView != null)
-                itemTooltipView.Hide(force: true);
+            if (inventoryGridView != null)
+            {
+                inventoryGridView.SetTooltipSuppressed(true, force: true);
+                inventoryGridView.HideTooltip(force: true);
+            }
             itemOptionsPopupView.Show(
                 inventoryPanelBounds != null ? inventoryPanelBounds : transform as RectTransform,
                 item.Name,
@@ -314,7 +318,6 @@ namespace PhamNhanOnline.Client.UI.World
             quantityPopupPlayerItemId = item.PlayerItemId;
             quantityPopupAction = action;
             dropQuantityPopupView.Show(
-                item.Name,
                 Mathf.Max(1, item.Quantity),
                 HandleQuantityConfirmed,
                 HandleQuantityCancelled,
@@ -550,11 +553,13 @@ namespace PhamNhanOnline.Client.UI.World
         private void HideItemOptionsPopup(bool force = false)
         {
             popupPlayerItemId = null;
-            suppressTooltipUntilHoverReset = true;
             if (itemOptionsPopupView != null)
                 itemOptionsPopupView.Hide(force);
-            if (itemTooltipView != null)
-                itemTooltipView.Hide(force: true);
+            if (inventoryGridView != null)
+            {
+                inventoryGridView.SetTooltipSuppressed(true, force: true);
+                inventoryGridView.HideTooltip(force: true);
+            }
         }
 
         private async System.Threading.Tasks.Task DropItemAsync(long playerItemId, int quantity)

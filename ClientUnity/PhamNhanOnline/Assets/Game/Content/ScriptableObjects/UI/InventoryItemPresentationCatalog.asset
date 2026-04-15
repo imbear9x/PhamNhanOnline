@@ -23,7 +23,7 @@ MonoBehaviour:
   - key: item_van_hanh_bo
     sprite: {fileID: 21300000, guid: 530157abca9aa664e9b04768aebc82e3, type: 3}
   - key: item_thanh_phong_huyen_khau
-    sprite: {fileID: 21300000, guid: cf6478ef684ce7f4c830edba147c7607, type: 3}
+    sprite: {fileID: -1797386926, guid: c94f8dfe38436054d861950329f6e042, type: 3}
   - key: item_hoi_linh_dan
     sprite: {fileID: 21300000, guid: 5ccb3ac55f7859e41abd1ab2130a6057, type: 3}
   - key: item_truong_xuan_tam_phap

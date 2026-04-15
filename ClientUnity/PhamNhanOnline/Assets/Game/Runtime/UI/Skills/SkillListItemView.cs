@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -9,6 +10,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.Skills
 {
     public sealed class SkillListItemView : MonoBehaviour,
+        IUiDragPayloadSource,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerClickHandler,
@@ -163,6 +165,18 @@ namespace PhamNhanOnline.Client.UI.Skills
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
+        }
+
+        public bool TryCreateDragPayload(out UiDragPayload payload)
+        {
+            if (!hasItem)
+            {
+                payload = default;
+                return false;
+            }
+
+            payload = UiDragPayload.FromSkill(item, UiDragSourceKind.SkillListItem);
+            return true;
         }
 
         private void ResetDragVisuals()

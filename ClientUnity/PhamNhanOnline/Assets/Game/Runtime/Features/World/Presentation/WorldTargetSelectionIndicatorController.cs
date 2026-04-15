@@ -255,6 +255,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private static bool IsPortalTarget(WorldTargetHandle handle)
         {
+            if (handle.Kind == WorldTargetKind.Npc &&
+                !string.IsNullOrWhiteSpace(handle.TargetId) &&
+                handle.TargetId.StartsWith("local-home-", System.StringComparison.Ordinal) &&
+                handle.TargetId.EndsWith("-portal", System.StringComparison.Ordinal))
+            {
+                return true;
+            }
+
             GameShared.Models.MapPortalModel _;
             return ClientRuntime.IsInitialized && ClientRuntime.World.TryGetPortal(handle, out _);
         }

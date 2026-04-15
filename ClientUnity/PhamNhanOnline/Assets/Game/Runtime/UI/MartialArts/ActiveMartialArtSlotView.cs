@@ -1,12 +1,13 @@
 using System;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.MartialArts
 {
-    public sealed class ActiveMartialArtSlotView : MonoBehaviour, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+    public sealed class ActiveMartialArtSlotView : MonoBehaviour, IUiDragPayloadSource, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         [Header("References")]
         [SerializeField] private Image iconImage;
@@ -72,16 +73,17 @@ namespace PhamNhanOnline.Client.UI.MartialArts
 
         public void OnDrop(PointerEventData eventData)
         {
-            var listItemView = eventData.pointerDrag != null
-                ? eventData.pointerDrag.GetComponentInParent<MartialArtListItemView>()
-                : null;
-
-            if (listItemView == null || !listItemView.HasItem)
+            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UiDragPayloadKind.MartialArt ||
+                payload.SourceKind != UiDragSourceKind.MartialArtListItem ||
+                !payload.HasMartialArt)
+            {
                 return;
+            }
 
             var handler = MartialArtDropped;
             if (handler != null)
-                handler(listItemView.Item);
+                handler(payload.MartialArt);
         }
 
         public void OnBeginDrag(PointerEventData eventData)
@@ -103,6 +105,18 @@ namespace PhamNhanOnline.Client.UI.MartialArts
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
+        }
+
+        public bool TryCreateDragPayload(out UiDragPayload payload)
+        {
+            if (!hasItem)
+            {
+                payload = default;
+                return false;
+            }
+
+            payload = UiDragPayload.FromMartialArt(item, UiDragSourceKind.ActiveMartialArtSlot);
+            return true;
         }
 
         private void ApplyEmptyState()

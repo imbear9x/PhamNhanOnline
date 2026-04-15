@@ -152,7 +152,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         public bool RequestPrimaryAction(WorldTargetHandle target)
         {
-            if (!ClientRuntime.IsInitialized || !target.IsValid)
+            if (!ClientRuntime.IsInitialized)
+                return false;
+
+            if (!target.IsValid)
                 return false;
 
             if (IsLocalCharacterDead())

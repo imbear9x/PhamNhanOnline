@@ -4,10 +4,10 @@ namespace PhamNhanOnline.Client.UI.Common
 {
     public sealed class LoopGridView : LoopScrollViewBase
     {
-        public enum ScrollAxis
+        public enum GridConstraintMode
         {
-            Vertical = 0,
-            Horizontal = 1,
+            ColumnCount = 0,
+            RowCount = 1,
         }
 
         public enum CrossAxisCellSizeMode
@@ -17,8 +17,8 @@ namespace PhamNhanOnline.Client.UI.Common
         }
 
         [Header("Layout")]
-        [SerializeField] private ScrollAxis scrollAxis = ScrollAxis.Vertical;
-        [SerializeField, Min(1)] private int crossAxisItemCount = 4;
+        [SerializeField] private GridConstraintMode constraintMode = GridConstraintMode.ColumnCount;
+        [SerializeField, Min(1)] private int constraintCount = 4;
         [SerializeField, Min(0f)] private float paddingTop;
         [SerializeField, Min(0f)] private float paddingBottom;
         [SerializeField, Min(0f)] private float paddingLeft;
@@ -50,7 +50,7 @@ namespace PhamNhanOnline.Client.UI.Common
             if (lineStride <= 0f)
                 return 0;
 
-            var paddingStart = scrollAxis == ScrollAxis.Vertical ? paddingTop : paddingLeft;
+            var paddingStart = IsVertical ? paddingTop : paddingLeft;
             var startLine = Mathf.FloorToInt(Mathf.Max(0f, scrollOffset - paddingStart) / lineStride) - extraVisibleLineCount;
             return Mathf.Max(0, startLine) * GetCrossAxisCount();
         }
@@ -64,8 +64,8 @@ namespace PhamNhanOnline.Client.UI.Common
             if (lineStride <= 0f)
                 return itemCount - 1;
 
-            var paddingStart = scrollAxis == ScrollAxis.Vertical ? paddingTop : paddingLeft;
-            var viewportSpan = scrollAxis == ScrollAxis.Vertical ? ViewportSize.y : ViewportSize.x;
+            var paddingStart = IsVertical ? paddingTop : paddingLeft;
+            var viewportSpan = IsVertical ? ViewportSize.y : ViewportSize.x;
             var endLine = Mathf.CeilToInt(Mathf.Max(0f, scrollOffset + viewportSpan - paddingStart) / lineStride) + extraVisibleLineCount;
             var maxItemIndex = Mathf.Max(0, itemCount - 1);
             return Mathf.Min(maxItemIndex, ((endLine + 1) * GetCrossAxisCount()) - 1);
@@ -79,7 +79,7 @@ namespace PhamNhanOnline.Client.UI.Common
             var resolvedCellWidth = ResolveCellWidth(cellSize.x, crossAxisCount);
             var resolvedCellHeight = ResolveCellHeight(cellSize.y, crossAxisCount);
 
-            if (scrollAxis == ScrollAxis.Vertical)
+            if (IsVertical)
             {
                 var width = paddingLeft + paddingRight + crossAxisCount * resolvedCellWidth + Mathf.Max(0, crossAxisCount - 1) * spacingX;
                 var height = paddingTop + paddingBottom;
@@ -104,10 +104,10 @@ namespace PhamNhanOnline.Client.UI.Common
             var lineCount = GetLineCount(ItemTotalCount, crossAxisCount);
             var resolvedCellWidth = ResolveCellWidth(cellSize.x, crossAxisCount);
             var resolvedCellHeight = ResolveCellHeight(cellSize.y, crossAxisCount);
-            var layoutWidth = scrollAxis == ScrollAxis.Vertical
+            var layoutWidth = IsVertical
                 ? paddingLeft + paddingRight + crossAxisCount * resolvedCellWidth + Mathf.Max(0, crossAxisCount - 1) * spacingX
                 : paddingLeft + paddingRight + lineCount * resolvedCellWidth + Mathf.Max(0, lineCount - 1) * spacingX;
-            var layoutHeight = scrollAxis == ScrollAxis.Vertical
+            var layoutHeight = IsVertical
                 ? paddingTop + paddingBottom + lineCount * resolvedCellHeight + Mathf.Max(0, lineCount - 1) * spacingY
                 : paddingTop + paddingBottom + crossAxisCount * resolvedCellHeight + Mathf.Max(0, crossAxisCount - 1) * spacingY;
             var extraWidth = Mathf.Max(0f, ContentWidth - layoutWidth);
@@ -115,7 +115,7 @@ namespace PhamNhanOnline.Client.UI.Common
             var horizontalOffset = ResolveHorizontalAlignmentOffset(extraWidth);
             var verticalOffset = ResolveVerticalAlignmentOffset(extraHeight);
 
-            if (scrollAxis == ScrollAxis.Vertical)
+            if (IsVertical)
             {
                 var columnIndex = itemIndex % crossAxisCount;
                 var rowIndex = itemIndex / crossAxisCount;
@@ -150,7 +150,7 @@ namespace PhamNhanOnline.Client.UI.Common
             if (ContentRect == null)
                 return 0f;
 
-            if (scrollAxis == ScrollAxis.Vertical)
+            if (IsVertical)
                 return Mathf.Max(0f, ContentRect.anchoredPosition.y);
 
             return Mathf.Max(0f, -ContentRect.anchoredPosition.x);
@@ -163,7 +163,7 @@ namespace PhamNhanOnline.Client.UI.Common
 
             value = Mathf.Clamp(value, 0f, GetMaxScrollOffset());
             var anchoredPosition = ContentRect.anchoredPosition;
-            if (scrollAxis == ScrollAxis.Vertical)
+            if (IsVertical)
                 anchoredPosition.y = value;
             else
                 anchoredPosition.x = -value;
@@ -173,7 +173,7 @@ namespace PhamNhanOnline.Client.UI.Common
 
         protected override float GetMaxScrollOffset()
         {
-            if (scrollAxis == ScrollAxis.Vertical)
+            if (IsVertical)
                 return Mathf.Max(0f, ContentHeight - ViewportSize.y);
 
             return Mathf.Max(0f, ContentWidth - ViewportSize.x);
@@ -183,18 +183,18 @@ namespace PhamNhanOnline.Client.UI.Common
         {
             var crossAxisCount = GetCrossAxisCount();
             var lineIndex = itemIndex / crossAxisCount;
-            return (scrollAxis == ScrollAxis.Vertical ? paddingTop : paddingLeft) + lineIndex * GetLineStride() + offset;
+            return (IsVertical ? paddingTop : paddingLeft) + lineIndex * GetLineStride() + offset;
         }
 
         private int GetCrossAxisCount()
         {
-            return Mathf.Max(1, crossAxisItemCount);
+            return Mathf.Max(1, constraintCount);
         }
 
         private float GetLineStride()
         {
             var cellSize = GetPrimaryTemplateSize();
-            return scrollAxis == ScrollAxis.Vertical
+            return IsVertical
                 ? ResolveCellHeight(cellSize.y, GetCrossAxisCount()) + spacingY
                 : ResolveCellWidth(cellSize.x, GetCrossAxisCount()) + spacingX;
         }
@@ -214,7 +214,7 @@ namespace PhamNhanOnline.Client.UI.Common
 
         private float ResolveCellWidth(float templateWidth, int crossAxisCount)
         {
-            if (scrollAxis != ScrollAxis.Vertical || crossAxisCellSizeMode != CrossAxisCellSizeMode.StretchToViewport)
+            if (!IsVertical || crossAxisCellSizeMode != CrossAxisCellSizeMode.StretchToViewport)
                 return templateWidth;
 
             var availableWidth = Mathf.Max(0f, ViewportSize.x - paddingLeft - paddingRight - Mathf.Max(0, crossAxisCount - 1) * spacingX);
@@ -223,7 +223,7 @@ namespace PhamNhanOnline.Client.UI.Common
 
         private float ResolveCellHeight(float templateHeight, int crossAxisCount)
         {
-            if (scrollAxis != ScrollAxis.Horizontal || crossAxisCellSizeMode != CrossAxisCellSizeMode.StretchToViewport)
+            if (IsVertical || crossAxisCellSizeMode != CrossAxisCellSizeMode.StretchToViewport)
                 return templateHeight;
 
             var availableHeight = Mathf.Max(0f, ViewportSize.y - paddingTop - paddingBottom - Mathf.Max(0, crossAxisCount - 1) * spacingY);
@@ -263,5 +263,7 @@ namespace PhamNhanOnline.Client.UI.Common
                     return 0f;
             }
         }
+
+        private bool IsVertical => constraintMode == GridConstraintMode.ColumnCount;
     }
 }

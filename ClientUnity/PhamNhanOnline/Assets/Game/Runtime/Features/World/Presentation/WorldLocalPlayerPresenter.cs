@@ -389,14 +389,20 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             var currentState = ClientRuntime.Character.CurrentState;
-            var shouldBlock =
-                (currentState.HasValue &&
-                 ClientCharacterRuntimeStateCodes.IsDefeated(currentState.Value)) ||
-                (currentState.HasValue &&
-                 (currentState.Value.CurrentState == CultivatingStateCode ||
-                  currentState.Value.CurrentState == PracticingStateCode)) ||
-                WorldUiController.IsAnyMenuOpen ||
-                (ClientRuntime.ConnectionRecovery != null && ClientRuntime.ConnectionRecovery.ShouldBlockGameplayInput);
+            var isDefeated = currentState.HasValue &&
+                             ClientCharacterRuntimeStateCodes.IsDefeated(currentState.Value);
+            var isCultivating = currentState.HasValue &&
+                                currentState.Value.CurrentState == CultivatingStateCode;
+            var isPracticing = currentState.HasValue &&
+                               currentState.Value.CurrentState == PracticingStateCode;
+            var isMenuOpen = WorldUiController.IsAnyMenuOpen;
+            var isRecoveryBlocked = ClientRuntime.ConnectionRecovery != null &&
+                                    ClientRuntime.ConnectionRecovery.ShouldBlockGameplayInput;
+            var shouldBlock = isDefeated ||
+                              isCultivating ||
+                              isPracticing ||
+                              isMenuOpen ||
+                              isRecoveryBlocked;
             localActionController.SetInputBlocked(shouldBlock);
         }
 

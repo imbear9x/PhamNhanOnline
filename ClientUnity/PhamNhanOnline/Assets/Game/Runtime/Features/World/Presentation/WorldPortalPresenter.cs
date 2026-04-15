@@ -26,7 +26,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
 
         [Header("References")]
-        [SerializeField] private WorldSceneController worldSceneController;
         [SerializeField] private WorldMapPresenter worldMapPresenter;
         [SerializeField] private WorldTargetActionController worldTargetActionController;
         [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;

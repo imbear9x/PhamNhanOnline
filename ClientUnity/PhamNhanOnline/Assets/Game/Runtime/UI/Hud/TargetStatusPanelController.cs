@@ -87,7 +87,7 @@ namespace PhamNhanOnline.Client.UI.Hud
             lastHasSecondary = snapshot.HasSecondaryResource;
             lastKind = snapshot.Kind;
 
-            SetContentVisible(true);
+            SetContentVisible(true, $"snapshot {snapshot.Kind}/{snapshot.TargetId} '{snapshot.DisplayName}'");
 
             if (nameText != null)
                 nameText.text = snapshot.DisplayName;
@@ -128,7 +128,12 @@ namespace PhamNhanOnline.Client.UI.Hud
             lastHasSecondary = false;
             lastKind = WorldTargetKind.None;
 
-            SetContentVisible(visible);
+            var currentTarget = ClientRuntime.IsInitialized ? ClientRuntime.Target.CurrentTarget : null;
+            SetContentVisible(
+                visible,
+                currentTarget.HasValue
+                    ? $"no-target current={currentTarget.Value.Kind}/{currentTarget.Value.TargetId} hideWhenNoTarget={hideWhenNoTarget}"
+                    : $"no-target current=<none> hideWhenNoTarget={hideWhenNoTarget}");
 
             if (nameText != null)
                 nameText.text = noTargetName;
@@ -141,7 +146,7 @@ namespace PhamNhanOnline.Client.UI.Hud
             ApplyAvatar(WorldTargetKind.None);
         }
 
-        private void SetContentVisible(bool visible)
+        private void SetContentVisible(bool visible, string reason)
         {
             if (contentRoot != null)
             {
@@ -184,6 +189,7 @@ namespace PhamNhanOnline.Client.UI.Hud
                     return defaultAvatarSprite;
             }
         }
+
     }
 
 }

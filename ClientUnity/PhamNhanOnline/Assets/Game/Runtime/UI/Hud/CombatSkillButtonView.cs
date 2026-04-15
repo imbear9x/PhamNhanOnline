@@ -3,11 +3,15 @@ using GameShared.Models;
 using PhamNhanOnline.Client.UI.Skills;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Hud
 {
-    public sealed class CombatSkillButtonView : MonoBehaviour
+    public sealed class CombatSkillButtonView : MonoBehaviour,
+        IPointerDownHandler,
+        IPointerUpHandler,
+        IPointerExitHandler
     {
         [Header("Identity")]
         [SerializeField] private int skillSlotIndex = 1;
@@ -17,18 +21,25 @@ namespace PhamNhanOnline.Client.UI.Hud
         [SerializeField] private GameObject contentRoot;
         [SerializeField] private Button button;
         [SerializeField] private Image iconImage;
-        [SerializeField] private TMP_Text slotLabelText;
-        [SerializeField] private GameObject occupiedStateRoot;
-        [SerializeField] private GameObject emptyStateRoot;
         [SerializeField] private GameObject disabledStateRoot;
         [SerializeField] private Image cooldownFillImage;
         [SerializeField] private TMP_Text cooldownText;
 
+        [Header("Press Animation")]
+        [SerializeField] private RectTransform pressVisualRoot;
+        [SerializeField] private float pressedScale = 1.06f;
+        [SerializeField] private float pressedYOffset = -6f;
+        [SerializeField] private float pressLerpSpeed = 20f;
+
         private bool isVisible;
         private bool hasSkill;
         private bool isInteractable;
+        private bool isPressed;
         private Sprite currentIconSprite;
         private string currentCooldownLabel = string.Empty;
+        private Vector3 idleScale = Vector3.one;
+        private Vector2 idleAnchoredPosition;
+        private bool pressVisualInitialized;
 
         public event Action<int> Clicked;
 
@@ -39,10 +50,25 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         private void Awake()
         {
+            AutoWireReferences();
             if (button != null)
                 button.onClick.AddListener(HandleButtonClicked);
+        }
 
-            ApplySlotLabel();
+        private void Update()
+        {
+            UpdatePressAnimation();
+        }
+
+        private void OnEnable()
+        {
+            AutoWireReferences();
+            ResetPressVisuals(immediate: true);
+        }
+
+        private void OnDisable()
+        {
+            ResetPressVisuals(immediate: true);
         }
 
         private void OnDestroy()
@@ -54,7 +80,6 @@ namespace PhamNhanOnline.Client.UI.Hud
         public void SetSlotIndex(int value)
         {
             skillSlotIndex = Math.Max(1, value);
-            ApplySlotLabel();
         }
 
         public void ApplyState(
@@ -76,15 +101,11 @@ namespace PhamNhanOnline.Client.UI.Hud
             isVisible = resolvedVisible;
             hasSkill = hasAssignedSkill;
             isInteractable = resolvedVisible && hasAssignedSkill && interactable;
+            if (!isInteractable)
+                isPressed = false;
 
             if (button != null)
                 button.interactable = isInteractable;
-
-            if (occupiedStateRoot != null)
-                occupiedStateRoot.SetActive(resolvedVisible && hasAssignedSkill);
-
-            if (emptyStateRoot != null)
-                emptyStateRoot.SetActive(resolvedVisible && !hasAssignedSkill);
 
             if (disabledStateRoot != null)
                 disabledStateRoot.SetActive(resolvedVisible && hasAssignedSkill && !interactable);
@@ -135,10 +156,83 @@ namespace PhamNhanOnline.Client.UI.Hud
                 handler(skillSlotIndex);
         }
 
-        private void ApplySlotLabel()
+        public void OnPointerDown(PointerEventData eventData)
         {
-            if (slotLabelText != null)
-                slotLabelText.text = skillSlotIndex.ToString();
+            if (!CanAnimatePress(eventData))
+                return;
+
+            isPressed = true;
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            isPressed = false;
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            isPressed = false;
+        }
+
+        private void AutoWireReferences()
+        {
+            if (button == null)
+                button = GetComponent<Button>();
+
+            if (pressVisualRoot == null)
+            {
+                if (contentRoot != null)
+                    pressVisualRoot = contentRoot.transform as RectTransform;
+                else
+                    pressVisualRoot = transform as RectTransform;
+            }
+
+            if (pressVisualRoot != null && !pressVisualInitialized)
+            {
+                idleScale = pressVisualRoot.localScale;
+                idleAnchoredPosition = pressVisualRoot.anchoredPosition;
+                pressVisualInitialized = true;
+            }
+        }
+
+        private void UpdatePressAnimation()
+        {
+            if (pressVisualRoot == null)
+                return;
+
+            var targetScale = isPressed && isInteractable
+                ? idleScale * Mathf.Max(0.01f, pressedScale)
+                : idleScale;
+            var targetAnchoredPosition = isPressed && isInteractable
+                ? idleAnchoredPosition + new Vector2(0f, pressedYOffset)
+                : idleAnchoredPosition;
+            var lerpFactor = 1f - Mathf.Exp(-Mathf.Max(0.01f, pressLerpSpeed) * Time.unscaledDeltaTime);
+
+            pressVisualRoot.localScale = Vector3.LerpUnclamped(pressVisualRoot.localScale, targetScale, lerpFactor);
+            pressVisualRoot.anchoredPosition = Vector2.LerpUnclamped(pressVisualRoot.anchoredPosition, targetAnchoredPosition, lerpFactor);
+        }
+
+        private void ResetPressVisuals(bool immediate)
+        {
+            isPressed = false;
+            AutoWireReferences();
+            if (pressVisualRoot == null)
+                return;
+
+            if (immediate)
+            {
+                pressVisualRoot.localScale = idleScale;
+                pressVisualRoot.anchoredPosition = idleAnchoredPosition;
+            }
+        }
+
+        private bool CanAnimatePress(PointerEventData eventData)
+        {
+            return eventData != null &&
+                   eventData.button == PointerEventData.InputButton.Left &&
+                   isVisible &&
+                   hasSkill &&
+                   isInteractable;
         }
     }
 }

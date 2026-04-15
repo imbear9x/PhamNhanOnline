@@ -1,6 +1,6 @@
 using System;
 using GameShared.Models;
-using TMPro;
+using PhamNhanOnline.Client.UI.Common;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -8,6 +8,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.Inventory
 {
     public sealed class EquipmentSlotView : MonoBehaviour,
+        IUiDragPayloadSource,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerClickHandler,
@@ -20,24 +21,14 @@ namespace PhamNhanOnline.Client.UI.Inventory
         [SerializeField] private InventoryEquipmentSlot slotType = InventoryEquipmentSlot.None;
 
         [Header("References")]
-        [SerializeField] private Image backgroundImage;
         [SerializeField] private Image iconImage;
-        [SerializeField] private TMP_Text slotLabelText;
-        [SerializeField] private TMP_Text enhanceLevelText;
-        [SerializeField] private GameObject enhanceLevelRoot;
-        [SerializeField] private GameObject selectedHighlightRoot;
         [SerializeField] private GameObject emptyStateRoot;
-        [SerializeField] private GameObject occupiedStateRoot;
 
-        [Header("Display")]
-        [SerializeField] private string emptySlotLabel = "Ô trống";
-        [SerializeField] private Color emptyIconColor = new Color(1f, 1f, 1f, 0f);
-        [SerializeField] private Color filledIconColor = Color.white;
+        [Header("Behavior")]
         [SerializeField] private float draggingAlpha = 0.65f;
 
         private InventoryItemModel item;
         private bool hasItem;
-        private bool isSelected;
         private CanvasGroup canvasGroup;
         private InventoryDragGhost dragGhost;
         private InventoryItemPresentation currentPresentation;
@@ -56,60 +47,44 @@ namespace PhamNhanOnline.Client.UI.Inventory
             canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null)
                 canvasGroup = gameObject.AddComponent<CanvasGroup>();
-            ApplyEmptyState(force: true);
+
+            ApplyEmptyState();
         }
 
         public void SetItem(InventoryItemModel value, InventoryItemPresentation presentation, bool force = false)
         {
+            _ = force;
+
             hasItem = true;
             item = value;
             currentPresentation = presentation;
 
             if (emptyStateRoot != null)
                 emptyStateRoot.SetActive(false);
-            if (occupiedStateRoot != null)
-                occupiedStateRoot.SetActive(true);
-
-            if (backgroundImage != null)
-                backgroundImage.sprite = presentation.BackgroundSprite;
 
             if (iconImage != null)
             {
                 iconImage.sprite = presentation.IconSprite;
-                iconImage.color = presentation.IconSprite != null ? filledIconColor : emptyIconColor;
+                iconImage.enabled = presentation.IconSprite != null;
             }
 
-            if (slotLabelText != null)
-            {
-                slotLabelText.text = ResolveOccupiedLabel(value);
-                slotLabelText.gameObject.SetActive(true);
-            }
-
-            var hasEnhanceLevel = value.EnhanceLevel > 0;
-            if (enhanceLevelRoot != null)
-                enhanceLevelRoot.SetActive(hasEnhanceLevel);
-            if (enhanceLevelText != null)
-                enhanceLevelText.text = hasEnhanceLevel ? string.Format("+{0}", value.EnhanceLevel) : string.Empty;
-
-            SetSelected(isSelected, force: true);
+            SetSelected(selected: false, force: true);
         }
 
         public void Clear(bool force = false)
         {
+            _ = force;
+
             hasItem = false;
             item = default;
             currentPresentation = default;
-            ApplyEmptyState(force);
+            ApplyEmptyState();
         }
 
         public void SetSelected(bool selected, bool force = false)
         {
-            if (!force && isSelected == selected)
-                return;
-
-            isSelected = selected;
-            if (selectedHighlightRoot != null)
-                selectedHighlightRoot.SetActive(selected);
+            _ = selected;
+            _ = force;
         }
 
         public void OnPointerEnter(PointerEventData eventData)
@@ -165,14 +140,15 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public void OnDrop(PointerEventData eventData)
         {
-            var inventorySlotView = eventData.pointerDrag != null
-                ? eventData.pointerDrag.GetComponent<InventoryItemSlotView>()
-                : null;
-
-            if (inventorySlotView == null || !inventorySlotView.HasItem)
+            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UiDragPayloadKind.InventoryItem ||
+                !payload.HasInventoryItem ||
+                payload.SourceKind != UiDragSourceKind.InventoryGridItem)
+            {
                 return;
+            }
 
-            var droppedItem = inventorySlotView.Item;
+            var droppedItem = payload.InventoryItem;
             if (droppedItem.EquipmentSlotType != (int)slotType)
                 return;
 
@@ -181,50 +157,31 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 handler(this, droppedItem);
         }
 
-        private void ApplyEmptyState(bool force)
+        public bool TryCreateDragPayload(out UiDragPayload payload)
         {
-            if (backgroundImage != null)
-                backgroundImage.sprite = null;
+            if (!hasItem)
+            {
+                payload = default;
+                return false;
+            }
 
+            payload = UiDragPayload.FromInventoryItem(item, UiDragSourceKind.EquipmentSlot, slotType);
+            return true;
+        }
+
+        private void ApplyEmptyState()
+        {
             if (iconImage != null)
             {
                 iconImage.sprite = null;
-                iconImage.color = emptyIconColor;
+                iconImage.enabled = false;
             }
-
-            if (slotLabelText != null)
-            {
-                slotLabelText.text = GetDefaultSlotLabel();
-                slotLabelText.gameObject.SetActive(true);
-            }
-
-            if (enhanceLevelRoot != null)
-                enhanceLevelRoot.SetActive(false);
-            if (enhanceLevelText != null)
-                enhanceLevelText.text = string.Empty;
 
             if (emptyStateRoot != null)
                 emptyStateRoot.SetActive(true);
-            if (occupiedStateRoot != null)
-                occupiedStateRoot.SetActive(false);
 
             ResetDragVisuals();
-            SetSelected(false, force: force);
-        }
-
-        private string GetDefaultSlotLabel()
-        {
-            return string.IsNullOrWhiteSpace(emptySlotLabel)
-                ? InventoryItemPresentationCatalog.GetEquipmentSlotLabel((int)slotType)
-                : emptySlotLabel;
-        }
-
-        private string ResolveOccupiedLabel(InventoryItemModel value)
-        {
-            if (!string.IsNullOrWhiteSpace(value.Name))
-                return value.Name.Trim();
-
-            return GetDefaultSlotLabel();
+            SetSelected(false, force: true);
         }
 
         private void ResetDragVisuals()

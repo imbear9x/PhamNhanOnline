@@ -15,7 +15,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
         [SerializeField] private RectTransform panelTransform;
         [SerializeField] private TMP_Text nameText;
         [SerializeField] private TMP_Text descriptionText;
-        [SerializeField] private TMP_Text metaText;
         [SerializeField] private TMP_Text ingredientsText;
 
         [Header("Display")]
@@ -52,8 +51,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 nameText.text = string.IsNullOrWhiteSpace(detail.Name) ? emptyName : detail.Name.Trim();
             if (descriptionText != null)
                 descriptionText.text = string.IsNullOrWhiteSpace(detail.Description) ? emptyDescription : detail.Description.Trim();
-            if (metaText != null)
-                metaText.text = BuildMetaText(detail);
             if (ingredientsText != null)
                 ingredientsText.text = BuildIngredientsText(detail, quantityResolver);
 
@@ -68,30 +65,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
             lastSnapshot = string.Empty;
             if (panelRoot != null && panelRoot.activeSelf)
                 panelRoot.SetActive(false);
-        }
-
-        private static string BuildMetaText(PillRecipeDetailModel detail)
-        {
-            var builder = new StringBuilder();
-            builder.Append("Thoi gian: ");
-            builder.Append(FormatDuration(detail.CraftDurationSeconds));
-            builder.AppendLine();
-            builder.Append("Ti le co ban: ");
-            builder.Append(FormatPercent(detail.BaseSuccessRate));
-            if (detail.SuccessRateCap.HasValue)
-            {
-                builder.Append(" | Tran: ");
-                builder.Append(FormatPercent(detail.SuccessRateCap.Value));
-            }
-
-            if (detail.CurrentSuccessRateBonus > 0d)
-            {
-                builder.AppendLine();
-                builder.Append("Thu tay hien tai: +");
-                builder.Append(FormatPercent(detail.CurrentSuccessRateBonus));
-            }
-
-            return builder.ToString();
         }
 
         private static string BuildIngredientsText(PillRecipeDetailModel detail, Func<PillRecipeInputModel, int> quantityResolver)
@@ -128,12 +101,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
             builder.Append(detail.Name ?? string.Empty);
             builder.Append('|');
             builder.Append(detail.Description ?? string.Empty);
-            builder.Append('|');
-            builder.Append(detail.CraftDurationSeconds.ToString(CultureInfo.InvariantCulture));
-            builder.Append('|');
-            builder.Append(detail.BaseSuccessRate.ToString("0.####", CultureInfo.InvariantCulture));
-            builder.Append('|');
-            builder.Append(detail.CurrentSuccessRateBonus.ToString("0.####", CultureInfo.InvariantCulture));
 
             if (detail.Inputs != null)
             {
@@ -148,21 +115,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
             }
 
             return builder.ToString();
-        }
-
-        private static string FormatPercent(double value)
-        {
-            var normalized = value > 1d ? value / 100d : value;
-            return string.Concat((normalized * 100d).ToString("0.##", CultureInfo.InvariantCulture), "%");
-        }
-
-        private static string FormatDuration(long totalSeconds)
-        {
-            var clamped = Math.Max(0L, totalSeconds);
-            if (clamped >= 3600L)
-                return TimeSpan.FromSeconds(clamped).ToString(@"hh\:mm\:ss");
-
-            return TimeSpan.FromSeconds(clamped).ToString(@"mm\:ss");
         }
 
         private void PositionNearCursor()
@@ -207,7 +159,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
             ThrowIfMissing(panelTransform, nameof(panelTransform));
             ThrowIfMissing(nameText, nameof(nameText));
             ThrowIfMissing(descriptionText, nameof(descriptionText));
-            ThrowIfMissing(metaText, nameof(metaText));
             ThrowIfMissing(ingredientsText, nameof(ingredientsText));
 
             if (panelRoot.GetComponent<WorldCraftingPanelController>() != null)

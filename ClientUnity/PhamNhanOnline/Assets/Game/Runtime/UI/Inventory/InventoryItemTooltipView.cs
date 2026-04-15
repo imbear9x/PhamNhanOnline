@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text;
 using GameShared.Models;
 using TMPro;
 using UnityEngine;
@@ -12,12 +10,9 @@ namespace PhamNhanOnline.Client.UI.Inventory
         [Header("References")]
         [SerializeField] private GameObject panelRoot;
         [SerializeField] private RectTransform panelTransform;
-        [SerializeField] private Image backgroundImage;
         [SerializeField] private Image iconImage;
         [SerializeField] private TMP_Text nameText;
-        [SerializeField] private TMP_Text metaText;
         [SerializeField] private TMP_Text descriptionText;
-        [SerializeField] private TMP_Text quantityText;
 
         [Header("Display")]
         [SerializeField] private string emptyName = "-";
@@ -50,9 +45,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (panelRoot != null && !panelRoot.activeSelf)
                 panelRoot.SetActive(true);
 
-            if (backgroundImage != null)
-                backgroundImage.sprite = presentation.BackgroundSprite;
-
             if (iconImage != null)
                 iconImage.sprite = presentation.IconSprite;
 
@@ -62,14 +54,8 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 nameText.color = presentation.NameColor;
             }
 
-            if (metaText != null)
-                metaText.text = BuildMetaText(item);
-
             if (descriptionText != null)
                 descriptionText.text = string.IsNullOrWhiteSpace(item.Description) ? emptyDescription : item.Description.Trim();
-
-            if (quantityText != null)
-                quantityText.text = item.Quantity > 1 ? string.Format(CultureInfo.InvariantCulture, "x{0}", item.Quantity) : string.Empty;
 
             PositionNearCursor();
         }
@@ -84,56 +70,16 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 panelRoot.SetActive(false);
         }
 
-        private static string BuildMetaText(InventoryItemModel item)
-        {
-            var builder = new StringBuilder();
-            builder.Append(InventoryItemPresentationCatalog.GetRarityLabel(item.Rarity));
-            builder.Append(" | ");
-            builder.Append(InventoryItemPresentationCatalog.GetItemTypeLabel(item.ItemType));
-
-            var slotLabel = InventoryItemPresentationCatalog.GetEquipmentSlotLabel(item.EquippedSlot ?? item.EquipmentSlotType);
-            if (!string.IsNullOrWhiteSpace(slotLabel))
-            {
-                builder.AppendLine();
-                builder.Append("Slot: ");
-                builder.Append(slotLabel);
-            }
-
-            if (item.IsEquipped)
-            {
-                builder.AppendLine();
-                builder.Append("Dang trang bi");
-            }
-
-            if (item.IsBound)
-            {
-                builder.AppendLine();
-                builder.Append("Da khoa");
-            }
-
-            return builder.ToString();
-        }
-
         private static string BuildSnapshot(InventoryItemModel item, InventoryItemPresentation presentation)
         {
             return string.Concat(
-                item.PlayerItemId.ToString(CultureInfo.InvariantCulture),
+                item.PlayerItemId.ToString(),
                 "|",
                 item.Name ?? string.Empty,
                 "|",
                 item.Description ?? string.Empty,
                 "|",
-                item.Quantity.ToString(CultureInfo.InvariantCulture),
-                "|",
-                item.Rarity.ToString(CultureInfo.InvariantCulture),
-                "|",
-                item.ItemType.ToString(CultureInfo.InvariantCulture),
-                "|",
-                item.IsEquipped ? "1" : "0",
-                "|",
-                presentation.IconSprite != null ? presentation.IconSprite.GetInstanceID().ToString(CultureInfo.InvariantCulture) : "0",
-                "|",
-                presentation.BackgroundSprite != null ? presentation.BackgroundSprite.GetInstanceID().ToString(CultureInfo.InvariantCulture) : "0");
+                presentation.IconSprite != null ? presentation.IconSprite.GetInstanceID().ToString() : "0");
         }
 
         private void PositionNearCursor()

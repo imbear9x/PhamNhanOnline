@@ -93,11 +93,12 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         public void OnDrop(PointerEventData eventData)
         {
-            var slotView = eventData.pointerDrag != null
-                ? eventData.pointerDrag.GetComponentInParent<CraftRecipeSlotView>()
-                : null;
-            if (slotView == null || !slotView.HasRecipe)
+            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UiDragPayloadKind.Recipe ||
+                payload.SourceKind != UiDragSourceKind.CraftRecipeSlot)
+            {
                 return;
+            }
 
             SelectedRecipeDroppedBackToList?.Invoke();
         }

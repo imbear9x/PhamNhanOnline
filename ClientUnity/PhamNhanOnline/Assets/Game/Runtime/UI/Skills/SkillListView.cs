@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -105,16 +106,17 @@ namespace PhamNhanOnline.Client.UI.Skills
 
         public void OnDrop(PointerEventData eventData)
         {
-            var slotView = eventData.pointerDrag != null
-                ? eventData.pointerDrag.GetComponentInParent<SkillLoadoutSlotView>()
-                : null;
-
-            if (slotView == null || !slotView.HasItem)
+            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UiDragPayloadKind.Skill ||
+                payload.SourceKind != UiDragSourceKind.SkillLoadoutSlot ||
+                !payload.HasSkill)
+            {
                 return;
+            }
 
             var handler = EquippedSkillDroppedToList;
             if (handler != null)
-                handler(slotView.Item);
+                handler(payload.Skill);
         }
 
         private void EnsureItemCount(int targetCount)

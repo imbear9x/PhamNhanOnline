@@ -1,5 +1,6 @@
 using System;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Inventory;
 using TMPro;
 using UnityEngine;
@@ -12,20 +13,14 @@ namespace PhamNhanOnline.Client.UI.Crafting
     {
         [Header("References")]
         [SerializeField] private Image iconImage;
-        [SerializeField] private Image backgroundImage;
-        [SerializeField] private Image fillImage;
-        [SerializeField] private TMP_Text nameText;
         [SerializeField] private TMP_Text countText;
-        [SerializeField] private TMP_Text stateText;
-        [SerializeField] private GameObject optionalBadgeRoot;
+        [SerializeField] private GameObject emptyIconRoot;
         [SerializeField] private GameObject selectedRoot;
         [SerializeField] private GameObject lockedRoot;
 
-        [Header("Text")]
-        [SerializeField] private string emptyName = "Nguyen lieu";
-        [SerializeField] private string emptyState = "Chua chon";
-        [SerializeField] [Range(0.05f, 1f)] private float ghostIconAlpha = 0.35f;
-        [SerializeField] [Range(0.05f, 1f)] private float activeIconAlpha = 1f;
+        [Header("Display")]
+        [SerializeField] private Color insufficientCountColor = Color.white;
+        [SerializeField] private Color sufficientCountColor = Color.white;
         private bool interactionLocked;
 
         public event Action<CraftMaterialSlotView, InventoryItemModel> InventoryItemDropped;
@@ -41,64 +36,34 @@ namespace PhamNhanOnline.Client.UI.Crafting
         }
 
         public void SetState(
-            string itemName,
             InventoryItemPresentation presentation,
             int currentQuantity,
             int requiredQuantity,
             bool hasSelection,
             bool locked,
-            string stateLabel = null,
-            bool showOptionalBadge = false)
+            bool showEmptyIcon = true)
         {
             interactionLocked = locked;
+            var showFilledVisual = hasSelection || locked;
 
             if (iconImage != null)
             {
                 iconImage.sprite = presentation.IconSprite;
-                iconImage.enabled = presentation.IconSprite != null;
-                SetImageAlpha(iconImage, hasSelection || locked ? activeIconAlpha : ghostIconAlpha);
+                iconImage.enabled = showFilledVisual && presentation.IconSprite != null;
             }
-
-            if (backgroundImage != null)
-            {
-                backgroundImage.sprite = presentation.BackgroundSprite;
-                SetImageAlpha(backgroundImage, hasSelection || locked ? activeIconAlpha : ghostIconAlpha);
-            }
-
-            if (nameText != null)
-                nameText.text = string.IsNullOrWhiteSpace(itemName) ? emptyName : itemName.Trim();
 
             var resolvedRequiredQuantity = Math.Max(1, requiredQuantity);
             var resolvedCurrentQuantity = Math.Max(0, currentQuantity);
-            var fill = Mathf.Clamp01((float)resolvedCurrentQuantity / resolvedRequiredQuantity);
-            if (fillImage != null)
-                fillImage.fillAmount = fill;
-
             if (countText != null)
-                countText.text = string.Concat(resolvedCurrentQuantity, "/", resolvedRequiredQuantity);
-
-            if (stateText != null)
             {
-                if (!string.IsNullOrWhiteSpace(stateLabel))
-                {
-                    stateText.text = stateLabel.Trim();
-                }
-                else if (locked)
-                {
-                    stateText.text = "Dang khoa";
-                }
-                else if (fill >= 1f)
-                {
-                    stateText.text = "Da du";
-                }
-                else
-                {
-                    stateText.text = hasSelection ? "Dang them" : emptyState;
-                }
+                countText.text = string.Concat(resolvedCurrentQuantity, "/", resolvedRequiredQuantity);
+                countText.color = resolvedCurrentQuantity >= resolvedRequiredQuantity
+                    ? sufficientCountColor
+                    : insufficientCountColor;
             }
 
-            if (optionalBadgeRoot != null)
-                optionalBadgeRoot.SetActive(showOptionalBadge);
+            if (emptyIconRoot != null)
+                emptyIconRoot.SetActive(showEmptyIcon && !showFilledVisual);
             if (selectedRoot != null)
                 selectedRoot.SetActive(hasSelection);
             if (lockedRoot != null)
@@ -113,24 +78,14 @@ namespace PhamNhanOnline.Client.UI.Crafting
             {
                 iconImage.sprite = null;
                 iconImage.enabled = false;
-                SetImageAlpha(iconImage, activeIconAlpha);
             }
-
-            if (backgroundImage != null)
-            {
-                backgroundImage.sprite = null;
-                SetImageAlpha(backgroundImage, activeIconAlpha);
-            }
-            if (fillImage != null)
-                fillImage.fillAmount = 0f;
-            if (nameText != null)
-                nameText.text = emptyName;
             if (countText != null)
+            {
                 countText.text = "0/0";
-            if (stateText != null)
-                stateText.text = emptyState;
-            if (optionalBadgeRoot != null)
-                optionalBadgeRoot.SetActive(false);
+                countText.color = insufficientCountColor;
+            }
+            if (emptyIconRoot != null)
+                emptyIconRoot.SetActive(true);
             if (selectedRoot != null)
                 selectedRoot.SetActive(false);
             if (lockedRoot != null)
@@ -139,14 +94,18 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         public void OnDrop(PointerEventData eventData)
         {
-            if (interactionLocked || eventData.pointerDrag == null)
+            if (interactionLocked)
                 return;
 
-            var inventorySlotView = eventData.pointerDrag.GetComponentInParent<InventoryItemSlotView>();
-            if (inventorySlotView == null || !inventorySlotView.HasItem)
+            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UiDragPayloadKind.InventoryItem ||
+                !payload.HasInventoryItem ||
+                payload.SourceKind != UiDragSourceKind.InventoryGridItem)
+            {
                 return;
+            }
 
-            InventoryItemDropped?.Invoke(this, inventorySlotView.Item);
+            InventoryItemDropped?.Invoke(this, payload.InventoryItem);
         }
 
         public void OnPointerClick(PointerEventData eventData)
@@ -157,9 +116,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
         private void ValidateSerializedReferences()
         {
             ThrowIfMissing(iconImage, nameof(iconImage));
-            ThrowIfMissing(backgroundImage, nameof(backgroundImage));
-            ThrowIfMissing(fillImage, nameof(fillImage));
-            ThrowIfMissing(nameText, nameof(nameText));
             ThrowIfMissing(countText, nameof(countText));
             ThrowIfMissing(selectedRoot, nameof(selectedRoot));
         }
@@ -170,14 +126,5 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 throw new InvalidOperationException($"{nameof(CraftMaterialSlotView)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
         }
 
-        private static void SetImageAlpha(Graphic graphic, float alpha)
-        {
-            if (graphic == null)
-                return;
-
-            var color = graphic.color;
-            color.a = Mathf.Clamp01(alpha);
-            graphic.color = color;
-        }
     }
 }

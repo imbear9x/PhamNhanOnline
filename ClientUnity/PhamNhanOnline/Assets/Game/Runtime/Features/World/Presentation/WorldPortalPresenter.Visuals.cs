@@ -305,8 +305,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (portalRoot != null)
                 return portalRoot;
 
-            if (worldSceneController != null && worldSceneController.MapRoot != null)
-                return worldSceneController.MapRoot;
+            if (SceneController != null && SceneController.MapRoot != null)
+                return SceneController.MapRoot;
 
             return transform;
         }
@@ -354,7 +354,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void AutoWireReferences()
         {
-            InitializeWorldSceneBehaviour(ref worldSceneController, ref worldMapPresenter);
+            InitializeWorldSceneBehaviour(ref worldMapPresenter);
 
             if (worldTargetActionController == null)
                 worldTargetActionController = GetComponent<WorldTargetActionController>();

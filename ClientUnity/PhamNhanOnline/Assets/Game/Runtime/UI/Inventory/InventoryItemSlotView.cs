@@ -1,5 +1,6 @@
 using System;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,28 +8,23 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Inventory
 {
-    public sealed class InventoryItemSlotView : MonoBehaviour,
+    public sealed class InventoryItemSlotView : LoopScrollViewItem,
+        IUiDragPayloadSource,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerClickHandler,
         IBeginDragHandler,
         IDragHandler,
-        IEndDragHandler,
-        IDropHandler
+        IEndDragHandler
     {
         [Header("References")]
         [SerializeField] private Image backgroundImage;
         [SerializeField] private Image iconImage;
         [SerializeField] private TMP_Text quantityText;
         [SerializeField] private GameObject quantityRoot;
-        [SerializeField] private GameObject equippedMarkerRoot;
-        [SerializeField] private TMP_Text enhanceLevelText;
-        [SerializeField] private GameObject enhanceLevelRoot;
         [SerializeField] private GameObject selectedHighlightRoot;
 
         [Header("Display")]
-        [SerializeField] private Color emptyIconColor = new Color(1f, 1f, 1f, 0f);
-        [SerializeField] private Color filledIconColor = Color.white;
         [SerializeField] private float draggingAlpha = 0.65f;
 
         private InventoryItemModel item;
@@ -47,7 +43,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
         public event Action<InventoryItemSlotView> Clicked;
         public event Action<InventoryItemSlotView> Hovered;
         public event Action<InventoryItemSlotView> HoverExited;
-        public event Action<InventoryEquipmentSlot> EquippedItemDroppedOnInventory;
 
         public InventoryItemModel Item => item;
         public bool HasItem => hasItem;
@@ -89,7 +84,9 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (iconImage != null)
             {
                 iconImage.sprite = presentation.IconSprite;
-                iconImage.color = presentation.IconSprite != null ? filledIconColor : emptyIconColor;
+                iconImage.color = presentation.IconSprite != null
+                    ? Color.white
+                    : new Color(1f, 1f, 1f, 0f);
             }
 
             var hasQuantity = value.Quantity > 1;
@@ -97,15 +94,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 quantityRoot.SetActive(hasQuantity);
             if (quantityText != null)
                 quantityText.text = hasQuantity ? value.Quantity.ToString() : string.Empty;
-
-            if (equippedMarkerRoot != null)
-                equippedMarkerRoot.SetActive(value.IsEquipped);
-
-            var hasEnhanceLevel = value.EnhanceLevel > 0;
-            if (enhanceLevelRoot != null)
-                enhanceLevelRoot.SetActive(hasEnhanceLevel);
-            if (enhanceLevelText != null)
-                enhanceLevelText.text = hasEnhanceLevel ? string.Format("+{0}", value.EnhanceLevel) : string.Empty;
         }
 
         public void Clear(bool force = false)
@@ -126,7 +114,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (iconImage != null)
             {
                 iconImage.sprite = null;
-                iconImage.color = emptyIconColor;
+                iconImage.color = new Color(1f, 1f, 1f, 0f);
             }
 
             if (quantityRoot != null)
@@ -134,18 +122,15 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (quantityText != null)
                 quantityText.text = string.Empty;
 
-            if (equippedMarkerRoot != null)
-                equippedMarkerRoot.SetActive(false);
-
-            if (enhanceLevelRoot != null)
-                enhanceLevelRoot.SetActive(false);
-            if (enhanceLevelText != null)
-                enhanceLevelText.text = string.Empty;
-
             ResetDragVisuals();
 
             if (force)
                 SetSelected(false, force: true);
+        }
+
+        public override void OnItemRecycled()
+        {
+            Clear(force: true);
         }
 
         public void SetSelected(bool selected, bool force = false)
@@ -209,18 +194,16 @@ namespace PhamNhanOnline.Client.UI.Inventory
             ResetDragVisuals();
         }
 
-        public void OnDrop(PointerEventData eventData)
+        public bool TryCreateDragPayload(out UiDragPayload payload)
         {
-            var equipmentSlotView = eventData.pointerDrag != null
-                ? eventData.pointerDrag.GetComponent<EquipmentSlotView>()
-                : null;
+            if (!hasItem)
+            {
+                payload = default;
+                return false;
+            }
 
-            if (equipmentSlotView == null || !equipmentSlotView.HasItem)
-                return;
-
-            var handler = EquippedItemDroppedOnInventory;
-            if (handler != null)
-                handler(equipmentSlotView.SlotType);
+            payload = UiDragPayload.FromInventoryItem(item, UiDragSourceKind.InventoryGridItem);
+            return true;
         }
 
         private void ResetDragVisuals()

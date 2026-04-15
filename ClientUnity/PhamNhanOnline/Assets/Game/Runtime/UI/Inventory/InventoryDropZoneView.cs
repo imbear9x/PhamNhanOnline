@@ -1,4 +1,5 @@
 using System;
+using PhamNhanOnline.Client.UI.Common;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -10,16 +11,17 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public void OnDrop(PointerEventData eventData)
         {
-            var equipmentSlotView = eventData.pointerDrag != null
-                ? eventData.pointerDrag.GetComponent<EquipmentSlotView>()
-                : null;
-
-            if (equipmentSlotView == null || !equipmentSlotView.HasItem)
+            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UiDragPayloadKind.InventoryItem ||
+                payload.SourceKind != UiDragSourceKind.EquipmentSlot ||
+                !payload.HasSourceEquipmentSlot)
+            {
                 return;
+            }
 
             var handler = EquippedItemDropped;
             if (handler != null)
-                handler(equipmentSlotView.SlotType);
+                handler(payload.SourceEquipmentSlot);
         }
     }
 }

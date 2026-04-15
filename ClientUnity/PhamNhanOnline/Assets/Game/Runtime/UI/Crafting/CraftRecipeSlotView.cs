@@ -1,5 +1,6 @@
 using System;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Inventory;
 using TMPro;
 using UnityEngine;
@@ -9,6 +10,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.Crafting
 {
     public sealed class CraftRecipeSlotView : MonoBehaviour,
+        IUiDragPayloadSource,
         IDropHandler,
         IPointerClickHandler,
         IPointerEnterHandler,
@@ -136,22 +138,27 @@ namespace PhamNhanOnline.Client.UI.Crafting
             if (!dropEnabled)
                 return;
 
-            if (eventData.pointerDrag == null)
-                return;
-
-            var listItemView = eventData.pointerDrag.GetComponentInParent<CraftRecipeListItemView>();
-            if (listItemView != null && listItemView.HasRecipe)
+            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UiDragPayloadKind.Recipe ||
+                !payload.HasRecipe)
             {
-                RecipeDropped?.Invoke(listItemView.Recipe);
                 return;
             }
 
-            var slotView = eventData.pointerDrag.GetComponentInParent<CraftRecipeSlotView>();
-            if (slotView != null && slotView != this && slotView.HasRecipe)
+            if (payload.SourceKind != UiDragSourceKind.CraftRecipeListItem &&
+                payload.SourceKind != UiDragSourceKind.CraftRecipeSlot)
             {
-                RecipeDropped?.Invoke(slotView.Recipe);
                 return;
             }
+
+            if (payload.SourceKind == UiDragSourceKind.CraftRecipeSlot &&
+                hasRecipe &&
+                recipe.PillRecipeTemplateId == payload.Recipe.PillRecipeTemplateId)
+            {
+                return;
+            }
+
+            RecipeDropped?.Invoke(payload.Recipe);
         }
 
         public void OnPointerClick(PointerEventData eventData)
@@ -193,6 +200,18 @@ namespace PhamNhanOnline.Client.UI.Crafting
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
+        }
+
+        public bool TryCreateDragPayload(out UiDragPayload payload)
+        {
+            if (!hasRecipe)
+            {
+                payload = default;
+                return false;
+            }
+
+            payload = UiDragPayload.FromRecipe(recipe, UiDragSourceKind.CraftRecipeSlot);
+            return true;
         }
 
         private void ApplyEmptyState()

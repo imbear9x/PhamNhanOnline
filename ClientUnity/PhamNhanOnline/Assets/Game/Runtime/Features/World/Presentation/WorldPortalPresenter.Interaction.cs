@@ -171,9 +171,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private float ResolveHorizontalMoveIntent()
         {
+            var sceneController = SceneController;
             WorldLocalPlayerPresenter localPlayerPresenter = null;
-            if (worldSceneController != null)
-                localPlayerPresenter = worldSceneController.WorldLocalPlayerPresenter;
+            if (sceneController != null)
+                localPlayerPresenter = sceneController.WorldLocalPlayerPresenter;
             if (localPlayerPresenter == null)
                 localPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
 
@@ -226,9 +227,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             playerCollider = null;
 
+            var sceneController = SceneController;
             WorldLocalPlayerPresenter localPlayerPresenter = null;
-            if (worldSceneController != null)
-                localPlayerPresenter = worldSceneController.WorldLocalPlayerPresenter;
+            if (sceneController != null)
+                localPlayerPresenter = sceneController.WorldLocalPlayerPresenter;
             if (localPlayerPresenter == null)
                 localPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
             if (localPlayerPresenter == null || localPlayerPresenter.CurrentPlayerTransform == null)
@@ -255,9 +257,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (worldMapPresenter != null)
             {
+                var sceneController = SceneController;
                 WorldLocalPlayerPresenter localPlayerPresenter = null;
-                if (worldSceneController != null)
-                    localPlayerPresenter = worldSceneController.WorldLocalPlayerPresenter;
+                if (sceneController != null)
+                    localPlayerPresenter = sceneController.WorldLocalPlayerPresenter;
                 if (localPlayerPresenter == null)
                     localPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
 

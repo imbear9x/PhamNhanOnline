@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -130,16 +131,17 @@ namespace PhamNhanOnline.Client.UI.MartialArts
 
         public void OnDrop(PointerEventData eventData)
         {
-            var activeSlotView = eventData.pointerDrag != null
-                ? eventData.pointerDrag.GetComponentInParent<ActiveMartialArtSlotView>()
-                : null;
-
-            if (activeSlotView == null || !activeSlotView.HasItem)
+            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UiDragPayloadKind.MartialArt ||
+                payload.SourceKind != UiDragSourceKind.ActiveMartialArtSlot ||
+                !payload.HasMartialArt)
+            {
                 return;
+            }
 
             var handler = ActiveMartialArtDroppedToList;
             if (handler != null)
-                handler(activeSlotView.Item);
+                handler(payload.MartialArt);
         }
 
         private void UpdateSelectionVisuals(bool force)

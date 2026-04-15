@@ -5,21 +5,18 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.World
 {
-    public sealed class InventoryDropQuantityPopupView : MonoBehaviour
+    public sealed class InventoryUseQuantityPopupView : MonoBehaviour
     {
         [SerializeField] private GameObject panelRoot;
+        [SerializeField] private TMP_Text headerText;
         [SerializeField] private TMP_Text titleText;
-        [SerializeField] private TMP_Text itemNameText;
-        [SerializeField] private TMP_Text quantityText;
-        [SerializeField] private TMP_Text hintText;
-        [SerializeField] private TMP_Text confirmButtonText;
         [SerializeField] private Slider quantitySlider;
         [SerializeField] private TMP_InputField quantityInput;
         [SerializeField] private Button confirmButton;
         [SerializeField] private Button cancelButton;
         [SerializeField] private Button dimmerButton;
-        [SerializeField] private string defaultTitle = "Chon so luong";
-        [SerializeField] private string defaultConfirmLabel = "OK";
+        [SerializeField] private string defaultHeaderText = "So luong?";
+        [SerializeField] private string defaultTitleText = "Chon so luong";
 
         private bool suppressCallbacks;
         private int maxQuantity;
@@ -44,36 +41,23 @@ namespace PhamNhanOnline.Client.UI.World
         }
 
         public void Show(
-            string subjectName,
             int maxQuantityValue,
             Action<int> onConfirm,
             Action onCancel = null,
             string titleOverride = null,
-            int initialQuantity = 1,
-            string hintOverride = null,
-            string confirmLabelOverride = null)
+            string headerOverride = null,
+            int initialQuantity = 1)
         {
             confirmAction = onConfirm;
             cancelAction = onCancel;
             maxQuantity = Mathf.Max(1, maxQuantityValue);
             currentQuantity = Mathf.Clamp(initialQuantity, 1, maxQuantity);
 
+            if (headerText != null)
+                headerText.text = string.IsNullOrWhiteSpace(headerOverride) ? defaultHeaderText : headerOverride.Trim();
+
             if (titleText != null)
-                titleText.text = string.IsNullOrWhiteSpace(titleOverride) ? defaultTitle : titleOverride;
-
-            if (itemNameText != null)
-                itemNameText.text = string.IsNullOrWhiteSpace(subjectName) ? "Muc tieu" : subjectName;
-
-            if (hintText != null)
-            {
-                var hasHint = !string.IsNullOrWhiteSpace(hintOverride);
-                hintText.gameObject.SetActive(hasHint);
-                if (hasHint)
-                    hintText.text = hintOverride.Trim();
-            }
-
-            if (confirmButtonText != null)
-                confirmButtonText.text = string.IsNullOrWhiteSpace(confirmLabelOverride) ? defaultConfirmLabel : confirmLabelOverride;
+                titleText.text = string.IsNullOrWhiteSpace(titleOverride) ? defaultTitleText : titleOverride.Trim();
 
             if (quantitySlider != null)
             {
@@ -174,9 +158,6 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (quantityInput != null && !string.Equals(quantityInput.text, currentQuantity.ToString(), StringComparison.Ordinal))
                 quantityInput.SetTextWithoutNotify(currentQuantity.ToString());
-
-            if (quantityText != null)
-                quantityText.text = currentQuantity + " / " + maxQuantity;
 
             suppressCallbacks = false;
         }

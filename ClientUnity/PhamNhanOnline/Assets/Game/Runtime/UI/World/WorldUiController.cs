@@ -1,7 +1,28 @@
 using UnityEngine;
+using System.Threading.Tasks;
+using PhamNhanOnline.Client.Core.Application;
 
 namespace PhamNhanOnline.Client.UI.World
 {
+    public enum CraftingStationType
+    {
+        Alchemy = 0,
+        Smithing = 1,
+        Talisman = 2
+    }
+
+    public readonly struct CraftingPanelContext
+    {
+        public CraftingPanelContext(CraftingStationType stationType, string titleOverride = null)
+        {
+            StationType = stationType;
+            TitleOverride = string.IsNullOrWhiteSpace(titleOverride) ? null : titleOverride.Trim();
+        }
+
+        public CraftingStationType StationType { get; }
+        public string TitleOverride { get; }
+    }
+
     [DisallowMultipleComponent]
     public sealed class WorldUiController : MonoBehaviour
     {
@@ -11,6 +32,14 @@ namespace PhamNhanOnline.Client.UI.World
         [Header("World Panels")]
         [SerializeField] private WorldMenuController worldMenuController;
         [SerializeField] private WorldCraftingPanelController worldCraftingPanelController;
+
+        [Header("Behavior")]
+        [SerializeField] private bool autoOpenCraftingPanelForActivePractice = true;
+        [SerializeField] private float autoOpenRetryCooldownSeconds = 2f;
+
+        private bool craftingPracticeRestoreHandled;
+        private bool craftingPracticeRestoreInFlight;
+        private float lastCraftingPracticeRestoreAttemptTime = float.NegativeInfinity;
 
         public bool IsMenuVisible => worldMenuController != null && worldMenuController.IsMenuVisible;
 
@@ -31,6 +60,12 @@ namespace PhamNhanOnline.Client.UI.World
         private void Start()
         {
             ValidateSerializedReferences();
+            TryRestoreCraftingPanelOnLogin();
+        }
+
+        private void Update()
+        {
+            TryRestoreCraftingPanelOnLogin();
         }
 
         private void OnDestroy()
@@ -62,6 +97,11 @@ namespace PhamNhanOnline.Client.UI.World
 
         public bool ShowCraftingPanel()
         {
+            return ShowCraftingPanel(CraftingStationType.Alchemy);
+        }
+
+        public bool ShowCraftingPanel(CraftingStationType stationType, string titleOverride = null)
+        {
             if (worldCraftingPanelController == null)
             {
                 Debug.LogError($"WorldUiController on '{gameObject.name}' is missing required reference '{nameof(worldCraftingPanelController)}'.");
@@ -70,6 +110,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             HideMenuIfVisible();
 
+            worldCraftingPanelController.ConfigureContext(new CraftingPanelContext(stationType, titleOverride));
             worldCraftingPanelController.ShowPanel();
             return true;
         }
@@ -99,6 +140,54 @@ namespace PhamNhanOnline.Client.UI.World
 
             worldCraftingPanelController.HidePanel();
             return true;
+        }
+
+        private void TryRestoreCraftingPanelOnLogin()
+        {
+            if (!autoOpenCraftingPanelForActivePractice ||
+                craftingPracticeRestoreHandled ||
+                craftingPracticeRestoreInFlight ||
+                !ClientRuntime.IsInitialized)
+            {
+                return;
+            }
+
+            if (Time.unscaledTime - lastCraftingPracticeRestoreAttemptTime < autoOpenRetryCooldownSeconds)
+                return;
+
+            _ = RestoreCraftingPanelOnLoginAsync();
+        }
+
+        private async Task RestoreCraftingPanelOnLoginAsync()
+        {
+            craftingPracticeRestoreInFlight = true;
+            lastCraftingPracticeRestoreAttemptTime = Time.unscaledTime;
+
+            try
+            {
+                var result = await ClientRuntime.AlchemyService.LoadPracticeStatusAsync();
+                if (!result.Success)
+                    return;
+
+                craftingPracticeRestoreHandled = true;
+
+                var session = ClientRuntime.Alchemy.CurrentPracticeSession;
+                if (!session.HasValue || session.Value.PracticeType != 2)
+                    return;
+
+                if (session.Value.PracticeState != 1 &&
+                    session.Value.PracticeState != 2 &&
+                    session.Value.PracticeState != 3)
+                {
+                    return;
+                }
+
+                ShowCraftingPanel(CraftingStationType.Alchemy);
+            }
+            finally
+            {
+                craftingPracticeRestoreInFlight = false;
+            }
         }
 
         private void ValidateSerializedReferences()

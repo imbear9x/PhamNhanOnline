@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -9,6 +10,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.MartialArts
 {
     public sealed class MartialArtListItemView : MonoBehaviour,
+        IUiDragPayloadSource,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerClickHandler,
@@ -158,16 +160,17 @@ namespace PhamNhanOnline.Client.UI.MartialArts
 
         public void OnDrop(PointerEventData eventData)
         {
-            var activeSlotView = eventData.pointerDrag != null
-                ? eventData.pointerDrag.GetComponentInParent<ActiveMartialArtSlotView>()
-                : null;
-
-            if (activeSlotView == null || !activeSlotView.HasItem)
+            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UiDragPayloadKind.MartialArt ||
+                payload.SourceKind != UiDragSourceKind.ActiveMartialArtSlot ||
+                !payload.HasMartialArt)
+            {
                 return;
+            }
 
             var handler = ActiveMartialArtDropped;
             if (handler != null)
-                handler(activeSlotView.Item);
+                handler(payload.MartialArt);
         }
 
         public void OnBeginDrag(PointerEventData eventData)
@@ -189,6 +192,18 @@ namespace PhamNhanOnline.Client.UI.MartialArts
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
+        }
+
+        public bool TryCreateDragPayload(out UiDragPayload payload)
+        {
+            if (!hasItem)
+            {
+                payload = default;
+                return false;
+            }
+
+            payload = UiDragPayload.FromMartialArt(item, UiDragSourceKind.MartialArtListItem);
+            return true;
         }
 
         private void ResetDragVisuals()

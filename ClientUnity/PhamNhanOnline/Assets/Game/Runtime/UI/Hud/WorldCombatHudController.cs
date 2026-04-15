@@ -22,7 +22,6 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         [Header("References")]
         [SerializeField] private SkillPresentationCatalog presentationCatalog;
-        [SerializeField] private WorldSceneController worldSceneController;
         [SerializeField] private CombatSkillButtonView basicSkillButton;
         [SerializeField] private CombatSkillButtonView[] additionalSkillButtons = Array.Empty<CombatSkillButtonView>();
 
@@ -43,9 +42,10 @@ namespace PhamNhanOnline.Client.UI.Hud
         private bool skillReloadInFlight;
         private bool loggedMissingWorldSceneController;
 
+        private static WorldSceneController SceneController => WorldSceneController.Instance;
+
         private void Awake()
         {
-            AutoWireReferences();
             NormalizeButtonSlotIndices();
             SubscribeButtons();
             ApplyCastBar(false, 0f);
@@ -53,9 +53,7 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         private void Start()
         {
-            AutoWireReferences();
-
-            if (worldSceneController == null && !loggedMissingWorldSceneController)
+            if (SceneController == null && !loggedMissingWorldSceneController)
             {
                 ClientLog.Error("WorldCombatHudController could not resolve WorldSceneController.");
                 loggedMissingWorldSceneController = true;
@@ -131,8 +129,6 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         private void Refresh(bool force)
         {
-            AutoWireReferences();
-
             if (!ClientRuntime.IsInitialized)
             {
                 ApplyMissingState();
@@ -242,8 +238,6 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (!ClientRuntime.IsInitialized || slotIndex <= 0)
                 return;
 
-            AutoWireReferences();
-
             PlayerSkillModel skill;
             if (!ClientRuntime.Skills.TryGetLoadoutSkill(slotIndex, out skill))
                 return;
@@ -259,6 +253,7 @@ namespace PhamNhanOnline.Client.UI.Hud
 
             if (slotIndex == BasicSkillSlotIndex)
             {
+                var worldSceneController = SceneController;
                 if (worldSceneController == null ||
                     !worldSceneController.RequestPrimaryActionForCurrentSelection())
                 {
@@ -277,12 +272,6 @@ namespace PhamNhanOnline.Client.UI.Hud
                 return;
 
             Refresh(force: true);
-        }
-
-        private void AutoWireReferences()
-        {
-            if (worldSceneController == null)
-                worldSceneController = WorldSceneController.Instance;
         }
 
         private bool TryResolveSelectedTarget(out WorldTargetHandle targetHandle)
