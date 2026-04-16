@@ -26,6 +26,9 @@ namespace PhamNhanOnline.Client.UI.World
             OptionalInputQuantity = 2
         }
 
+        [Header("Panel")]
+        [SerializeField] private WorldCraftingPanelView panelView;
+
         [Header("Recipe References")]
         [SerializeField] private TMP_Text panelTitleText;
         [SerializeField] private CraftRecipeListView recipeListView;
@@ -87,7 +90,7 @@ namespace PhamNhanOnline.Client.UI.World
         private CraftingStationType currentStationType = CraftingStationType.Alchemy;
         private string currentStationTitleOverride;
 
-        public bool IsPanelVisible => gameObject.activeSelf;
+        public bool IsPanelVisible => panelView != null ? panelView.IsVisible : gameObject.activeSelf;
 
         public void ConfigureContext(CraftingPanelContext context)
         {
@@ -105,7 +108,7 @@ namespace PhamNhanOnline.Client.UI.World
             HideRecipeTooltip(force: true);
             HideInventoryTooltip(force: true);
 
-            if (gameObject.activeSelf)
+            if (IsPanelVisible)
                 Refresh(force: true);
         }
 
@@ -121,6 +124,9 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void OnEnable()
         {
+            if (!IsPanelVisible)
+                return;
+
             Refresh(force: true);
             if (autoLoadOnEnable && IsAlchemyStation())
                 _ = ReloadAllAsync(forceInventoryRefresh: false);
@@ -128,7 +134,10 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void Update()
         {
-            if (gameObject.activeSelf && Input.GetKeyDown(closeKey))
+            if (!IsPanelVisible)
+                return;
+
+            if (Input.GetKeyDown(closeKey))
             {
                 HidePanel();
                 return;
@@ -186,9 +195,12 @@ namespace PhamNhanOnline.Client.UI.World
         public void ShowPanel()
         {
             EnsureInitialized(hideAfterInitialize: false);
-            if (!gameObject.activeSelf)
+            if (!IsPanelVisible)
             {
-                gameObject.SetActive(true);
+                if (panelView != null)
+                    panelView.Show();
+                else
+                    gameObject.SetActive(true);
                 return;
             }
 
@@ -198,12 +210,20 @@ namespace PhamNhanOnline.Client.UI.World
         public void HidePanel()
         {
             EnsureInitialized(hideAfterInitialize: false);
-            if (gameObject.activeSelf)
+            if (!IsPanelVisible)
+                return;
+
+            if (panelView != null)
+                panelView.Hide(force: true);
+            else
                 gameObject.SetActive(false);
         }
 
         private void EnsureInitialized(bool hideAfterInitialize)
         {
+            if (panelView == null)
+                panelView = GetComponent<WorldCraftingPanelView>();
+
             if (isInitialized)
                 return;
 
@@ -260,7 +280,12 @@ namespace PhamNhanOnline.Client.UI.World
             isInitialized = true;
 
             if (hideAfterInitialize)
-                gameObject.SetActive(false);
+            {
+                if (panelView != null)
+                    panelView.Hide(force: true);
+                else
+                    gameObject.SetActive(false);
+            }
         }
 
         private void Refresh(bool force)

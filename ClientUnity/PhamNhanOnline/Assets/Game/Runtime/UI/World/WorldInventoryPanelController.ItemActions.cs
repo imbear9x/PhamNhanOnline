@@ -117,8 +117,6 @@ namespace PhamNhanOnline.Client.UI.World
             modalUIManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
             modalUIManager.HideItemTooltip(force: true);
             modalUIManager.ShowInventoryItemOptionsPopup(
-                inventoryPanelBounds != null ? inventoryPanelBounds : transform as RectTransform,
-                item.Name,
                 options,
                 force: true);
         }

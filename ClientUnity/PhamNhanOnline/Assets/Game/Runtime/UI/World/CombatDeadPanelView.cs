@@ -1,5 +1,6 @@
 using System;
 using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,7 +8,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.World
 {
     [DisallowMultipleComponent]
-    public sealed class CombatDeadPanelView : MonoBehaviour
+    public sealed class CombatDeadPanelView : ViewModelBase
     {
         [Header("UI")]
         [SerializeField] private GameObject panelRoot;
@@ -24,12 +25,14 @@ namespace PhamNhanOnline.Client.UI.World
         private bool loggedMissingPanelRoot;
         private bool loggedMissingReturnHomeButton;
 
-        public bool IsVisible
+        protected override bool HideOnFirstAwake => true;
+
+        protected override GameObject ResolveViewRoot()
         {
-            get { return panelRoot != null && panelRoot.activeSelf; }
+            return panelRoot;
         }
 
-        private void Awake()
+        protected override void Awake()
         {
             if (returnHomeButton != null)
             {
@@ -39,6 +42,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             ApplyStaticText();
             SetStatus(string.Empty);
+            base.Awake();
         }
 
         private void Start()
@@ -55,13 +59,13 @@ namespace PhamNhanOnline.Client.UI.World
         public void Show()
         {
             ApplyStaticText();
-            SetVisible(true);
+            ShowView();
         }
 
         public void Hide()
         {
             SetStatus(string.Empty);
-            SetVisible(false);
+            SetViewVisible(false);
         }
 
         public void SetBusy(bool busy)
@@ -93,15 +97,6 @@ namespace PhamNhanOnline.Client.UI.World
             var handler = ReturnHomeRequested;
             if (handler != null)
                 handler();
-        }
-
-        private void SetVisible(bool visible)
-        {
-            if (panelRoot == null)
-                return;
-
-            if (panelRoot.activeSelf != visible)
-                panelRoot.SetActive(visible);
         }
 
         private void LogMissingCriticalDependenciesIfNeeded()

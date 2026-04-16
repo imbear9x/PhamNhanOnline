@@ -1,11 +1,12 @@
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Inventory
 {
-    public sealed class InventoryItemTooltipView : MonoBehaviour
+    public sealed class InventoryItemTooltipView : CursorPopupViewModelBase
     {
         [Header("References")]
         [SerializeField] private GameObject panelRoot;
@@ -23,13 +24,27 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         private string lastSnapshot = string.Empty;
 
-        private void Awake()
+        protected override bool HideOnFirstAwake => true;
+
+        protected override void Awake()
         {
             if (panelRoot == null)
                 panelRoot = gameObject;
 
             if (panelTransform == null)
                 panelTransform = panelRoot.transform as RectTransform;
+
+            base.Awake();
+        }
+
+        protected override GameObject ResolveViewRoot()
+        {
+            return panelRoot != null ? panelRoot : gameObject;
+        }
+
+        protected override RectTransform ResolveViewRectTransform()
+        {
+            return panelTransform != null ? panelTransform : base.ResolveViewRectTransform();
         }
 
         public void Show(InventoryItemModel item, InventoryItemPresentation presentation, bool force = false)
@@ -40,8 +55,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
             lastSnapshot = snapshot;
 
-            if (panelRoot != null && !panelRoot.activeSelf)
-                panelRoot.SetActive(true);
+            ShowView();
 
             if (iconImage != null)
                 iconImage.sprite = presentation.IconSprite;
@@ -55,7 +69,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (descriptionText != null)
                 descriptionText.text = string.IsNullOrWhiteSpace(item.Description) ? emptyDescription : item.Description.Trim();
 
-            PositionNearCursor();
+            PositionViewNearCursor(cursorOffsetBelow, cursorOffsetAbove, screenPadding);
         }
 
         public void Hide(bool force = false)
@@ -64,8 +78,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 return;
 
             lastSnapshot = string.Empty;
-            if (panelRoot != null && panelRoot.activeSelf)
-                panelRoot.SetActive(false);
+            SetViewVisible(false);
         }
 
         private static string BuildSnapshot(InventoryItemModel item, InventoryItemPresentation presentation)
@@ -80,43 +93,5 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 presentation.IconSprite != null ? presentation.IconSprite.GetInstanceID().ToString() : "0");
         }
 
-        private void PositionNearCursor()
-        {
-            if (panelTransform == null)
-                return;
-
-            var parent = panelTransform.parent as RectTransform;
-            if (parent == null)
-                return;
-
-            Canvas.ForceUpdateCanvases();
-
-            var canvas = parent.GetComponentInParent<Canvas>();
-            var eventCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
-                ? canvas.worldCamera
-                : null;
-
-            var cursorScreenPoint = (Vector2)Input.mousePosition;
-            var panelSize = panelTransform.rect.size;
-            var offset = cursorOffsetBelow;
-
-            if (cursorScreenPoint.y - panelSize.y - Mathf.Abs(cursorOffsetBelow.y) < screenPadding.y)
-                offset = cursorOffsetAbove;
-
-            var targetScreenPoint = cursorScreenPoint + offset;
-
-            var minX = screenPadding.x + (panelSize.x * panelTransform.pivot.x);
-            var maxX = Screen.width - screenPadding.x - (panelSize.x * (1f - panelTransform.pivot.x));
-            var minY = screenPadding.y + (panelSize.y * panelTransform.pivot.y);
-            var maxY = Screen.height - screenPadding.y - (panelSize.y * (1f - panelTransform.pivot.y));
-            targetScreenPoint.x = Mathf.Clamp(targetScreenPoint.x, minX, maxX);
-            targetScreenPoint.y = Mathf.Clamp(targetScreenPoint.y, minY, maxY);
-
-            Vector2 localPoint;
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, targetScreenPoint, eventCamera, out localPoint))
-                return;
-
-            panelTransform.anchoredPosition = localPoint;
-        }
     }
 }

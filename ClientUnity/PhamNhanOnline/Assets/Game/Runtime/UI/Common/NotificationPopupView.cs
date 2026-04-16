@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Common
 {
-    public class NotificationPopupView : MonoBehaviour
+    public class NotificationPopupView : ViewModelBase
     {
         [Header("References")]
         [SerializeField] private GameObject panelRoot;
@@ -26,10 +26,13 @@ namespace PhamNhanOnline.Client.UI.Common
 
         public event Action Confirmed;
 
-        public bool IsVisible => (panelRoot != null ? panelRoot : gameObject).activeSelf;
+        protected override bool HideOnFirstAwake => true;
 
-        protected virtual void Awake()
+        protected override void Awake()
         {
+            if (panelRoot == null)
+                panelRoot = gameObject;
+
             if (confirmButton != null)
             {
                 confirmButton.onClick.RemoveListener(HandleConfirmClicked);
@@ -38,6 +41,13 @@ namespace PhamNhanOnline.Client.UI.Common
 
             if (confirmButtonText != null)
                 confirmButtonText.text = defaultConfirmText;
+
+            base.Awake();
+        }
+
+        protected override GameObject ResolveViewRoot()
+        {
+            return panelRoot != null ? panelRoot : gameObject;
         }
 
         protected virtual void Start()
@@ -53,9 +63,7 @@ namespace PhamNhanOnline.Client.UI.Common
 
         public void Show(string title, string message, NotificationPopupItemData[] items)
         {
-            var root = panelRoot != null ? panelRoot : gameObject;
-            if (!root.activeSelf)
-                root.SetActive(true);
+            ShowView();
 
             if (titleText != null)
                 titleText.text = string.IsNullOrWhiteSpace(title) ? defaultTitleText : title.Trim();
@@ -67,10 +75,9 @@ namespace PhamNhanOnline.Client.UI.Common
 
         public void Hide(bool force = false)
         {
-            var root = panelRoot != null ? panelRoot : gameObject;
-            if (!force && !root.activeSelf)
+            if (!force && !IsVisible)
                 return;
-            root.SetActive(false);
+            SetViewVisible(false, force: true);
             ClearInstancedSlots();
         }
 

@@ -143,8 +143,6 @@ namespace PhamNhanOnline.Client.UI.World
         }
 
         public void ShowInventoryItemOptionsPopup(
-            RectTransform anchor,
-            string title,
             IReadOnlyList<InventoryItemOptionsPopupController.OptionEntry> options,
             bool force = false)
         {
@@ -152,7 +150,7 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             BeginShow(ModalViewKind.InventoryItemOptionsPopup, inventoryItemOptionsPopupOrderId);
-            inventoryItemOptionsPopupView.Show(anchor, title, options, force);
+            inventoryItemOptionsPopupView.Show(options, force);
         }
 
         public void HideInventoryItemOptionsPopup(bool force = false)

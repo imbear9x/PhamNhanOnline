@@ -1,11 +1,12 @@
 using System;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.World
 {
-    public sealed class InventoryUseQuantityPopupView : MonoBehaviour
+    public sealed class InventoryUseQuantityPopupView : ViewModelBase
     {
         [SerializeField] private GameObject panelRoot;
         [SerializeField] private TMP_Text headerText;
@@ -24,14 +25,17 @@ namespace PhamNhanOnline.Client.UI.World
         private Action<int> confirmAction;
         private Action cancelAction;
 
-        public bool IsVisible
+        protected override bool HideOnFirstAwake => true;
+
+        protected override GameObject ResolveViewRoot()
         {
-            get { return panelRoot != null ? panelRoot.activeSelf : gameObject.activeSelf; }
+            return panelRoot != null ? panelRoot : gameObject;
         }
 
-        private void Awake()
+        protected override void Awake()
         {
             BindUI();
+            base.Awake();
         }
 
         private void OnDestroy()
@@ -66,7 +70,7 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             ApplyQuantity(currentQuantity, force: true);
-            SetVisible(true);
+            ShowView();
         }
 
         public void Hide(bool force = false)
@@ -76,7 +80,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (!force && !IsVisible)
                 return;
 
-            SetVisible(false);
+            SetViewVisible(false);
         }
 
         private void BindUI()
@@ -161,12 +165,5 @@ namespace PhamNhanOnline.Client.UI.World
             suppressCallbacks = false;
         }
 
-        private void SetVisible(bool visible)
-        {
-            if (panelRoot != null)
-                panelRoot.SetActive(visible);
-            else
-                gameObject.SetActive(visible);
-        }
     }
 }

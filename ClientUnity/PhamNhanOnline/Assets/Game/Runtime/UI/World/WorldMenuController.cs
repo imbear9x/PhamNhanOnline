@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,7 +11,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.World
 {
     [DisallowMultipleComponent]
-    public sealed class WorldMenuController : MonoBehaviour
+    public sealed class WorldMenuController : ViewModelBase
     {
         public const string ScreenId = "world-menu";
         public const string QuestTabId = "quest";
@@ -66,16 +67,20 @@ namespace PhamNhanOnline.Client.UI.World
 
         public bool IsMenuVisible
         {
-            get
-            {
-                var root = panelRoot != null ? panelRoot : gameObject;
-                return root.activeSelf;
-            }
+            get { return IsVisible; }
         }
 
-        private void Awake()
+        protected override bool HideOnFirstAwake => true;
+
+        protected override GameObject ResolveViewRoot()
+        {
+            return panelRoot != null ? panelRoot : gameObject;
+        }
+
+        protected override void Awake()
         {
             EnsureInitialized(hideAfterInitialize: true);
+            base.Awake();
         }
 
         private void Start()
@@ -267,9 +272,10 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void SetMenuVisible(bool visible)
         {
-            var root = panelRoot != null ? panelRoot : gameObject;
-            if (root.activeSelf != visible)
-                root.SetActive(visible);
+            if (visible)
+                ShowView();
+            else
+                SetViewVisible(false);
 
             if (visible)
                 RefreshAllTabContent();

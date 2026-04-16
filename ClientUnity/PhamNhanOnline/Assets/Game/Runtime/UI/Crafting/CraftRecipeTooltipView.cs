@@ -2,13 +2,14 @@ using System;
 using System.Globalization;
 using System.Text;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
+using PhamNhanOnline.Client.UI.World;
 using TMPro;
 using UnityEngine;
-using PhamNhanOnline.Client.UI.World;
 
 namespace PhamNhanOnline.Client.UI.Crafting
 {
-    public sealed class CraftRecipeTooltipView : MonoBehaviour
+    public sealed class CraftRecipeTooltipView : CursorPopupViewModelBase
     {
         [Header("References")]
         [SerializeField] private GameObject panelRoot;
@@ -26,8 +27,16 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         private string lastSnapshot = string.Empty;
 
-        private void Awake()
+        protected override bool HideOnFirstAwake => true;
+
+        protected override GameObject ResolveViewRoot()
         {
+            return panelRoot != null ? panelRoot : gameObject;
+        }
+
+        protected override RectTransform ResolveViewRectTransform()
+        {
+            return panelTransform != null ? panelTransform : base.ResolveViewRectTransform();
         }
 
         private void Start()
@@ -43,8 +52,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
             lastSnapshot = snapshot;
 
-            if (panelRoot != null && !panelRoot.activeSelf)
-                panelRoot.SetActive(true);
+            ShowView();
 
             if (nameText != null)
                 nameText.text = string.IsNullOrWhiteSpace(detail.Name) ? emptyName : detail.Name.Trim();
@@ -53,7 +61,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
             if (ingredientsText != null)
                 ingredientsText.text = BuildIngredientsText(detail, quantityResolver);
 
-            PositionNearCursor();
+            PositionViewNearCursor(cursorOffsetBelow, cursorOffsetAbove, screenPadding);
         }
 
         public void Hide(bool force = false)
@@ -62,8 +70,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 return;
 
             lastSnapshot = string.Empty;
-            if (panelRoot != null && panelRoot.activeSelf)
-                panelRoot.SetActive(false);
+            SetViewVisible(false);
         }
 
         private static string BuildIngredientsText(PillRecipeDetailModel detail, Func<PillRecipeInputModel, int> quantityResolver)
@@ -114,42 +121,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
             }
 
             return builder.ToString();
-        }
-
-        private void PositionNearCursor()
-        {
-            if (panelTransform == null)
-                return;
-
-            var parent = panelTransform.parent as RectTransform;
-            if (parent == null)
-                return;
-
-            Canvas.ForceUpdateCanvases();
-
-            var canvas = parent.GetComponentInParent<Canvas>();
-            var eventCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
-                ? canvas.worldCamera
-                : null;
-
-            var cursorScreenPoint = (Vector2)Input.mousePosition;
-            var panelSize = panelTransform.rect.size;
-            var offset = cursorOffsetBelow;
-            if (cursorScreenPoint.y - panelSize.y - Mathf.Abs(cursorOffsetBelow.y) < screenPadding.y)
-                offset = cursorOffsetAbove;
-
-            var targetScreenPoint = cursorScreenPoint + offset;
-            var minX = screenPadding.x + (panelSize.x * panelTransform.pivot.x);
-            var maxX = Screen.width - screenPadding.x - (panelSize.x * (1f - panelTransform.pivot.x));
-            var minY = screenPadding.y + (panelSize.y * panelTransform.pivot.y);
-            var maxY = Screen.height - screenPadding.y - (panelSize.y * (1f - panelTransform.pivot.y));
-            targetScreenPoint.x = Mathf.Clamp(targetScreenPoint.x, minX, maxX);
-            targetScreenPoint.y = Mathf.Clamp(targetScreenPoint.y, minY, maxY);
-
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, targetScreenPoint, eventCamera, out var localPoint))
-                return;
-
-            panelTransform.anchoredPosition = localPoint;
         }
 
         private void ValidateSerializedReferences()

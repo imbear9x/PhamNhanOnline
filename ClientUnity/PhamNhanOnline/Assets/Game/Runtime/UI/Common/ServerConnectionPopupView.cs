@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Common
 {
-    public sealed class ServerConnectionPopupView : MonoBehaviour
+    public sealed class ServerConnectionPopupView : ViewModelBase
     {
         [SerializeField] private GameObject popupRoot;
         [SerializeField] private TMP_Text messageText;
@@ -14,16 +14,14 @@ namespace PhamNhanOnline.Client.UI.Common
 
         private Action confirmAction;
 
-        public bool IsVisible
+        protected override bool HideOnFirstAwake => true;
+
+        protected override GameObject ResolveViewRoot()
         {
-            get
-            {
-                var root = popupRoot != null ? popupRoot : gameObject;
-                return root.activeSelf;
-            }
+            return popupRoot != null ? popupRoot : gameObject;
         }
 
-        private void Awake()
+        protected override void Awake()
         {
             if (popupRoot == null)
                 popupRoot = gameObject;
@@ -36,6 +34,8 @@ namespace PhamNhanOnline.Client.UI.Common
                 statusText.text = string.Empty;
                 statusText.gameObject.SetActive(false);
             }
+
+            base.Awake();
         }
 
         private void OnDestroy()
@@ -60,7 +60,7 @@ namespace PhamNhanOnline.Client.UI.Common
             if (confirmButton != null)
                 confirmButton.gameObject.SetActive(allowClose);
 
-            SetVisible(true, force: true);
+            ShowView(force: true);
         }
 
         public void Hide(bool force = false)
@@ -73,7 +73,7 @@ namespace PhamNhanOnline.Client.UI.Common
                 statusText.gameObject.SetActive(false);
             }
 
-            SetVisible(false, force);
+            SetViewVisible(false, force);
         }
 
         private void HandleConfirmClicked()
@@ -85,11 +85,5 @@ namespace PhamNhanOnline.Client.UI.Common
                 callback();
         }
 
-        private void SetVisible(bool visible, bool force)
-        {
-            var root = popupRoot != null ? popupRoot : gameObject;
-            if (force || root.activeSelf != visible)
-                root.SetActive(visible);
-        }
     }
 }

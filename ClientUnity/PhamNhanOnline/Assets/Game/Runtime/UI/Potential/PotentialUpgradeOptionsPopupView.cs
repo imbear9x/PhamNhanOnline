@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 namespace PhamNhanOnline.Client.UI.Potential
 {
-    public sealed class PotentialUpgradeOptionsPopupView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    public sealed class PotentialUpgradeOptionsPopupView : CursorPopupViewModelBase, IPointerEnterHandler, IPointerExitHandler
     {
         public readonly struct OptionEntry
         {
@@ -38,9 +39,10 @@ namespace PhamNhanOnline.Client.UI.Potential
         private readonly List<PotentialUpgradeOptionButtonView> spawnedOptions = new List<PotentialUpgradeOptionButtonView>(4);
 
         public bool IsPointerInside { get; private set; }
-        public bool IsVisible => panelRoot != null ? panelRoot.activeSelf : gameObject.activeSelf;
 
-        private void Awake()
+        protected override bool HideOnFirstAwake => true;
+
+        protected override void Awake()
         {
             if (panelRoot == null)
                 panelRoot = gameObject;
@@ -53,6 +55,18 @@ namespace PhamNhanOnline.Client.UI.Potential
 
             if (hideTemplateObject && optionTemplate != null)
                 optionTemplate.gameObject.SetActive(false);
+
+            base.Awake();
+        }
+
+        protected override GameObject ResolveViewRoot()
+        {
+            return panelRoot != null ? panelRoot : gameObject;
+        }
+
+        protected override RectTransform ResolveViewRectTransform()
+        {
+            return panelTransform != null ? panelTransform : base.ResolveViewRectTransform();
         }
 
         public void Show(RectTransform anchor, string title, IReadOnlyList<OptionEntry> options, bool force = false)
@@ -83,14 +97,14 @@ namespace PhamNhanOnline.Client.UI.Potential
                 option.SetContent(options[i].Label, options[i].OnClick, options[i].Interactable, force: true);
             }
 
-            PositionNearCursor();
-            SetVisible(true, force);
+            PositionViewNearCursor(cursorOffsetBelow, cursorOffsetAbove, screenPadding);
+            ShowView(force);
         }
 
         public void Hide(bool force = false)
         {
             IsPointerInside = false;
-            SetVisible(false, force);
+            SetViewVisible(false, force);
         }
 
         public void OnPointerEnter(PointerEventData eventData)
@@ -101,50 +115,6 @@ namespace PhamNhanOnline.Client.UI.Potential
         public void OnPointerExit(PointerEventData eventData)
         {
             IsPointerInside = false;
-        }
-
-        private void SetVisible(bool visible, bool force)
-        {
-            var root = panelRoot != null ? panelRoot : gameObject;
-            if (force || root.activeSelf != visible)
-                root.SetActive(visible);
-        }
-
-        private void PositionNearCursor()
-        {
-            if (panelTransform == null)
-                return;
-
-            var parent = panelTransform.parent as RectTransform;
-            if (parent == null)
-                return;
-
-            Canvas.ForceUpdateCanvases();
-
-            var canvas = parent.GetComponentInParent<Canvas>();
-            var eventCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
-                ? canvas.worldCamera
-                : null;
-
-            var cursorScreenPoint = (Vector2)Input.mousePosition;
-            var panelSize = panelTransform.rect.size;
-            var offset = cursorOffsetBelow;
-
-            if (cursorScreenPoint.y - panelSize.y - Mathf.Abs(cursorOffsetBelow.y) < screenPadding.y)
-                offset = cursorOffsetAbove;
-
-            var screenPoint = cursorScreenPoint + offset;
-            var minX = screenPadding.x + (panelSize.x * panelTransform.pivot.x);
-            var maxX = Screen.width - screenPadding.x - (panelSize.x * (1f - panelTransform.pivot.x));
-            var minY = screenPadding.y + (panelSize.y * panelTransform.pivot.y);
-            var maxY = Screen.height - screenPadding.y - (panelSize.y * (1f - panelTransform.pivot.y));
-            screenPoint.x = Mathf.Clamp(screenPoint.x, minX, maxX);
-            screenPoint.y = Mathf.Clamp(screenPoint.y, minY, maxY);
-
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screenPoint, eventCamera, out var localPoint))
-                return;
-
-            panelTransform.anchoredPosition = localPoint;
         }
 
         private void EnsureOptionCount(int targetCount)

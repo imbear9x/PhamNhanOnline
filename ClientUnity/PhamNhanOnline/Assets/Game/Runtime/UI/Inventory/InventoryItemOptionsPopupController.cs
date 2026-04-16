@@ -7,7 +7,7 @@ using UnityEngine.EventSystems;
 
 namespace PhamNhanOnline.Client.UI.Inventory
 {
-    public sealed class InventoryItemOptionsPopupController : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    public sealed class InventoryItemOptionsPopupController : CursorPopupViewModelBase, IPointerEnterHandler, IPointerExitHandler
     {
         public readonly struct OptionEntry
         {
@@ -66,19 +66,26 @@ namespace PhamNhanOnline.Client.UI.Inventory
         private readonly List<RuntimeOptionButton> runtimeButtons = new List<RuntimeOptionButton>();
 
         public bool IsPointerInside { get; private set; }
-        public bool IsVisible => panelRoot != null ? panelRoot.activeSelf : gameObject.activeSelf;
 
-        private void Awake()
+        protected override bool HideOnFirstAwake => true;
+
+        protected override void Awake()
         {
             if (panelRoot == null)
                 panelRoot = gameObject;
 
             AutoWireTemplateReferences();
+            base.Awake();
         }
 
-        public void Show(RectTransform anchor, string title, IReadOnlyList<OptionEntry> options, bool force = false)
+        protected override GameObject ResolveViewRoot()
         {
-            if (anchor == null || options == null || options.Count == 0)
+            return panelRoot != null ? panelRoot : gameObject;
+        }
+
+        public void Show(IReadOnlyList<OptionEntry> options, bool force = false)
+        {
+            if (options == null || options.Count == 0)
             {
                 Hide(force);
                 return;
@@ -88,8 +95,8 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 titleText.text = defaultTitleText;
 
             ApplyButtons(options);
-            PositionNearCursor();
-            SetVisible(true, force);
+            PositionViewNearCursor(cursorOffsetBelow, cursorOffsetAbove, screenPadding);
+            ShowView(force);
         }
 
         public void Hide(bool force = false)
@@ -99,7 +106,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             for (var i = 0; i < runtimeButtons.Count; i++)
                 runtimeButtons[i].Clear();
 
-            SetVisible(false, force);
+            SetViewVisible(false, force);
         }
 
         public void OnPointerEnter(PointerEventData eventData)
@@ -205,49 +212,5 @@ namespace PhamNhanOnline.Client.UI.Inventory
             }
         }
 
-        private void SetVisible(bool visible, bool force)
-        {
-            var root = panelRoot != null ? panelRoot : gameObject;
-            if (force || root.activeSelf != visible)
-                root.SetActive(visible);
-        }
-
-        private void PositionNearCursor()
-        {
-            var panelTransform = panelRoot != null ? panelRoot.transform as RectTransform : transform as RectTransform;
-            if (panelTransform == null)
-                return;
-
-            var parent = panelTransform.parent as RectTransform;
-            if (parent == null)
-                return;
-
-            Canvas.ForceUpdateCanvases();
-
-            var canvas = parent.GetComponentInParent<Canvas>();
-            var eventCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
-                ? canvas.worldCamera
-                : null;
-
-            var cursorScreenPoint = (Vector2)Input.mousePosition;
-            var panelSize = panelTransform.rect.size;
-            var offset = cursorOffsetBelow;
-
-            if (cursorScreenPoint.y - panelSize.y - Mathf.Abs(cursorOffsetBelow.y) < screenPadding.y)
-                offset = cursorOffsetAbove;
-
-            var screenPoint = cursorScreenPoint + offset;
-            var minX = screenPadding.x + (panelSize.x * panelTransform.pivot.x);
-            var maxX = Screen.width - screenPadding.x - (panelSize.x * (1f - panelTransform.pivot.x));
-            var minY = screenPadding.y + (panelSize.y * panelTransform.pivot.y);
-            var maxY = Screen.height - screenPadding.y - (panelSize.y * (1f - panelTransform.pivot.y));
-            screenPoint.x = Mathf.Clamp(screenPoint.x, minX, maxX);
-            screenPoint.y = Mathf.Clamp(screenPoint.y, minY, maxY);
-
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screenPoint, eventCamera, out var localPoint))
-                return;
-
-            panelTransform.anchoredPosition = localPoint;
-        }
     }
 }
