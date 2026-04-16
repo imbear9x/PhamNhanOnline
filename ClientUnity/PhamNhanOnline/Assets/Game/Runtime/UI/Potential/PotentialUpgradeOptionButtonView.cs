@@ -10,7 +10,7 @@ namespace PhamNhanOnline.Client.UI.Potential
     {
         [Header("References")]
         [SerializeField] private Button button;
-        [SerializeField] private UiButtonView customButton;
+        [SerializeField] private UIButtonView customButton;
         [SerializeField] private TMP_Text labelText;
 
         private string lastLabel = string.Empty;
@@ -21,7 +21,7 @@ namespace PhamNhanOnline.Client.UI.Potential
                 button = GetComponent<Button>();
 
             if (customButton == null)
-                customButton = GetComponent<UiButtonView>();
+                customButton = GetComponent<UIButtonView>();
         }
 
         public void SetContent(string label, Action onClick, bool interactable = true, bool force = false)

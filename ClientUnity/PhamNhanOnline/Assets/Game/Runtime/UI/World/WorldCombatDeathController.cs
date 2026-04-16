@@ -110,8 +110,8 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (isCombatDead)
             {
-                if (WorldUiController.Instance != null)
-                    WorldUiController.Instance.HideMenuIfVisible();
+                if (WorldUIController.Instance != null)
+                    WorldUIController.Instance.HideMenuIfVisible();
 
                 panelView.Show();
                 panelView.SetBusy(actionInFlight);

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.Common
 {
-    public sealed class UiScreenService
+    public sealed class UIScreenService
     {
         private readonly Dictionary<string, GameObject> screens = new(StringComparer.Ordinal);
 

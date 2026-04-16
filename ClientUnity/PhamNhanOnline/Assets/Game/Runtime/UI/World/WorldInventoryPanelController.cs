@@ -198,9 +198,9 @@ namespace PhamNhanOnline.Client.UI.World
             var bagItems = allItems.Where(x => !x.IsEquipped).ToList();
             var status = ResolveInventoryStatus(inventoryState, bagItems.Count, equippedItems.Count);
             var snapshot = BuildInventorySnapshot(inventoryState, allItems, inventoryActionInFlight);
-            var modalUiManager = WorldModalUIManager.Instance;
+            var modalUIManager = WorldModalUIManager.Instance;
             if (popupPlayerItemId.HasValue &&
-                (modalUiManager == null || !modalUiManager.IsInventoryItemOptionsPopupVisible))
+                (modalUIManager == null || !modalUIManager.IsInventoryItemOptionsPopupVisible))
             {
                 popupPlayerItemId = null;
                 previewPlayerItemId = null;

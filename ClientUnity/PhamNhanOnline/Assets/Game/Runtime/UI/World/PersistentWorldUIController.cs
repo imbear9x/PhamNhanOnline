@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.World
 {
     [DisallowMultipleComponent]
-    public sealed class PersistentWorldUiController : MonoBehaviour
+    public sealed class PersistentWorldUIController : MonoBehaviour
     {
         [Header("Quick Actions")]
         [SerializeField] private Button quickMenuOpenButton;
@@ -19,7 +19,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void Awake()
         {
-            WireUi();
+            WireUI();
             Refresh(force: true);
         }
 
@@ -40,7 +40,7 @@ namespace PhamNhanOnline.Client.UI.World
                 quickMenuOpenButton.onClick.RemoveListener(HandleQuickMenuOpenClicked);
         }
 
-        private void WireUi()
+        private void WireUI()
         {
             if (quickMenuOpenButton == null)
                 return;
@@ -51,7 +51,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void Refresh(bool force)
         {
-            var label = WorldUiController.IsAnyMenuOpen ? menuOpenLabel : menuClosedLabel;
+            var label = WorldUIController.IsAnyMenuOpen ? menuOpenLabel : menuClosedLabel;
             if (!force && string.Equals(lastAppliedButtonLabel, label, System.StringComparison.Ordinal))
                 return;
 
@@ -62,13 +62,13 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void HandleQuickMenuOpenClicked()
         {
-            if (WorldUiController.Instance == null)
+            if (WorldUIController.Instance == null)
             {
-                Debug.LogWarning($"PersistentWorldUiController on '{gameObject.name}' could not find WorldUiController.Instance.");
+                Debug.LogWarning($"PersistentWorldUIController on '{gameObject.name}' could not find WorldUIController.Instance.");
                 return;
             }
 
-            WorldUiController.Instance.ToggleMenu();
+            WorldUIController.Instance.ToggleMenu();
             Refresh(force: true);
         }
 
@@ -77,7 +77,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (quickMenuOpenButton == null)
             {
                 throw new System.InvalidOperationException(
-                    $"PersistentWorldUiController on '{gameObject.name}' is missing required reference '{nameof(quickMenuOpenButton)}'.");
+                    $"PersistentWorldUIController on '{gameObject.name}' is missing required reference '{nameof(quickMenuOpenButton)}'.");
             }
         }
     }

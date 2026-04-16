@@ -93,9 +93,9 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         public void OnDrop(PointerEventData eventData)
         {
-            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
-                payload.Kind != UiDragPayloadKind.Recipe ||
-                payload.SourceKind != UiDragSourceKind.CraftRecipeSlot)
+            if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UIDragPayloadKind.Recipe ||
+                payload.SourceKind != UIDragSourceKind.CraftRecipeSlot)
             {
                 return;
             }

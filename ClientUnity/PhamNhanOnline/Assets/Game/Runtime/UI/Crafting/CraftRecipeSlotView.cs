@@ -10,7 +10,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.Crafting
 {
     public sealed class CraftRecipeSlotView : MonoBehaviour,
-        IUiDragPayloadSource,
+        IUIDragPayloadSource,
         IDropHandler,
         IPointerClickHandler,
         IPointerEnterHandler,
@@ -138,20 +138,20 @@ namespace PhamNhanOnline.Client.UI.Crafting
             if (!dropEnabled)
                 return;
 
-            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
-                payload.Kind != UiDragPayloadKind.Recipe ||
+            if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UIDragPayloadKind.Recipe ||
                 !payload.HasRecipe)
             {
                 return;
             }
 
-            if (payload.SourceKind != UiDragSourceKind.CraftRecipeListItem &&
-                payload.SourceKind != UiDragSourceKind.CraftRecipeSlot)
+            if (payload.SourceKind != UIDragSourceKind.CraftRecipeListItem &&
+                payload.SourceKind != UIDragSourceKind.CraftRecipeSlot)
             {
                 return;
             }
 
-            if (payload.SourceKind == UiDragSourceKind.CraftRecipeSlot &&
+            if (payload.SourceKind == UIDragSourceKind.CraftRecipeSlot &&
                 hasRecipe &&
                 recipe.PillRecipeTemplateId == payload.Recipe.PillRecipeTemplateId)
             {
@@ -202,7 +202,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
             ResetDragVisuals();
         }
 
-        public bool TryCreateDragPayload(out UiDragPayload payload)
+        public bool TryCreateDragPayload(out UIDragPayload payload)
         {
             if (!hasRecipe)
             {
@@ -210,7 +210,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 return false;
             }
 
-            payload = UiDragPayload.FromRecipe(recipe, UiDragSourceKind.CraftRecipeSlot);
+            payload = UIDragPayload.FromRecipe(recipe, UIDragSourceKind.CraftRecipeSlot);
             return true;
         }
 

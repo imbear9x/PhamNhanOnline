@@ -10,7 +10,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.Inventory
 {
     public sealed class InventoryItemSlotView : LoopScrollViewItem,
-        IUiDragPayloadSource,
+        IUIDragPayloadSource,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerDownHandler,
@@ -186,11 +186,11 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (!hasItem)
                 return;
 
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager != null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
             {
-                modalUiManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
-                modalUiManager.HideItemTooltip(this, force: true);
+                modalUIManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
+                modalUIManager.HideItemTooltip(this, force: true);
             }
         }
 
@@ -215,12 +215,12 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (!hasItem)
                 return;
 
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager != null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
             {
-                modalUiManager.HideInventoryItemOptionsPopup(force: true);
-                modalUiManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
-                modalUiManager.HideItemTooltip(this, force: true);
+                modalUIManager.HideInventoryItemOptionsPopup(force: true);
+                modalUIManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
+                modalUIManager.HideItemTooltip(this, force: true);
             }
 
             canvasGroup.blocksRaycasts = false;
@@ -241,15 +241,15 @@ namespace PhamNhanOnline.Client.UI.Inventory
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager != null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
             {
-                modalUiManager.SetItemTooltipSuppressed(this, suppressed: false);
-                modalUiManager.HideItemTooltip(this, force: true);
+                modalUIManager.SetItemTooltipSuppressed(this, suppressed: false);
+                modalUIManager.HideItemTooltip(this, force: true);
             }
         }
 
-        public bool TryCreateDragPayload(out UiDragPayload payload)
+        public bool TryCreateDragPayload(out UIDragPayload payload)
         {
             if (!hasItem)
             {
@@ -257,7 +257,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 return false;
             }
 
-            payload = UiDragPayload.FromInventoryItem(item, UiDragSourceKind.InventoryGridItem);
+            payload = UIDragPayload.FromInventoryItem(item, UIDragSourceKind.InventoryGridItem);
             return true;
         }
 

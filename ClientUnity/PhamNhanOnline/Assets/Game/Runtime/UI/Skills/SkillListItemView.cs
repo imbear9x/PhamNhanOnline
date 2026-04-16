@@ -10,7 +10,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.Skills
 {
     public sealed class SkillListItemView : MonoBehaviour,
-        IUiDragPayloadSource,
+        IUIDragPayloadSource,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerClickHandler,
@@ -167,7 +167,7 @@ namespace PhamNhanOnline.Client.UI.Skills
             ResetDragVisuals();
         }
 
-        public bool TryCreateDragPayload(out UiDragPayload payload)
+        public bool TryCreateDragPayload(out UIDragPayload payload)
         {
             if (!hasItem)
             {
@@ -175,7 +175,7 @@ namespace PhamNhanOnline.Client.UI.Skills
                 return false;
             }
 
-            payload = UiDragPayload.FromSkill(item, UiDragSourceKind.SkillListItem);
+            payload = UIDragPayload.FromSkill(item, UIDragSourceKind.SkillListItem);
             return true;
         }
 

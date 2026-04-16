@@ -97,10 +97,10 @@ namespace PhamNhanOnline.Client.UI.Crafting
             if (interactionLocked)
                 return;
 
-            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
-                payload.Kind != UiDragPayloadKind.InventoryItem ||
+            if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UIDragPayloadKind.InventoryItem ||
                 !payload.HasInventoryItem ||
-                payload.SourceKind != UiDragSourceKind.InventoryGridItem)
+                payload.SourceKind != UIDragSourceKind.InventoryGridItem)
             {
                 return;
             }

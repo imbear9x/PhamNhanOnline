@@ -10,7 +10,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.MartialArts
 {
     public sealed class MartialArtListItemView : MonoBehaviour,
-        IUiDragPayloadSource,
+        IUIDragPayloadSource,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerClickHandler,
@@ -160,9 +160,9 @@ namespace PhamNhanOnline.Client.UI.MartialArts
 
         public void OnDrop(PointerEventData eventData)
         {
-            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
-                payload.Kind != UiDragPayloadKind.MartialArt ||
-                payload.SourceKind != UiDragSourceKind.ActiveMartialArtSlot ||
+            if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UIDragPayloadKind.MartialArt ||
+                payload.SourceKind != UIDragSourceKind.ActiveMartialArtSlot ||
                 !payload.HasMartialArt)
             {
                 return;
@@ -194,7 +194,7 @@ namespace PhamNhanOnline.Client.UI.MartialArts
             ResetDragVisuals();
         }
 
-        public bool TryCreateDragPayload(out UiDragPayload payload)
+        public bool TryCreateDragPayload(out UIDragPayload payload)
         {
             if (!hasItem)
             {
@@ -202,7 +202,7 @@ namespace PhamNhanOnline.Client.UI.MartialArts
                 return false;
             }
 
-            payload = UiDragPayload.FromMartialArt(item, UiDragSourceKind.MartialArtListItem);
+            payload = UIDragPayload.FromMartialArt(item, UIDragSourceKind.MartialArtListItem);
             return true;
         }
 

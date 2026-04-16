@@ -395,7 +395,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                                 currentState.Value.CurrentState == CultivatingStateCode;
             var isPracticing = currentState.HasValue &&
                                currentState.Value.CurrentState == PracticingStateCode;
-            var isMenuOpen = WorldUiController.IsAnyMenuOpen;
+            var isMenuOpen = WorldUIController.IsAnyMenuOpen;
             var isRecoveryBlocked = ClientRuntime.ConnectionRecovery != null &&
                                     ClientRuntime.ConnectionRecovery.ShouldBlockGameplayInput;
             var shouldBlock = isDefeated ||

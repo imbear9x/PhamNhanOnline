@@ -26,7 +26,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
         private sealed class RuntimeOptionButton
         {
             public GameObject Root;
-            public UiButtonView Button;
+            public UIButtonView Button;
             public TMP_Text Label;
             public Action ClickAction;
 
@@ -123,7 +123,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 for (var i = 0; i < texts.Length; i++)
                 {
                     var text = texts[i];
-                    if (text == null || text.GetComponentInParent<UiButtonView>(true) != null)
+                    if (text == null || text.GetComponentInParent<UIButtonView>(true) != null)
                         continue;
 
                     titleText = text;
@@ -133,7 +133,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
             if (optionTemplate == null)
             {
-                var firstButton = panelRoot.GetComponentInChildren<UiButtonView>(true);
+                var firstButton = panelRoot.GetComponentInChildren<UIButtonView>(true);
                 if (firstButton != null)
                     optionTemplate = firstButton.gameObject;
             }
@@ -183,7 +183,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 buttonObject.name = $"{optionTemplate.name}_{runtimeButtons.Count}";
                 buttonObject.SetActive(true);
 
-                var buttonView = buttonObject.GetComponent<UiButtonView>();
+                var buttonView = buttonObject.GetComponent<UIButtonView>();
                 var label = buttonObject.GetComponentInChildren<TMP_Text>(true);
                 var runtimeButton = new RuntimeOptionButton
                 {

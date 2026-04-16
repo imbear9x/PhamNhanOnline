@@ -25,9 +25,9 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             previewPlayerItemId = item.PlayerItemId;
-            var modalUiManager = WorldModalUIManager.Instance;
+            var modalUIManager = WorldModalUIManager.Instance;
 
-            if (modalUiManager != null && modalUiManager.IsInventoryItemOptionsPopupVisible && popupPlayerItemId == item.PlayerItemId)
+            if (modalUIManager != null && modalUIManager.IsInventoryItemOptionsPopupVisible && popupPlayerItemId == item.PlayerItemId)
             {
                 HideItemOptionsPopup();
                 ApplyPreviewSelectionState(force: true);
@@ -101,8 +101,8 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ShowItemOptions(InventoryItemModel item)
         {
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager == null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager == null)
                 return;
 
             var options = BuildItemOptions(item);
@@ -114,9 +114,9 @@ namespace PhamNhanOnline.Client.UI.World
 
             popupPlayerItemId = item.PlayerItemId;
             previewPlayerItemId = item.PlayerItemId;
-            modalUiManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
-            modalUiManager.HideItemTooltip(force: true);
-            modalUiManager.ShowInventoryItemOptionsPopup(
+            modalUIManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
+            modalUIManager.HideItemTooltip(force: true);
+            modalUIManager.ShowInventoryItemOptionsPopup(
                 inventoryPanelBounds != null ? inventoryPanelBounds : transform as RectTransform,
                 item.Name,
                 options,
@@ -279,8 +279,8 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ShowQuantityPopup(InventoryItemModel item, QuantityPopupAction action)
         {
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager == null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager == null)
             {
                 if (action == QuantityPopupAction.Drop)
                     _ = DropItemAsync(item.PlayerItemId, 1);
@@ -292,7 +292,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             quantityPopupPlayerItemId = item.PlayerItemId;
             quantityPopupAction = action;
-            modalUiManager.ShowQuantityPopup(
+            modalUIManager.ShowQuantityPopup(
                 Mathf.Max(1, item.Quantity),
                 HandleQuantityConfirmed,
                 HandleQuantityCancelled,
@@ -308,8 +308,8 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void UpdateQuantityPopupVisibility()
         {
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager == null || !modalUiManager.IsQuantityPopupVisible)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager == null || !modalUIManager.IsQuantityPopupVisible)
                 return;
 
             if (!quantityPopupPlayerItemId.HasValue ||
@@ -530,11 +530,11 @@ namespace PhamNhanOnline.Client.UI.World
             popupPlayerItemId = null;
             previewPlayerItemId = null;
             WorldModalUIManager.Instance?.HideInventoryItemOptionsPopup(force);
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager != null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
             {
-                modalUiManager.SetItemTooltipSuppressed(this, suppressed: false, force: true);
-                modalUiManager.HideItemTooltip(force: true);
+                modalUIManager.SetItemTooltipSuppressed(this, suppressed: false, force: true);
+                modalUIManager.HideItemTooltip(force: true);
             }
 
             ApplyPreviewSelectionState(force: true);

@@ -31,12 +31,12 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void Awake()
         {
-            BindUi();
+            BindUI();
         }
 
         private void OnDestroy()
         {
-            UnbindUi();
+            UnbindUI();
         }
 
         public void Show(
@@ -79,7 +79,7 @@ namespace PhamNhanOnline.Client.UI.World
             SetVisible(false);
         }
 
-        private void BindUi()
+        private void BindUI()
         {
             if (quantitySlider != null)
                 quantitySlider.onValueChanged.AddListener(HandleSliderValueChanged);
@@ -93,7 +93,7 @@ namespace PhamNhanOnline.Client.UI.World
                 dimmerButton.onClick.AddListener(HandleCancelClicked);
         }
 
-        private void UnbindUi()
+        private void UnbindUI()
         {
             if (quantitySlider != null)
                 quantitySlider.onValueChanged.RemoveListener(HandleSliderValueChanged);

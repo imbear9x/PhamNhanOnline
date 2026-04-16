@@ -110,13 +110,13 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
                 return;
 
             var targetScreenId = enabled ? CreateCharacterScreenId : LoginScreenId;
-            if (!ClientRuntime.UiScreens.IsRegistered(targetScreenId))
+            if (!ClientRuntime.UIScreens.IsRegistered(targetScreenId))
             {
-                ClientLog.Warn($"Screen '{targetScreenId}' is not registered in UiScreenService.");
+                ClientLog.Warn($"Screen '{targetScreenId}' is not registered in UIScreenService.");
                 return;
             }
 
-            ClientRuntime.UiScreens.ShowOnly(targetScreenId);
+            ClientRuntime.UIScreens.ShowOnly(targetScreenId);
         }
 
         private void SetStatus(string message)

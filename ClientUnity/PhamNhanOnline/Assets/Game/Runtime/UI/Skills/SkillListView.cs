@@ -106,9 +106,9 @@ namespace PhamNhanOnline.Client.UI.Skills
 
         public void OnDrop(PointerEventData eventData)
         {
-            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
-                payload.Kind != UiDragPayloadKind.Skill ||
-                payload.SourceKind != UiDragSourceKind.SkillLoadoutSlot ||
+            if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UIDragPayloadKind.Skill ||
+                payload.SourceKind != UIDragSourceKind.SkillLoadoutSlot ||
                 !payload.HasSkill)
             {
                 return;

@@ -10,7 +10,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.Crafting
 {
     public sealed class CraftRecipeListItemView : LoopScrollViewItem,
-        IUiDragPayloadSource,
+        IUIDragPayloadSource,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerClickHandler,
@@ -148,7 +148,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
             ResetDragVisuals();
         }
 
-        public bool TryCreateDragPayload(out UiDragPayload payload)
+        public bool TryCreateDragPayload(out UIDragPayload payload)
         {
             if (!hasRecipe)
             {
@@ -156,7 +156,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 return false;
             }
 
-            payload = UiDragPayload.FromRecipe(recipe, UiDragSourceKind.CraftRecipeListItem);
+            payload = UIDragPayload.FromRecipe(recipe, UIDragSourceKind.CraftRecipeListItem);
             return true;
         }
 

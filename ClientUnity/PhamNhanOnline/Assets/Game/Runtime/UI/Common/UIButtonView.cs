@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Common
 {
-    public sealed class UiButtonView : MonoBehaviour,
+    public sealed class UIButtonView : MonoBehaviour,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerDownHandler,

@@ -131,9 +131,9 @@ namespace PhamNhanOnline.Client.UI.MartialArts
 
         public void OnDrop(PointerEventData eventData)
         {
-            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
-                payload.Kind != UiDragPayloadKind.MartialArt ||
-                payload.SourceKind != UiDragSourceKind.ActiveMartialArtSlot ||
+            if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UIDragPayloadKind.MartialArt ||
+                payload.SourceKind != UIDragSourceKind.ActiveMartialArtSlot ||
                 !payload.HasMartialArt)
             {
                 return;

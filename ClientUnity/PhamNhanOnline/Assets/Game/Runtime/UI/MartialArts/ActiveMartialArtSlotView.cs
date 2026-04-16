@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.MartialArts
 {
-    public sealed class ActiveMartialArtSlotView : MonoBehaviour, IUiDragPayloadSource, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+    public sealed class ActiveMartialArtSlotView : MonoBehaviour, IUIDragPayloadSource, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         [Header("References")]
         [SerializeField] private Image iconImage;
@@ -73,9 +73,9 @@ namespace PhamNhanOnline.Client.UI.MartialArts
 
         public void OnDrop(PointerEventData eventData)
         {
-            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
-                payload.Kind != UiDragPayloadKind.MartialArt ||
-                payload.SourceKind != UiDragSourceKind.MartialArtListItem ||
+            if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UIDragPayloadKind.MartialArt ||
+                payload.SourceKind != UIDragSourceKind.MartialArtListItem ||
                 !payload.HasMartialArt)
             {
                 return;
@@ -107,7 +107,7 @@ namespace PhamNhanOnline.Client.UI.MartialArts
             ResetDragVisuals();
         }
 
-        public bool TryCreateDragPayload(out UiDragPayload payload)
+        public bool TryCreateDragPayload(out UIDragPayload payload)
         {
             if (!hasItem)
             {
@@ -115,7 +115,7 @@ namespace PhamNhanOnline.Client.UI.MartialArts
                 return false;
             }
 
-            payload = UiDragPayload.FromMartialArt(item, UiDragSourceKind.ActiveMartialArtSlot);
+            payload = UIDragPayload.FromMartialArt(item, UIDragSourceKind.ActiveMartialArtSlot);
             return true;
         }
 

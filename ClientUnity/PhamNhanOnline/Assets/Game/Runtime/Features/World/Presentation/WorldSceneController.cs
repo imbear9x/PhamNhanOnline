@@ -31,7 +31,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         public Transform MapRoot { get { return mapRoot; } }
         public Transform EntitiesRoot { get { return entitiesRoot; } }
-        public Transform WorldUiRoot { get { return worldUiRoot; } }
+        public Transform WorldUIRoot { get { return worldUiRoot; } }
         public Camera WorldCamera { get { return worldCamera; } }
         public WorldMapPresenter WorldMapPresenter { get { return worldMapPresenter; } }
         public WorldSceneReadinessService WorldSceneReadinessService { get { return worldSceneReadinessService; } }
@@ -242,7 +242,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             if ((mapRoot == null || entitiesRoot == null || worldUiRoot == null) && !loggedMissingSceneRoots)
             {
-                ClientLog.Error("WorldSceneController is missing one or more scene roots: MapRoot, EntitiesRoot, or WorldUiRoot.");
+                ClientLog.Error("WorldSceneController is missing one or more scene roots: MapRoot, EntitiesRoot, or WorldUIRoot.");
                 loggedMissingSceneRoots = true;
             }
 

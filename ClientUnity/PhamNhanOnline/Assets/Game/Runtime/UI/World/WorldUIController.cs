@@ -24,9 +24,9 @@ namespace PhamNhanOnline.Client.UI.World
     }
 
     [DisallowMultipleComponent]
-    public sealed class WorldUiController : MonoBehaviour
+    public sealed class WorldUIController : MonoBehaviour
     {
-        public static WorldUiController Instance { get; private set; }
+        public static WorldUIController Instance { get; private set; }
         public static bool IsAnyMenuOpen => Instance != null && Instance.IsMenuVisible;
 
         [Header("World Panels")]
@@ -48,7 +48,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (Instance != null && Instance != this)
             {
                 Debug.LogWarning(
-                    $"Duplicate WorldUiController detected on '{gameObject.name}'. " +
+                    $"Duplicate WorldUIController detected on '{gameObject.name}'. " +
                     $"Keeping '{Instance.gameObject.name}' and disabling this component.");
                 enabled = false;
                 return;
@@ -104,7 +104,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (worldCraftingPanelController == null)
             {
-                Debug.LogError($"WorldUiController on '{gameObject.name}' is missing required reference '{nameof(worldCraftingPanelController)}'.");
+                Debug.LogError($"WorldUIController on '{gameObject.name}' is missing required reference '{nameof(worldCraftingPanelController)}'.");
                 return false;
             }
 
@@ -131,7 +131,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (worldCraftingPanelController == null)
             {
-                Debug.LogError($"WorldUiController on '{gameObject.name}' is missing required reference '{nameof(worldCraftingPanelController)}'.");
+                Debug.LogError($"WorldUIController on '{gameObject.name}' is missing required reference '{nameof(worldCraftingPanelController)}'.");
                 return false;
             }
 
@@ -195,7 +195,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (worldCraftingPanelController == null)
             {
                 throw new System.InvalidOperationException(
-                    $"WorldUiController on '{gameObject.name}' is missing required reference '{nameof(worldCraftingPanelController)}'.");
+                    $"WorldUIController on '{gameObject.name}' is missing required reference '{nameof(worldCraftingPanelController)}'.");
             }
         }
     }

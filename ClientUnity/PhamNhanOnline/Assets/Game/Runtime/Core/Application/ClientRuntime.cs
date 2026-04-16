@@ -56,7 +56,7 @@ namespace PhamNhanOnline.Client.Core.Application
         public static ClientGroundRewardService GroundRewardService { get; private set; }
         public static ClientWorldTravelService WorldTravelService { get; private set; }
         public static ClientLoginFlowService LoginFlow { get; private set; }
-        public static UiScreenService UiScreens { get; private set; }
+        public static UIScreenService UIScreens { get; private set; }
 
         public static void Initialize(ClientBootstrapSettings settings)
         {
@@ -84,7 +84,7 @@ namespace PhamNhanOnline.Client.Core.Application
             PresentationReplication = new ClientPresentationReplicationState();
             Target = new ClientTargetState();
             World = new ClientWorldState();
-            UiScreens = new UiScreenService();
+            UIScreens = new UIScreenService();
             AuthService = new ClientAuthService(Connection, Auth);
             CharacterService = new ClientCharacterService(Connection, Character);
             CombatDeathRecoveryService = new ClientCombatDeathRecoveryService(Connection, Character);

@@ -1409,8 +1409,8 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ShowCraftCountPopup(PillRecipeDetailModel detail, AlchemyCraftPreviewModel preview, int maxCraftableCount)
         {
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager == null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager == null)
             {
                 _ = StartCraftAsync(detail.PillRecipeTemplateId, maxCraftableCount);
                 return;
@@ -1418,7 +1418,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             quantityPopupMode = QuantityPopupMode.CraftCount;
             quantityPopupInputId = null;
-            modalUiManager.ShowQuantityPopup(
+            modalUIManager.ShowQuantityPopup(
                 Mathf.Max(1, maxCraftableCount),
                 HandleQuantityPopupConfirmed,
                 HandleQuantityPopupCancelled,
@@ -1430,8 +1430,8 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ShowOptionalInputQuantityPopup(PillRecipeInputModel input, AlchemyCraftDraftState.SelectionSnapshot selection)
         {
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager == null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager == null)
                 return;
 
             quantityPopupMode = QuantityPopupMode.OptionalInputQuantity;
@@ -1439,7 +1439,7 @@ namespace PhamNhanOnline.Client.UI.World
             var maxQuantity = Math.Max(
                 Math.Max(0, selection.AssignedQuantity),
                 Math.Max(0, selection.AssignedQuantity) + ResolveInventoryQuantity(input.RequiredItem.ItemTemplateId));
-            modalUiManager.ShowQuantityPopup(
+            modalUIManager.ShowQuantityPopup(
                 Mathf.Max(1, maxQuantity),
                 HandleQuantityPopupConfirmed,
                 HandleQuantityPopupCancelled,

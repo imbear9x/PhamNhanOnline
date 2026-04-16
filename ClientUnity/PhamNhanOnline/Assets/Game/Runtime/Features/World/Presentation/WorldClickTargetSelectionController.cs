@@ -117,7 +117,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             string uiBlockReason;
-            if (ShouldBlockClickBecauseOfUi(out uiBlockReason))
+            if (ShouldBlockClickBecauseOfUI(out uiBlockReason))
             {
                 WorldTravelDebugController.AppendExternalCharacterStatsDebugLine(uiBlockReason);
                 return;
@@ -526,7 +526,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return bestTargetable;
         }
 
-        private bool ShouldBlockClickBecauseOfUi(out string reason)
+        private bool ShouldBlockClickBecauseOfUI(out string reason)
         {
             reason = string.Empty;
             if (!blockClicksWhenPointerIsOverInteractiveUi || EventSystem.current == null)
@@ -552,7 +552,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             for (var i = 0; i < uiRaycastResults.Count; i++)
             {
                 var uiObject = uiRaycastResults[i].gameObject;
-                if (!IsInteractiveUi(uiObject))
+                if (!IsInteractiveUI(uiObject))
                     continue;
 
                 blockingNames.Add(uiObject.name);
@@ -565,7 +565,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return true;
         }
 
-        private static bool IsInteractiveUi(GameObject uiObject)
+        private static bool IsInteractiveUI(GameObject uiObject)
         {
             if (uiObject == null)
                 return false;

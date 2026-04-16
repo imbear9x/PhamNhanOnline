@@ -116,7 +116,7 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             if (isRegistered && ClientRuntime.IsInitialized)
-                ClientRuntime.UiScreens.Unregister(ScreenId, panelRoot);
+                ClientRuntime.UIScreens.Unregister(ScreenId, panelRoot);
 
             UnbindRuntimeEvents();
             if (activeInstance == this)
@@ -169,7 +169,7 @@ namespace PhamNhanOnline.Client.UI.World
             }
         }
 
-        private void WireUi()
+        private void WireUI()
         {
             if (closeButton != null)
             {
@@ -207,7 +207,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (panelRoot == null)
                 panelRoot = gameObject;
 
-            WireUi();
+            WireUI();
             RefreshAllTabContent();
 
             activeTabId = ResolveInitialTabId();
@@ -223,7 +223,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (isRegistered || !ClientRuntime.IsInitialized)
                 return;
 
-            ClientRuntime.UiScreens.Register(ScreenId, panelRoot != null ? panelRoot : gameObject);
+            ClientRuntime.UIScreens.Register(ScreenId, panelRoot != null ? panelRoot : gameObject);
             isRegistered = true;
         }
 

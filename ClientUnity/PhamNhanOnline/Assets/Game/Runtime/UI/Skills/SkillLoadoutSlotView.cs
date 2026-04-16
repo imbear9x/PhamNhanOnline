@@ -8,7 +8,7 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Skills
 {
-    public sealed class SkillLoadoutSlotView : MonoBehaviour, IUiDragPayloadSource, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+    public sealed class SkillLoadoutSlotView : MonoBehaviour, IUIDragPayloadSource, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         [Header("References")]
         [SerializeField] private Image iconImage;
@@ -102,20 +102,20 @@ namespace PhamNhanOnline.Client.UI.Skills
 
         public void OnDrop(PointerEventData eventData)
         {
-            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
-                payload.Kind != UiDragPayloadKind.Skill ||
+            if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UIDragPayloadKind.Skill ||
                 !payload.HasSkill)
             {
                 return;
             }
 
-            if (payload.SourceKind != UiDragSourceKind.SkillListItem &&
-                payload.SourceKind != UiDragSourceKind.SkillLoadoutSlot)
+            if (payload.SourceKind != UIDragSourceKind.SkillListItem &&
+                payload.SourceKind != UIDragSourceKind.SkillLoadoutSlot)
             {
                 return;
             }
 
-            if (payload.SourceKind == UiDragSourceKind.SkillLoadoutSlot &&
+            if (payload.SourceKind == UIDragSourceKind.SkillLoadoutSlot &&
                 payload.HasSourceIndex &&
                 payload.SourceIndex == slotIndex)
             {
@@ -146,7 +146,7 @@ namespace PhamNhanOnline.Client.UI.Skills
             ResetDragVisuals();
         }
 
-        public bool TryCreateDragPayload(out UiDragPayload payload)
+        public bool TryCreateDragPayload(out UIDragPayload payload)
         {
             if (!hasItem)
             {
@@ -154,7 +154,7 @@ namespace PhamNhanOnline.Client.UI.Skills
                 return false;
             }
 
-            payload = UiDragPayload.FromSkill(item, UiDragSourceKind.SkillLoadoutSlot, slotIndex);
+            payload = UIDragPayload.FromSkill(item, UIDragSourceKind.SkillLoadoutSlot, slotIndex);
             return true;
         }
 

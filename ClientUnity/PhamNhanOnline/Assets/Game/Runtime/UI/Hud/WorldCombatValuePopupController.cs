@@ -297,7 +297,7 @@ namespace PhamNhanOnline.Client.UI.Hud
                 localPlayerPresenter = worldSceneController.WorldLocalPlayerPresenter;
 
             if (popupRoot == null && worldSceneController != null)
-                popupRoot = worldSceneController.WorldUiRoot != null ? worldSceneController.WorldUiRoot : transform;
+                popupRoot = worldSceneController.WorldUIRoot != null ? worldSceneController.WorldUIRoot : transform;
         }
 
         private static string FormatSignedValue(int delta, bool includePlusSign, string suffix)

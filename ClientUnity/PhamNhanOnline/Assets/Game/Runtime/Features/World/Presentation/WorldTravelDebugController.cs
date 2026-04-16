@@ -103,7 +103,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             RefreshPotentialPreviewText(force: false);
             RefreshRewardTextFromCachedState();
 
-            if (WorldUiController.IsAnyMenuOpen)
+            if (WorldUIController.IsAnyMenuOpen)
                 return;
 
             if (WasCultivationTogglePressed() && !cultivationToggleInFlight)

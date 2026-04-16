@@ -9,7 +9,7 @@ using UnityEngine.UI;
 namespace PhamNhanOnline.Client.UI.Inventory
 {
     public sealed class EquipmentSlotView : MonoBehaviour,
-        IUiDragPayloadSource,
+        IUIDragPayloadSource,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerDownHandler,
@@ -127,11 +127,11 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (!hasItem)
                 return;
 
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager != null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
             {
-                modalUiManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
-                modalUiManager.HideItemTooltip(this, force: true);
+                modalUIManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
+                modalUIManager.HideItemTooltip(this, force: true);
             }
         }
 
@@ -160,12 +160,12 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (!hasItem)
                 return;
 
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager != null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
             {
-                modalUiManager.HideInventoryItemOptionsPopup(force: true);
-                modalUiManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
-                modalUiManager.HideItemTooltip(this, force: true);
+                modalUIManager.HideInventoryItemOptionsPopup(force: true);
+                modalUIManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
+                modalUIManager.HideItemTooltip(this, force: true);
             }
 
             canvasGroup.blocksRaycasts = false;
@@ -186,11 +186,11 @@ namespace PhamNhanOnline.Client.UI.Inventory
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
-            var modalUiManager = WorldModalUIManager.Instance;
-            if (modalUiManager != null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
             {
-                modalUiManager.SetItemTooltipSuppressed(this, suppressed: false);
-                modalUiManager.HideItemTooltip(this, force: true);
+                modalUIManager.SetItemTooltipSuppressed(this, suppressed: false);
+                modalUIManager.HideItemTooltip(this, force: true);
             }
         }
 
@@ -198,10 +198,10 @@ namespace PhamNhanOnline.Client.UI.Inventory
         {
             SetDragSelectionVisible(false);
 
-            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
-                payload.Kind != UiDragPayloadKind.InventoryItem ||
+            if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UIDragPayloadKind.InventoryItem ||
                 !payload.HasInventoryItem ||
-                payload.SourceKind != UiDragSourceKind.InventoryGridItem)
+                payload.SourceKind != UIDragSourceKind.InventoryGridItem)
             {
                 return;
             }
@@ -215,7 +215,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 handler(this, droppedItem);
         }
 
-        public bool TryCreateDragPayload(out UiDragPayload payload)
+        public bool TryCreateDragPayload(out UIDragPayload payload)
         {
             if (!hasItem)
             {
@@ -223,7 +223,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 return false;
             }
 
-            payload = UiDragPayload.FromInventoryItem(item, UiDragSourceKind.EquipmentSlot, slotType);
+            payload = UIDragPayload.FromInventoryItem(item, UIDragSourceKind.EquipmentSlot, slotType);
             return true;
         }
 
@@ -261,10 +261,10 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         private bool IsValidDraggedInventoryItem(Transform dragTransform)
         {
-            if (!UiDragPayloadResolver.TryResolve(dragTransform, out var payload) ||
-                payload.Kind != UiDragPayloadKind.InventoryItem ||
+            if (!UIDragPayloadResolver.TryResolve(dragTransform, out var payload) ||
+                payload.Kind != UIDragPayloadKind.InventoryItem ||
                 !payload.HasInventoryItem ||
-                payload.SourceKind != UiDragSourceKind.InventoryGridItem)
+                payload.SourceKind != UIDragSourceKind.InventoryGridItem)
             {
                 return false;
             }

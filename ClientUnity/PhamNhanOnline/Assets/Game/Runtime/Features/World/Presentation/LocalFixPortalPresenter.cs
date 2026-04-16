@@ -112,9 +112,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!ClientRuntime.IsInitialized)
                 return;
 
-            if (WorldUiController.Instance != null)
+            if (WorldUIController.Instance != null)
             {
-                WorldUiController.Instance.ShowCraftingPanel(stationType, panelTitleOverride);
+                WorldUIController.Instance.ShowCraftingPanel(stationType, panelTitleOverride);
                 return;
             }
         }

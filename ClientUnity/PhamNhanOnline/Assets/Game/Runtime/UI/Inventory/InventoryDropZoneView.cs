@@ -13,9 +13,9 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public void OnDrop(PointerEventData eventData)
         {
-            if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
-                payload.Kind != UiDragPayloadKind.InventoryItem ||
-                payload.SourceKind != UiDragSourceKind.EquipmentSlot ||
+            if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
+                payload.Kind != UIDragPayloadKind.InventoryItem ||
+                payload.SourceKind != UIDragSourceKind.EquipmentSlot ||
                 !payload.HasSourceEquipmentSlot)
             {
                 return;

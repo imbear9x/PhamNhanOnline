@@ -5,7 +5,7 @@ using UnityEngine.EventSystems;
 
 namespace PhamNhanOnline.Client.UI.Common
 {
-    public enum UiDragPayloadKind
+    public enum UIDragPayloadKind
     {
         None = 0,
         InventoryItem = 1,
@@ -14,7 +14,7 @@ namespace PhamNhanOnline.Client.UI.Common
         MartialArt = 4,
     }
 
-    public enum UiDragSourceKind
+    public enum UIDragSourceKind
     {
         None = 0,
         InventoryGridItem = 1,
@@ -27,16 +27,16 @@ namespace PhamNhanOnline.Client.UI.Common
         ActiveMartialArtSlot = 8,
     }
 
-    public interface IUiDragPayloadSource
+    public interface IUIDragPayloadSource
     {
-        bool TryCreateDragPayload(out UiDragPayload payload);
+        bool TryCreateDragPayload(out UIDragPayload payload);
     }
 
-    public readonly struct UiDragPayload
+    public readonly struct UIDragPayload
     {
-        private UiDragPayload(
-            UiDragPayloadKind kind,
-            UiDragSourceKind sourceKind,
+        private UIDragPayload(
+            UIDragPayloadKind kind,
+            UIDragSourceKind sourceKind,
             InventoryItemModel inventoryItem,
             bool hasInventoryItem,
             LearnedPillRecipeModel recipe,
@@ -66,8 +66,8 @@ namespace PhamNhanOnline.Client.UI.Common
             HasSourceIndex = hasSourceIndex;
         }
 
-        public UiDragPayloadKind Kind { get; }
-        public UiDragSourceKind SourceKind { get; }
+        public UIDragPayloadKind Kind { get; }
+        public UIDragSourceKind SourceKind { get; }
         public InventoryItemModel InventoryItem { get; }
         public bool HasInventoryItem { get; }
         public LearnedPillRecipeModel Recipe { get; }
@@ -81,13 +81,13 @@ namespace PhamNhanOnline.Client.UI.Common
         public int SourceIndex { get; }
         public bool HasSourceIndex { get; }
 
-        public static UiDragPayload FromInventoryItem(
+        public static UIDragPayload FromInventoryItem(
             InventoryItemModel inventoryItem,
-            UiDragSourceKind sourceKind,
+            UIDragSourceKind sourceKind,
             InventoryEquipmentSlot? sourceEquipmentSlot = null)
         {
-            return new UiDragPayload(
-                UiDragPayloadKind.InventoryItem,
+            return new UIDragPayload(
+                UIDragPayloadKind.InventoryItem,
                 sourceKind,
                 inventoryItem,
                 hasInventoryItem: true,
@@ -103,10 +103,10 @@ namespace PhamNhanOnline.Client.UI.Common
                 hasSourceIndex: false);
         }
 
-        public static UiDragPayload FromRecipe(LearnedPillRecipeModel recipe, UiDragSourceKind sourceKind)
+        public static UIDragPayload FromRecipe(LearnedPillRecipeModel recipe, UIDragSourceKind sourceKind)
         {
-            return new UiDragPayload(
-                UiDragPayloadKind.Recipe,
+            return new UIDragPayload(
+                UIDragPayloadKind.Recipe,
                 sourceKind,
                 default,
                 hasInventoryItem: false,
@@ -122,10 +122,10 @@ namespace PhamNhanOnline.Client.UI.Common
                 hasSourceIndex: false);
         }
 
-        public static UiDragPayload FromSkill(PlayerSkillModel skill, UiDragSourceKind sourceKind, int? sourceIndex = null)
+        public static UIDragPayload FromSkill(PlayerSkillModel skill, UIDragSourceKind sourceKind, int? sourceIndex = null)
         {
-            return new UiDragPayload(
-                UiDragPayloadKind.Skill,
+            return new UIDragPayload(
+                UIDragPayloadKind.Skill,
                 sourceKind,
                 default,
                 hasInventoryItem: false,
@@ -141,10 +141,10 @@ namespace PhamNhanOnline.Client.UI.Common
                 sourceIndex.HasValue);
         }
 
-        public static UiDragPayload FromMartialArt(PlayerMartialArtModel martialArt, UiDragSourceKind sourceKind)
+        public static UIDragPayload FromMartialArt(PlayerMartialArtModel martialArt, UIDragSourceKind sourceKind)
         {
-            return new UiDragPayload(
-                UiDragPayloadKind.MartialArt,
+            return new UIDragPayload(
+                UIDragPayloadKind.MartialArt,
                 sourceKind,
                 default,
                 hasInventoryItem: false,
@@ -161,9 +161,9 @@ namespace PhamNhanOnline.Client.UI.Common
         }
     }
 
-    public static class UiDragPayloadResolver
+    public static class UIDragPayloadResolver
     {
-        public static bool TryResolve(PointerEventData eventData, out UiDragPayload payload)
+        public static bool TryResolve(PointerEventData eventData, out UIDragPayload payload)
         {
             if (eventData == null || eventData.pointerDrag == null)
             {
@@ -174,14 +174,14 @@ namespace PhamNhanOnline.Client.UI.Common
             return TryResolve(eventData.pointerDrag.transform, out payload);
         }
 
-        public static bool TryResolve(Transform transform, out UiDragPayload payload)
+        public static bool TryResolve(Transform transform, out UIDragPayload payload)
         {
             while (transform != null)
             {
                 var components = transform.GetComponents<MonoBehaviour>();
                 for (var i = 0; i < components.Length; i++)
                 {
-                    if (!(components[i] is IUiDragPayloadSource source))
+                    if (!(components[i] is IUIDragPayloadSource source))
                         continue;
 
                     if (source.TryCreateDragPayload(out payload))

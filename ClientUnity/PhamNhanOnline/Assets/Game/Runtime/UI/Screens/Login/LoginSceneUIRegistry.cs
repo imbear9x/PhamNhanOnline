@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.Screens.Login
 {
-    public sealed class LoginSceneUiRegistry : MonoBehaviour
+    public sealed class LoginSceneUIRegistry : MonoBehaviour
     {
         private const string LoginScreenId = "login";
         private const string CreateCharacterScreenId = "create-character";
@@ -35,15 +35,15 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
 
             if (!ClientRuntime.IsInitialized)
             {
-                ClientLog.Warn("LoginSceneUiRegistry could not register screens before ClientRuntime initialization.");
+                ClientLog.Warn("LoginSceneUIRegistry could not register screens before ClientRuntime initialization.");
                 return;
             }
 
             if (loginPanelRoot != null)
-                ClientRuntime.UiScreens.Register(LoginScreenId, loginPanelRoot);
+                ClientRuntime.UIScreens.Register(LoginScreenId, loginPanelRoot);
 
             if (createCharacterPanelRoot != null)
-                ClientRuntime.UiScreens.Register(CreateCharacterScreenId, createCharacterPanelRoot);
+                ClientRuntime.UIScreens.Register(CreateCharacterScreenId, createCharacterPanelRoot);
 
             registered = true;
         }
@@ -53,8 +53,8 @@ namespace PhamNhanOnline.Client.UI.Screens.Login
             if (!registered || !ClientRuntime.IsInitialized)
                 return;
 
-            ClientRuntime.UiScreens.Unregister(LoginScreenId, loginPanelRoot);
-            ClientRuntime.UiScreens.Unregister(CreateCharacterScreenId, createCharacterPanelRoot);
+            ClientRuntime.UIScreens.Unregister(LoginScreenId, loginPanelRoot);
+            ClientRuntime.UIScreens.Unregister(CreateCharacterScreenId, createCharacterPanelRoot);
             registered = false;
         }
     }
