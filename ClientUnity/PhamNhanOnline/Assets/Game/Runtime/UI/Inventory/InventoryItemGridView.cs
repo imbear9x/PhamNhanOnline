@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using GameShared.Models;
 using PhamNhanOnline.Client.UI.Common;
+using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.Inventory
@@ -11,7 +12,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
     {
         [Header("References")]
         [SerializeField] private LoopGridView loopGridView;
-        [SerializeField] private InventoryItemTooltipView itemTooltipView;
 
         private readonly HashSet<InventoryItemSlotView> subscribedItems = new HashSet<InventoryItemSlotView>();
         private IReadOnlyList<InventoryItemModel> items = Array.Empty<InventoryItemModel>();
@@ -19,13 +19,9 @@ namespace PhamNhanOnline.Client.UI.Inventory
         private int lastItemCount = -1;
         private string lastSnapshot = string.Empty;
         private long? selectedPlayerItemId;
-        private long? activeTooltipPlayerItemId;
-        private bool tooltipSuppressed;
         private bool loopInitialized;
 
         public event Action<InventoryItemModel> ItemClicked;
-        public event Action<InventoryItemModel> ItemHovered;
-        public event Action ItemHoverExited;
 
         private void Awake()
         {
@@ -56,9 +52,9 @@ namespace PhamNhanOnline.Client.UI.Inventory
             lastSnapshot = snapshot;
 
             EnsureLoopInitialized();
+            WorldModalUIManager.Instance?.HideItemTooltip(force: true);
             loopGridView.SetListItemCount(items.Count, keepPosition: true);
             loopGridView.RefreshAllShownItem();
-            RefreshTooltip(force: true);
         }
 
         public void SetSelectedItem(long? playerItemId, bool force = false)
@@ -77,32 +73,11 @@ namespace PhamNhanOnline.Client.UI.Inventory
             lastItemCount = 0;
             lastSnapshot = string.Empty;
             selectedPlayerItemId = null;
-            activeTooltipPlayerItemId = null;
 
             EnsureLoopInitialized();
             loopGridView.SetListItemCount(0, keepPosition: false);
             loopGridView.RefreshAllShownItem();
-            if (itemTooltipView != null)
-                itemTooltipView.Hide(force: true);
-        }
-
-        public void SetTooltipSuppressed(bool suppressed, bool force = false)
-        {
-            if (!force && tooltipSuppressed == suppressed)
-                return;
-
-            tooltipSuppressed = suppressed;
-            if (tooltipSuppressed)
-                HideTooltip(force: true);
-            else
-                RefreshTooltip(force: true);
-        }
-
-        public void HideTooltip(bool force = false)
-        {
-            activeTooltipPlayerItemId = null;
-            if (itemTooltipView != null)
-                itemTooltipView.Hide(force);
+            WorldModalUIManager.Instance?.HideItemTooltip(force: force);
         }
 
         private void UpdateSelectionVisuals(bool force)
@@ -129,29 +104,9 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (slot == null || !slot.HasItem)
                 return;
 
-            ShowTooltip(slot.Item, force: true);
             var handler = ItemClicked;
             if (handler != null)
                 handler(slot.Item);
-        }
-
-        private void HandleSlotHovered(InventoryItemSlotView slot)
-        {
-            if (slot == null || !slot.HasItem)
-                return;
-
-            ShowTooltip(slot.Item, force: true);
-            var handler = ItemHovered;
-            if (handler != null)
-                handler(slot.Item);
-        }
-
-        private void HandleSlotHoverExited(InventoryItemSlotView slot)
-        {
-            HideTooltip(force: true);
-            var handler = ItemHoverExited;
-            if (handler != null)
-                handler();
         }
 
         private void EnsureLoopInitialized()
@@ -189,63 +144,12 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 return;
 
             slotView.Clicked += HandleSlotClicked;
-            slotView.Hovered += HandleSlotHovered;
-            slotView.HoverExited += HandleSlotHoverExited;
         }
 
         private void ValidateSerializedReferences()
         {
             if (loopGridView == null)
                 throw new InvalidOperationException($"{nameof(InventoryItemGridView)} on '{gameObject.name}' is missing required reference '{nameof(loopGridView)}'.");
-        }
-
-        private void RefreshTooltip(bool force)
-        {
-            if (tooltipSuppressed || !activeTooltipPlayerItemId.HasValue)
-            {
-                if (itemTooltipView != null)
-                    itemTooltipView.Hide(force);
-                return;
-            }
-
-            InventoryItemModel item;
-            if (!TryFindItemById(activeTooltipPlayerItemId.Value, out item))
-            {
-                HideTooltip(force: true);
-                return;
-            }
-
-            ShowTooltip(item, force);
-        }
-
-        private void ShowTooltip(InventoryItemModel item, bool force)
-        {
-            activeTooltipPlayerItemId = item.PlayerItemId;
-            if (tooltipSuppressed || itemTooltipView == null)
-                return;
-
-            var presentation = presentationCatalog != null
-                ? presentationCatalog.Resolve(item)
-                : new InventoryItemPresentation(null, null, Color.white);
-            itemTooltipView.Show(item, presentation, force);
-        }
-
-        private bool TryFindItemById(long playerItemId, out InventoryItemModel item)
-        {
-            if (items != null)
-            {
-                for (var i = 0; i < items.Count; i++)
-                {
-                    if (items[i].PlayerItemId != playerItemId)
-                        continue;
-
-                    item = items[i];
-                    return true;
-                }
-            }
-
-            item = default;
-            return false;
         }
 
         private static string BuildSnapshot(IReadOnlyList<InventoryItemModel> items)

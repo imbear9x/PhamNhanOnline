@@ -6,6 +6,8 @@ namespace PhamNhanOnline.Client.UI.Inventory
 {
     public sealed class InventoryDragGhost
     {
+        private const float DefaultGhostScale = 1f;
+
         private readonly RectTransform rootRect;
         private readonly RectTransform canvasRect;
         private readonly GameObject rootObject;
@@ -17,7 +19,11 @@ namespace PhamNhanOnline.Client.UI.Inventory
             this.canvasRect = canvasRect;
         }
 
-        public static InventoryDragGhost Create(Transform source, InventoryItemPresentation presentation, PointerEventData eventData)
+        public static InventoryDragGhost Create(
+            Transform source,
+            InventoryItemPresentation presentation,
+            PointerEventData eventData,
+            RectTransform sizeReference = null)
         {
             if (source == null)
                 return null;
@@ -31,7 +37,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             var rootRect = rootObject.GetComponent<RectTransform>();
             rootRect.SetParent(rootCanvas.transform, false);
             rootRect.SetAsLastSibling();
-            rootRect.sizeDelta = new Vector2(56f, 56f);
+            rootRect.sizeDelta = ResolveGhostSize(sizeReference, rootCanvas.transform as RectTransform);
 
             var canvasGroup = rootObject.GetComponent<CanvasGroup>();
             canvasGroup.blocksRaycasts = false;
@@ -66,6 +72,28 @@ namespace PhamNhanOnline.Client.UI.Inventory
             var ghost = new InventoryDragGhost(rootObject, rootRect, rootCanvas.transform as RectTransform);
             ghost.UpdatePosition(eventData);
             return ghost;
+        }
+
+        private static Vector2 ResolveGhostSize(RectTransform sizeReference, RectTransform canvasRect)
+        {
+            if (sizeReference == null || canvasRect == null)
+                return new Vector2(56f, 56f);
+
+            var corners = new Vector3[4];
+            sizeReference.GetWorldCorners(corners);
+
+            Vector2 localMin;
+            Vector2 localMax;
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, corners[0], null, out localMin) ||
+                !RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, corners[2], null, out localMax))
+            {
+                return new Vector2(56f, 56f);
+            }
+
+            var size = localMax - localMin;
+            var width = Mathf.Max(24f, Mathf.Abs(size.x) * DefaultGhostScale);
+            var height = Mathf.Max(24f, Mathf.Abs(size.y) * DefaultGhostScale);
+            return new Vector2(width, height);
         }
 
         public void UpdatePosition(PointerEventData eventData)

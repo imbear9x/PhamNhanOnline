@@ -1,4 +1,5 @@
 using System;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,6 +10,7 @@ namespace PhamNhanOnline.Client.UI.Potential
     {
         [Header("References")]
         [SerializeField] private Button button;
+        [SerializeField] private UiButtonView customButton;
         [SerializeField] private TMP_Text labelText;
 
         private string lastLabel = string.Empty;
@@ -17,6 +19,9 @@ namespace PhamNhanOnline.Client.UI.Potential
         {
             if (button == null)
                 button = GetComponent<Button>();
+
+            if (customButton == null)
+                customButton = GetComponent<UiButtonView>();
         }
 
         public void SetContent(string label, Action onClick, bool interactable = true, bool force = false)
@@ -29,13 +34,39 @@ namespace PhamNhanOnline.Client.UI.Potential
                     labelText.text = label;
             }
 
-            if (button != null)
+            if (customButton != null)
+            {
+                customButton.Clicked -= HandleCustomButtonClicked;
+                pendingClickAction = onClick;
+                customButton.SetInteractable(interactable, force: true);
+                if (interactable && onClick != null)
+                    customButton.Clicked += HandleCustomButtonClicked;
+                if (button != null)
+                {
+                    button.onClick.RemoveAllListeners();
+                    button.interactable = false;
+                }
+            }
+            else if (button != null)
             {
                 button.interactable = interactable;
                 button.onClick.RemoveAllListeners();
                 if (interactable && onClick != null)
                     button.onClick.AddListener(() => onClick());
             }
+        }
+
+        private Action pendingClickAction;
+
+        private void OnDisable()
+        {
+            if (customButton != null)
+                customButton.Clicked -= HandleCustomButtonClicked;
+        }
+
+        private void HandleCustomButtonClicked()
+        {
+            pendingClickAction?.Invoke();
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
+using System.Collections.Generic;
 using System.Linq;
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
@@ -8,7 +8,6 @@ using PhamNhanOnline.Client.Features.Inventory.Application;
 using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Inventory;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace PhamNhanOnline.Client.UI.World
 {
@@ -50,71 +49,6 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (equipmentSlotsView != null)
                 equipmentSlotsView.Clear(force: true);
-        }
-
-        private void UpdateItemPopupVisibility()
-        {
-            if (itemOptionsPopupView == null || !itemOptionsPopupView.IsVisible)
-            {
-                UpdateQuantityPopupVisibility();
-                return;
-            }
-
-            if (popupPlayerItemId.HasValue &&
-                (!ClientRuntime.IsInitialized || !ClientRuntime.Inventory.TryGetItem(popupPlayerItemId.Value, out _)))
-            {
-                HideItemOptionsPopup(force: true);
-                UpdateQuantityPopupVisibility();
-                return;
-            }
-
-            if (DidClickBlankSpaceInsideInventoryPanel())
-                HideItemOptionsPopup();
-
-            UpdateQuantityPopupVisibility();
-        }
-
-        private bool DidClickBlankSpaceInsideInventoryPanel()
-        {
-            if (!Input.GetMouseButtonDown(0) || inventoryPanelBounds == null)
-                return false;
-
-            var eventSystem = EventSystem.current;
-            if (eventSystem == null)
-                return false;
-
-            var canvas = inventoryPanelBounds.GetComponentInParent<Canvas>();
-            var eventCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
-                ? canvas.worldCamera
-                : null;
-
-            if (!RectTransformUtility.RectangleContainsScreenPoint(inventoryPanelBounds, Input.mousePosition, eventCamera))
-                return false;
-
-            var pointerData = new PointerEventData(eventSystem)
-            {
-                position = Input.mousePosition
-            };
-            var results = new List<RaycastResult>(8);
-            eventSystem.RaycastAll(pointerData, results);
-
-            for (var i = 0; i < results.Count; i++)
-            {
-                var hitTransform = results[i].gameObject != null ? results[i].gameObject.transform : null;
-                if (hitTransform == null)
-                    continue;
-
-                if (hitTransform.GetComponentInParent<InventoryItemSlotView>() != null)
-                    return false;
-
-                if (hitTransform.GetComponentInParent<EquipmentSlotView>() != null)
-                    return false;
-
-                if (itemOptionsPopupView != null && hitTransform.IsChildOf(itemOptionsPopupView.transform))
-                    return false;
-            }
-
-            return true;
         }
 
         private static List<InventoryItemModel> SortInventoryItems(IReadOnlyList<InventoryItemModel> items)

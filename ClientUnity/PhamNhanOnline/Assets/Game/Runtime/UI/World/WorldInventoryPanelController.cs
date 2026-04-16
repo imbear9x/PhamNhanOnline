@@ -24,9 +24,6 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private TMP_Text inventoryStatusText;
         [SerializeField] private InventoryItemGridView inventoryGridView;
         [SerializeField] private EquipmentSlotsPanelView equipmentSlotsView;
-        [SerializeField] private InventoryDropZoneView inventoryDropZoneView;
-        [SerializeField] private PotentialUpgradeOptionsPopupView itemOptionsPopupView;
-        [SerializeField] private InventoryUseQuantityPopupView dropQuantityPopupView;
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
 
         [Header("Character Display")]
@@ -47,6 +44,11 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private string inventoryMartialArtAlreadyLearnedText = "Cong phap nay da hoc roi, khong the dung them sach.";
         [SerializeField] private string inventoryAlreadyEquippedText = "Trang bi nay dang duoc mac.";
         [SerializeField] private string inventoryUnequipActionText = "Dang go trang bi...";
+
+        [Header("Inventory Option Labels")]
+        [SerializeField] private string useOptionText = "Su dung";
+        [SerializeField] private string unequipOptionText = "Go trang bi";
+        [SerializeField] private string dropOptionText = "Vut ra";
 
         [Header("Character Reload")]
         [SerializeField] private bool autoLoadMissingCharacterData = true;
@@ -73,22 +75,13 @@ namespace PhamNhanOnline.Client.UI.World
         private void Awake()
         {
             if (inventoryGridView != null)
-            {
                 inventoryGridView.ItemClicked += HandleInventoryItemClicked;
-                inventoryGridView.ItemHovered += HandleInventoryItemHovered;
-                inventoryGridView.ItemHoverExited += HandleInventoryItemHoverExited;
-            }
 
             if (equipmentSlotsView != null)
             {
                 equipmentSlotsView.ItemClicked += HandleInventoryItemClicked;
-                equipmentSlotsView.ItemHovered += HandleInventoryItemHovered;
-                equipmentSlotsView.ItemHoverExited += HandleInventoryItemHoverExited;
                 equipmentSlotsView.InventoryItemDroppedOnSlot += HandleInventoryItemDroppedOnEquipmentSlot;
             }
-
-            if (inventoryDropZoneView != null)
-                inventoryDropZoneView.EquippedItemDropped += HandleEquippedItemDroppedOnInventory;
 
             if (inventoryPanelBounds == null)
                 inventoryPanelBounds = transform as RectTransform;
@@ -115,7 +108,11 @@ namespace PhamNhanOnline.Client.UI.World
             RefreshInventory(force: false);
             TryReloadMissingData();
             TryReloadInventory();
-            UpdateItemPopupVisibility();
+            // Deliberately disabled for now.
+            // We only want to close the quantity popup from explicit action flows,
+            // not from a polling check that might mis-detect state and hide it early.
+            // Re-enable UpdateQuantityPopupVisibility() here if a real runtime stale-popup bug appears.
+            // UpdateQuantityPopupVisibility();
         }
 
         private void OnDisable()
@@ -127,22 +124,14 @@ namespace PhamNhanOnline.Client.UI.World
         private void OnDestroy()
         {
             if (inventoryGridView != null)
-            {
                 inventoryGridView.ItemClicked -= HandleInventoryItemClicked;
-                inventoryGridView.ItemHovered -= HandleInventoryItemHovered;
-                inventoryGridView.ItemHoverExited -= HandleInventoryItemHoverExited;
-            }
 
             if (equipmentSlotsView != null)
             {
                 equipmentSlotsView.ItemClicked -= HandleInventoryItemClicked;
-                equipmentSlotsView.ItemHovered -= HandleInventoryItemHovered;
-                equipmentSlotsView.ItemHoverExited -= HandleInventoryItemHoverExited;
                 equipmentSlotsView.InventoryItemDroppedOnSlot -= HandleInventoryItemDroppedOnEquipmentSlot;
             }
 
-            if (inventoryDropZoneView != null)
-                inventoryDropZoneView.EquippedItemDropped -= HandleEquippedItemDroppedOnInventory;
         }
 
         private void RefreshFromRuntime(bool force)
@@ -209,6 +198,14 @@ namespace PhamNhanOnline.Client.UI.World
             var bagItems = allItems.Where(x => !x.IsEquipped).ToList();
             var status = ResolveInventoryStatus(inventoryState, bagItems.Count, equippedItems.Count);
             var snapshot = BuildInventorySnapshot(inventoryState, allItems, inventoryActionInFlight);
+            var modalUiManager = WorldModalUIManager.Instance;
+            if (popupPlayerItemId.HasValue &&
+                (modalUiManager == null || !modalUiManager.IsInventoryItemOptionsPopupVisible))
+            {
+                popupPlayerItemId = null;
+                previewPlayerItemId = null;
+                force = true;
+            }
 
             if (!force &&
                 string.Equals(lastInventorySnapshot, snapshot, StringComparison.Ordinal) &&
@@ -239,6 +236,22 @@ namespace PhamNhanOnline.Client.UI.World
             if (popupPlayerItemId.HasValue && !TryFindInventoryItemById(allItems, popupPlayerItemId, out _))
                 HideItemOptionsPopup(force: true);
 
+        }
+
+        private void ApplyPreviewSelectionState(bool force)
+        {
+            if (inventoryGridView != null)
+                inventoryGridView.SetSelectedItem(previewPlayerItemId, force);
+
+            if (equipmentSlotsView == null || !ClientRuntime.IsInitialized)
+                return;
+
+            var equippedItems = SortInventoryItems(ClientRuntime.Inventory.Items)
+                .Where(x => x.IsEquipped)
+                .OrderBy(x => x.EquippedSlot ?? int.MaxValue)
+                .ThenBy(x => x.Name ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            equipmentSlotsView.SetItems(equippedItems, itemPresentationCatalog, previewPlayerItemId, force);
         }
 
         private void TryReloadMissingData()

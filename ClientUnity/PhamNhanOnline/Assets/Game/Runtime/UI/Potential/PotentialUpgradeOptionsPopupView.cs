@@ -53,8 +53,6 @@ namespace PhamNhanOnline.Client.UI.Potential
 
             if (hideTemplateObject && optionTemplate != null)
                 optionTemplate.gameObject.SetActive(false);
-
-            Hide(force: true);
         }
 
         public void Show(RectTransform anchor, string title, IReadOnlyList<OptionEntry> options, bool force = false)
@@ -143,8 +141,7 @@ namespace PhamNhanOnline.Client.UI.Potential
             screenPoint.x = Mathf.Clamp(screenPoint.x, minX, maxX);
             screenPoint.y = Mathf.Clamp(screenPoint.y, minY, maxY);
 
-            Vector2 localPoint;
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screenPoint, eventCamera, out localPoint))
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screenPoint, eventCamera, out var localPoint))
                 return;
 
             panelTransform.anchoredPosition = localPoint;

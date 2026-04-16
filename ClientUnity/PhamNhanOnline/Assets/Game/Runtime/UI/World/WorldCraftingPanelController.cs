@@ -30,7 +30,6 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private TMP_Text panelTitleText;
         [SerializeField] private CraftRecipeListView recipeListView;
         [SerializeField] private CraftRecipeSlotView selectedRecipeSlotView;
-        [SerializeField] private CraftRecipeTooltipView recipeTooltipView;
 
         [Header("Inventory References")]
         [SerializeField] private InventoryItemGridView inventoryGridView;
@@ -38,7 +37,6 @@ namespace PhamNhanOnline.Client.UI.World
 
         [Header("Ingredient References")]
         [SerializeField] private CraftIngredientPanelView ingredientPanelView;
-        [SerializeField] private InventoryUseQuantityPopupView quantityPopupView;
 
         [Header("Recipe Detail Text")]
         [SerializeField] private TMP_Text practiceStatusText;
@@ -905,14 +903,14 @@ namespace PhamNhanOnline.Client.UI.World
 
         private async Task ShowRecipeTooltipAsync(int recipeId)
         {
-            if (recipeTooltipView == null || recipeId <= 0)
+            if (recipeId <= 0)
                 return;
 
             var detail = await EnsureRecipeDetailLoadedAsync(recipeId, forceRefresh: false);
             if (!detail.HasValue)
                 return;
 
-            recipeTooltipView.Show(detail.Value, ResolveAssignedQuantityForTooltip, force: true);
+            WorldModalUIManager.Instance?.ShowRecipeTooltip(detail.Value, ResolveAssignedQuantityForTooltip, force: true);
         }
 
         private async Task<PillRecipeDetailModel?> EnsureRecipeDetailLoadedAsync(int recipeId, bool forceRefresh)
@@ -1411,7 +1409,8 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ShowCraftCountPopup(PillRecipeDetailModel detail, AlchemyCraftPreviewModel preview, int maxCraftableCount)
         {
-            if (quantityPopupView == null)
+            var modalUiManager = WorldModalUIManager.Instance;
+            if (modalUiManager == null)
             {
                 _ = StartCraftAsync(detail.PillRecipeTemplateId, maxCraftableCount);
                 return;
@@ -1419,7 +1418,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             quantityPopupMode = QuantityPopupMode.CraftCount;
             quantityPopupInputId = null;
-            quantityPopupView.Show(
+            modalUiManager.ShowQuantityPopup(
                 Mathf.Max(1, maxCraftableCount),
                 HandleQuantityPopupConfirmed,
                 HandleQuantityPopupCancelled,
@@ -1431,7 +1430,8 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ShowOptionalInputQuantityPopup(PillRecipeInputModel input, AlchemyCraftDraftState.SelectionSnapshot selection)
         {
-            if (quantityPopupView == null)
+            var modalUiManager = WorldModalUIManager.Instance;
+            if (modalUiManager == null)
                 return;
 
             quantityPopupMode = QuantityPopupMode.OptionalInputQuantity;
@@ -1439,7 +1439,7 @@ namespace PhamNhanOnline.Client.UI.World
             var maxQuantity = Math.Max(
                 Math.Max(0, selection.AssignedQuantity),
                 Math.Max(0, selection.AssignedQuantity) + ResolveInventoryQuantity(input.RequiredItem.ItemTemplateId));
-            quantityPopupView.Show(
+            modalUiManager.ShowQuantityPopup(
                 Mathf.Max(1, maxQuantity),
                 HandleQuantityPopupConfirmed,
                 HandleQuantityPopupCancelled,
@@ -1482,8 +1482,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             quantityPopupMode = QuantityPopupMode.None;
             quantityPopupInputId = null;
-            if (quantityPopupView != null)
-                quantityPopupView.Hide(force);
+            WorldModalUIManager.Instance?.HideQuantityPopup(force);
         }
 
         private void ClearIngredientViews()
@@ -1514,14 +1513,12 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void HideRecipeTooltip(bool force)
         {
-            if (recipeTooltipView != null)
-                recipeTooltipView.Hide(force);
+            WorldModalUIManager.Instance?.HideRecipeTooltip(force);
         }
 
         private void HideInventoryTooltip(bool force)
         {
-            if (inventoryGridView != null)
-                inventoryGridView.HideTooltip(force);
+            WorldModalUIManager.Instance?.HideItemTooltip(force: force);
         }
 
         private static double NormalizeRate(double value)
@@ -1690,11 +1687,9 @@ namespace PhamNhanOnline.Client.UI.World
         {
             ThrowIfMissing(recipeListView, nameof(recipeListView));
             ThrowIfMissing(selectedRecipeSlotView, nameof(selectedRecipeSlotView));
-            ThrowIfMissing(recipeTooltipView, nameof(recipeTooltipView));
             ThrowIfMissing(inventoryGridView, nameof(inventoryGridView));
             ThrowIfMissing(itemPresentationCatalog, nameof(itemPresentationCatalog));
             ThrowIfMissing(ingredientPanelView, nameof(ingredientPanelView));
-            ThrowIfMissing(quantityPopupView, nameof(quantityPopupView));
             ThrowIfMissing(practiceStatusText, nameof(practiceStatusText));
             ThrowIfMissing(closeButton, nameof(closeButton));
             ThrowIfMissing(craftButton, nameof(craftButton));

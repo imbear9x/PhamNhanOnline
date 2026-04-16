@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.Inventory
@@ -11,17 +12,11 @@ namespace PhamNhanOnline.Client.UI.Inventory
         [SerializeField] private InventoryItemGridView inventoryGridView;
 
         public event Action<InventoryItemModel> ItemClicked;
-        public event Action<InventoryItemModel> ItemHovered;
-        public event Action ItemHoverExited;
 
         private void Awake()
         {
             if (inventoryGridView != null)
-            {
                 inventoryGridView.ItemClicked += HandleGridItemClicked;
-                inventoryGridView.ItemHovered += HandleGridItemHovered;
-                inventoryGridView.ItemHoverExited += HandleGridItemHoverExited;
-            }
         }
 
         private void OnDisable()
@@ -32,11 +27,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
         private void OnDestroy()
         {
             if (inventoryGridView != null)
-            {
                 inventoryGridView.ItemClicked -= HandleGridItemClicked;
-                inventoryGridView.ItemHovered -= HandleGridItemHovered;
-                inventoryGridView.ItemHoverExited -= HandleGridItemHoverExited;
-            }
         }
 
         public void SetItems(
@@ -60,14 +51,12 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public void SetTooltipSuppressed(bool suppressed, bool force = false)
         {
-            if (inventoryGridView != null)
-                inventoryGridView.SetTooltipSuppressed(suppressed, force);
+            WorldModalUIManager.Instance?.SetItemTooltipSuppressed(this, suppressed, force);
         }
 
         public void HideTooltip(bool force = false)
         {
-            if (inventoryGridView != null)
-                inventoryGridView.HideTooltip(force);
+            WorldModalUIManager.Instance?.HideItemTooltip(force: force);
         }
 
         public void Clear(bool force = false)
@@ -79,16 +68,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
         private void HandleGridItemClicked(InventoryItemModel item)
         {
             ItemClicked?.Invoke(item);
-        }
-
-        private void HandleGridItemHovered(InventoryItemModel item)
-        {
-            ItemHovered?.Invoke(item);
-        }
-
-        private void HandleGridItemHoverExited()
-        {
-            ItemHoverExited?.Invoke();
         }
     }
 }

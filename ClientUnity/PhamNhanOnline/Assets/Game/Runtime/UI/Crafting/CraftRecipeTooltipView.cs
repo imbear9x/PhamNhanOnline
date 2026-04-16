@@ -28,7 +28,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         private void Awake()
         {
-            Hide(force: true);
         }
 
         private void Start()

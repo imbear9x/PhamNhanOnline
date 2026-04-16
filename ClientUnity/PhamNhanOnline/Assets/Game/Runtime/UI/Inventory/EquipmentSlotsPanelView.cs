@@ -20,8 +20,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
         [SerializeField] private List<SlotBinding> slots = new List<SlotBinding>(4);
 
         public event Action<InventoryItemModel> ItemClicked;
-        public event Action<InventoryItemModel> ItemHovered;
-        public event Action ItemHoverExited;
         public event Action<InventoryEquipmentSlot, InventoryItemModel> InventoryItemDroppedOnSlot;
 
         private void Awake()
@@ -33,8 +31,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
                     continue;
 
                 binding.View.Clicked += HandleSlotClicked;
-                binding.View.Hovered += HandleSlotHovered;
-                binding.View.HoverExited += HandleSlotHoverExited;
                 binding.View.InventoryItemDropped += HandleInventoryItemDropped;
             }
         }
@@ -48,8 +44,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
                     continue;
 
                 binding.View.Clicked -= HandleSlotClicked;
-                binding.View.Hovered -= HandleSlotHovered;
-                binding.View.HoverExited -= HandleSlotHoverExited;
                 binding.View.InventoryItemDropped -= HandleInventoryItemDropped;
             }
         }
@@ -94,20 +88,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
             var handler = ItemClicked;
             if (handler != null && slotView != null && slotView.HasItem)
                 handler(slotView.Item);
-        }
-
-        private void HandleSlotHovered(EquipmentSlotView slotView)
-        {
-            var handler = ItemHovered;
-            if (handler != null && slotView != null && slotView.HasItem)
-                handler(slotView.Item);
-        }
-
-        private void HandleSlotHoverExited(EquipmentSlotView slotView)
-        {
-            var handler = ItemHoverExited;
-            if (handler != null)
-                handler();
         }
 
         private void HandleInventoryItemDropped(EquipmentSlotView slotView, InventoryItemModel item)

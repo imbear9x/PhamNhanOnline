@@ -38,8 +38,6 @@ namespace PhamNhanOnline.Client.UI.Common
 
             if (confirmButtonText != null)
                 confirmButtonText.text = defaultConfirmText;
-
-            Hide(force: true);
         }
 
         protected virtual void Start()

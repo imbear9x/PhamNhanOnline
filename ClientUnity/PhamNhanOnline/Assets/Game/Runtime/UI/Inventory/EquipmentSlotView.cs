@@ -1,6 +1,7 @@
 using System;
 using GameShared.Models;
 using PhamNhanOnline.Client.UI.Common;
+using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -11,6 +12,8 @@ namespace PhamNhanOnline.Client.UI.Inventory
         IUiDragPayloadSource,
         IPointerEnterHandler,
         IPointerExitHandler,
+        IPointerDownHandler,
+        IPointerUpHandler,
         IPointerClickHandler,
         IBeginDragHandler,
         IDragHandler,
@@ -23,6 +26,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
         [Header("References")]
         [SerializeField] private Image iconImage;
         [SerializeField] private GameObject emptyStateRoot;
+        [SerializeField] private GameObject selectedRoot;
 
         [Header("Behavior")]
         [SerializeField] private float draggingAlpha = 0.65f;
@@ -85,13 +89,21 @@ namespace PhamNhanOnline.Client.UI.Inventory
         {
             _ = selected;
             _ = force;
+            SetDragSelectionVisible(false);
         }
 
         public void OnPointerEnter(PointerEventData eventData)
         {
+            if (eventData != null && IsValidDraggedInventoryItem(eventData.pointerDrag != null ? eventData.pointerDrag.transform : null))
+                SetDragSelectionVisible(true);
+
+            if (eventData != null && eventData.pointerDrag != null)
+                return;
+
             if (!hasItem)
                 return;
 
+            WorldModalUIManager.Instance?.ShowItemTooltip(this, item, currentPresentation, force: true);
             var handler = Hovered;
             if (handler != null)
                 handler(this);
@@ -99,12 +111,36 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public void OnPointerExit(PointerEventData eventData)
         {
+            SetDragSelectionVisible(false);
+
             if (!hasItem)
                 return;
 
+            WorldModalUIManager.Instance?.HideItemTooltip(this, force: true);
             var handler = HoverExited;
             if (handler != null)
                 handler(this);
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (!hasItem)
+                return;
+
+            var modalUiManager = WorldModalUIManager.Instance;
+            if (modalUiManager != null)
+            {
+                modalUiManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
+                modalUiManager.HideItemTooltip(this, force: true);
+            }
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (!hasItem)
+                return;
+
+            WorldModalUIManager.Instance?.SetItemTooltipSuppressed(this, suppressed: false);
         }
 
         public void OnPointerClick(PointerEventData eventData)
@@ -115,6 +151,8 @@ namespace PhamNhanOnline.Client.UI.Inventory
             var handler = Clicked;
             if (handler != null)
                 handler(this);
+
+            eventData?.Use();
         }
 
         public void OnBeginDrag(PointerEventData eventData)
@@ -122,9 +160,21 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (!hasItem)
                 return;
 
+            var modalUiManager = WorldModalUIManager.Instance;
+            if (modalUiManager != null)
+            {
+                modalUiManager.HideInventoryItemOptionsPopup(force: true);
+                modalUiManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
+                modalUiManager.HideItemTooltip(this, force: true);
+            }
+
             canvasGroup.blocksRaycasts = false;
             canvasGroup.alpha = draggingAlpha;
-            dragGhost = InventoryDragGhost.Create(transform, currentPresentation, eventData);
+            dragGhost = InventoryDragGhost.Create(
+                transform,
+                currentPresentation,
+                eventData,
+                iconImage != null ? iconImage.rectTransform : transform as RectTransform);
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -136,10 +186,18 @@ namespace PhamNhanOnline.Client.UI.Inventory
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
+            var modalUiManager = WorldModalUIManager.Instance;
+            if (modalUiManager != null)
+            {
+                modalUiManager.SetItemTooltipSuppressed(this, suppressed: false);
+                modalUiManager.HideItemTooltip(this, force: true);
+            }
         }
 
         public void OnDrop(PointerEventData eventData)
         {
+            SetDragSelectionVisible(false);
+
             if (!UiDragPayloadResolver.TryResolve(eventData, out var payload) ||
                 payload.Kind != UiDragPayloadKind.InventoryItem ||
                 !payload.HasInventoryItem ||
@@ -197,6 +255,27 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 dragGhost.Dispose();
                 dragGhost = null;
             }
+
+            SetDragSelectionVisible(false);
+        }
+
+        private bool IsValidDraggedInventoryItem(Transform dragTransform)
+        {
+            if (!UiDragPayloadResolver.TryResolve(dragTransform, out var payload) ||
+                payload.Kind != UiDragPayloadKind.InventoryItem ||
+                !payload.HasInventoryItem ||
+                payload.SourceKind != UiDragSourceKind.InventoryGridItem)
+            {
+                return false;
+            }
+
+            return payload.InventoryItem.EquipmentSlotType == (int)slotType;
+        }
+
+        private void SetDragSelectionVisible(bool visible)
+        {
+            if (selectedRoot != null && selectedRoot.activeSelf != visible)
+                selectedRoot.SetActive(visible);
         }
     }
 }

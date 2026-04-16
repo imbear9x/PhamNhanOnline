@@ -6,7 +6,6 @@ using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.MartialArts.Application;
 using PhamNhanOnline.Client.UI.Inventory;
-using PhamNhanOnline.Client.UI.Potential;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.World
@@ -26,38 +25,17 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             previewPlayerItemId = item.PlayerItemId;
+            var modalUiManager = WorldModalUIManager.Instance;
 
-            if (itemOptionsPopupView != null && itemOptionsPopupView.IsVisible && popupPlayerItemId == item.PlayerItemId)
+            if (modalUiManager != null && modalUiManager.IsInventoryItemOptionsPopupVisible && popupPlayerItemId == item.PlayerItemId)
             {
                 HideItemOptionsPopup();
-                RefreshInventory(force: true);
+                ApplyPreviewSelectionState(force: true);
                 return;
             }
 
             ShowItemOptions(item);
-            RefreshInventory(force: true);
-        }
-
-        private void HandleInventoryItemHovered(InventoryItemModel item)
-        {
-            if (popupPlayerItemId.HasValue)
-                return;
-
-            if (inventoryGridView != null)
-                inventoryGridView.SetTooltipSuppressed(false);
-            previewPlayerItemId = item.PlayerItemId;
-            RefreshInventory(force: true);
-        }
-
-        private void HandleInventoryItemHoverExited()
-        {
-            if (popupPlayerItemId.HasValue)
-                return;
-
-            if (inventoryGridView != null)
-                inventoryGridView.SetTooltipSuppressed(false);
-            previewPlayerItemId = null;
-            RefreshInventory(force: true);
+            ApplyPreviewSelectionState(force: true);
         }
 
         private async void HandleInventoryItemDroppedOnEquipmentSlot(InventoryEquipmentSlot slot, InventoryItemModel item)
@@ -123,7 +101,8 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ShowItemOptions(InventoryItemModel item)
         {
-            if (itemOptionsPopupView == null)
+            var modalUiManager = WorldModalUIManager.Instance;
+            if (modalUiManager == null)
                 return;
 
             var options = BuildItemOptions(item);
@@ -135,50 +114,45 @@ namespace PhamNhanOnline.Client.UI.World
 
             popupPlayerItemId = item.PlayerItemId;
             previewPlayerItemId = item.PlayerItemId;
-            if (inventoryGridView != null)
-            {
-                inventoryGridView.SetTooltipSuppressed(true, force: true);
-                inventoryGridView.HideTooltip(force: true);
-            }
-            itemOptionsPopupView.Show(
+            modalUiManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
+            modalUiManager.HideItemTooltip(force: true);
+            modalUiManager.ShowInventoryItemOptionsPopup(
                 inventoryPanelBounds != null ? inventoryPanelBounds : transform as RectTransform,
                 item.Name,
                 options,
                 force: true);
         }
 
-        private List<PotentialUpgradeOptionsPopupView.OptionEntry> BuildItemOptions(InventoryItemModel item)
+        private List<InventoryItemOptionsPopupController.OptionEntry> BuildItemOptions(InventoryItemModel item)
         {
             if (item.IsEquipped && item.ItemType == (int)InventoryItemType.Equipment)
             {
-                return new List<PotentialUpgradeOptionsPopupView.OptionEntry>(1)
+                return new List<InventoryItemOptionsPopupController.OptionEntry>(1)
                 {
-                    new PotentialUpgradeOptionsPopupView.OptionEntry("Go trang bi", () => _ = UnequipItemAsync(item))
+                    new InventoryItemOptionsPopupController.OptionEntry(unequipOptionText, () => _ = UnequipItemAsync(item))
                 };
             }
 
-            var options = new List<PotentialUpgradeOptionsPopupView.OptionEntry>(2)
-            {
-                BuildUseOption(item)
-            };
+            var options = new List<InventoryItemOptionsPopupController.OptionEntry>(2);
+            var useOption = BuildUseOption(item);
+            if (useOption.HasValue)
+                options.Add(useOption.Value);
+
             if (item.IsDroppable)
-                options.Add(new PotentialUpgradeOptionsPopupView.OptionEntry("Vut ra", () => HandleDropItemClicked(item)));
+                options.Add(new InventoryItemOptionsPopupController.OptionEntry(dropOptionText, () => HandleDropItemClicked(item)));
 
             return options;
         }
 
-        private PotentialUpgradeOptionsPopupView.OptionEntry BuildUseOption(InventoryItemModel item)
+        private InventoryItemOptionsPopupController.OptionEntry? BuildUseOption(InventoryItemModel item)
         {
             string blockedReason;
-            var canUse = CanUseItem(item, out blockedReason);
-            var label = canUse
-                ? "Su dung"
-                : string.Format(CultureInfo.InvariantCulture, "Su dung ({0})", blockedReason);
+            if (!CanUseItem(item, out blockedReason))
+                return null;
 
-            return new PotentialUpgradeOptionsPopupView.OptionEntry(
-                label,
-                () => _ = UseItemAsync(item),
-                canUse);
+            return new InventoryItemOptionsPopupController.OptionEntry(
+                useOptionText,
+                () => _ = UseItemAsync(item));
         }
 
         private bool CanUseItem(InventoryItemModel item, out string blockedReason)
@@ -305,7 +279,8 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ShowQuantityPopup(InventoryItemModel item, QuantityPopupAction action)
         {
-            if (dropQuantityPopupView == null)
+            var modalUiManager = WorldModalUIManager.Instance;
+            if (modalUiManager == null)
             {
                 if (action == QuantityPopupAction.Drop)
                     _ = DropItemAsync(item.PlayerItemId, 1);
@@ -317,7 +292,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             quantityPopupPlayerItemId = item.PlayerItemId;
             quantityPopupAction = action;
-            dropQuantityPopupView.Show(
+            modalUiManager.ShowQuantityPopup(
                 Mathf.Max(1, item.Quantity),
                 HandleQuantityConfirmed,
                 HandleQuantityCancelled,
@@ -328,13 +303,13 @@ namespace PhamNhanOnline.Client.UI.World
         {
             quantityPopupPlayerItemId = null;
             quantityPopupAction = QuantityPopupAction.None;
-            if (dropQuantityPopupView != null)
-                dropQuantityPopupView.Hide(force);
+            WorldModalUIManager.Instance?.HideQuantityPopup(force);
         }
 
         private void UpdateQuantityPopupVisibility()
         {
-            if (dropQuantityPopupView == null || !dropQuantityPopupView.IsVisible)
+            var modalUiManager = WorldModalUIManager.Instance;
+            if (modalUiManager == null || !modalUiManager.IsQuantityPopupVisible)
                 return;
 
             if (!quantityPopupPlayerItemId.HasValue ||
@@ -553,13 +528,16 @@ namespace PhamNhanOnline.Client.UI.World
         private void HideItemOptionsPopup(bool force = false)
         {
             popupPlayerItemId = null;
-            if (itemOptionsPopupView != null)
-                itemOptionsPopupView.Hide(force);
-            if (inventoryGridView != null)
+            previewPlayerItemId = null;
+            WorldModalUIManager.Instance?.HideInventoryItemOptionsPopup(force);
+            var modalUiManager = WorldModalUIManager.Instance;
+            if (modalUiManager != null)
             {
-                inventoryGridView.SetTooltipSuppressed(true, force: true);
-                inventoryGridView.HideTooltip(force: true);
+                modalUiManager.SetItemTooltipSuppressed(this, suppressed: false, force: true);
+                modalUiManager.HideItemTooltip(force: true);
             }
+
+            ApplyPreviewSelectionState(force: true);
         }
 
         private async System.Threading.Tasks.Task DropItemAsync(long playerItemId, int quantity)

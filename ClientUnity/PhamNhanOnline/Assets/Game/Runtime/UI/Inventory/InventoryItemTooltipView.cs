@@ -30,8 +30,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
             if (panelTransform == null)
                 panelTransform = panelRoot.transform as RectTransform;
-
-            Hide(force: true);
         }
 
         public void Show(InventoryItemModel item, InventoryItemPresentation presentation, bool force = false)

@@ -32,7 +32,6 @@ namespace PhamNhanOnline.Client.UI.World
         private void Awake()
         {
             BindUi();
-            Hide(force: true);
         }
 
         private void OnDestroy()
