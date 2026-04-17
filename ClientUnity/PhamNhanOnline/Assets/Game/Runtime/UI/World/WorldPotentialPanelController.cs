@@ -194,29 +194,20 @@ namespace PhamNhanOnline.Client.UI.World
         private void HandleRowClicked(PotentialUpgradeRowView row)
         {
             if (row == null || !ClientRuntime.IsInitialized)
-            {
-                Debug.LogWarning(
-                    $"[PotentialPopupDebug] HandleRowClicked ignored. rowNull={row == null} runtimeInitialized={ClientRuntime.IsInitialized}.");
                 return;
-            }
 
             var modalUIManager = WorldModalUIManager.Instance;
             if (modalUIManager != null && modalUIManager.IsPotentialUpgradeOptionsPopupVisible && popupRow == row)
             {
-                Debug.LogWarning($"[PotentialPopupDebug] Row click toggled popup off for target={row.Target}.");
                 HideOptionsPopup();
                 return;
             }
 
             var baseStats = ClientRuntime.Character.BaseStats;
             if (!baseStats.HasValue)
-            {
-                Debug.LogWarning($"[PotentialPopupDebug] HandleRowClicked aborted because BaseStats is missing for target={row.Target}.");
                 return;
-            }
 
             popupRow = row;
-            Debug.LogWarning($"[PotentialPopupDebug] HandleRowClicked showing options for target={row.Target}.");
             ShowOptionsForRow(row, baseStats.Value);
         }
 
@@ -224,25 +215,16 @@ namespace PhamNhanOnline.Client.UI.World
         {
             var modalUIManager = WorldModalUIManager.Instance;
             if (modalUIManager == null || row == null)
-            {
-                Debug.LogWarning(
-                    $"[PotentialPopupDebug] ShowOptionsForRow aborted. modalUiManagerNull={modalUIManager == null} rowNull={row == null}.");
                 return;
-            }
 
             var preview = GetPreview(stats, row.Target);
             var options = BuildUpgradeOptions(row.Target, preview, stats.UnallocatedPotential);
             if (options.Count == 0)
             {
-                Debug.LogWarning(
-                    $"[PotentialPopupDebug] ShowOptionsForRow produced no options. target={row.Target} " +
-                    $"hasPreview={preview.HasValue} unallocated={stats.UnallocatedPotential}.");
                 HideOptionsPopup();
                 return;
             }
 
-            Debug.LogWarning(
-                $"[PotentialPopupDebug] ShowOptionsForRow showing popup. target={row.Target} options={options.Count} unallocated={stats.UnallocatedPotential}.");
             modalUIManager.ShowPotentialUpgradeOptionsPopup(
                 row.transform as RectTransform,
                 ResolvePresentation(row.Target).DisplayName,

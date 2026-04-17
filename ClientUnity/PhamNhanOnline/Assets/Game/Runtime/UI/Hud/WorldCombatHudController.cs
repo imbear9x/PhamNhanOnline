@@ -33,8 +33,6 @@ namespace PhamNhanOnline.Client.UI.Hud
         [Header("Behavior")]
         [SerializeField] private bool autoLoadSkillsOnEnable = true;
         [SerializeField] private float reloadRetryCooldownSeconds = 2f;
-        [SerializeField] private bool debugSkillBindingWarnings = true;
-        [SerializeField] private float debugWarningCooldownSeconds = 0.5f;
 
         [Header("Display Text")]
         [SerializeField] private string castBarDefaultText = "Dang thi trien...";
@@ -43,7 +41,6 @@ namespace PhamNhanOnline.Client.UI.Hud
         private float lastSkillReloadAttemptTime = float.NegativeInfinity;
         private bool skillReloadInFlight;
         private bool loggedMissingWorldSceneController;
-        private float lastDebugWarningTime = float.NegativeInfinity;
 
         private static WorldSceneController SceneController => WorldSceneController.Instance;
 
@@ -134,7 +131,6 @@ namespace PhamNhanOnline.Client.UI.Hud
         {
             if (!ClientRuntime.IsInitialized)
             {
-                LogDebug("refresh skipped because ClientRuntime is not initialized.");
                 ApplyMissingState();
                 return;
             }
@@ -142,15 +138,6 @@ namespace PhamNhanOnline.Client.UI.Hud
             var skillState = ClientRuntime.Skills;
             if (!skillState.HasLoadedSkills)
             {
-                LogDebug(string.Concat(
-                    "refresh missing skills. selectedCharacterId=",
-                    ClientRuntime.Character.SelectedCharacterId.HasValue ? ClientRuntime.Character.SelectedCharacterId.Value.ToString() : "<none>",
-                    " isLoading=",
-                    skillState.IsLoading ? "1" : "0",
-                    " maxSlots=",
-                    skillState.MaxLoadoutSlotCount.ToString(CultureInfo.InvariantCulture),
-                    " loadoutCount=",
-                    skillState.LoadoutSlots != null ? skillState.LoadoutSlots.Length.ToString(CultureInfo.InvariantCulture) : "0"));
                 ApplyMissingState();
                 return;
             }
@@ -204,14 +191,6 @@ namespace PhamNhanOnline.Client.UI.Hud
             PlayerSkillModel skill;
             if (!skillState.TryGetLoadoutSkill(slotIndex, out skill))
             {
-                LogDebug(string.Concat(
-                    "slot ",
-                    slotIndex.ToString(CultureInfo.InvariantCulture),
-                    " has no loadout skill. maxSlots=",
-                    skillState.MaxLoadoutSlotCount.ToString(CultureInfo.InvariantCulture),
-                    " loadoutSnapshot=",
-                    BuildLoadoutSnapshot(skillState.LoadoutSlots)));
-
                 buttonView.Hide();
                 return;
             }
@@ -236,20 +215,6 @@ namespace PhamNhanOnline.Client.UI.Hud
             var presentation = presentationCatalog != null
                 ? presentationCatalog.Resolve(skill)
                 : default(SkillPresentation);
-            if (presentation.IconSprite == null)
-            {
-                LogDebug(string.Concat(
-                    "slot ",
-                    slotIndex.ToString(CultureInfo.InvariantCulture),
-                    " resolved skill without icon. playerSkillId=",
-                    skill.PlayerSkillId.ToString(CultureInfo.InvariantCulture),
-                    " skillId=",
-                    skill.SkillId.ToString(CultureInfo.InvariantCulture),
-                    " code=",
-                    skill.Code ?? string.Empty,
-                    " group=",
-                    skill.SkillGroupCode ?? string.Empty));
-            }
 
             buttonView.ApplyState(
                 true,
@@ -269,13 +234,7 @@ namespace PhamNhanOnline.Client.UI.Hud
 
             PlayerSkillModel skill;
             if (!ClientRuntime.Skills.TryGetLoadoutSkill(slotIndex, out skill))
-            {
-                LogDebug(string.Concat(
-                    "click ignored because slot ",
-                    slotIndex.ToString(CultureInfo.InvariantCulture),
-                    " has no skill."));
                 return;
-            }
 
             if (skill.TargetType == SelfSkillTargetType)
             {
@@ -487,39 +446,6 @@ namespace PhamNhanOnline.Client.UI.Hud
                    ClientCharacterRuntimeStateCodes.IsDefeated(currentState.Value);
         }
 
-        private void LogDebug(string message)
-        {
-            if (!debugSkillBindingWarnings)
-                return;
-
-            if (Time.unscaledTime - lastDebugWarningTime < debugWarningCooldownSeconds)
-                return;
-
-            lastDebugWarningTime = Time.unscaledTime;
-            Debug.LogWarning(string.Concat("[CombatHudDebug] ", message));
-        }
-
-        private static string BuildLoadoutSnapshot(SkillLoadoutSlotModel[] slots)
-        {
-            if (slots == null || slots.Length == 0)
-                return "<empty>";
-
-            var parts = new string[slots.Length];
-            for (var i = 0; i < slots.Length; i++)
-            {
-                var slot = slots[i];
-                parts[i] = string.Concat(
-                    slot.SlotIndex.ToString(CultureInfo.InvariantCulture),
-                    ":",
-                    slot.HasSkill ? "1" : "0",
-                    ":",
-                    slot.HasSkill && slot.Skill.HasValue
-                        ? slot.Skill.Value.PlayerSkillId.ToString(CultureInfo.InvariantCulture)
-                        : "0");
-            }
-
-            return string.Join(";", parts);
-        }
     }
 }
 

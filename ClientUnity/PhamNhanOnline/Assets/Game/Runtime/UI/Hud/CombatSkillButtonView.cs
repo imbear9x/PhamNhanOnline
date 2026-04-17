@@ -30,7 +30,6 @@ namespace PhamNhanOnline.Client.UI.Hud
         [SerializeField] private float pressedScale = 1.06f;
         [SerializeField] private float pressedYOffset = -6f;
         [SerializeField] private float pressLerpSpeed = 20f;
-        [SerializeField] private bool debugBindingWarnings = true;
 
         private bool isVisible;
         private bool hasSkill;
@@ -41,7 +40,6 @@ namespace PhamNhanOnline.Client.UI.Hud
         private Vector3 idleScale = Vector3.one;
         private Vector2 idleAnchoredPosition;
         private bool pressVisualInitialized;
-        private bool loggedMissingRefs;
 
         public event Action<int> Clicked;
 
@@ -194,23 +192,6 @@ namespace PhamNhanOnline.Client.UI.Hud
                 idleScale = pressVisualRoot.localScale;
                 idleAnchoredPosition = pressVisualRoot.anchoredPosition;
                 pressVisualInitialized = true;
-            }
-
-            if (debugBindingWarnings && !loggedMissingRefs)
-            {
-                if (contentRoot == null || button == null || iconImage == null)
-                {
-                    loggedMissingRefs = true;
-                    Debug.LogWarning(string.Concat(
-                        "[CombatHudDebug] CombatSkillButtonView '",
-                        gameObject.name,
-                        "' is missing refs. contentRoot=",
-                        contentRoot != null ? contentRoot.name : "<null>",
-                        " button=",
-                        button != null ? button.name : "<null>",
-                        " iconImage=",
-                        iconImage != null ? iconImage.name : "<null>"));
-                }
             }
         }
 

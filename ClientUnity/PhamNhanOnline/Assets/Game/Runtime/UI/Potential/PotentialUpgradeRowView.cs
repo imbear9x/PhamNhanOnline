@@ -85,8 +85,6 @@ namespace PhamNhanOnline.Client.UI.Potential
 
         private void HandleButtonClicked()
         {
-            Debug.LogWarning(
-                $"[PotentialPopupDebug] Row click target={target} name='{lastDisplayName}' value='{lastValue}' object='{gameObject.name}'.");
             Clicked?.Invoke(this);
         }
     }
