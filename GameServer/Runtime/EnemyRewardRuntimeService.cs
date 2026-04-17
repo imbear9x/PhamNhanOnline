@@ -96,14 +96,14 @@ public sealed class EnemyRewardRuntimeService
                     var rolledItems = new List<RewardItemSeed>();
                     for (var rollIndex = 0; rollIndex < rewardRule.RollCount; rollIndex++)
                     {
-                        var fortune = target.Player.RuntimeState.CaptureSnapshot().BaseStats.GetEffectiveFortune();
+                        var luck = target.Player.RuntimeState.CaptureSnapshot().BaseStats.GetEffectiveLuck();
                         GameRandomRollResult rollResult;
                         try
                         {
                             rollResult = _gameRandomService.Roll(
                                 rewardRule.RandomTableId,
                                 new GameRandomContext(target.Player.CharacterData.CharacterId),
-                                new GameRandomOptions(fortune));
+                                new GameRandomOptions(luck));
                         }
                         catch (Exception ex)
                         {

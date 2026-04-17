@@ -28,12 +28,12 @@ public static partial class ServiceCollectionExtensions
         var tableRepository = scope.ServiceProvider.GetRequiredService<GameRandomTableRepository>();
         var entryRepository = scope.ServiceProvider.GetRequiredService<GameRandomEntryRepository>();
         var entryTagRepository = scope.ServiceProvider.GetRequiredService<GameRandomEntryTagRepository>();
-        var fortuneTagRepository = scope.ServiceProvider.GetRequiredService<GameRandomFortuneTagRepository>();
+        var luckTagRepository = scope.ServiceProvider.GetRequiredService<GameRandomLuckTagRepository>();
 
         var tables = tableRepository.GetAllAsync().GetAwaiter().GetResult();
         var entries = entryRepository.GetAllAsync().GetAwaiter().GetResult();
         var entryTags = entryTagRepository.GetAllAsync().GetAwaiter().GetResult();
-        var fortuneTags = fortuneTagRepository.GetAllAsync().GetAwaiter().GetResult();
+        var luckTags = luckTagRepository.GetAllAsync().GetAwaiter().GetResult();
 
         var entryTagsByEntryId = entryTags
             .GroupBy(x => x.GameRandomEntryId)
@@ -46,7 +46,7 @@ public static partial class ServiceCollectionExtensions
                     .OrderBy(x => x)
                     .ToArray());
 
-        var fortuneTagsByTableId = fortuneTags
+        var luckTagsByTableId = luckTags
             .GroupBy(x => x.GameRandomTableId)
             .ToDictionary(
                 g => g.Key,
@@ -69,13 +69,13 @@ public static partial class ServiceCollectionExtensions
                 {
                     TableId = table.TableId,
                     Mode = (GameRandomTableMode)table.Mode,
-                    FortuneModifier = new GameRandomFortuneModifierConfig
+                    LuckModifier = new GameRandomLuckModifierConfig
                     {
-                        Enabled = table.FortuneEnabled,
-                        BonusPartsPerMillionPerFortunePoint = table.FortuneBonusPartsPerMillionPerFortunePoint,
-                        MaxBonusPartsPerMillion = table.FortuneMaxBonusPartsPerMillion,
+                        Enabled = table.LuckEnabled,
+                        BonusPartsPerMillionPerLuckPoint = table.LuckBonusPartsPerMillionPerLuckPoint,
+                        MaxBonusPartsPerMillion = table.LuckMaxBonusPartsPerMillion,
                         NoneEntryId = table.NoneEntryId,
-                        ApplyToEntryTags = fortuneTagsByTableId.GetValueOrDefault(table.Id, [])
+                        ApplyToEntryTags = luckTagsByTableId.GetValueOrDefault(table.Id, [])
                     },
                     Entries = entriesByTableId.GetValueOrDefault(table.Id, [])
                         .Select(entry => new GameRandomEntryConfig

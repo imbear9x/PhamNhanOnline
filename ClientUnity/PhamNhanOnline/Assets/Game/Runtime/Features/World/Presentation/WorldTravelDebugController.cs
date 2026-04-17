@@ -547,8 +547,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 "Linh luc",
                 "Suc tan cong",
                 "Toc do",
-                "Co duyen",
-                "Than thuc"
+                "Luck",
+                "Sense"
             });
         }
 
@@ -616,12 +616,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var mpPreview = GetPreview(stats, PotentialAllocationTarget.BaseMp);
             var attackPreview = GetPreview(stats, PotentialAllocationTarget.BaseAttack);
             var speedPreview = GetPreview(stats, PotentialAllocationTarget.BaseSpeed);
-            var fortunePreview = GetPreview(stats, PotentialAllocationTarget.BaseFortune);
-            var spiritualSensePreview = GetPreview(stats, PotentialAllocationTarget.BaseSpiritualSense);
+            var luckPreview = GetPreview(stats, PotentialAllocationTarget.BaseLuck);
+            var sensePreview = GetPreview(stats, PotentialAllocationTarget.BaseSense);
 
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "Tiem nang chua dung: {0}\nHP: {1}/{2} | goc {3}, bac {4} | next {5}\nMP: {6}/{7} | goc {8}, bac {9} | next {10}\nTan cong: {11} | goc {12}, bac {13} | next {14}\nToc do: {15} | goc {16}, bac {17} | next {18}\nThan thuc: {19} | goc {20}, bac {21} | next {22}\nCo duyen: {23:0.##} | goc {24:0.##}, bac {25} | next {26}\nThe luc hien tai/max: {27}/{28}",
+                "Tiem nang chua dung: {0}\nHP: {1}/{2} | goc {3}, bac {4} | next {5}\nMP: {6}/{7} | goc {8}, bac {9} | next {10}\nTan cong: {11} | goc {12}, bac {13} | next {14}\nToc do: {15} | goc {16}, bac {17} | next {18}\nSense: {19} | goc {20}, bac {21} | next {22}\nLuck: {23:0.##} | goc {24:0.##}, bac {25} | next {26}\nThe luc hien tai/max: {27}/{28}",
                 stats.UnallocatedPotential,
                 currentHp,
                 stats.FinalHp,
@@ -641,14 +641,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 stats.BaseSpeed,
                 stats.SpeedUpgradeCount,
                 FormatPreview(speedPreview),
-                stats.FinalSpiritualSense,
-                stats.BaseSpiritualSense,
-                stats.SpiritualSenseUpgradeCount,
-                FormatPreview(spiritualSensePreview),
-                stats.FinalFortune,
-                stats.BaseFortune,
-                stats.FortuneUpgradeCount,
-                FormatPreview(fortunePreview),
+                stats.FinalSense,
+                stats.BaseSense,
+                stats.SenseUpgradeCount,
+                FormatPreview(sensePreview),
+                stats.FinalLuck,
+                stats.BaseLuck,
+                stats.LuckUpgradeCount,
+                FormatPreview(luckPreview),
                 currentStamina,
                 stats.FinalStamina)
                 + BuildExternalCharacterStatsDebugSuffix();
@@ -883,8 +883,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 1 => PotentialAllocationTarget.BaseMp,
                 2 => PotentialAllocationTarget.BaseAttack,
                 3 => PotentialAllocationTarget.BaseSpeed,
-                4 => PotentialAllocationTarget.BaseFortune,
-                5 => PotentialAllocationTarget.BaseSpiritualSense,
+                4 => PotentialAllocationTarget.BaseLuck,
+                5 => PotentialAllocationTarget.BaseSense,
                 _ => PotentialAllocationTarget.None
             };
         }
@@ -897,8 +897,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 PotentialAllocationTarget.BaseMp => "Linh luc",
                 PotentialAllocationTarget.BaseAttack => "Suc tan cong",
                 PotentialAllocationTarget.BaseSpeed => "Toc do",
-                PotentialAllocationTarget.BaseFortune => "Co duyen",
-                PotentialAllocationTarget.BaseSpiritualSense => "Than thuc",
+                PotentialAllocationTarget.BaseLuck => "Luck",
+                PotentialAllocationTarget.BaseSense => "Sense",
                 _ => "Khong ro"
             };
         }

@@ -222,9 +222,9 @@ insert into public.game_random_tables (
     id,
     table_id,
     mode,
-    fortune_enabled,
-    fortune_bonus_parts_per_million_per_fortune_point,
-    fortune_max_bonus_parts_per_million,
+    luck_enabled,
+    luck_bonus_parts_per_million_per_luck_point,
+    luck_max_bonus_parts_per_million,
     none_entry_id,
     description,
     created_at
@@ -256,9 +256,9 @@ on conflict (id) do update
 set
     table_id = excluded.table_id,
     mode = excluded.mode,
-    fortune_enabled = excluded.fortune_enabled,
-    fortune_bonus_parts_per_million_per_fortune_point = excluded.fortune_bonus_parts_per_million_per_fortune_point,
-    fortune_max_bonus_parts_per_million = excluded.fortune_max_bonus_parts_per_million,
+    luck_enabled = excluded.luck_enabled,
+    luck_bonus_parts_per_million_per_luck_point = excluded.luck_bonus_parts_per_million_per_luck_point,
+    luck_max_bonus_parts_per_million = excluded.luck_max_bonus_parts_per_million,
     none_entry_id = excluded.none_entry_id,
     description = excluded.description;
 

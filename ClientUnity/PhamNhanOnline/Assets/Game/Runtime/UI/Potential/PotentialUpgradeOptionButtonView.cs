@@ -2,26 +2,22 @@ using System;
 using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Potential
 {
     public sealed class PotentialUpgradeOptionButtonView : MonoBehaviour
     {
         [Header("References")]
-        [SerializeField] private Button button;
-        [SerializeField] private UIButtonView customButton;
+        [SerializeField] private UIButtonView buttonView;
         [SerializeField] private TMP_Text labelText;
 
         private string lastLabel = string.Empty;
+        private Action pendingClickAction;
 
         private void Awake()
         {
-            if (button == null)
-                button = GetComponent<Button>();
-
-            if (customButton == null)
-                customButton = GetComponent<UIButtonView>();
+            if (buttonView == null)
+                buttonView = GetComponent<UIButtonView>();
         }
 
         public void SetContent(string label, Action onClick, bool interactable = true, bool force = false)
@@ -34,37 +30,23 @@ namespace PhamNhanOnline.Client.UI.Potential
                     labelText.text = label;
             }
 
-            if (customButton != null)
-            {
-                customButton.Clicked -= HandleCustomButtonClicked;
-                pendingClickAction = onClick;
-                customButton.SetInteractable(interactable, force: true);
-                if (interactable && onClick != null)
-                    customButton.Clicked += HandleCustomButtonClicked;
-                if (button != null)
-                {
-                    button.onClick.RemoveAllListeners();
-                    button.interactable = false;
-                }
-            }
-            else if (button != null)
-            {
-                button.interactable = interactable;
-                button.onClick.RemoveAllListeners();
-                if (interactable && onClick != null)
-                    button.onClick.AddListener(() => onClick());
-            }
-        }
+            if (buttonView == null)
+                return;
 
-        private Action pendingClickAction;
+            buttonView.Clicked -= HandleButtonClicked;
+            pendingClickAction = onClick;
+            buttonView.SetInteractable(interactable, force: true);
+            if (interactable && onClick != null)
+                buttonView.Clicked += HandleButtonClicked;
+        }
 
         private void OnDisable()
         {
-            if (customButton != null)
-                customButton.Clicked -= HandleCustomButtonClicked;
+            if (buttonView != null)
+                buttonView.Clicked -= HandleButtonClicked;
         }
 
-        private void HandleCustomButtonClicked()
+        private void HandleButtonClicked()
         {
             pendingClickAction?.Invoke();
         }

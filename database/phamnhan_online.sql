@@ -149,8 +149,8 @@ CREATE TABLE public.character_base_stats (
     base_attack integer DEFAULT 10,
     base_move_speed numeric(10,4) DEFAULT 100.0,
     base_speed integer DEFAULT 10,
-    base_spiritual_sense integer DEFAULT 10,
-    base_fortune double precision DEFAULT 0.01,
+    base_sense integer DEFAULT 10,
+    base_luck double precision DEFAULT 0.01,
     base_potential integer DEFAULT 0,
     base_stamina integer DEFAULT 100,
     lifespan_bonus integer DEFAULT 0
@@ -261,7 +261,6 @@ ALTER TABLE public.map_templates OWNER TO postgres;
 CREATE TABLE public.realm_templates (
     id integer NOT NULL,
     name character varying(50),
-    stage_name character varying(50),
     max_cultivation bigint,
     base_breakthrough_rate double precision,
     failure_penalty double precision DEFAULT 0,
@@ -344,7 +343,7 @@ COPY public.breakthrough_conditions (id, realm_id, condition_type, target_id, su
 -- Data for Name: character_base_stats; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.character_base_stats (character_id, realm_id, cultivation, base_hp, base_mp, base_physique, base_attack, base_move_speed, base_speed, base_spiritual_sense, base_fortune, base_potential, base_stamina, lifespan_bonus) FROM stdin;
+COPY public.character_base_stats (character_id, realm_id, cultivation, base_hp, base_mp, base_physique, base_attack, base_move_speed, base_speed, base_sense, base_luck, base_potential, base_stamina, lifespan_bonus) FROM stdin;
 77b30f1d-0ef7-4687-adbe-f9cba0f6d3fa	1	0	100	100	10	10	100.0000	10	10	0.01	0	100	0
 28fc9149-7910-4d95-a2a5-6c04a6d4b786	1	0	100	100	10	10	100.0000	10	10	0.01	0	100	0
 836b24d1-7c65-4365-a546-1e786c2c0854	1	0	100	100	10	10	100.0000	10	10	0.01	0	100	0
@@ -378,7 +377,7 @@ COPY public.characters (id, account_id, server_id, name, model_id, gender, hair_
 --
 
 COPY public.game_time_state (id, anchor_utc, anchor_game_minute, game_minutes_per_real_minute, days_per_game_year, runtime_save_interval_seconds, derived_state_refresh_interval_seconds, updated_at) FROM stdin;
-1	2026-03-13 14:42:08.124049+07	106917029983	518400	360	2	5	2026-03-13 14:42:08.124049+07
+1	2026-03-13 14:42:08.124049+07	518400	360	2	5	2026-03-13 14:42:08.124049+07
 \.
 
 
@@ -398,8 +397,8 @@ COPY public.map_template_adjacent_maps (map_template_id, adjacent_map_template_i
 --
 
 COPY public.map_templates (id, name, map_type, client_map_key, width, height, cell_size, default_spawn_x, default_spawn_y, max_public_zone_count, max_players_per_zone, is_private_per_player, created_at) FROM stdin;
-1	Player Home	0	map_home_01	256	256	32	64	64	0	1	t	2026-03-14 16:00:00
-2	Starter Plains	1	map_farm_01	1024	1024	64	128	128	2	20	f	2026-03-14 16:00:00
+1	Player Home	map_home_01	256	256	32	64	64	0	1	t	2026-03-14 16:00:00
+2	Starter Plains	map_farm_01	1024	1024	64	128	128	2	20	f	2026-03-14 16:00:00
 \.
 
 
@@ -407,38 +406,38 @@ COPY public.map_templates (id, name, map_type, client_map_key, width, height, ce
 -- Data for Name: realm_templates; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.realm_templates (id, name, stage_name, max_cultivation, base_breakthrough_rate, failure_penalty, created_at, lifespan) FROM stdin;
-1	Luyện Khí Kỳ tầng 1	Luyện Khí Kỳ tầng 1	150	100	0	2026-03-12 23:28:24.439415	120
-2	Luyện Khí Kỳ tầng 2	Luyện Khí Kỳ tầng 2	200	95	0	2026-03-12 23:28:24.439415	125
-3	Luyện Khí Kỳ tầng 3	Luyện Khí Kỳ tầng 3	280	90	0	2026-03-13 13:14:08.306293	130
-4	Luyện Khí Kỳ tầng 4	Luyện Khí Kỳ tầng 4	380	85	0	2026-03-13 13:14:08.306293	135
-5	Luyện Khí Kỳ tầng 5	Luyện Khí Kỳ tầng 5	520	80	0	2026-03-13 13:14:08.306293	140
-6	Luyện Khí Kỳ tầng 6	Luyện Khí Kỳ tầng 6	750	75	0	2026-03-13 13:14:08.306293	145
-7	Luyện Khí Kỳ tầng 7	Luyện Khí Kỳ tầng 7	1200	70	0	2026-03-13 13:14:08.306293	150
-8	Luyện Khí Kỳ tầng 8	Luyện Khí Kỳ tầng 8	1500	65	0	2026-03-13 13:14:08.306293	155
-9	Luyện Khí Kỳ tầng 9	Luyện Khí Kỳ tầng 9	2000	40	0	2026-03-13 13:14:08.306293	160
-10	Trúc Cơ Sơ Kỳ	Trúc Cơ Sơ Kỳ	5000	40	0	2026-03-13 13:14:08.306293	180
-11	Trúc Cơ Trung Kỳ	Trúc Cơ Trung Kỳ	7000	35	0	2026-03-13 13:14:08.306293	200
-12	Trúc Cơ Hậu Kỳ	Trúc Cơ Hậu Kỳ	10000	25	0	2026-03-13 13:14:08.306293	220
-13	Kết Đan Sơ Kỳ	Kết Đan Sơ Kỳ	25000	30	0	2026-03-13 13:14:08.306293	350
-14	Kết Đan Trung Kỳ	Kết Đan Trung Kỳ	35000	28	0	2026-03-13 13:14:08.306293	400
-15	Kết Đan Hậu Kỳ	Kết Đan Hậu Kỳ	50000	20	0	2026-03-13 13:14:08.306293	500
-16	Nguyên Anh Sơ Kỳ	Nguyên Anh Sơ Kỳ	125000	18	0	2026-03-13 13:14:08.306293	1200
-17	Nguyên Anh Trung Kỳ	Nguyên Anh Trung Kỳ	175000	15	0	2026-03-13 13:14:08.306293	1500
-18	Nguyên Anh Hậu Kỳ	Nguyên Anh Hậu Kỳ	245000	10	0	2026-03-13 13:14:08.306293	2000
-19	Hóa Thần Sơ Kỳ	Hóa Thần Sơ Kỳ	600000	60	0	2026-03-13 13:14:08.306293	-1
-20	Hóa Thần Trung Kỳ	Hóa Thần Trung Kỳ	840000	55	0	2026-03-13 13:14:08.306293	-1
-21	Hóa Thần Hậu Kỳ	Hóa Thần Hậu Kỳ	1200000	30	0	2026-03-13 13:14:08.306293	-1
-22	Luyện Hư Sơ Kỳ	Luyện Hư Sơ Kỳ	3000000	30	0	2026-03-13 13:14:08.306293	-1
-23	Luyện Hư Trung Kỳ	Luyện Hư Trung Kỳ	4200000	25	0	2026-03-13 13:14:08.306293	-1
-24	Luyện Hư Hậu Kỳ	Luyện Hư Hậu Kỳ	9000000	15	0	2026-03-13 13:14:08.306293	-1
-25	Hợp Thể Sơ Kỳ	Hợp Thể Sơ Kỳ	20000000	20	0	2026-03-13 13:14:08.306293	-1
-26	Hợp Thể Trung Kỳ	Hợp Thể Trung Kỳ	28000000	15	0	2026-03-13 13:14:08.306293	-1
-27	Hợp Thể Hậu Kỳ	Hợp Thể Hậu Kỳ	40000000	10	0	2026-03-13 13:14:08.306293	-1
-28	Độ Kiếp Kỳ	Độ Kiếp Kỳ	100000000	12	0	2026-03-13 13:14:08.306293	-1
-29	Chân Tiên Sơ Kỳ	Chân Tiên Sơ Kỳ	250000000	6	0	2026-03-13 13:14:08.306293	-1
-30	Chân Tiên Trung Kỳ	Chân Tiên Trung Kỳ	350000000	5	0	2026-03-13 13:14:08.306293	-1
-31	Chân Tiên Hậu Kỳ	Chân Tiên Hậu Kỳ	500000000	4	0	2026-03-13 13:14:08.306293	-1
+COPY public.realm_templates (id, name, max_cultivation, base_breakthrough_rate, failure_penalty, created_at, lifespan) FROM stdin;
+1	Luyện Khí Kỳ tầng 1	150	100	0	2026-03-12 23:28:24.439415	120
+2	Luyện Khí Kỳ tầng 2	200	95	0	2026-03-12 23:28:24.439415	125
+3	Luyện Khí Kỳ tầng 3	280	90	0	2026-03-13 13:14:08.306293	130
+4	Luyện Khí Kỳ tầng 4	380	85	0	2026-03-13 13:14:08.306293	135
+5	Luyện Khí Kỳ tầng 5	520	80	0	2026-03-13 13:14:08.306293	140
+6	Luyện Khí Kỳ tầng 6	750	75	0	2026-03-13 13:14:08.306293	145
+7	Luyện Khí Kỳ tầng 7	1200	70	0	2026-03-13 13:14:08.306293	150
+8	Luyện Khí Kỳ tầng 8	1500	65	0	2026-03-13 13:14:08.306293	155
+9	Luyện Khí Kỳ tầng 9	2000	40	0	2026-03-13 13:14:08.306293	160
+10	Trúc Cơ Sơ Kỳ	5000	40	0	2026-03-13 13:14:08.306293	180
+11	Trúc Cơ Trung Kỳ	7000	35	0	2026-03-13 13:14:08.306293	200
+12	Trúc Cơ Hậu Kỳ	10000	25	0	2026-03-13 13:14:08.306293	220
+13	Kết Đan Sơ Kỳ	25000	30	0	2026-03-13 13:14:08.306293	350
+14	Kết Đan Trung Kỳ	35000	28	0	2026-03-13 13:14:08.306293	400
+15	Kết Đan Hậu Kỳ	50000	20	0	2026-03-13 13:14:08.306293	500
+16	Nguyên Anh Sơ Kỳ	125000	18	0	2026-03-13 13:14:08.306293	1200
+17	Nguyên Anh Trung Kỳ	175000	15	0	2026-03-13 13:14:08.306293	1500
+18	Nguyên Anh Hậu Kỳ	245000	10	0	2026-03-13 13:14:08.306293	2000
+19	Hóa Thần Sơ Kỳ	600000	60	0	2026-03-13 13:14:08.306293	-1
+20	Hóa Thần Trung Kỳ	840000	55	0	2026-03-13 13:14:08.306293	-1
+21	Hóa Thần Hậu Kỳ	1200000	30	0	2026-03-13 13:14:08.306293	-1
+22	Luyện Hư Sơ Kỳ	3000000	30	0	2026-03-13 13:14:08.306293	-1
+23	Luyện Hư Trung Kỳ	4200000	25	0	2026-03-13 13:14:08.306293	-1
+24	Luyện Hư Hậu Kỳ	9000000	15	0	2026-03-13 13:14:08.306293	-1
+25	Hợp Thể Sơ Kỳ	20000000	20	0	2026-03-13 13:14:08.306293	-1
+26	Hợp Thể Trung Kỳ	28000000	15	0	2026-03-13 13:14:08.306293	-1
+27	Hợp Thể Hậu Kỳ	40000000	10	0	2026-03-13 13:14:08.306293	-1
+28	Độ Kiếp Kỳ	100000000	12	0	2026-03-13 13:14:08.306293	-1
+29	Chân Tiên Sơ Kỳ	250000000	6	0	2026-03-13 13:14:08.306293	-1
+30	Chân Tiên Trung Kỳ	350000000	5	0	2026-03-13 13:14:08.306293	-1
+31	Chân Tiên Hậu Kỳ	500000000	4	0	2026-03-13 13:14:08.306293	-1
 \.
 
 
@@ -447,7 +446,7 @@ COPY public.realm_templates (id, name, stage_name, max_cultivation, base_breakth
 --
 
 COPY public.servers (id, name, status) FROM stdin;
-1	Server01	1
+1	Server01
 \.
 
 
@@ -717,4 +716,6 @@ $$;
 --
 
 \unrestrict lfv5QTJmP6RrK1GA6jzzEg7DuzvjutlNL58PWRb83Vb3T8OciBqxtEbs4X2n5iL
+
+
 

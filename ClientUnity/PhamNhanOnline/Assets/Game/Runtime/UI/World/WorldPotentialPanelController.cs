@@ -11,10 +11,11 @@ using PhamNhanOnline.Client.UI.Potential;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.World
 {
-    public sealed class WorldPotentialPanelController : MonoBehaviour
+    public sealed class WorldPotentialPanelController : MonoBehaviour, IPointerClickHandler
     {
         private static readonly PotentialAllocationTarget[] SupportedTargets =
         {
@@ -22,20 +23,19 @@ namespace PhamNhanOnline.Client.UI.World
             PotentialAllocationTarget.BaseMp,
             PotentialAllocationTarget.BaseAttack,
             PotentialAllocationTarget.BaseSpeed,
-            PotentialAllocationTarget.BaseFortune,
-            PotentialAllocationTarget.BaseSpiritualSense
+            PotentialAllocationTarget.BaseLuck,
+            PotentialAllocationTarget.BaseSense
         };
 
         [Header("Header")]
         [SerializeField] private TMP_Text realmNameText;
         [SerializeField] private TMP_Text cultivationProgressText;
+        [SerializeField] private Image cultivationProgressFillImage;
         [SerializeField] private TMP_Text unallocatedPotentialText;
         [SerializeField] private TMP_Text statusText;
 
         [Header("Potential Rows")]
-        [SerializeField] private RectTransform statsPanelBounds;
         [SerializeField] private PotentialUpgradeRowListView rowListView;
-        [SerializeField] private PotentialUpgradeOptionsPopupView optionsPopupView;
         [SerializeField] private PotentialStatPresentationCatalog presentationCatalog;
 
         [Header("Behavior")]
@@ -46,7 +46,7 @@ namespace PhamNhanOnline.Client.UI.World
         [Header("Display Text")]
         [SerializeField] private string missingRealmName = "Chua co canh gioi";
         [SerializeField] private string missingCultivationText = "0/0";
-        [SerializeField] private string missingUnallocatedPotentialText = "Tiem nang: 0";
+        [SerializeField] private string missingUnallocatedPotentialText = "0";
 
         private Guid? lastRequestedCharacterId;
         private float lastReloadAttemptTime = float.NegativeInfinity;
@@ -59,14 +59,7 @@ namespace PhamNhanOnline.Client.UI.World
         private void Awake()
         {
             if (rowListView != null)
-            {
                 rowListView.RowClicked += HandleRowClicked;
-                rowListView.RowHovered += HandleRowHovered;
-                rowListView.RowHoverExited += HandleRowHoverExited;
-            }
-
-            if (statsPanelBounds == null)
-                statsPanelBounds = transform as RectTransform;
         }
 
         private void OnEnable()
@@ -82,17 +75,12 @@ namespace PhamNhanOnline.Client.UI.World
 
             RefreshPanel(force: false);
             TryReloadMissingData();
-            UpdatePopupVisibility();
         }
 
         private void OnDestroy()
         {
             if (rowListView != null)
-            {
                 rowListView.RowClicked -= HandleRowClicked;
-                rowListView.RowHovered -= HandleRowHovered;
-                rowListView.RowHoverExited -= HandleRowHoverExited;
-            }
         }
 
         private void RefreshPanel(bool force)
@@ -119,16 +107,18 @@ namespace PhamNhanOnline.Client.UI.World
 
             ApplyText(realmNameText, ResolveRealmDisplayName(stats), force: true);
             ApplyText(cultivationProgressText, BuildCultivationProgress(stats), force: true);
+            ApplyFillAmount(cultivationProgressFillImage, ResolveCultivationFillAmount(stats), force: true);
             ApplyText(
                 unallocatedPotentialText,
-                string.Format(CultureInfo.InvariantCulture, "Tiem nang chua dung: {0}", stats.UnallocatedPotential),
+                stats.UnallocatedPotential.ToString(CultureInfo.InvariantCulture),
                 force: true);
             ApplyText(statusText, lastStatusMessage, force: true);
 
             if (rowListView != null)
                 rowListView.SetEntries(BuildRowEntries(stats), force: true);
 
-            if (popupRow != null && optionsPopupView != null && optionsPopupView.IsVisible)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (popupRow != null && modalUIManager != null && modalUIManager.IsPotentialUpgradeOptionsPopupVisible)
                 ShowOptionsForRow(popupRow, stats);
         }
 
@@ -136,14 +126,14 @@ namespace PhamNhanOnline.Client.UI.World
         {
             ApplyText(realmNameText, reloadInFlight ? "Dang tai canh gioi..." : missingRealmName, force);
             ApplyText(cultivationProgressText, missingCultivationText, force);
+            ApplyFillAmount(cultivationProgressFillImage, 0f, force);
             ApplyText(unallocatedPotentialText, missingUnallocatedPotentialText, force);
             ApplyText(statusText, lastStatusMessage, force);
 
             if (rowListView != null)
                 rowListView.Clear(force: true);
 
-            if (optionsPopupView != null)
-                optionsPopupView.Hide(force: true);
+            WorldModalUIManager.Instance?.HidePotentialUpgradeOptionsPopup(force: true);
         }
 
         private void TryReloadMissingData()
@@ -201,60 +191,75 @@ namespace PhamNhanOnline.Client.UI.World
             }
         }
 
-        private void HandleRowHovered(PotentialUpgradeRowView row)
-        {
-        }
-
-        private void HandleRowHoverExited(PotentialUpgradeRowView row)
-        {
-        }
-
-        private void UpdatePopupVisibility()
-        {
-            if (optionsPopupView == null || !optionsPopupView.IsVisible)
-                return;
-
-            if (DidClickBlankSpaceInsideStatsPanel())
-                HideOptionsPopup();
-        }
-
         private void HandleRowClicked(PotentialUpgradeRowView row)
         {
             if (row == null || !ClientRuntime.IsInitialized)
-                return;
-
-            if (optionsPopupView != null && optionsPopupView.IsVisible && popupRow == row)
             {
+                Debug.LogWarning(
+                    $"[PotentialPopupDebug] HandleRowClicked ignored. rowNull={row == null} runtimeInitialized={ClientRuntime.IsInitialized}.");
+                return;
+            }
+
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null && modalUIManager.IsPotentialUpgradeOptionsPopupVisible && popupRow == row)
+            {
+                Debug.LogWarning($"[PotentialPopupDebug] Row click toggled popup off for target={row.Target}.");
                 HideOptionsPopup();
                 return;
             }
 
             var baseStats = ClientRuntime.Character.BaseStats;
             if (!baseStats.HasValue)
+            {
+                Debug.LogWarning($"[PotentialPopupDebug] HandleRowClicked aborted because BaseStats is missing for target={row.Target}.");
                 return;
+            }
 
             popupRow = row;
+            Debug.LogWarning($"[PotentialPopupDebug] HandleRowClicked showing options for target={row.Target}.");
             ShowOptionsForRow(row, baseStats.Value);
         }
 
         private void ShowOptionsForRow(PotentialUpgradeRowView row, CharacterBaseStatsModel stats)
         {
-            if (optionsPopupView == null || row == null)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager == null || row == null)
+            {
+                Debug.LogWarning(
+                    $"[PotentialPopupDebug] ShowOptionsForRow aborted. modalUiManagerNull={modalUIManager == null} rowNull={row == null}.");
                 return;
+            }
 
             var preview = GetPreview(stats, row.Target);
             var options = BuildUpgradeOptions(row.Target, preview, stats.UnallocatedPotential);
             if (options.Count == 0)
             {
+                Debug.LogWarning(
+                    $"[PotentialPopupDebug] ShowOptionsForRow produced no options. target={row.Target} " +
+                    $"hasPreview={preview.HasValue} unallocated={stats.UnallocatedPotential}.");
                 HideOptionsPopup();
                 return;
             }
 
-            optionsPopupView.Show(
+            Debug.LogWarning(
+                $"[PotentialPopupDebug] ShowOptionsForRow showing popup. target={row.Target} options={options.Count} unallocated={stats.UnallocatedPotential}.");
+            modalUIManager.ShowPotentialUpgradeOptionsPopup(
                 row.transform as RectTransform,
                 ResolvePresentation(row.Target).DisplayName,
                 options,
                 force: true);
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (eventData == null || eventData.button != PointerEventData.InputButton.Left)
+                return;
+
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager == null || !modalUIManager.IsPotentialUpgradeOptionsPopupVisible)
+                return;
+
+            HideOptionsPopup();
         }
 
         private List<PotentialUpgradeOptionsPopupView.OptionEntry> BuildUpgradeOptions(
@@ -263,8 +268,29 @@ namespace PhamNhanOnline.Client.UI.World
             int unallocatedPotential)
         {
             var result = new List<PotentialUpgradeOptionsPopupView.OptionEntry>(maxVisibleUpgradeOptions);
-            if (!preview.HasValue || !preview.Value.IsAvailable || !preview.Value.CanUpgrade || maxVisibleUpgradeOptions <= 0)
+            if (!preview.HasValue || !preview.Value.IsAvailable || maxVisibleUpgradeOptions <= 0)
                 return result;
+
+            if (!preview.Value.CanUpgrade)
+            {
+                if (preview.Value.PotentialCost > 0)
+                {
+                    var statPresentation = ResolvePresentation(target);
+                    var label = string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Dung {0} tiem nang  ->  +{1} {2}",
+                        preview.Value.PotentialCost,
+                        preview.Value.StatGain.ToString(statPresentation.GainFormat, CultureInfo.InvariantCulture),
+                        statPresentation.DisplayName);
+
+                    result.Add(new PotentialUpgradeOptionsPopupView.OptionEntry(
+                        label,
+                        onClick: null,
+                        interactable: false));
+                }
+
+                return result;
+            }
 
             var spendOptions = BuildSpendOptions(preview.Value, unallocatedPotential, maxVisibleUpgradeOptions);
             if (spendOptions.Count == 0)
@@ -350,10 +376,12 @@ namespace PhamNhanOnline.Client.UI.World
             {
                 var target = SupportedTargets[i];
                 var presentation = ResolvePresentation(target);
+                var preview = GetPreview(stats, target);
                 entries[i] = new PotentialUpgradeRowListView.Entry(
                     target,
                     presentation,
-                    ResolveCurrentValueText(stats, target, presentation));
+                    ResolveCurrentValueText(stats, target, presentation),
+                    preview.HasValue && preview.Value.IsAvailable && preview.Value.CanUpgrade);
             }
 
             return entries;
@@ -367,7 +395,7 @@ namespace PhamNhanOnline.Client.UI.World
                     target,
                     PotentialStatPresentationCatalog.GetFallbackDisplayName(target),
                     null,
-                    target == PotentialAllocationTarget.BaseFortune ? "0.##" : "0",
+                    target == PotentialAllocationTarget.BaseLuck ? "0.##" : "0",
                     "0.##");
         }
 
@@ -386,6 +414,16 @@ namespace PhamNhanOnline.Client.UI.World
             var maxCultivation = Math.Max(0L, stats.RealmMaxCultivation);
             var currentCultivation = Math.Max(0L, stats.Cultivation);
             return string.Format(CultureInfo.InvariantCulture, "{0}/{1}", currentCultivation, maxCultivation);
+        }
+
+        private static float ResolveCultivationFillAmount(CharacterBaseStatsModel stats)
+        {
+            var maxCultivation = Math.Max(0L, stats.RealmMaxCultivation);
+            if (maxCultivation <= 0L)
+                return 0f;
+
+            var currentCultivation = Math.Max(0L, stats.Cultivation);
+            return Mathf.Clamp01((float)currentCultivation / maxCultivation);
         }
 
         private static PotentialUpgradePreviewModel? GetPreview(CharacterBaseStatsModel stats, PotentialAllocationTarget target)
@@ -454,8 +492,8 @@ namespace PhamNhanOnline.Client.UI.World
                 PotentialAllocationTarget.BaseMp => (stats.BaseMp + stats.PotentialMpBonus).ToString(presentation.ValueFormat, CultureInfo.InvariantCulture),
                 PotentialAllocationTarget.BaseAttack => (stats.BaseAttack + stats.PotentialAttackBonus).ToString(presentation.ValueFormat, CultureInfo.InvariantCulture),
                 PotentialAllocationTarget.BaseSpeed => (stats.BaseSpeed + stats.PotentialSpeedBonus).ToString(presentation.ValueFormat, CultureInfo.InvariantCulture),
-                PotentialAllocationTarget.BaseSpiritualSense => (stats.BaseSpiritualSense + stats.PotentialSpiritualSenseBonus).ToString(presentation.ValueFormat, CultureInfo.InvariantCulture),
-                PotentialAllocationTarget.BaseFortune => (stats.BaseFortune + stats.PotentialFortuneBonus).ToString(presentation.ValueFormat, CultureInfo.InvariantCulture),
+                PotentialAllocationTarget.BaseSense => (stats.BaseSense + stats.PotentialSenseBonus).ToString(presentation.ValueFormat, CultureInfo.InvariantCulture),
+                PotentialAllocationTarget.BaseLuck => (stats.BaseLuck + stats.PotentialLuckBonus).ToString(presentation.ValueFormat, CultureInfo.InvariantCulture),
                 _ => "-"
             };
         }
@@ -472,8 +510,8 @@ namespace PhamNhanOnline.Client.UI.World
                 stats.PotentialMpBonus.ToString(CultureInfo.InvariantCulture),
                 stats.PotentialAttackBonus.ToString(CultureInfo.InvariantCulture),
                 stats.PotentialSpeedBonus.ToString(CultureInfo.InvariantCulture),
-                stats.PotentialSpiritualSenseBonus.ToString(CultureInfo.InvariantCulture),
-                stats.PotentialFortuneBonus.ToString("0.####", CultureInfo.InvariantCulture),
+                stats.PotentialSenseBonus.ToString(CultureInfo.InvariantCulture),
+                stats.PotentialLuckBonus.ToString("0.####", CultureInfo.InvariantCulture),
                 BuildPreviewSnapshot(stats.PotentialUpgradePreviews));
         }
 
@@ -513,51 +551,22 @@ namespace PhamNhanOnline.Client.UI.World
             textComponent.text = normalized;
         }
 
+        private static void ApplyFillAmount(Image image, float value, bool force)
+        {
+            if (image == null)
+                return;
+
+            var normalized = Mathf.Clamp01(value);
+            if (!force && Mathf.Approximately(image.fillAmount, normalized))
+                return;
+
+            image.fillAmount = normalized;
+        }
+
         private void HideOptionsPopup(bool force = false)
         {
             popupRow = null;
-            if (optionsPopupView != null)
-                optionsPopupView.Hide(force);
-        }
-
-        private bool DidClickBlankSpaceInsideStatsPanel()
-        {
-            if (!Input.GetMouseButtonDown(0) || statsPanelBounds == null)
-                return false;
-
-            var eventSystem = EventSystem.current;
-            if (eventSystem == null)
-                return false;
-
-            var canvas = statsPanelBounds.GetComponentInParent<Canvas>();
-            var eventCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
-                ? canvas.worldCamera
-                : null;
-
-            if (!RectTransformUtility.RectangleContainsScreenPoint(statsPanelBounds, Input.mousePosition, eventCamera))
-                return false;
-
-            var pointerData = new PointerEventData(eventSystem)
-            {
-                position = Input.mousePosition
-            };
-            var results = new System.Collections.Generic.List<RaycastResult>(8);
-            eventSystem.RaycastAll(pointerData, results);
-
-            for (var i = 0; i < results.Count; i++)
-            {
-                var hitTransform = results[i].gameObject != null ? results[i].gameObject.transform : null;
-                if (hitTransform == null)
-                    continue;
-
-                if (popupRow != null && hitTransform.IsChildOf(popupRow.transform))
-                    return false;
-
-                if (optionsPopupView != null && hitTransform.IsChildOf(optionsPopupView.transform))
-                    return false;
-            }
-
-            return true;
+            WorldModalUIManager.Instance?.HidePotentialUpgradeOptionsPopup(force);
         }
     }
 }

@@ -11,8 +11,8 @@ ALTER TABLE public.character_base_stats
     ADD COLUMN IF NOT EXISTS mp_upgrade_count integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS attack_upgrade_count integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS speed_upgrade_count integer NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS spiritual_sense_upgrade_count integer NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS fortune_upgrade_count integer NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS sense_upgrade_count integer NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS luck_upgrade_count integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS active_martial_art_id integer NULL,
     ADD COLUMN IF NOT EXISTS potential_reward_locked boolean NOT NULL DEFAULT false;
 
@@ -143,9 +143,9 @@ CREATE TABLE IF NOT EXISTS public.game_random_tables (
     id integer NOT NULL,
     table_id character varying(100) NOT NULL,
     mode integer NOT NULL DEFAULT 0,
-    fortune_enabled boolean NOT NULL DEFAULT false,
-    fortune_bonus_parts_per_million_per_fortune_point integer NOT NULL DEFAULT 0,
-    fortune_max_bonus_parts_per_million integer NOT NULL DEFAULT 0,
+    luck_enabled boolean NOT NULL DEFAULT false,
+    luck_bonus_parts_per_million_per_luck_point integer NOT NULL DEFAULT 0,
+    luck_max_bonus_parts_per_million integer NOT NULL DEFAULT 0,
     none_entry_id character varying(100) NOT NULL DEFAULT '__none__',
     description text NULL,
     created_at timestamp without time zone DEFAULT now(),
@@ -179,14 +179,14 @@ CREATE TABLE IF NOT EXISTS public.game_random_entry_tags (
         FOREIGN KEY (game_random_entry_id) REFERENCES public.game_random_entries(id)
 );
 
-CREATE TABLE IF NOT EXISTS public.game_random_fortune_tags (
+CREATE TABLE IF NOT EXISTS public.game_random_luck_tags (
     id integer NOT NULL,
     game_random_table_id integer NOT NULL,
     tag character varying(50) NOT NULL,
     created_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT game_random_fortune_tags_pkey PRIMARY KEY (id),
-    CONSTRAINT game_random_fortune_tags_table_tag_key UNIQUE (game_random_table_id, tag),
-    CONSTRAINT fk_game_random_fortune_tags_table
+    CONSTRAINT game_random_luck_tags_pkey PRIMARY KEY (id),
+    CONSTRAINT game_random_luck_tags_table_tag_key UNIQUE (game_random_table_id, tag),
+    CONSTRAINT fk_game_random_luck_tags_table
         FOREIGN KEY (game_random_table_id) REFERENCES public.game_random_tables(id)
 );
 
@@ -194,9 +194,9 @@ INSERT INTO public.game_random_tables (
     id,
     table_id,
     mode,
-    fortune_enabled,
-    fortune_bonus_parts_per_million_per_fortune_point,
-    fortune_max_bonus_parts_per_million,
+    luck_enabled,
+    luck_bonus_parts_per_million_per_luck_point,
+    luck_max_bonus_parts_per_million,
     none_entry_id,
     description
 )
@@ -214,9 +214,9 @@ ON CONFLICT (id) DO UPDATE
 SET
     table_id = EXCLUDED.table_id,
     mode = EXCLUDED.mode,
-    fortune_enabled = EXCLUDED.fortune_enabled,
-    fortune_bonus_parts_per_million_per_fortune_point = EXCLUDED.fortune_bonus_parts_per_million_per_fortune_point,
-    fortune_max_bonus_parts_per_million = EXCLUDED.fortune_max_bonus_parts_per_million,
+    luck_enabled = EXCLUDED.luck_enabled,
+    luck_bonus_parts_per_million_per_luck_point = EXCLUDED.luck_bonus_parts_per_million_per_luck_point,
+    luck_max_bonus_parts_per_million = EXCLUDED.luck_max_bonus_parts_per_million,
     none_entry_id = EXCLUDED.none_entry_id,
     description = EXCLUDED.description;
 
@@ -285,7 +285,6 @@ SET
 INSERT INTO public.realm_templates (
     id,
     name,
-    stage_name,
     max_cultivation,
     lifespan,
     base_breakthrough_rate,
@@ -293,41 +292,40 @@ INSERT INTO public.realm_templates (
     failure_penalty
 )
 VALUES
-    (1, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 1', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 1', 150, 120, 100, 0.2, 0),
-    (2, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 2', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 2', 200, 125, 95, 0.2, 0),
-    (3, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 3', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 3', 280, 130, 90, 0.2, 0),
-    (4, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 4', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 4', 380, 135, 85, 0.2, 0),
-    (5, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 5', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 5', 520, 140, 80, 0.2, 0),
-    (6, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 6', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 6', 750, 145, 75, 0.2, 0),
-    (7, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 7', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 7', 1200, 150, 70, 0.2, 0),
-    (8, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 8', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 8', 1500, 155, 65, 0.2, 0),
-    (9, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 9', 'Luyá»‡n KhÃ­ Ká»³ táº§ng 9', 2000, 160, 40, 0.2, 0),
-    (10, 'TrÃºc CÆ¡ SÆ¡ Ká»³', 'TrÃºc CÆ¡ SÆ¡ Ká»³', 5000, 180, 40, 0.3, 0),
-    (11, 'TrÃºc CÆ¡ Trung Ká»³', 'TrÃºc CÆ¡ Trung Ká»³', 7000, 200, 35, 0.3, 0),
-    (12, 'TrÃºc CÆ¡ Háº­u Ká»³', 'TrÃºc CÆ¡ Háº­u Ká»³', 10000, 220, 25, 0.3, 0),
-    (13, 'Káº¿t Äan SÆ¡ Ká»³', 'Káº¿t Äan SÆ¡ Ká»³', 25000, 350, 30, 0.5, 0),
-    (14, 'Káº¿t Äan Trung Ká»³', 'Káº¿t Äan Trung Ká»³', 35000, 400, 28, 0.5, 0),
-    (15, 'Káº¿t Äan Háº­u Ká»³', 'Káº¿t Äan Háº­u Ká»³', 50000, 500, 20, 0.5, 0),
-    (16, 'NguyÃªn Anh SÆ¡ Ká»³', 'NguyÃªn Anh SÆ¡ Ká»³', 125000, 1200, 18, 0.7, 0),
-    (17, 'NguyÃªn Anh Trung Ká»³', 'NguyÃªn Anh Trung Ká»³', 175000, 1500, 15, 0.7, 0),
-    (18, 'NguyÃªn Anh Háº­u Ká»³', 'NguyÃªn Anh Háº­u Ká»³', 245000, 2000, 10, 0.7, 0),
-    (19, 'HÃ³a Tháº§n SÆ¡ Ká»³', 'HÃ³a Tháº§n SÆ¡ Ká»³', 600000, -1, 60, 1.0, 0),
-    (20, 'HÃ³a Tháº§n Trung Ká»³', 'HÃ³a Tháº§n Trung Ká»³', 840000, -1, 55, 1.0, 0),
-    (21, 'HÃ³a Tháº§n Háº­u Ká»³', 'HÃ³a Tháº§n Háº­u Ká»³', 1200000, -1, 30, 1.0, 0),
-    (22, 'Luyá»‡n HÆ° SÆ¡ Ká»³', 'Luyá»‡n HÆ° SÆ¡ Ká»³', 3000000, -1, 30, 1.4, 0),
-    (23, 'Luyá»‡n HÆ° Trung Ká»³', 'Luyá»‡n HÆ° Trung Ká»³', 4200000, -1, 25, 1.4, 0),
-    (24, 'Luyá»‡n HÆ° Háº­u Ká»³', 'Luyá»‡n HÆ° Háº­u Ká»³', 9000000, -1, 15, 1.4, 0),
-    (25, 'Há»£p Thá»ƒ SÆ¡ Ká»³', 'Há»£p Thá»ƒ SÆ¡ Ká»³', 20000000, -1, 20, 2.0, 0),
-    (26, 'Há»£p Thá»ƒ Trung Ká»³', 'Há»£p Thá»ƒ Trung Ká»³', 28000000, -1, 15, 2.0, 0),
-    (27, 'Há»£p Thá»ƒ Háº­u Ká»³', 'Há»£p Thá»ƒ Háº­u Ká»³', 40000000, -1, 10, 2.0, 0),
-    (28, 'Äá»™ Kiáº¿p Ká»³', 'Äá»™ Kiáº¿p Ká»³', 100000000, -1, 12, 3.0, 0),
-    (29, 'ChÃ¢n TiÃªn SÆ¡ Ká»³', 'ChÃ¢n TiÃªn SÆ¡ Ká»³', 250000000, -1, 6, 3.0, 0),
-    (30, 'ChÃ¢n TiÃªn Trung Ká»³', 'ChÃ¢n TiÃªn Trung Ká»³', 350000000, -1, 5, 3.0, 0),
-    (31, 'ChÃ¢n TiÃªn Háº­u Ká»³', 'ChÃ¢n TiÃªn Háº­u Ká»³', 500000000, -1, 4, 3.0, 0)
+    (1, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 1', 150, 120, 100, 0.2, 0),
+    (2, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 2', 200, 125, 95, 0.2, 0),
+    (3, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 3', 280, 130, 90, 0.2, 0),
+    (4, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 4', 380, 135, 85, 0.2, 0),
+    (5, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 5', 520, 140, 80, 0.2, 0),
+    (6, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 6', 750, 145, 75, 0.2, 0),
+    (7, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 7', 1200, 150, 70, 0.2, 0),
+    (8, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 8', 1500, 155, 65, 0.2, 0),
+    (9, 'Luyá»‡n KhÃ­ Ká»³ táº§ng 9', 2000, 160, 40, 0.2, 0),
+    (10, 'TrÃºc CÆ¡ SÆ¡ Ká»³', 5000, 180, 40, 0.3, 0),
+    (11, 'TrÃºc CÆ¡ Trung Ká»³', 7000, 200, 35, 0.3, 0),
+    (12, 'TrÃºc CÆ¡ Háº­u Ká»³', 10000, 220, 25, 0.3, 0),
+    (13, 'Káº¿t Äan SÆ¡ Ká»³', 25000, 350, 30, 0.5, 0),
+    (14, 'Káº¿t Äan Trung Ká»³', 35000, 400, 28, 0.5, 0),
+    (15, 'Káº¿t Äan Háº­u Ká»³', 50000, 500, 20, 0.5, 0),
+    (16, 'NguyÃªn Anh SÆ¡ Ká»³', 125000, 1200, 18, 0.7, 0),
+    (17, 'NguyÃªn Anh Trung Ká»³', 175000, 1500, 15, 0.7, 0),
+    (18, 'NguyÃªn Anh Háº­u Ká»³', 245000, 2000, 10, 0.7, 0),
+    (19, 'HÃ³a Tháº§n SÆ¡ Ká»³', 600000, -1, 60, 1.0, 0),
+    (20, 'HÃ³a Tháº§n Trung Ká»³', 840000, -1, 55, 1.0, 0),
+    (21, 'HÃ³a Tháº§n Háº­u Ká»³', 1200000, -1, 30, 1.0, 0),
+    (22, 'Luyá»‡n HÆ° SÆ¡ Ká»³', 3000000, -1, 30, 1.4, 0),
+    (23, 'Luyá»‡n HÆ° Trung Ká»³', 4200000, -1, 25, 1.4, 0),
+    (24, 'Luyá»‡n HÆ° Háº­u Ká»³', 9000000, -1, 15, 1.4, 0),
+    (25, 'Há»£p Thá»ƒ SÆ¡ Ká»³', 20000000, -1, 20, 2.0, 0),
+    (26, 'Há»£p Thá»ƒ Trung Ká»³', 28000000, -1, 15, 2.0, 0),
+    (27, 'Há»£p Thá»ƒ Háº­u Ká»³', 40000000, -1, 10, 2.0, 0),
+    (28, 'Äá»™ Kiáº¿p Ká»³', 100000000, -1, 12, 3.0, 0),
+    (29, 'ChÃ¢n TiÃªn SÆ¡ Ká»³', 250000000, -1, 6, 3.0, 0),
+    (30, 'ChÃ¢n TiÃªn Trung Ká»³', 350000000, -1, 5, 3.0, 0),
+    (31, 'ChÃ¢n TiÃªn Háº­u Ká»³', 500000000, -1, 4, 3.0, 0)
 ON CONFLICT (id) DO UPDATE
 SET
     name = EXCLUDED.name,
-    stage_name = EXCLUDED.stage_name,
     max_cultivation = EXCLUDED.max_cultivation,
     lifespan = EXCLUDED.lifespan,
     base_breakthrough_rate = EXCLUDED.base_breakthrough_rate,
@@ -341,10 +339,10 @@ INSERT INTO public.spiritual_energy_templates (
     lk_per_minute
 )
 VALUES
-    (1, 'low', 'Low', 0.8),
-    (2, 'medium', 'Medium', 1.0),
-    (3, 'high', 'High', 1.5),
-    (4, 'dense', 'Dense', 2.0)
+    (1, 'low', 0.8),
+    (2, 'medium', 1.0),
+    (3, 'high', 1.5),
+    (4, 'dense', 2.0)
 ON CONFLICT (id) DO UPDATE
 SET
     code = EXCLUDED.code,
@@ -852,7 +850,6 @@ CREATE TABLE IF NOT EXISTS public.herb_growth_stage_configs (
     id integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     herb_template_id integer NOT NULL,
     stage integer NOT NULL,
-    stage_name character varying(50) NOT NULL,
     required_growth_seconds bigint NOT NULL,
     CONSTRAINT herb_growth_stage_configs_herb_stage_key UNIQUE (herb_template_id, stage),
     CONSTRAINT fk_herb_growth_stage_configs_herb_template
@@ -1328,3 +1325,5 @@ SET
     updated_at = now();
 
 COMMIT;
+
+

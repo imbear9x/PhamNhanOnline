@@ -19,7 +19,7 @@ public sealed class GameRandomTableConfig
 {
     public string TableId { get; init; } = string.Empty;
     public GameRandomTableMode Mode { get; init; } = GameRandomTableMode.Exclusive;
-    public GameRandomFortuneModifierConfig FortuneModifier { get; init; } = new();
+    public GameRandomLuckModifierConfig LuckModifier { get; init; } = new();
     public List<GameRandomEntryConfig> Entries { get; init; } = [];
 }
 
@@ -31,15 +31,15 @@ public sealed class GameRandomEntryConfig
     public List<string> Tags { get; init; } = [];
 }
 
-public sealed class GameRandomFortuneModifierConfig
+public sealed class GameRandomLuckModifierConfig
 {
-    public static GameRandomFortuneModifierConfig Disabled { get; } = new()
+    public static GameRandomLuckModifierConfig Disabled { get; } = new()
     {
         Enabled = false
     };
 
     public bool Enabled { get; init; } = true;
-    public int BonusPartsPerMillionPerFortunePoint { get; init; }
+    public int BonusPartsPerMillionPerLuckPoint { get; init; }
     public int MaxBonusPartsPerMillion { get; init; }
     public string NoneEntryId { get; init; } = "__none__";
     public List<string> ApplyToEntryTags { get; init; } = [];

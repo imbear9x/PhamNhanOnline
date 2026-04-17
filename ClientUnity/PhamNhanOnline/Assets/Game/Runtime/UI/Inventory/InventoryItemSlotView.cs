@@ -188,10 +188,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
             var modalUIManager = WorldModalUIManager.Instance;
             if (modalUIManager != null)
-            {
-                modalUIManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
-                modalUIManager.HideItemTooltip(this, force: true);
-            }
+                modalUIManager.BeginItemInteraction(this, force: true);
         }
 
         public void OnPointerUp(PointerEventData eventData)
@@ -199,7 +196,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (!hasItem)
                 return;
 
-            WorldModalUIManager.Instance?.SetItemTooltipSuppressed(this, suppressed: false);
+            WorldModalUIManager.Instance?.EndItemInteraction(this);
         }
 
         public void OnInitializePotentialDrag(PointerEventData eventData)
@@ -219,8 +216,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (modalUIManager != null)
             {
                 modalUIManager.HideInventoryItemOptionsPopup(force: true);
-                modalUIManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
-                modalUIManager.HideItemTooltip(this, force: true);
+                modalUIManager.BeginItemInteraction(this, force: true);
             }
 
             canvasGroup.blocksRaycasts = false;
@@ -244,7 +240,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             var modalUIManager = WorldModalUIManager.Instance;
             if (modalUIManager != null)
             {
-                modalUIManager.SetItemTooltipSuppressed(this, suppressed: false);
+                modalUIManager.EndItemInteraction(this);
                 modalUIManager.HideItemTooltip(this, force: true);
             }
         }

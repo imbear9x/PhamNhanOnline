@@ -154,19 +154,19 @@ class Program
         if (string.IsNullOrWhiteSpace(tableId))
             throw new ArgumentException("Missing --tableId= for preview-random-table.");
 
-        var fortune = GetNullableDoubleArg(args, "--fortune=");
+        var luck = GetNullableDoubleArg(args, "--luck=");
         var rolls = Math.Clamp(GetIntArg(args, "--rolls=", 3), 1, 100);
         var randomService = provider.GetRequiredService<IGameRandomService>();
         var context = new GameRandomContext();
-        var options = new GameRandomOptions(Fortune: fortune);
+        var options = new GameRandomOptions(Luck: luck);
         var preview = randomService.PreviewTable(tableId, context, options);
 
         Console.WriteLine($"Random table: {preview.TableId}");
         Console.WriteLine($"Mode: {preview.Mode}");
-        Console.WriteLine(preview.Fortune.HasValue
-            ? $"Fortune: {preview.Fortune.Value:0.##}"
-            : "Fortune: <disabled>");
-        Console.WriteLine($"AppliedFortuneBonusPpm: {preview.AppliedFortuneBonusPartsPerMillion}");
+        Console.WriteLine(preview.Luck.HasValue
+            ? $"Luck: {preview.Luck.Value:0.##}"
+            : "Luck: <disabled>");
+        Console.WriteLine($"AppliedLuckBonusPpm: {preview.AppliedLuckBonusPartsPerMillion}");
         Console.WriteLine("Effective entries:");
         foreach (var entry in preview.EffectiveEntries)
         {

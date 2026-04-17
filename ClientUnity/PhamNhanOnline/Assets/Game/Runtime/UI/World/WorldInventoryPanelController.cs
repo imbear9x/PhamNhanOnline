@@ -6,7 +6,6 @@ using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Inventory.Application;
 using PhamNhanOnline.Client.Network.Session;
-using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Inventory;
 using PhamNhanOnline.Client.UI.Potential;
 using TMPro;
@@ -16,6 +15,21 @@ namespace PhamNhanOnline.Client.UI.World
 {
     public sealed partial class WorldInventoryPanelController : MonoBehaviour
     {
+        private const string MissingCharacterName = "Chua co nhan vat";
+        private const string LoadingCharacterName = "Dang tai...";
+        private const string InventoryNotLoadedText = "Kho do chua duoc tai.";
+        private const string InventoryLoadingText = "Dang tai kho do...";
+        private const string EmptyInventoryText = "Kho do dang trong.";
+        private const string InventoryActionInProgressText = "Dang cap nhat trang bi...";
+        private const string InventoryUseActionText = "Dang su dung vat pham...";
+        private const string InventoryDropActionText = "Dang vut vat pham...";
+        private const string InventoryDropSuccessText = "Da vut vat pham.";
+        private const string InventoryDropUnavailableText = "Vat pham nay khong the vut.";
+        private const string InventoryUnsupportedUseText = "Vat pham nay chua co logic su dung o phase nay.";
+        private const string InventoryMartialArtAlreadyLearnedText = "Cong phap nay da hoc roi, khong the dung them sach.";
+        private const string InventoryAlreadyEquippedText = "Trang bi nay dang duoc mac.";
+        private const string InventoryUnequipActionText = "Dang go trang bi...";
+
         [Header("Character References")]
         [SerializeField] private InventoryCharacterSummaryView characterSummaryView;
 
@@ -25,25 +39,6 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private InventoryItemGridView inventoryGridView;
         [SerializeField] private EquipmentSlotsPanelView equipmentSlotsView;
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
-
-        [Header("Character Display")]
-        [SerializeField] private bool useCurrentValuesForHpMp;
-        [SerializeField] private string missingCharacterName = "Chua co nhan vat";
-        [SerializeField] private string loadingCharacterName = "Dang tai...";
-
-        [Header("Inventory Display")]
-        [SerializeField] private string inventoryNotLoadedText = "Kho do chua duoc tai.";
-        [SerializeField] private string inventoryLoadingText = "Dang tai kho do...";
-        [SerializeField] private string emptyInventoryText = "Kho do dang trong.";
-        [SerializeField] private string inventoryActionInProgressText = "Dang cap nhat trang bi...";
-        [SerializeField] private string inventoryUseActionText = "Dang su dung vat pham...";
-        [SerializeField] private string inventoryDropActionText = "Dang vut vat pham...";
-        [SerializeField] private string inventoryDropSuccessText = "Da vut vat pham.";
-        [SerializeField] private string inventoryDropUnavailableText = "Vat pham nay khong the vut.";
-        [SerializeField] private string inventoryUnsupportedUseText = "Vat pham nay chua co logic su dung o phase nay.";
-        [SerializeField] private string inventoryMartialArtAlreadyLearnedText = "Cong phap nay da hoc roi, khong the dung them sach.";
-        [SerializeField] private string inventoryAlreadyEquippedText = "Trang bi nay dang duoc mac.";
-        [SerializeField] private string inventoryUnequipActionText = "Dang go trang bi...";
 
         [Header("Inventory Option Labels")]
         [SerializeField] private string useOptionText = "Su dung";
@@ -138,8 +133,8 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (!ClientRuntime.IsInitialized)
             {
-                ApplyCharacterName(missingCharacterName, force);
-                ApplyStatEntries(Array.Empty<StatLineListView.Entry>(), force);
+                ApplyCharacterName(MissingCharacterName, force);
+                ApplyStats("-", "-", "-", "-", "-", "-", force);
                 ApplyLifespan(null, force);
                 return;
             }
@@ -150,7 +145,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             var isMissingData = !selectedCharacter.HasValue || !baseStats.HasValue;
             var displayName = isMissingData
-                ? (reloadInFlight ? loadingCharacterName : missingCharacterName)
+                ? (reloadInFlight ? LoadingCharacterName : MissingCharacterName)
                 : ResolveCharacterName(selectedCharacter.Value.Name);
 
             ApplyCharacterName(displayName, force);
@@ -158,36 +153,28 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (!baseStats.HasValue)
             {
-                ApplyStatEntries(Array.Empty<StatLineListView.Entry>(), force);
+                ApplyStats("-", "-", "-", "-", "-", "-", force);
                 return;
             }
 
             var stats = baseStats.Value;
-            var hpValue = useCurrentValuesForHpMp && currentState.HasValue
-                ? currentState.Value.CurrentHp
-                : GetTotalHp(stats);
-            var mpValue = useCurrentValuesForHpMp && currentState.HasValue
-                ? currentState.Value.CurrentMp
-                : GetTotalMp(stats);
-
-            var entries = new[]
-            {
-                new StatLineListView.Entry("HP", hpValue.ToString(CultureInfo.InvariantCulture)),
-                new StatLineListView.Entry("MP", mpValue.ToString(CultureInfo.InvariantCulture)),
-                new StatLineListView.Entry("ATK", GetTotalAttack(stats).ToString(CultureInfo.InvariantCulture)),
-                new StatLineListView.Entry("Speed", GetTotalSpeed(stats).ToString(CultureInfo.InvariantCulture)),
-                new StatLineListView.Entry("Co duyen", GetTotalFortune(stats).ToString("0.##", CultureInfo.InvariantCulture)),
-                new StatLineListView.Entry("Than thuc", GetTotalSpiritualSense(stats).ToString(CultureInfo.InvariantCulture)),
-            };
-
-            ApplyStatEntries(entries, force);
+            var hpValue = GetTotalHp(stats);
+            var mpValue = GetTotalMp(stats);
+            ApplyStats(
+                hpValue.ToString(CultureInfo.InvariantCulture),
+                mpValue.ToString(CultureInfo.InvariantCulture),
+                GetTotalAttack(stats).ToString(CultureInfo.InvariantCulture),
+                GetTotalSpeed(stats).ToString(CultureInfo.InvariantCulture),
+                GetTotalLuck(stats).ToString("0.##", CultureInfo.InvariantCulture),
+                GetTotalSense(stats).ToString(CultureInfo.InvariantCulture),
+                force);
         }
 
         private void RefreshInventory(bool force)
         {
             if (!ClientRuntime.IsInitialized)
             {
-                ApplyInventoryStatus(inventoryNotLoadedText, force);
+                ApplyInventoryStatus(InventoryNotLoadedText, force);
                 ClearInventoryVisuals(force);
                 return;
             }
@@ -315,7 +302,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             inventoryReloadInFlight = true;
             lastInventoryReloadAttemptTime = Time.unscaledTime;
-            ApplyInventoryStatus(inventoryLoadingText, force: true);
+            ApplyInventoryStatus(InventoryLoadingText, force: true);
 
             try
             {

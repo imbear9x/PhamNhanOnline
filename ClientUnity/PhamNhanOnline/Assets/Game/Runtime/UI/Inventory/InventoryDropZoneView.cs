@@ -1,4 +1,3 @@
-using System;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.World;
@@ -9,8 +8,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
 {
     public sealed class InventoryDropZoneView : MonoBehaviour, IDropHandler, IPointerClickHandler
     {
-        public event Action<InventoryEquipmentSlot> EquippedItemDropped;
-
         public void OnDrop(PointerEventData eventData)
         {
             if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
@@ -21,10 +18,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 return;
             }
 
-            WorldModalUIManager.Instance?.HideInventoryItemOptionsPopup(force: true);
-            var handler = EquippedItemDropped;
-            if (handler != null)
-                handler(payload.SourceEquipmentSlot);
+            WorldModalUIManager.Instance?.HideAllViews(force: true);
 
             if (!ClientRuntime.IsInitialized)
                 return;
@@ -37,7 +31,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (eventData == null || eventData.button != PointerEventData.InputButton.Left)
                 return;
 
-            WorldModalUIManager.Instance?.HideInventoryItemOptionsPopup(force: true);
+            WorldModalUIManager.Instance?.HideAllViews(force: true);
         }
     }
 }

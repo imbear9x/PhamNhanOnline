@@ -55,8 +55,8 @@ public sealed class PotentialStatCatalog
             PotentialAllocationTarget.BaseMp,
             PotentialAllocationTarget.BaseAttack,
             PotentialAllocationTarget.BaseSpeed,
-            PotentialAllocationTarget.BaseFortune,
-            PotentialAllocationTarget.BaseSpiritualSense
+            PotentialAllocationTarget.BaseLuck,
+            PotentialAllocationTarget.BaseSense
         };
 
         var previews = new List<PotentialUpgradePreviewDto>(targets.Length);
@@ -115,8 +115,8 @@ public sealed class PotentialStatCatalog
         total = total with { MaxMp = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseMp) };
         total = total with { Attack = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseAttack) };
         total = total with { Speed = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseSpeed) };
-        total = total with { SpiritualSense = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseSpiritualSense) };
-        total = total with { Fortune = ResolveAllocatedFortuneBonus(baseStats) };
+        total = total with { Sense = ResolveAllocatedIntBonus(baseStats, PotentialAllocationTarget.BaseSense) };
+        total = total with { Luck = ResolveAllocatedLuckBonus(baseStats) };
         return total;
     }
 
@@ -135,8 +135,8 @@ public sealed class PotentialStatCatalog
             PotentialAllocationTarget.BaseMp => baseStats.MpUpgradeCount ?? 0,
             PotentialAllocationTarget.BaseAttack => baseStats.AttackUpgradeCount ?? 0,
             PotentialAllocationTarget.BaseSpeed => baseStats.SpeedUpgradeCount ?? 0,
-            PotentialAllocationTarget.BaseSpiritualSense => baseStats.SpiritualSenseUpgradeCount ?? 0,
-            PotentialAllocationTarget.BaseFortune => baseStats.FortuneUpgradeCount ?? 0,
+            PotentialAllocationTarget.BaseSense => baseStats.SenseUpgradeCount ?? 0,
+            PotentialAllocationTarget.BaseLuck => baseStats.LuckUpgradeCount ?? 0,
             _ => 0
         };
     }
@@ -147,9 +147,9 @@ public sealed class PotentialStatCatalog
         return decimal.ToInt32(decimal.Truncate(totalGain));
     }
 
-    private double ResolveAllocatedFortuneBonus(CharacterBaseStatsDto baseStats)
+    private double ResolveAllocatedLuckBonus(CharacterBaseStatsDto baseStats)
     {
-        return (double)ResolveAllocatedGain(baseStats, PotentialAllocationTarget.BaseFortune);
+        return (double)ResolveAllocatedGain(baseStats, PotentialAllocationTarget.BaseLuck);
     }
 
     private decimal ResolveAllocatedGain(CharacterBaseStatsDto baseStats, PotentialAllocationTarget target)

@@ -9,16 +9,18 @@ namespace PhamNhanOnline.Client.UI.Potential
     {
         public readonly struct Entry
         {
-            public Entry(PotentialAllocationTarget target, PotentialStatPresentation presentation, string currentValue)
+            public Entry(PotentialAllocationTarget target, PotentialStatPresentation presentation, string currentValue, bool interactable)
             {
                 Target = target;
                 Presentation = presentation;
                 CurrentValue = currentValue;
+                Interactable = interactable;
             }
 
             public PotentialAllocationTarget Target { get; }
             public PotentialStatPresentation Presentation { get; }
             public string CurrentValue { get; }
+            public bool Interactable { get; }
         }
 
         [Header("References")]
@@ -33,8 +35,6 @@ namespace PhamNhanOnline.Client.UI.Potential
         private int lastEntryCount = -1;
 
         public event Action<PotentialUpgradeRowView> RowClicked;
-        public event Action<PotentialUpgradeRowView> RowHovered;
-        public event Action<PotentialUpgradeRowView> RowHoverExited;
 
         private void Awake()
         {
@@ -75,6 +75,7 @@ namespace PhamNhanOnline.Client.UI.Potential
                     continue;
 
                 item.SetContent(entries[i].Target, entries[i].Presentation, entries[i].CurrentValue, force: true);
+                item.SetButtonInteractable(entries[i].Interactable, force: true);
             }
         }
 
@@ -101,8 +102,6 @@ namespace PhamNhanOnline.Client.UI.Potential
                 instance.name = string.Format("{0}_{1}", itemTemplate.name, i);
                 instance.gameObject.SetActive(true);
                 instance.Clicked += HandleRowClicked;
-                instance.Hovered += HandleRowHovered;
-                instance.HoverExited += HandleRowHoverExited;
                 spawnedItems.Add(instance);
             }
         }
@@ -110,16 +109,6 @@ namespace PhamNhanOnline.Client.UI.Potential
         private void HandleRowClicked(PotentialUpgradeRowView row)
         {
             RowClicked?.Invoke(row);
-        }
-
-        private void HandleRowHovered(PotentialUpgradeRowView row)
-        {
-            RowHovered?.Invoke(row);
-        }
-
-        private void HandleRowHoverExited(PotentialUpgradeRowView row)
-        {
-            RowHoverExited?.Invoke(row);
         }
 
         private static string BuildSnapshot(IReadOnlyList<Entry> entries)
@@ -135,7 +124,9 @@ namespace PhamNhanOnline.Client.UI.Potential
                     "=",
                     entries[i].CurrentValue ?? string.Empty,
                     "@",
-                    entries[i].Presentation.DisplayName ?? string.Empty);
+                    entries[i].Presentation.DisplayName ?? string.Empty,
+                    "#",
+                    entries[i].Interactable ? "1" : "0");
             }
 
             return string.Join("|", parts);

@@ -480,14 +480,14 @@ public sealed class CharacterCultivationService
                 SpeedUpgradeCount = checked((baseStats.SpeedUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
-            PotentialAllocationTarget.BaseSpiritualSense => baseStats with
+            PotentialAllocationTarget.BaseSense => baseStats with
             {
-                SpiritualSenseUpgradeCount = checked((baseStats.SpiritualSenseUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
+                SenseUpgradeCount = checked((baseStats.SenseUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
-            PotentialAllocationTarget.BaseFortune => baseStats with
+            PotentialAllocationTarget.BaseLuck => baseStats with
             {
-                FortuneUpgradeCount = checked((baseStats.FortuneUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
+                LuckUpgradeCount = checked((baseStats.LuckUpgradeCount ?? 0) + plan.AppliedUpgradeCount),
                 UnallocatedPotential = remainingPotential
             },
             _ => baseStats

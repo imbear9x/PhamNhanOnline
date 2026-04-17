@@ -69,7 +69,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<GameRandomTableRepository>();
         services.AddScoped<GameRandomEntryRepository>();
         services.AddScoped<GameRandomEntryTagRepository>();
-        services.AddScoped<GameRandomFortuneTagRepository>();
+        services.AddScoped<GameRandomLuckTagRepository>();
         services.AddScoped<PotentialStatUpgradeTierRepository>();
         services.AddScoped<RealmTemplateRepository>();
         services.AddScoped<BreakthroughAttemptRepository>();

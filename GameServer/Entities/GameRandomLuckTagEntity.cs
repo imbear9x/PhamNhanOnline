@@ -2,8 +2,8 @@ using LinqToDB.Mapping;
 
 namespace GameServer.Entities;
 
-[Table("game_random_fortune_tags")]
-public sealed class GameRandomFortuneTagEntity
+[Table("game_random_luck_tags")]
+public sealed class GameRandomLuckTagEntity
 {
     [Column("id"), PrimaryKey] public int Id { get; set; }
     [Column("game_random_table_id"), NotNull] public int GameRandomTableId { get; set; }

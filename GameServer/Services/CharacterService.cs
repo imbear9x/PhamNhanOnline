@@ -282,18 +282,18 @@ public sealed class CharacterService
         existing.BaseAttack = stats.BaseAttack;
         existing.BaseMoveSpeed = stats.BaseMoveSpeed.HasValue ? (decimal)stats.BaseMoveSpeed.Value : null;
         existing.BaseSpeed = stats.BaseSpeed;
-        existing.BaseSpiritualSense = stats.BaseSpiritualSense;
+        existing.BaseSense = stats.BaseSense;
         existing.BaseStamina = stats.BaseStamina;
         existing.LifespanBonus = stats.LifespanBonus;
-        existing.BaseFortune = stats.BaseFortune;
+        existing.BaseLuck = stats.BaseLuck;
         existing.BasePotential = stats.BasePotential;
         existing.UnallocatedPotential = stats.UnallocatedPotential;
         existing.HpUpgradeCount = stats.HpUpgradeCount;
         existing.MpUpgradeCount = stats.MpUpgradeCount;
         existing.AttackUpgradeCount = stats.AttackUpgradeCount;
         existing.SpeedUpgradeCount = stats.SpeedUpgradeCount;
-        existing.SpiritualSenseUpgradeCount = stats.SpiritualSenseUpgradeCount;
-        existing.FortuneUpgradeCount = stats.FortuneUpgradeCount;
+        existing.SenseUpgradeCount = stats.SenseUpgradeCount;
+        existing.LuckUpgradeCount = stats.LuckUpgradeCount;
         existing.ActiveMartialArtId = stats.ActiveMartialArtId;
         existing.CultivationProgress = stats.CultivationProgress;
         existing.PotentialRewardLocked = stats.PotentialRewardLocked;
@@ -446,18 +446,18 @@ public sealed class CharacterService
             BaseAttack = _characterCreateConfig.BaseAttack,
             BaseMoveSpeed = _characterCreateConfig.BaseMoveSpeed,
             BaseSpeed = _characterCreateConfig.BaseSpeed,
-            BaseSpiritualSense = _characterCreateConfig.BaseSpiritualSense,
+            BaseSense = _characterCreateConfig.BaseSense,
             BaseStamina = _characterCreateConfig.BaseStamina,
             LifespanBonus = _characterCreateConfig.LifespanBonusDays,
-            BaseFortune = _characterCreateConfig.BaseFortune,
+            BaseLuck = _characterCreateConfig.BaseLuck,
             BasePotential = _characterCreateConfig.BasePotential,
             UnallocatedPotential = _characterCreateConfig.UnallocatedPotential,
             HpUpgradeCount = 0,
             MpUpgradeCount = 0,
             AttackUpgradeCount = 0,
             SpeedUpgradeCount = 0,
-            SpiritualSenseUpgradeCount = 0,
-            FortuneUpgradeCount = 0,
+            SenseUpgradeCount = 0,
+            LuckUpgradeCount = 0,
             ActiveMartialArtId = null,
             CultivationProgress = 0m,
             PotentialRewardLocked = _characterCreateConfig.PotentialRewardLocked
@@ -548,15 +548,7 @@ public sealed class CharacterService
 
     private static string BuildRealmDisplayName(RealmTemplate realm)
     {
-        var name = string.IsNullOrWhiteSpace(realm.Name) ? string.Empty : realm.Name.Trim();
-        var stageName = string.IsNullOrWhiteSpace(realm.StageName) ? string.Empty : realm.StageName.Trim();
-
-        if (string.IsNullOrEmpty(name))
-            return stageName;
-        if (string.IsNullOrEmpty(stageName))
-            return name;
-
-        return string.Concat(name, " - ", stageName);
+        return string.IsNullOrWhiteSpace(realm.Name) ? string.Empty : realm.Name.Trim();
     }
 
     private static double ResolveBreakthroughChancePercent(double? rawRate)

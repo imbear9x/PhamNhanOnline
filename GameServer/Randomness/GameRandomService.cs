@@ -44,17 +44,17 @@ public sealed class GameRandomService : IGameRandomService
         int baseChancePartsPerMillion,
         GameRandomContext context = default,
         GameRandomOptions options = default,
-        GameRandomFortuneModifierConfig? modifier = null,
+        GameRandomLuckModifierConfig? modifier = null,
         IReadOnlyCollection<string>? entryTags = null)
     {
         ValidateChance(baseChancePartsPerMillion, nameof(baseChancePartsPerMillion));
 
         var effectiveChance = baseChancePartsPerMillion;
         var appliedBonus = 0;
-        var activeModifier = modifier ?? GameRandomFortuneModifierConfig.Disabled;
-        if (ShouldApplyFortune(activeModifier, entryTags))
+        var activeModifier = modifier ?? GameRandomLuckModifierConfig.Disabled;
+        if (ShouldApplyLuck(activeModifier, entryTags))
         {
-            var requestedBonus = ResolveFortuneBonusPartsPerMillion(options.Fortune, activeModifier);
+            var requestedBonus = ResolveLuckBonusPartsPerMillion(options.Luck, activeModifier);
             appliedBonus = Math.Min(requestedBonus, GameRandomConfig.ChanceScale - baseChancePartsPerMillion);
             effectiveChance += appliedBonus;
         }
@@ -108,7 +108,7 @@ public sealed class GameRandomService : IGameRandomService
                 throw new InvalidOperationException($"Random table '{tableConfig.TableId}' exceeds 100% total chance.");
 
             var isNone = entryConfig.IsNone ||
-                         string.Equals(entryConfig.EntryId, tableConfig.FortuneModifier.NoneEntryId, StringComparison.OrdinalIgnoreCase);
+                         string.Equals(entryConfig.EntryId, tableConfig.LuckModifier.NoneEntryId, StringComparison.OrdinalIgnoreCase);
             if (isNone)
             {
                 if (explicitNoneIndex >= 0)
@@ -143,7 +143,7 @@ public sealed class GameRandomService : IGameRandomService
                 else
                 {
                     entries.Add(new CompiledEntry(
-                        tableConfig.FortuneModifier.NoneEntryId,
+                        tableConfig.LuckModifier.NoneEntryId,
                         remainingChance,
                         true,
                         ["none"]));
@@ -154,7 +154,7 @@ public sealed class GameRandomService : IGameRandomService
         return new CompiledTable(
             tableConfig.TableId,
             tableConfig.Mode,
-            tableConfig.FortuneModifier,
+            tableConfig.LuckModifier,
             entries);
     }
 
@@ -166,13 +166,13 @@ public sealed class GameRandomService : IGameRandomService
 
         var noneEntry = entries.FirstOrDefault(static entry => entry.IsNone);
         var eligibleEntries = entries
-            .Where(entry => !entry.IsNone && ShouldApplyFortune(table.FortuneModifier, entry.Tags))
+            .Where(entry => !entry.IsNone && ShouldApplyLuck(table.LuckModifier, entry.Tags))
             .ToArray();
 
         var appliedBonus = 0;
         if (noneEntry is not null && eligibleEntries.Length > 0)
         {
-            var requestedBonus = ResolveFortuneBonusPartsPerMillion(options.Fortune, table.FortuneModifier);
+            var requestedBonus = ResolveLuckBonusPartsPerMillion(options.Luck, table.LuckModifier);
             appliedBonus = Math.Min(requestedBonus, noneEntry.EffectiveChancePartsPerMillion);
             if (appliedBonus > 0)
             {
@@ -189,7 +189,7 @@ public sealed class GameRandomService : IGameRandomService
         return new GameRandomTablePreview(
             table.TableId,
             table.Mode,
-            options.Fortune,
+            options.Luck,
             appliedBonus,
             entries.Select(static entry => entry.ToResult()).ToArray());
     }
@@ -240,7 +240,7 @@ public sealed class GameRandomService : IGameRandomService
         }
     }
 
-    private static bool ShouldApplyFortune(GameRandomFortuneModifierConfig modifier, IReadOnlyCollection<string>? entryTags)
+    private static bool ShouldApplyLuck(GameRandomLuckModifierConfig modifier, IReadOnlyCollection<string>? entryTags)
     {
         if (!modifier.Enabled)
             return false;
@@ -260,15 +260,15 @@ public sealed class GameRandomService : IGameRandomService
         return false;
     }
 
-    private static int ResolveFortuneBonusPartsPerMillion(double? fortune, GameRandomFortuneModifierConfig modifier)
+    private static int ResolveLuckBonusPartsPerMillion(double? luck, GameRandomLuckModifierConfig modifier)
     {
-        if (!fortune.HasValue || !modifier.Enabled || modifier.BonusPartsPerMillionPerFortunePoint <= 0 || fortune.Value <= 0)
+        if (!luck.HasValue || !modifier.Enabled || modifier.BonusPartsPerMillionPerLuckPoint <= 0 || luck.Value <= 0)
             return 0;
 
         var maxBonus = modifier.MaxBonusPartsPerMillion <= 0
             ? GameRandomConfig.ChanceScale
             : Math.Min(GameRandomConfig.ChanceScale, modifier.MaxBonusPartsPerMillion);
-        var requestedBonus = decimal.Truncate((decimal)fortune.Value * modifier.BonusPartsPerMillionPerFortunePoint);
+        var requestedBonus = decimal.Truncate((decimal)luck.Value * modifier.BonusPartsPerMillionPerLuckPoint);
         if (requestedBonus <= 0)
             return 0;
 
@@ -297,7 +297,7 @@ public sealed class GameRandomService : IGameRandomService
     private sealed record CompiledTable(
         string TableId,
         GameRandomTableMode Mode,
-        GameRandomFortuneModifierConfig FortuneModifier,
+        GameRandomLuckModifierConfig LuckModifier,
         IReadOnlyList<CompiledEntry> Entries);
 
     private sealed record CompiledEntry(

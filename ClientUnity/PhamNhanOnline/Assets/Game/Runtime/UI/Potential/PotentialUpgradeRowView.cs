@@ -1,19 +1,19 @@
 using System;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Potential
 {
-    public sealed class PotentialUpgradeRowView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
+    public sealed class PotentialUpgradeRowView : MonoBehaviour
     {
         [Header("References")]
+        [SerializeField] private UIButtonView buttonView;
         [SerializeField] private Image iconImage;
         [SerializeField] private TMP_Text nameText;
         [SerializeField] private TMP_Text valueText;
-        [SerializeField] private GameObject hoverHighlightRoot;
 
         [Header("Display")]
         [SerializeField] private Color missingIconColor = new Color(1f, 1f, 1f, 0f);
@@ -23,14 +23,25 @@ namespace PhamNhanOnline.Client.UI.Potential
         private string lastDisplayName = string.Empty;
         private string lastValue = string.Empty;
         private Sprite lastIconSprite;
-        private bool isPointerInside;
 
         public event Action<PotentialUpgradeRowView> Clicked;
-        public event Action<PotentialUpgradeRowView> Hovered;
-        public event Action<PotentialUpgradeRowView> HoverExited;
 
         public PotentialAllocationTarget Target => target;
-        public bool IsPointerInside => isPointerInside;
+
+        private void Awake()
+        {
+            if (buttonView == null)
+                buttonView = GetComponent<UIButtonView>();
+
+            if (buttonView != null)
+                buttonView.Clicked += HandleButtonClicked;
+        }
+
+        private void OnDestroy()
+        {
+            if (buttonView != null)
+                buttonView.Clicked -= HandleButtonClicked;
+        }
 
         public void SetContent(PotentialAllocationTarget valueTarget, PotentialStatPresentation presentation, string currentValue, bool force = false)
         {
@@ -66,35 +77,17 @@ namespace PhamNhanOnline.Client.UI.Potential
                 valueText.text = currentValue;
         }
 
-        public void OnPointerEnter(PointerEventData eventData)
+        public void SetButtonInteractable(bool interactable, bool force = false)
         {
-            isPointerInside = true;
-            ApplyHoverVisual(true);
-            Hovered?.Invoke(this);
+            if (buttonView != null)
+                buttonView.SetInteractable(interactable, force);
         }
 
-        public void OnPointerExit(PointerEventData eventData)
+        private void HandleButtonClicked()
         {
-            isPointerInside = false;
-            ApplyHoverVisual(false);
-            HoverExited?.Invoke(this);
-        }
-
-        public void OnPointerClick(PointerEventData eventData)
-        {
+            Debug.LogWarning(
+                $"[PotentialPopupDebug] Row click target={target} name='{lastDisplayName}' value='{lastValue}' object='{gameObject.name}'.");
             Clicked?.Invoke(this);
-        }
-
-        private void OnDisable()
-        {
-            isPointerInside = false;
-            ApplyHoverVisual(false);
-        }
-
-        private void ApplyHoverVisual(bool visible)
-        {
-            if (hoverHighlightRoot != null)
-                hoverHighlightRoot.SetActive(visible);
         }
     }
 }

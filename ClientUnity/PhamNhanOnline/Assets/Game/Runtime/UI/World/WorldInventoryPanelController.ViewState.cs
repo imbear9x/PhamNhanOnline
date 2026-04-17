@@ -1,11 +1,10 @@
-﻿using System;
-using System.Globalization;
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Inventory.Application;
-using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Inventory;
 using UnityEngine;
 
@@ -19,10 +18,26 @@ namespace PhamNhanOnline.Client.UI.World
                 characterSummaryView.SetCharacterName(ResolveCharacterName(characterName), force);
         }
 
-        private void ApplyStatEntries(IReadOnlyList<StatLineListView.Entry> entries, bool force)
+        private void ApplyStats(
+            string hpValue,
+            string mpValue,
+            string atkValue,
+            string speedValue,
+            string luckValue,
+            string senseValue,
+            bool force)
         {
             if (characterSummaryView != null)
-                characterSummaryView.SetStatEntries(entries, force);
+            {
+                characterSummaryView.SetStats(
+                    hpValue,
+                    mpValue,
+                    atkValue,
+                    speedValue,
+                    luckValue,
+                    senseValue,
+                    force);
+            }
         }
 
         private void ApplyLifespan(long? lifespanEndUnixMs, bool force)
@@ -67,13 +82,13 @@ namespace PhamNhanOnline.Client.UI.World
         private string ResolveInventoryStatus(ClientInventoryState inventoryState, int bagItemCount, int equippedItemCount)
         {
             if (inventoryActionInFlight)
-                return inventoryActionInProgressText;
+                return InventoryActionInProgressText;
 
             if (!inventoryState.HasLoadedInventory)
-                return inventoryState.IsLoading || inventoryReloadInFlight ? inventoryLoadingText : inventoryNotLoadedText;
+                return inventoryState.IsLoading || inventoryReloadInFlight ? InventoryLoadingText : InventoryNotLoadedText;
 
             if (bagItemCount <= 0 && equippedItemCount <= 0)
-                return emptyInventoryText;
+                return EmptyInventoryText;
 
             if (bagItemCount <= 0)
                 return string.Format(CultureInfo.InvariantCulture, "Balo dang trong | {0} trang bi dang mac", equippedItemCount);
@@ -114,8 +129,9 @@ namespace PhamNhanOnline.Client.UI.World
         private static int GetTotalMp(CharacterBaseStatsModel stats) => stats.FinalMp;
         private static int GetTotalAttack(CharacterBaseStatsModel stats) => stats.FinalAttack;
         private static int GetTotalSpeed(CharacterBaseStatsModel stats) => stats.FinalSpeed;
-        private static int GetTotalSpiritualSense(CharacterBaseStatsModel stats) => stats.FinalSpiritualSense;
-        private static double GetTotalFortune(CharacterBaseStatsModel stats) => stats.FinalFortune;
+        private static int GetTotalSense(CharacterBaseStatsModel stats) => stats.FinalSense;
+        private static double GetTotalLuck(CharacterBaseStatsModel stats) => stats.FinalLuck;
+
         private static string BuildInventorySnapshot(ClientInventoryState inventoryState, IReadOnlyList<InventoryItemModel> items, bool inventoryActionInFlight)
         {
             var parts = new List<string>(items.Count + 3)
@@ -157,5 +173,3 @@ namespace PhamNhanOnline.Client.UI.World
         }
     }
 }
-
-

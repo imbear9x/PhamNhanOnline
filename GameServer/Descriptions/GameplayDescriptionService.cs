@@ -707,8 +707,8 @@ public sealed class GameplayDescriptionService
             CharacterStatType.MaxStamina => "The luc toi da",
             CharacterStatType.Attack => "Cong",
             CharacterStatType.Speed => "Toc do",
-            CharacterStatType.SpiritualSense => "Than thuc",
-            CharacterStatType.Fortune => "Khi van",
+            CharacterStatType.Sense => "Than thuc",
+            CharacterStatType.Luck => "Khi van",
             _ => "chi so"
         };
     }

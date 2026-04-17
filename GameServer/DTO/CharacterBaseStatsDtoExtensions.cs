@@ -12,11 +12,11 @@ public static class CharacterBaseStatsDtoExtensions
 
     public static int GetRawSpeed(this CharacterBaseStatsDto stats) => stats.BaseSpeed ?? 0;
 
-    public static int GetRawSpiritualSense(this CharacterBaseStatsDto stats) => stats.BaseSpiritualSense ?? 0;
+    public static int GetRawSense(this CharacterBaseStatsDto stats) => stats.BaseSense ?? 0;
 
     public static int GetRawStamina(this CharacterBaseStatsDto stats) => stats.BaseStamina ?? 0;
 
-    public static double GetRawFortune(this CharacterBaseStatsDto stats) => stats.BaseFortune ?? 0d;
+    public static double GetRawLuck(this CharacterBaseStatsDto stats) => stats.BaseLuck ?? 0d;
 
     public static int GetEffectiveHp(this CharacterBaseStatsDto stats) => stats.FinalHp ?? stats.GetRawHp();
 
@@ -28,9 +28,9 @@ public static class CharacterBaseStatsDtoExtensions
 
     public static int GetEffectiveSpeed(this CharacterBaseStatsDto stats) => stats.FinalSpeed ?? stats.GetRawSpeed();
 
-    public static int GetEffectiveSpiritualSense(this CharacterBaseStatsDto stats) => stats.FinalSpiritualSense ?? stats.GetRawSpiritualSense();
+    public static int GetEffectiveSense(this CharacterBaseStatsDto stats) => stats.FinalSense ?? stats.GetRawSense();
 
     public static int GetEffectiveStamina(this CharacterBaseStatsDto stats) => stats.FinalStamina ?? stats.GetRawStamina();
 
-    public static double GetEffectiveFortune(this CharacterBaseStatsDto stats) => stats.FinalFortune ?? stats.GetRawFortune();
+    public static double GetEffectiveLuck(this CharacterBaseStatsDto stats) => stats.FinalLuck ?? stats.GetRawLuck();
 }

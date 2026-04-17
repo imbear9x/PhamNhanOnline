@@ -4,6 +4,7 @@ using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Inventory
 {
@@ -64,6 +65,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
         [SerializeField] private Vector2 screenPadding = new Vector2(16f, 16f);
 
         private readonly List<RuntimeOptionButton> runtimeButtons = new List<RuntimeOptionButton>();
+        private bool templateStateInitialized;
 
         public bool IsPointerInside { get; private set; }
 
@@ -85,6 +87,8 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public void Show(IReadOnlyList<OptionEntry> options, bool force = false)
         {
+            AutoWireTemplateReferences();
+
             if (options == null || options.Count == 0)
             {
                 Hide(force);
@@ -151,6 +155,11 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (optionTemplate == null || optionsRoot == null)
                 return;
 
+            EnsureTemplateButtonRegistered();
+
+            if (templateStateInitialized)
+                return;
+
             for (var i = 0; i < optionsRoot.childCount; i++)
             {
                 var child = optionsRoot.GetChild(i);
@@ -159,6 +168,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             }
 
             optionTemplate.SetActive(false);
+            templateStateInitialized = true;
         }
 
         private void ApplyButtons(IReadOnlyList<OptionEntry> options)
@@ -177,12 +187,20 @@ namespace PhamNhanOnline.Client.UI.Inventory
                     runtimeButtons[i].Clear();
                 }
             }
+
+            if (optionsRoot is RectTransform optionsRect)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(optionsRect);
+
+            if (panelRoot != null && panelRoot.transform is RectTransform panelRect)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(panelRect);
         }
 
         private void EnsureButtonPool(int requiredCount)
         {
             if (optionTemplate == null || optionsRoot == null)
                 return;
+
+            EnsureTemplateButtonRegistered();
 
             while (runtimeButtons.Count < requiredCount)
             {
@@ -210,6 +228,32 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
                 runtimeButtons.Add(runtimeButton);
             }
+        }
+
+        private void EnsureTemplateButtonRegistered()
+        {
+            if (optionTemplate == null || runtimeButtons.Count > 0)
+                return;
+
+            var buttonView = optionTemplate.GetComponent<UIButtonView>();
+            var label = optionTemplate.GetComponentInChildren<TMP_Text>(true);
+            var templateButton = new RuntimeOptionButton
+            {
+                Root = optionTemplate,
+                Button = buttonView,
+                Label = label
+            };
+
+            if (buttonView != null)
+            {
+                buttonView.Clicked += () =>
+                {
+                    var action = templateButton.ClickAction;
+                    action?.Invoke();
+                };
+            }
+
+            runtimeButtons.Add(templateButton);
         }
 
     }

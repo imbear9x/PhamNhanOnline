@@ -47,7 +47,7 @@ namespace PhamNhanOnline.Client.UI.Potential
                 target,
                 GetFallbackDisplayName(target),
                 null,
-                target == PotentialAllocationTarget.BaseFortune ? "0.##" : "0",
+                target == PotentialAllocationTarget.BaseLuck ? "0.##" : "0",
                 "0.##");
         }
 
@@ -59,8 +59,8 @@ namespace PhamNhanOnline.Client.UI.Potential
                 PotentialAllocationTarget.BaseMp => "MP",
                 PotentialAllocationTarget.BaseAttack => "Cong kich",
                 PotentialAllocationTarget.BaseSpeed => "Toc do",
-                PotentialAllocationTarget.BaseFortune => "Co duyen",
-                PotentialAllocationTarget.BaseSpiritualSense => "Than thuc",
+                PotentialAllocationTarget.BaseLuck => "Luck",
+                PotentialAllocationTarget.BaseSense => "Sense",
                 _ => "Khong ro"
             };
         }

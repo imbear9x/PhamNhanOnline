@@ -7,6 +7,6 @@ public enum PotentialAllocationTarget
     BaseMp = 2,
     BaseAttack = 4,
     BaseSpeed = 5,
-    BaseSpiritualSense = 6,
-    BaseFortune = 7
+    BaseSense = 6,
+    BaseLuck = 7
 }

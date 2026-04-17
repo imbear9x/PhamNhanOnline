@@ -11,20 +11,20 @@ SET
     base_physique = COALESCE(base_physique, 10),
     base_attack = COALESCE(base_attack, 10),
     base_speed = COALESCE(base_speed, 10),
-    base_spiritual_sense = COALESCE(base_spiritual_sense, 10),
+    base_sense = COALESCE(base_sense, 10),
     base_stamina = COALESCE(base_stamina, 100),
     base_lifespan = COALESCE(base_lifespan, 100),
-    base_fortune = COALESCE(base_fortune, 0.01),
+    base_luck = COALESCE(base_luck, 0.01),
     base_potential = COALESCE(base_potential, 0)
 WHERE base_hp IS NULL
    OR base_mp IS NULL
    OR base_physique IS NULL
    OR base_attack IS NULL
    OR base_speed IS NULL
-   OR base_spiritual_sense IS NULL
+   OR base_sense IS NULL
    OR base_stamina IS NULL
    OR base_lifespan IS NULL
-   OR base_fortune IS NULL
+   OR base_luck IS NULL
    OR base_potential IS NULL;
 
 ALTER TABLE public.character_current_state

@@ -1,4 +1,5 @@
 using UnityEngine;
+using TMPro;
 
 namespace PhamNhanOnline.Client.UI.Common
 {
@@ -29,9 +30,24 @@ namespace PhamNhanOnline.Client.UI.Common
         [SerializeField] private CrossAxisCellSizeMode crossAxisCellSizeMode = CrossAxisCellSizeMode.KeepTemplateSize;
         [SerializeField] private TextAnchor childAlignment = TextAnchor.UpperLeft;
 
+        [Header("Debug")]
+        [SerializeField] private bool debugUseGeneratedItems;
+        [SerializeField, Min(1)] private int debugGeneratedItemCount = 100;
+        [SerializeField] private string debugItemLabelFormat = "Item {0}";
+
         public delegate LoopScrollViewItem OnGetItemByIndexDelegate(LoopGridView gridView, int itemIndex);
 
         private OnGetItemByIndexDelegate itemProvider;
+
+        public bool DebugUseGeneratedItemsEnabled => debugUseGeneratedItems;
+
+        protected override void Start()
+        {
+            base.Start();
+
+            if (debugUseGeneratedItems && !IsInitialized)
+                InitGridView(Mathf.Max(1, debugGeneratedItemCount), (gridView, itemIndex) => ResolveDebugItemByIndex(itemIndex));
+        }
 
         public void InitGridView(int itemCount, OnGetItemByIndexDelegate onGetItemByIndex)
         {
@@ -210,6 +226,29 @@ namespace PhamNhanOnline.Client.UI.Common
         private LoopScrollViewItem ResolveItemByIndex(int itemIndex)
         {
             return itemProvider != null ? itemProvider(this, itemIndex) : null;
+        }
+
+        private LoopScrollViewItem ResolveDebugItemByIndex(int itemIndex)
+        {
+            var item = NewListViewItem();
+            if (item == null)
+                return null;
+
+            ApplyDebugLabel(item, itemIndex);
+            return item;
+        }
+
+        private void ApplyDebugLabel(LoopScrollViewItem item, int itemIndex)
+        {
+            if (item == null)
+                return;
+
+            var label = item.GetComponentInChildren<TMP_Text>(true);
+            if (label == null)
+                return;
+
+            var format = string.IsNullOrWhiteSpace(debugItemLabelFormat) ? "Item {0}" : debugItemLabelFormat;
+            label.text = string.Format(format, itemIndex);
         }
 
         private float ResolveCellWidth(float templateWidth, int crossAxisCount)

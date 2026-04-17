@@ -74,6 +74,12 @@ namespace PhamNhanOnline.Client.UI.Inventory
             lastSnapshot = string.Empty;
             selectedPlayerItemId = null;
 
+            if (ShouldKeepDebugGeneratedItems())
+            {
+                WorldModalUIManager.Instance?.HideItemTooltip(force: force);
+                return;
+            }
+
             EnsureLoopInitialized();
             loopGridView.SetListItemCount(0, keepPosition: false);
             loopGridView.RefreshAllShownItem();
@@ -114,8 +120,18 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (loopInitialized || loopGridView == null)
                 return;
 
+            if (ShouldKeepDebugGeneratedItems())
+                return;
+
             loopGridView.InitGridView(items.Count, OnGetItemByIndex);
             loopInitialized = true;
+        }
+
+        private bool ShouldKeepDebugGeneratedItems()
+        {
+            return loopGridView != null &&
+                   loopGridView.DebugUseGeneratedItemsEnabled &&
+                   (items == null || items.Count == 0);
         }
 
         private LoopScrollViewItem OnGetItemByIndex(LoopGridView gridView, int itemIndex)

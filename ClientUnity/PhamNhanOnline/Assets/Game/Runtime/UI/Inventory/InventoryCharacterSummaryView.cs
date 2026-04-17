@@ -1,9 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace PhamNhanOnline.Client.UI.Inventory
 {
@@ -11,8 +10,15 @@ namespace PhamNhanOnline.Client.UI.Inventory
     {
         [Header("References")]
         [SerializeField] private TMP_Text characterNameText;
-        [SerializeField] private StatLineListView statListView;
         [SerializeField] private TMP_Text lifespanText;
+        [SerializeField] private TMP_Text hpValueText;
+        [SerializeField] private TMP_Text mpValueText;
+        [SerializeField] private TMP_Text atkValueText;
+        [SerializeField] private TMP_Text speedValueText;
+        [FormerlySerializedAs("fortuneValueText")]
+        [SerializeField] private TMP_Text luckValueText;
+        [FormerlySerializedAs("spiritualSenseValueText")]
+        [SerializeField] private TMP_Text senseValueText;
 
         private string lastCharacterName = string.Empty;
         private string lastStatsSnapshot = string.Empty;
@@ -31,15 +37,40 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 characterNameText.text = characterName;
         }
 
-        public void SetStatEntries(IReadOnlyList<StatLineListView.Entry> entries, bool force = false)
+        public void SetStats(
+            string hpValue,
+            string mpValue,
+            string atkValue,
+            string speedValue,
+            string luckValue,
+            string senseValue,
+            bool force = false)
         {
-            var snapshot = BuildStatSnapshot(entries);
+            hpValue = NormalizeStatValue(hpValue);
+            mpValue = NormalizeStatValue(mpValue);
+            atkValue = NormalizeStatValue(atkValue);
+            speedValue = NormalizeStatValue(speedValue);
+            luckValue = NormalizeStatValue(luckValue);
+            senseValue = NormalizeStatValue(senseValue);
+
+            var snapshot = string.Join(
+                "|",
+                hpValue,
+                mpValue,
+                atkValue,
+                speedValue,
+                luckValue,
+                senseValue);
             if (!force && string.Equals(lastStatsSnapshot, snapshot, StringComparison.Ordinal))
                 return;
 
             lastStatsSnapshot = snapshot;
-            if (statListView != null)
-                statListView.SetEntries(entries ?? Array.Empty<StatLineListView.Entry>(), force: true);
+            ApplyStatValue(hpValueText, hpValue, force: true);
+            ApplyStatValue(mpValueText, mpValue, force: true);
+            ApplyStatValue(atkValueText, atkValue, force: true);
+            ApplyStatValue(speedValueText, speedValue, force: true);
+            ApplyStatValue(luckValueText, luckValue, force: true);
+            ApplyStatValue(senseValueText, senseValue, force: true);
         }
 
         public void SetLifespanEndUnixMs(long? value, bool force = false)
@@ -55,7 +86,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
         public void Clear(bool force = false)
         {
             SetCharacterName("-", force);
-            SetStatEntries(Array.Empty<StatLineListView.Entry>(), force);
+            SetStats("-", "-", "-", "-", "-", "-", force);
             SetLifespanEndUnixMs(null, force: true);
         }
 
@@ -76,16 +107,20 @@ namespace PhamNhanOnline.Client.UI.Inventory
             RefreshLifespanText(force: false);
         }
 
-        private static string BuildStatSnapshot(IReadOnlyList<StatLineListView.Entry> entries)
+        private static string NormalizeStatValue(string value)
         {
-            if (entries == null || entries.Count == 0)
-                return string.Empty;
+            return string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+        }
 
-            var parts = new List<string>(entries.Count);
-            for (var i = 0; i < entries.Count; i++)
-                parts.Add(string.Concat(entries[i].Name ?? string.Empty, "=", entries[i].Value ?? string.Empty));
+        private static void ApplyStatValue(TMP_Text text, string value, bool force)
+        {
+            if (text == null)
+                return;
 
-            return string.Join("|", parts);
+            if (!force && string.Equals(text.text, value, StringComparison.Ordinal))
+                return;
+
+            text.text = value;
         }
 
         private void RefreshLifespanText(bool force)

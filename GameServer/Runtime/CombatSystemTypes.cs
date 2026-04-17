@@ -10,8 +10,8 @@ public enum CharacterStatType
     MaxStamina = 3,
     Attack = 4,
     Speed = 5,
-    SpiritualSense = 6,
-    Fortune = 7
+    Sense = 6,
+    Luck = 7
 }
 
 public enum CombatValueType
@@ -178,8 +178,8 @@ public readonly record struct FlatStatBonusBundle(
     int MaxStamina,
     int Attack,
     int Speed,
-    int SpiritualSense,
-    double Fortune)
+    int Sense,
+    double Luck)
 {
     public static FlatStatBonusBundle Empty => default;
 
@@ -192,8 +192,8 @@ public readonly record struct FlatStatBonusBundle(
             CharacterStatType.MaxStamina => this with { MaxStamina = checked(MaxStamina + decimal.ToInt32(decimal.Truncate(value))) },
             CharacterStatType.Attack => this with { Attack = checked(Attack + decimal.ToInt32(decimal.Truncate(value))) },
             CharacterStatType.Speed => this with { Speed = checked(Speed + decimal.ToInt32(decimal.Truncate(value))) },
-            CharacterStatType.SpiritualSense => this with { SpiritualSense = checked(SpiritualSense + decimal.ToInt32(decimal.Truncate(value))) },
-            CharacterStatType.Fortune => this with { Fortune = Fortune + (double)value },
+            CharacterStatType.Sense => this with { Sense = checked(Sense + decimal.ToInt32(decimal.Truncate(value))) },
+            CharacterStatType.Luck => this with { Luck = Luck + (double)value },
             _ => this
         };
     }

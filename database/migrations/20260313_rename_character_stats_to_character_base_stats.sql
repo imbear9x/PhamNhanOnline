@@ -55,7 +55,7 @@ BEGIN
         FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'character_base_stats' AND column_name = 'spiritual_sense'
     ) THEN
-        ALTER TABLE public.character_base_stats RENAME COLUMN spiritual_sense TO base_spiritual_sense;
+        ALTER TABLE public.character_base_stats RENAME COLUMN spiritual_sense TO base_sense;
     END IF;
 
     IF EXISTS (
@@ -63,7 +63,7 @@ BEGIN
         FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'character_base_stats' AND column_name = 'fortune'
     ) THEN
-        ALTER TABLE public.character_base_stats RENAME COLUMN fortune TO base_fortune;
+        ALTER TABLE public.character_base_stats RENAME COLUMN fortune TO base_luck;
     END IF;
 
     IF EXISTS (

@@ -49,11 +49,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 inventoryGridView.SetSelectedItem(playerItemId, force);
         }
 
-        public void SetTooltipSuppressed(bool suppressed, bool force = false)
-        {
-            WorldModalUIManager.Instance?.SetItemTooltipSuppressed(this, suppressed, force);
-        }
-
         public void HideTooltip(bool force = false)
         {
             WorldModalUIManager.Instance?.HideItemTooltip(force: force);

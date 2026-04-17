@@ -14,6 +14,10 @@ namespace PhamNhanOnline.Client.UI.Common
         IPointerClickHandler,
         ISubmitHandler
     {
+        private const float HoverScaleMultiplier = 1.1f;
+        private const float PressedScaleMultiplier = 0.9f;
+        private static readonly Vector2 PressedOffset = new Vector2(2f, -2f);
+
         private enum VisualState
         {
             Normal = 0,
@@ -33,6 +37,7 @@ namespace PhamNhanOnline.Client.UI.Common
 
         [Header("References")]
         [SerializeField] private Image targetImage;
+        [SerializeField] private RectTransform animationTarget;
 
         [Header("Transition")]
         [SerializeField] private TransitionMode transitionMode = TransitionMode.Color;
@@ -60,6 +65,12 @@ namespace PhamNhanOnline.Client.UI.Common
         private bool isPointerInside;
         private bool isPressed;
         private VisualState currentState = VisualState.Normal;
+        private RectTransform cachedRectTransform;
+        private RectTransform cachedAnimationRectTransform;
+        private Vector3 baseLocalScale = Vector3.one;
+        private Vector3 baseLocalPosition = Vector3.zero;
+        private Vector2 baseAnchoredPosition = Vector2.zero;
+        private bool hasCapturedBaseTransform;
 
         public event Action Clicked;
         public event Action RightClicked;
@@ -69,11 +80,13 @@ namespace PhamNhanOnline.Client.UI.Common
         private void Awake()
         {
             AutoWireReferences();
+            CaptureBaseTransform();
             RefreshVisualState(force: true);
         }
 
         private void OnEnable()
         {
+            CaptureBaseTransform();
             RefreshVisualState(force: true);
         }
 
@@ -181,6 +194,37 @@ namespace PhamNhanOnline.Client.UI.Common
         {
             if (targetImage == null)
                 targetImage = GetComponent<Image>();
+
+            if (cachedRectTransform == null)
+                cachedRectTransform = transform as RectTransform;
+
+            if (animationTarget == null)
+            {
+                var rootRectTransform = transform as RectTransform;
+                if (targetImage != null && targetImage.rectTransform != null && targetImage.rectTransform != rootRectTransform)
+                    animationTarget = targetImage.rectTransform;
+                else
+                    animationTarget = rootRectTransform;
+            }
+
+            if (cachedAnimationRectTransform == null)
+                cachedAnimationRectTransform = animationTarget;
+        }
+
+        private void CaptureBaseTransform()
+        {
+            if (hasCapturedBaseTransform)
+                return;
+
+            hasCapturedBaseTransform = true;
+            var transformTarget = cachedAnimationRectTransform != null
+                ? (Transform)cachedAnimationRectTransform
+                : transform;
+
+            baseLocalScale = transformTarget.localScale;
+            baseLocalPosition = transformTarget.localPosition;
+            if (cachedAnimationRectTransform != null)
+                baseAnchoredPosition = cachedAnimationRectTransform.anchoredPosition;
         }
 
         private void RefreshVisualState(bool force)
@@ -210,7 +254,10 @@ namespace PhamNhanOnline.Client.UI.Common
         private void ApplyVisualState(VisualState state)
         {
             if (targetImage == null)
+            {
+                ApplyTransformState(state);
                 return;
+            }
 
             switch (transitionMode)
             {
@@ -221,6 +268,88 @@ namespace PhamNhanOnline.Client.UI.Common
                     targetImage.color = ResolveColor(state);
                     break;
             }
+
+            ApplyTransformState(state);
+        }
+
+        private void ApplyTransformState(VisualState state)
+        {
+            if (!CanAnimateTransform())
+            {
+                ResetAnimatedTransform();
+                return;
+            }
+
+            var scaleMultiplier = 1f;
+            var positionOffset = Vector2.zero;
+
+            switch (state)
+            {
+                case VisualState.Highlighted:
+                    scaleMultiplier = HoverScaleMultiplier;
+                    break;
+                case VisualState.Pressed:
+                    scaleMultiplier = PressedScaleMultiplier;
+                    positionOffset = PressedOffset;
+                    break;
+            }
+
+            var transformTarget = cachedAnimationRectTransform != null
+                ? (Transform)cachedAnimationRectTransform
+                : transform;
+            transformTarget.localScale = baseLocalScale * scaleMultiplier;
+            if (cachedAnimationRectTransform != null)
+            {
+                cachedAnimationRectTransform.anchoredPosition = baseAnchoredPosition + positionOffset;
+                return;
+            }
+
+            transformTarget.localPosition = baseLocalPosition + new Vector3(positionOffset.x, positionOffset.y, 0f);
+        }
+
+        private bool CanAnimateTransform()
+        {
+            if (!hasCapturedBaseTransform)
+                return false;
+
+            if (animationTarget == null)
+                return false;
+
+            var rootRectTransform = transform as RectTransform;
+            if (animationTarget != rootRectTransform)
+                return true;
+
+            return !IsDrivenByLayoutGroup(rootRectTransform);
+        }
+
+        private void ResetAnimatedTransform()
+        {
+            var transformTarget = cachedAnimationRectTransform != null
+                ? (Transform)cachedAnimationRectTransform
+                : transform;
+
+            transformTarget.localScale = baseLocalScale;
+            if (cachedAnimationRectTransform != null)
+            {
+                cachedAnimationRectTransform.anchoredPosition = baseAnchoredPosition;
+                return;
+            }
+
+            transformTarget.localPosition = baseLocalPosition;
+        }
+
+        private static bool IsDrivenByLayoutGroup(RectTransform rectTransform)
+        {
+            if (rectTransform == null)
+                return false;
+
+            for (var current = rectTransform.parent; current != null; current = current.parent)
+            {
+                if (current.GetComponent<LayoutGroup>() != null)
+                    return true;
+            }
+
+            return false;
         }
 
         private Sprite ResolveSprite(VisualState state, Sprite fallbackSprite)

@@ -47,7 +47,7 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             inventoryActionInFlight = true;
-            ApplyInventoryStatus(inventoryActionInProgressText, force: true);
+            ApplyInventoryStatus(InventoryActionInProgressText, force: true);
 
             try
             {
@@ -60,35 +60,6 @@ namespace PhamNhanOnline.Client.UI.World
             catch (Exception ex)
             {
                 ClientLog.Warn($"WorldInventoryPanelController equip exception: {ex.Message}");
-            }
-            finally
-            {
-                inventoryActionInFlight = false;
-                HideItemOptionsPopup(force: true);
-                RefreshFromRuntime(force: true);
-                RefreshInventory(force: true);
-            }
-        }
-
-        private async void HandleEquippedItemDroppedOnInventory(InventoryEquipmentSlot slot)
-        {
-            if (inventoryActionInFlight || !ClientRuntime.IsInitialized)
-                return;
-
-            inventoryActionInFlight = true;
-            ApplyInventoryStatus(inventoryActionInProgressText, force: true);
-
-            try
-            {
-                var result = await ClientRuntime.InventoryService.UnequipItemAsync((int)slot);
-                if (!result.Success)
-                    ClientLog.Warn($"WorldInventoryPanelController failed to unequip item: {result.Message}");
-
-                previewPlayerItemId = null;
-            }
-            catch (Exception ex)
-            {
-                ClientLog.Warn($"WorldInventoryPanelController unequip exception: {ex.Message}");
             }
             finally
             {
@@ -114,7 +85,6 @@ namespace PhamNhanOnline.Client.UI.World
 
             popupPlayerItemId = item.PlayerItemId;
             previewPlayerItemId = item.PlayerItemId;
-            modalUIManager.SetItemTooltipSuppressed(this, suppressed: true, force: true);
             modalUIManager.HideItemTooltip(force: true);
             modalUIManager.ShowInventoryItemOptionsPopup(
                 options,
@@ -247,7 +217,7 @@ namespace PhamNhanOnline.Client.UI.World
             inventoryActionInFlight = true;
             HideItemOptionsPopup(force: true);
             HideQuantityPopup(force: true);
-            ApplyInventoryStatus(inventoryUseActionText, force: true);
+            ApplyInventoryStatus(InventoryUseActionText, force: true);
 
             try
             {
@@ -391,7 +361,7 @@ namespace PhamNhanOnline.Client.UI.World
                         await UseBookItemAsync(item);
                         break;
                     default:
-                        ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+                        ApplyInventoryStatus(InventoryUnsupportedUseText, force: true);
                         break;
                 }
             }
@@ -409,13 +379,13 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (!item.IsEquipped || !item.EquippedSlot.HasValue)
             {
-                ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+                ApplyInventoryStatus(InventoryUnsupportedUseText, force: true);
                 return;
             }
 
             inventoryActionInFlight = true;
             HideItemOptionsPopup(force: true);
-            ApplyInventoryStatus(inventoryUnequipActionText, force: true);
+            ApplyInventoryStatus(InventoryUnequipActionText, force: true);
 
             try
             {
@@ -447,13 +417,13 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (!item.EquipmentSlotType.HasValue)
             {
-                ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+                ApplyInventoryStatus(InventoryUnsupportedUseText, force: true);
                 return;
             }
 
             if (item.IsEquipped)
             {
-                ApplyInventoryStatus(inventoryAlreadyEquippedText, force: true);
+                ApplyInventoryStatus(InventoryAlreadyEquippedText, force: true);
                 return;
             }
 
@@ -464,7 +434,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (item.MartialArtBookMartialArtId.HasValue && HasLearnedMartialArt(item.MartialArtBookMartialArtId.Value))
             {
-                ApplyInventoryStatus(inventoryMartialArtAlreadyLearnedText, force: true);
+                ApplyInventoryStatus(InventoryMartialArtAlreadyLearnedText, force: true);
                 return;
             }
 
@@ -487,7 +457,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (!IsUseActionSupported(item))
             {
-                ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+                ApplyInventoryStatus(InventoryUnsupportedUseText, force: true);
                 return System.Threading.Tasks.Task.CompletedTask;
             }
 
@@ -498,7 +468,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (!IsUseActionSupported(item))
             {
-                ApplyInventoryStatus(inventoryUnsupportedUseText, force: true);
+                ApplyInventoryStatus(InventoryUnsupportedUseText, force: true);
                 return System.Threading.Tasks.Task.CompletedTask;
             }
 
@@ -510,7 +480,7 @@ namespace PhamNhanOnline.Client.UI.World
             HideItemOptionsPopup(force: true);
             if (!item.IsDroppable)
             {
-                ApplyInventoryStatus(inventoryDropUnavailableText, force: true);
+                ApplyInventoryStatus(InventoryDropUnavailableText, force: true);
                 return;
             }
 
@@ -530,10 +500,7 @@ namespace PhamNhanOnline.Client.UI.World
             WorldModalUIManager.Instance?.HideInventoryItemOptionsPopup(force);
             var modalUIManager = WorldModalUIManager.Instance;
             if (modalUIManager != null)
-            {
-                modalUIManager.SetItemTooltipSuppressed(this, suppressed: false, force: true);
                 modalUIManager.HideItemTooltip(force: true);
-            }
 
             ApplyPreviewSelectionState(force: true);
         }
@@ -546,14 +513,14 @@ namespace PhamNhanOnline.Client.UI.World
             InventoryItemModel item;
             if (!ClientRuntime.Inventory.TryGetItem(playerItemId, out item) || !item.IsDroppable)
             {
-                ApplyInventoryStatus(inventoryDropUnavailableText, force: true);
+                ApplyInventoryStatus(InventoryDropUnavailableText, force: true);
                 return;
             }
 
             inventoryActionInFlight = true;
             HideItemOptionsPopup(force: true);
             HideQuantityPopup(force: true);
-            ApplyInventoryStatus(inventoryDropActionText, force: true);
+            ApplyInventoryStatus(InventoryDropActionText, force: true);
 
             try
             {
@@ -566,7 +533,7 @@ namespace PhamNhanOnline.Client.UI.World
                 }
 
                 previewPlayerItemId = null;
-                ApplyInventoryStatus(inventoryDropSuccessText, force: true);
+                ApplyInventoryStatus(InventoryDropSuccessText, force: true);
             }
             catch (Exception ex)
             {

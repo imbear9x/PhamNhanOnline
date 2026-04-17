@@ -17,7 +17,8 @@ namespace PhamNhanOnline.Client.UI.World
             InventoryItemTooltip = 1,
             CraftRecipeTooltip = 2,
             InventoryItemOptionsPopup = 3,
-            QuantityPopup = 4
+            QuantityPopup = 4,
+            PotentialUpgradeOptionsPopup = 5
         }
 
         public static WorldModalUIManager Instance { get; private set; }
@@ -33,10 +34,12 @@ namespace PhamNhanOnline.Client.UI.World
         [Header("Popup References")]
         [SerializeField] private InventoryItemOptionsPopupController inventoryItemOptionsPopupView;
         [SerializeField] private InventoryUseQuantityPopupView inventoryUseQuantityPopupView;
+        [SerializeField] private PotentialUpgradeOptionsPopupView potentialUpgradeOptionsPopupView;
 
         [Header("Popup Order")]
         [SerializeField] private int inventoryItemOptionsPopupOrderId = 200;
         [SerializeField] private int quantityPopupOrderId = 210;
+        [SerializeField] private int potentialUpgradeOptionsPopupOrderId = 220;
 
         private readonly HashSet<int> itemTooltipSuppressors = new HashSet<int>();
         private readonly Dictionary<int, ModalViewKind> activeModalKindsByOrderId = new Dictionary<int, ModalViewKind>();
@@ -45,11 +48,11 @@ namespace PhamNhanOnline.Client.UI.World
         public bool IsInventoryItemOptionsPopupVisible =>
             inventoryItemOptionsPopupView != null && inventoryItemOptionsPopupView.IsVisible;
 
-        public Transform InventoryItemOptionsPopupTransform =>
-            inventoryItemOptionsPopupView != null ? inventoryItemOptionsPopupView.transform : null;
-
         public bool IsQuantityPopupVisible =>
             inventoryUseQuantityPopupView != null && inventoryUseQuantityPopupView.IsVisible;
+
+        public bool IsPotentialUpgradeOptionsPopupVisible =>
+            potentialUpgradeOptionsPopupView != null && potentialUpgradeOptionsPopupView.IsVisible;
 
         private void Awake()
         {
@@ -77,7 +80,7 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             activeItemTooltipOwnerKey = ResolveOwnerKey(owner);
-            if (itemTooltipSuppressors.Count > 0)
+            if (IsItemTooltipBlocked())
                 return;
 
             BeginShow(ModalViewKind.InventoryItemTooltip, inventoryItemTooltipOrderId);
@@ -107,19 +110,27 @@ namespace PhamNhanOnline.Client.UI.World
             EndHide(ModalViewKind.InventoryItemTooltip, inventoryItemTooltipOrderId);
         }
 
-        public void SetItemTooltipSuppressed(object owner, bool suppressed, bool force = false)
+        public void BeginItemInteraction(object owner, bool force = false)
         {
             if (owner == null)
                 return;
 
             var ownerKey = ResolveOwnerKey(owner);
-            if (suppressed)
-                itemTooltipSuppressors.Add(ownerKey);
-            else
-                itemTooltipSuppressors.Remove(ownerKey);
-
-            if (suppressed || force)
+            itemTooltipSuppressors.Add(ownerKey);
+            HideItemTooltip(owner, force: true);
+            if (force)
                 HideItemTooltip(force: true);
+        }
+
+        public void EndItemInteraction(object owner, bool force = false)
+        {
+            if (owner == null)
+                return;
+
+            var ownerKey = ResolveOwnerKey(owner);
+            itemTooltipSuppressors.Remove(ownerKey);
+            if (force)
+                HideItemTooltip(owner, force: true);
         }
 
         public void ShowRecipeTooltip(
@@ -190,6 +201,38 @@ namespace PhamNhanOnline.Client.UI.World
             EndHide(ModalViewKind.QuantityPopup, quantityPopupOrderId);
         }
 
+        public void ShowPotentialUpgradeOptionsPopup(
+            RectTransform anchor,
+            string title,
+            IReadOnlyList<PotentialUpgradeOptionsPopupView.OptionEntry> options,
+            bool force = false)
+        {
+            if (potentialUpgradeOptionsPopupView == null)
+                return;
+
+            BeginShow(ModalViewKind.PotentialUpgradeOptionsPopup, potentialUpgradeOptionsPopupOrderId);
+            potentialUpgradeOptionsPopupView.Show(anchor, title, options, force);
+        }
+
+        public void HidePotentialUpgradeOptionsPopup(bool force = false)
+        {
+            if (potentialUpgradeOptionsPopupView != null)
+                potentialUpgradeOptionsPopupView.Hide(force);
+
+            EndHide(ModalViewKind.PotentialUpgradeOptionsPopup, potentialUpgradeOptionsPopupOrderId);
+        }
+
+        public void HideAllViews(bool force = false)
+        {
+            itemTooltipSuppressors.Clear();
+            activeItemTooltipOwnerKey = null;
+            HideItemTooltip(force: force);
+            HideRecipeTooltip(force);
+            HideInventoryItemOptionsPopup(force);
+            HideQuantityPopup(force);
+            HidePotentialUpgradeOptionsPopup(force);
+        }
+
         private void BeginShow(ModalViewKind requestedKind, int orderId)
         {
             if (!activeModalKindsByOrderId.TryGetValue(orderId, out var activeKind) || activeKind == requestedKind)
@@ -224,6 +267,9 @@ namespace PhamNhanOnline.Client.UI.World
                 case ModalViewKind.QuantityPopup:
                     HideQuantityPopup(force);
                     break;
+                case ModalViewKind.PotentialUpgradeOptionsPopup:
+                    HidePotentialUpgradeOptionsPopup(force);
+                    break;
             }
         }
 
@@ -233,6 +279,14 @@ namespace PhamNhanOnline.Client.UI.World
                 return unityObject.GetInstanceID();
 
             return RuntimeHelpers.GetHashCode(owner);
+        }
+
+        private bool IsItemTooltipBlocked()
+        {
+            return itemTooltipSuppressors.Count > 0 ||
+                   IsInventoryItemOptionsPopupVisible ||
+                   IsQuantityPopupVisible ||
+                   IsPotentialUpgradeOptionsPopupVisible;
         }
     }
 }

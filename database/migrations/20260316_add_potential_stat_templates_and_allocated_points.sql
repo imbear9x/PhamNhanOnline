@@ -6,14 +6,14 @@ ALTER TABLE public.character_base_stats
     ADD COLUMN IF NOT EXISTS bonus_mp integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS bonus_attack integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS bonus_speed integer NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS bonus_spiritual_sense integer NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS bonus_fortune double precision NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS bonus_sense integer NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS bonus_luck double precision NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS hp_upgrade_count integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS mp_upgrade_count integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS attack_upgrade_count integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS speed_upgrade_count integer NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS spiritual_sense_upgrade_count integer NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS fortune_upgrade_count integer NOT NULL DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS sense_upgrade_count integer NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS luck_upgrade_count integer NOT NULL DEFAULT 0;
 
 DROP TABLE IF EXISTS public.potential_stat_templates;
 DROP TABLE IF EXISTS public.potential_stat_upgrade_tiers;

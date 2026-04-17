@@ -11,8 +11,8 @@ public readonly record struct CombatStatSnapshot(
     int MaxStamina,
     int Attack,
     int Speed,
-    int SpiritualSense,
-    double Fortune);
+    int Sense,
+    double Luck);
 
 public sealed class CombatStatusCollection
 {

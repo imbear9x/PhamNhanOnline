@@ -351,7 +351,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "Nhan vat: {0}\nMap hien tai: {1}\nKhu: {2}\n\nHP: {3}/{4}\nMP: {5}/{6}\nThe luc: {7}/{8}\nTan cong: {9}\nToc do: {10}\nThan thuc: {11}\nCo duyen: {12:0.##}\nTiem nang con lai: {13}",
+                "Nhan vat: {0}\nMap hien tai: {1}\nKhu: {2}\n\nHP: {3}/{4}\nMP: {5}/{6}\nThe luc: {7}/{8}\nTan cong: {9}\nToc do: {10}\nSense: {11}\nLuck: {12:0.##}\nTiem nang con lai: {13}",
                 characterName,
                 mapName,
                 ClientRuntime.World.CurrentZoneIndex.HasValue ? ClientRuntime.World.CurrentZoneIndex.Value.ToString(CultureInfo.InvariantCulture) : "-",
@@ -363,8 +363,8 @@ namespace PhamNhanOnline.Client.UI.World
                 stats.BaseStamina,
                 GetTotalAttack(stats),
                 GetTotalSpeed(stats),
-                GetTotalSpiritualSense(stats),
-                GetTotalFortune(stats),
+                GetTotalSense(stats),
+                GetTotalLuck(stats),
                 stats.UnallocatedPotential);
         }
 
@@ -388,14 +388,14 @@ namespace PhamNhanOnline.Client.UI.World
             return stats.FinalSpeed;
         }
 
-        private static int GetTotalSpiritualSense(GameShared.Models.CharacterBaseStatsModel stats)
+        private static int GetTotalSense(GameShared.Models.CharacterBaseStatsModel stats)
         {
-            return stats.FinalSpiritualSense;
+            return stats.FinalSense;
         }
 
-        private static double GetTotalFortune(GameShared.Models.CharacterBaseStatsModel stats)
+        private static double GetTotalLuck(GameShared.Models.CharacterBaseStatsModel stats)
         {
-            return stats.FinalFortune;
+            return stats.FinalLuck;
         }
 
         private static void ApplyTabButtonVisual(WorldMenuTabBinding tab, bool isActive)

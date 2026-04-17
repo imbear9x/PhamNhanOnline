@@ -67,7 +67,6 @@
     <Compile Include="Assets\Free_Pack\BURLY-MAN_1_swordsman\Free_GM.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\GroundRewardPresenter.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldSkillPanelController.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\Common\StatLineListView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\LocalCharacterActionConfig.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryItemGridView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\CombatDeadPanelView.cs" />
@@ -240,7 +239,6 @@
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldTargetable.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterAllocatePotentialResult.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Inventory\Application\InventoryActionResult.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\Common\StatLineView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryDragGhost.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\GroundSnapBindings.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldPortalPresenter.Visuals.cs" />

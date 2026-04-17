@@ -2,9 +2,9 @@ CREATE TABLE IF NOT EXISTS public.game_random_tables (
     id integer NOT NULL,
     table_id character varying(100) NOT NULL,
     mode integer NOT NULL DEFAULT 0,
-    fortune_enabled boolean NOT NULL DEFAULT false,
-    fortune_bonus_parts_per_million_per_fortune_point integer NOT NULL DEFAULT 0,
-    fortune_max_bonus_parts_per_million integer NOT NULL DEFAULT 0,
+    luck_enabled boolean NOT NULL DEFAULT false,
+    luck_bonus_parts_per_million_per_luck_point integer NOT NULL DEFAULT 0,
+    luck_max_bonus_parts_per_million integer NOT NULL DEFAULT 0,
     none_entry_id character varying(100) NOT NULL DEFAULT '__none__',
     description text NULL,
     created_at timestamp without time zone DEFAULT now(),
@@ -38,14 +38,14 @@ CREATE TABLE IF NOT EXISTS public.game_random_entry_tags (
         FOREIGN KEY (game_random_entry_id) REFERENCES public.game_random_entries(id)
 );
 
-CREATE TABLE IF NOT EXISTS public.game_random_fortune_tags (
+CREATE TABLE IF NOT EXISTS public.game_random_luck_tags (
     id integer NOT NULL,
     game_random_table_id integer NOT NULL,
     tag character varying(50) NOT NULL,
     created_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT game_random_fortune_tags_pkey PRIMARY KEY (id),
-    CONSTRAINT game_random_fortune_tags_table_tag_key UNIQUE (game_random_table_id, tag),
-    CONSTRAINT fk_game_random_fortune_tags_table
+    CONSTRAINT game_random_luck_tags_pkey PRIMARY KEY (id),
+    CONSTRAINT game_random_luck_tags_table_tag_key UNIQUE (game_random_table_id, tag),
+    CONSTRAINT fk_game_random_luck_tags_table
         FOREIGN KEY (game_random_table_id) REFERENCES public.game_random_tables(id)
 );
 
@@ -53,9 +53,9 @@ INSERT INTO public.game_random_tables (
     id,
     table_id,
     mode,
-    fortune_enabled,
-    fortune_bonus_parts_per_million_per_fortune_point,
-    fortune_max_bonus_parts_per_million,
+    luck_enabled,
+    luck_bonus_parts_per_million_per_luck_point,
+    luck_max_bonus_parts_per_million,
     none_entry_id,
     description
 )
@@ -73,9 +73,9 @@ ON CONFLICT (id) DO UPDATE
 SET
     table_id = EXCLUDED.table_id,
     mode = EXCLUDED.mode,
-    fortune_enabled = EXCLUDED.fortune_enabled,
-    fortune_bonus_parts_per_million_per_fortune_point = EXCLUDED.fortune_bonus_parts_per_million_per_fortune_point,
-    fortune_max_bonus_parts_per_million = EXCLUDED.fortune_max_bonus_parts_per_million,
+    luck_enabled = EXCLUDED.luck_enabled,
+    luck_bonus_parts_per_million_per_luck_point = EXCLUDED.luck_bonus_parts_per_million_per_luck_point,
+    luck_max_bonus_parts_per_million = EXCLUDED.luck_max_bonus_parts_per_million,
     none_entry_id = EXCLUDED.none_entry_id,
     description = EXCLUDED.description;
 

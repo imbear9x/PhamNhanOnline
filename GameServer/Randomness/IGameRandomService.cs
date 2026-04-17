@@ -8,6 +8,6 @@ public interface IGameRandomService
         int baseChancePartsPerMillion,
         GameRandomContext context = default,
         GameRandomOptions options = default,
-        GameRandomFortuneModifierConfig? modifier = null,
+        GameRandomLuckModifierConfig? modifier = null,
         IReadOnlyCollection<string>? entryTags = null);
 }

@@ -98,8 +98,8 @@ public sealed class PlayerSession
             CombatStatMath.ApplyModifiers(baseStats.GetEffectiveStamina(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.MaxStamina, utcNow)),
             CombatStatMath.ApplyModifiers(baseStats.GetEffectiveAttack(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Attack, utcNow)),
             CombatStatMath.ApplyModifiers(baseStats.GetEffectiveSpeed(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Speed, utcNow)),
-            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveSpiritualSense(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.SpiritualSense, utcNow)),
-            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveFortune(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Fortune, utcNow)));
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveSense(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Sense, utcNow)),
+            CombatStatMath.ApplyModifiers(baseStats.GetEffectiveLuck(), CombatStatuses.GetStatModifierAggregate(CharacterStatType.Luck, utcNow)));
     }
 
     public void UpdateConnection(int connectionId)

@@ -24,18 +24,18 @@ namespace GameServer.Entities
 		[Column("base_attack"                              )] public int?    BaseAttack           { get; set; } // integer
 		[Column("base_move_speed"                          )] public decimal? BaseMoveSpeed       { get; set; } // numeric(10,4)
 		[Column("base_speed"                               )] public int?    BaseSpeed            { get; set; } // integer
-		[Column("base_spiritual_sense"                     )] public int?    BaseSpiritualSense   { get; set; } // integer
+		[Column("base_sense"                               )] public int?    BaseSense            { get; set; } // integer
 		[Column("base_stamina"                             )] public int?    BaseStamina          { get; set; } // integer
 		[Column("lifespan_bonus"                           )] public int?    LifespanBonus       { get; set; } // integer
-		[Column("base_fortune"                             )] public double? BaseFortune          { get; set; } // double precision
+		[Column("base_luck"                                )] public double? BaseLuck             { get; set; } // double precision
 		[Column("base_potential"                           )] public int?    BasePotential        { get; set; } // integer
 		[Column("unallocated_potential"                    )] public int?    UnallocatedPotential { get; set; } // integer
 		[Column("hp_upgrade_count"                         )] public int?    HpUpgradeCount       { get; set; } // integer
 		[Column("mp_upgrade_count"                         )] public int?    MpUpgradeCount       { get; set; } // integer
 		[Column("attack_upgrade_count"                     )] public int?    AttackUpgradeCount   { get; set; } // integer
 		[Column("speed_upgrade_count"                      )] public int?    SpeedUpgradeCount    { get; set; } // integer
-		[Column("spiritual_sense_upgrade_count"            )] public int?    SpiritualSenseUpgradeCount { get; set; } // integer
-		[Column("fortune_upgrade_count"                    )] public int?    FortuneUpgradeCount  { get; set; } // integer
+		[Column("sense_upgrade_count"                      )] public int?    SenseUpgradeCount    { get; set; } // integer
+		[Column("luck_upgrade_count"                       )] public int?    LuckUpgradeCount     { get; set; } // integer
 		[Column("active_martial_art_id"                    )] public int?    ActiveMartialArtId   { get; set; } // integer
 		[Column("cultivation_progress"                     )] public decimal? CultivationProgress  { get; set; } // numeric(18,6)
 		[Column("potential_reward_locked"                  )] public bool?   PotentialRewardLocked { get; set; } // boolean

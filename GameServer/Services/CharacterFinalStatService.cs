@@ -91,8 +91,8 @@ public sealed class CharacterFinalStatService
         var stamina = checked(baseStats.GetRawStamina() + potentialBonuses.MaxStamina + ResolvePercentIntBonus(baseStats.GetRawStamina(), combinedModifiers, CharacterStatType.MaxStamina) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.MaxStamina));
         var attack = checked(baseStats.GetRawAttack() + potentialBonuses.Attack + ResolvePercentIntBonus(baseStats.GetRawAttack(), combinedModifiers, CharacterStatType.Attack) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.Attack));
         var speed = checked(baseStats.GetRawSpeed() + potentialBonuses.Speed + ResolvePercentIntBonus(baseStats.GetRawSpeed(), combinedModifiers, CharacterStatType.Speed) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.Speed));
-        var spiritualSense = checked(baseStats.GetRawSpiritualSense() + potentialBonuses.SpiritualSense + ResolvePercentIntBonus(baseStats.GetRawSpiritualSense(), combinedModifiers, CharacterStatType.SpiritualSense) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.SpiritualSense));
-        var fortune = baseStats.GetRawFortune() + potentialBonuses.Fortune + ResolvePercentFortuneBonus(baseStats.GetRawFortune(), combinedModifiers) + ResolveFlatFortuneBonus(combinedModifiers);
+        var sense = checked(baseStats.GetRawSense() + potentialBonuses.Sense + ResolvePercentIntBonus(baseStats.GetRawSense(), combinedModifiers, CharacterStatType.Sense) + ResolveFlatIntBonus(combinedModifiers, CharacterStatType.Sense));
+        var luck = baseStats.GetRawLuck() + potentialBonuses.Luck + ResolvePercentLuckBonus(baseStats.GetRawLuck(), combinedModifiers) + ResolveFlatLuckBonus(combinedModifiers);
 
         return await _characterService.EnrichBaseStatsAsync(baseStats with
         {
@@ -100,15 +100,15 @@ public sealed class CharacterFinalStatService
             PotentialMpBonus = potentialBonuses.MaxMp,
             PotentialAttackBonus = potentialBonuses.Attack,
             PotentialSpeedBonus = potentialBonuses.Speed,
-            PotentialSpiritualSenseBonus = potentialBonuses.SpiritualSense,
-            PotentialFortuneBonus = potentialBonuses.Fortune,
+            PotentialSenseBonus = potentialBonuses.Sense,
+            PotentialLuckBonus = potentialBonuses.Luck,
             FinalHp = hp,
             FinalMp = mp,
             FinalAttack = attack,
             FinalSpeed = speed,
-            FinalSpiritualSense = spiritualSense,
+            FinalSense = sense,
             FinalStamina = stamina,
-            FinalFortune = fortune
+            FinalLuck = luck
         }, cancellationToken);
     }
 
@@ -196,9 +196,9 @@ public sealed class CharacterFinalStatService
         return decimal.ToInt32(decimal.Truncate(value));
     }
 
-    private static double ResolveFlatFortuneBonus(ItemStatModifierBundle modifiers)
+    private static double ResolveFlatLuckBonus(ItemStatModifierBundle modifiers)
     {
-        return modifiers.FlatValues.TryGetValue(CharacterStatType.Fortune, out var value)
+        return modifiers.FlatValues.TryGetValue(CharacterStatType.Luck, out var value)
             ? (double)value
             : 0d;
     }
@@ -218,11 +218,11 @@ public sealed class CharacterFinalStatService
         return decimal.ToInt32(decimal.Truncate(rawBaseValue * ratio));
     }
 
-    private static double ResolvePercentFortuneBonus(
+    private static double ResolvePercentLuckBonus(
         double rawBaseValue,
         ItemStatModifierBundle modifiers)
     {
-        if (!modifiers.PercentValues.TryGetValue(CharacterStatType.Fortune, out var percentValue))
+        if (!modifiers.PercentValues.TryGetValue(CharacterStatType.Luck, out var percentValue))
             return 0d;
 
         var ratio = NormalizePercentLikeRatio(percentValue);
@@ -247,15 +247,15 @@ public sealed class CharacterFinalStatService
                current.FinalMp == updated.FinalMp &&
                current.FinalAttack == updated.FinalAttack &&
                current.FinalSpeed == updated.FinalSpeed &&
-               current.FinalSpiritualSense == updated.FinalSpiritualSense &&
+               current.FinalSense == updated.FinalSense &&
                current.FinalStamina == updated.FinalStamina &&
                (current.PotentialHpBonus ?? 0) == (updated.PotentialHpBonus ?? 0) &&
                (current.PotentialMpBonus ?? 0) == (updated.PotentialMpBonus ?? 0) &&
                (current.PotentialAttackBonus ?? 0) == (updated.PotentialAttackBonus ?? 0) &&
                (current.PotentialSpeedBonus ?? 0) == (updated.PotentialSpeedBonus ?? 0) &&
-               (current.PotentialSpiritualSenseBonus ?? 0) == (updated.PotentialSpiritualSenseBonus ?? 0) &&
-               Math.Abs((current.PotentialFortuneBonus ?? 0d) - (updated.PotentialFortuneBonus ?? 0d)) < 0.000001d &&
-               Math.Abs((current.FinalFortune ?? 0d) - (updated.FinalFortune ?? 0d)) < 0.000001d &&
+               (current.PotentialSenseBonus ?? 0) == (updated.PotentialSenseBonus ?? 0) &&
+               Math.Abs((current.PotentialLuckBonus ?? 0d) - (updated.PotentialLuckBonus ?? 0d)) < 0.000001d &&
+               Math.Abs((current.FinalLuck ?? 0d) - (updated.FinalLuck ?? 0d)) < 0.000001d &&
                string.Equals(current.RealmDisplayName ?? string.Empty, updated.RealmDisplayName ?? string.Empty, StringComparison.Ordinal) &&
                (current.RealmMaxCultivation ?? 0L) == (updated.RealmMaxCultivation ?? 0L) &&
                Math.Abs((current.BreakthroughChancePercent ?? 0d) - (updated.BreakthroughChancePercent ?? 0d)) < 0.000001d &&

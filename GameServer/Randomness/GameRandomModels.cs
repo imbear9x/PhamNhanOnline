@@ -5,7 +5,7 @@ public readonly record struct GameRandomContext(
     IReadOnlyCollection<string>? ContextTags = null);
 
 public readonly record struct GameRandomOptions(
-    double? Fortune = null);
+    double? Luck = null);
 
 public sealed record GameRandomEvaluatedEntry(
     string EntryId,
@@ -18,8 +18,8 @@ public sealed record GameRandomEvaluatedEntry(
 public sealed record GameRandomTablePreview(
     string TableId,
     GameRandomTableMode Mode,
-    double? Fortune,
-    int AppliedFortuneBonusPartsPerMillion,
+    double? Luck,
+    int AppliedLuckBonusPartsPerMillion,
     IReadOnlyList<GameRandomEvaluatedEntry> EffectiveEntries);
 
 public sealed record GameRandomRollResult(
@@ -30,6 +30,6 @@ public sealed record GameRandomRollResult(
 public readonly record struct GameRandomChanceCheckResult(
     int BaseChancePartsPerMillion,
     int EffectiveChancePartsPerMillion,
-    int AppliedFortuneBonusPartsPerMillion,
+    int AppliedLuckBonusPartsPerMillion,
     int RollValue,
     bool Success);
