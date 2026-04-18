@@ -8,22 +8,8 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Inventory
 {
-    public sealed class InventoryItemOptionsPopupController : CursorPopupViewModelBase, IPointerEnterHandler, IPointerExitHandler
+    public sealed class ItemOptionsPopupView : CursorPopupViewModelBase, IPointerEnterHandler, IPointerExitHandler
     {
-        public readonly struct OptionEntry
-        {
-            public OptionEntry(string label, Action onClick, bool interactable = true)
-            {
-                Label = label;
-                OnClick = onClick;
-                Interactable = interactable;
-            }
-
-            public string Label { get; }
-            public Action OnClick { get; }
-            public bool Interactable { get; }
-        }
-
         private sealed class RuntimeOptionButton
         {
             public GameObject Root;
@@ -85,7 +71,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             return panelRoot != null ? panelRoot : gameObject;
         }
 
-        public void Show(IReadOnlyList<OptionEntry> options, bool force = false)
+        public void Show(IReadOnlyList<ItemOptionEntry> options, bool force = false)
         {
             AutoWireTemplateReferences();
 
@@ -171,7 +157,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             templateStateInitialized = true;
         }
 
-        private void ApplyButtons(IReadOnlyList<OptionEntry> options)
+        private void ApplyButtons(IReadOnlyList<ItemOptionEntry> options)
         {
             EnsureButtonPool(options.Count);
 

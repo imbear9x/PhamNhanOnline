@@ -27,7 +27,7 @@ namespace PhamNhanOnline.Client.UI.World
             previewPlayerItemId = item.PlayerItemId;
             var modalUIManager = WorldModalUIManager.Instance;
 
-            if (modalUIManager != null && modalUIManager.IsInventoryItemOptionsPopupVisible && popupPlayerItemId == item.PlayerItemId)
+            if (modalUIManager != null && modalUIManager.IsItemOptionsPopupVisible && popupPlayerItemId == item.PlayerItemId)
             {
                 HideItemOptionsPopup();
                 ApplyPreviewSelectionState(force: true);
@@ -65,7 +65,6 @@ namespace PhamNhanOnline.Client.UI.World
             {
                 inventoryActionInFlight = false;
                 HideItemOptionsPopup(force: true);
-                RefreshFromRuntime(force: true);
                 RefreshInventory(force: true);
             }
         }
@@ -86,39 +85,39 @@ namespace PhamNhanOnline.Client.UI.World
             popupPlayerItemId = item.PlayerItemId;
             previewPlayerItemId = item.PlayerItemId;
             modalUIManager.HideItemTooltip(force: true);
-            modalUIManager.ShowInventoryItemOptionsPopup(
+            modalUIManager.ShowItemOptionsPopup(
                 options,
                 force: true);
         }
 
-        private List<InventoryItemOptionsPopupController.OptionEntry> BuildItemOptions(InventoryItemModel item)
+        private List<ItemOptionEntry> BuildItemOptions(InventoryItemModel item)
         {
             if (item.IsEquipped && item.ItemType == (int)InventoryItemType.Equipment)
             {
-                return new List<InventoryItemOptionsPopupController.OptionEntry>(1)
+                return new List<ItemOptionEntry>(1)
                 {
-                    new InventoryItemOptionsPopupController.OptionEntry(unequipOptionText, () => _ = UnequipItemAsync(item))
+                    new ItemOptionEntry(unequipOptionText, () => _ = UnequipItemAsync(item))
                 };
             }
 
-            var options = new List<InventoryItemOptionsPopupController.OptionEntry>(2);
+            var options = new List<ItemOptionEntry>(2);
             var useOption = BuildUseOption(item);
             if (useOption.HasValue)
                 options.Add(useOption.Value);
 
             if (item.IsDroppable)
-                options.Add(new InventoryItemOptionsPopupController.OptionEntry(dropOptionText, () => HandleDropItemClicked(item)));
+                options.Add(new ItemOptionEntry(dropOptionText, () => HandleDropItemClicked(item)));
 
             return options;
         }
 
-        private InventoryItemOptionsPopupController.OptionEntry? BuildUseOption(InventoryItemModel item)
+        private ItemOptionEntry? BuildUseOption(InventoryItemModel item)
         {
             string blockedReason;
             if (!CanUseItem(item, out blockedReason))
                 return null;
 
-            return new InventoryItemOptionsPopupController.OptionEntry(
+            return new ItemOptionEntry(
                 useOptionText,
                 () => _ = UseItemAsync(item));
         }
@@ -240,7 +239,6 @@ namespace PhamNhanOnline.Client.UI.World
             finally
             {
                 inventoryActionInFlight = false;
-                RefreshFromRuntime(force: true);
                 RefreshInventory(force: true);
             }
         }
@@ -408,7 +406,6 @@ namespace PhamNhanOnline.Client.UI.World
             finally
             {
                 inventoryActionInFlight = false;
-                RefreshFromRuntime(force: true);
                 RefreshInventory(force: true);
             }
         }
@@ -497,7 +494,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             popupPlayerItemId = null;
             previewPlayerItemId = null;
-            WorldModalUIManager.Instance?.HideInventoryItemOptionsPopup(force);
+            WorldModalUIManager.Instance?.HideItemOptionsPopup(force);
             var modalUIManager = WorldModalUIManager.Instance;
             if (modalUIManager != null)
                 modalUIManager.HideItemTooltip(force: true);
@@ -543,7 +540,6 @@ namespace PhamNhanOnline.Client.UI.World
             finally
             {
                 inventoryActionInFlight = false;
-                RefreshFromRuntime(force: true);
                 RefreshInventory(force: true);
             }
         }

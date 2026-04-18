@@ -78,12 +78,13 @@
     <Compile Include="Assets\Game\Runtime\Features\PresentationReplication\Application\ClientPresentationReplicationState.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldMartialArtPanelController.ViewState.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Potential\PotentialStatPresentationCatalog.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Inventory\ItemOptionEntry.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldRemotePlayersPresenter.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\InventoryUseQuantityPopupView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\ClientCombatDeathRecoveryService.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldMartialArtPanelController.Actions.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\ClientCharacterRuntimeStateCodes.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryItemTooltipView.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Inventory\ItemTooltipView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\MapZoneListItemView.cs" />
     <Compile Include="Assets\Game\Runtime\Shared\Constants\ClientSceneIds.cs" />
     <Compile Include="Assets\Game\Runtime\Core\Logging\ClientLog.cs" />
@@ -120,6 +121,7 @@
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\CharacterActionInputState.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Skills\SkillListView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\ClientCharacterState.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Inventory\CharacterSummaryView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Targeting\Application\WorldTargetInteractionRules.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\PlayerView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldUIController.cs" />
@@ -177,6 +179,7 @@
     <Compile Include="Assets\Game\Runtime\UI\MartialArts\MartialArtPresentationCatalog.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Notifications\Application\ClientNotificationState.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\LoopScrollViewBase.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Inventory\ItemOptionsPopupView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Hud\WorldCombatHudController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Combat\Presentation\CharacterSkillPresenter.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\KeyboardCharacterActionInputSource.cs" />
@@ -232,6 +235,7 @@
     <Compile Include="Assets\Game\Runtime\UI\World\WorldPotentialPanelController.cs" />
     <Compile Include="Assets\Free_Pack\Demo_GameResource\Script\Demo_GM.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldPortalPresenter.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Common\DropZoneView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Crafting\CraftRecipeDragGhost.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\ClientCharacterService.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterCreateResult.cs" />
@@ -251,8 +255,8 @@
     <Compile Include="Assets\Game\Runtime\UI\Crafting\CraftRecipeSlotView.cs" />
     <Compile Include="Assets\Free_Pack\Demo_GameResource\Script\ColliderEvent_Sender.cs" />
     <Compile Include="Assets\Game\Runtime\Features\PresentationReplication\Application\ClientPresentationReplicationEventKind.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Inventory\ItemTooltipViewData.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\ServerConnectionPopupView.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryCharacterSummaryView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Inventory\Application\InventoryLoadResult.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CombatDeathReturnHomeResult.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryItemPresentation.cs" />
@@ -262,7 +266,6 @@
     <Compile Include="Assets\Game\Runtime\Core\Application\ClientRuntime.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\UIButtonView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterBreakthroughResult.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryDropZoneView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\CursorPopupViewModelBase.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\PersistentWorldUIController.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Crafting\CraftResultPreviewView.cs" />
@@ -270,6 +273,7 @@
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldConnectionDebugController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldTravelDebugController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\LocalFixPortalPresenter.cs" />
+    <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterBaseStatsChangeNotice.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Skills\SkillPresentationCatalog.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\UIDragPayload.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldInventoryPanelController.ViewState.cs" />
@@ -283,7 +287,6 @@
     <Compile Include="Assets\Game\Runtime\UI\Skills\SkillLoadoutSlotView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Screens\Login\LoginScreenController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Application\WorldTravelResult.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryItemOptionsPopupController.cs" />
     <Compile Include="Assets\Game\Runtime\Network\Session\ClientConnectionState.cs" />
   </ItemGroup>
   <ItemGroup>

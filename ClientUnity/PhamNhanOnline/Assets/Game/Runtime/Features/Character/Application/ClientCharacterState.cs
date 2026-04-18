@@ -7,6 +7,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
     public sealed class ClientCharacterState
     {
         public event Action<CultivationRewardNotice> CultivationRewardGranted;
+        public event Action<CharacterBaseStatsChangeNotice> BaseStatsChanged;
         public event Action<CharacterCurrentStateChangeNotice> CurrentStateChanged;
         public event Action<CharacterStateTransitionNotice> StateTransitioned;
 
@@ -43,17 +44,21 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             CharacterBaseStatsModel? baseStats,
             CharacterCurrentStateModel? currentState)
         {
+            var previousBaseStats = BaseStats;
             var previousState = CurrentState;
             SelectedCharacterId = character.CharacterId;
             SelectedCharacter = character;
             BaseStats = baseStats;
             CurrentState = currentState;
+            NotifyBaseStatsChanged(previousBaseStats, baseStats);
             NotifyCurrentStateChanged(previousState, currentState);
         }
 
         public void ApplyBaseStats(CharacterBaseStatsModel? baseStats)
         {
+            var previousBaseStats = BaseStats;
             BaseStats = baseStats;
+            NotifyBaseStatsChanged(previousBaseStats, baseStats);
         }
 
         public void ApplyCurrentState(CharacterCurrentStateModel? currentState)
@@ -80,6 +85,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
 
         public void Clear()
         {
+            var previousBaseStats = BaseStats;
             var previousState = CurrentState;
             SelectedCharacterId = null;
             HasLoadedCharacterList = false;
@@ -88,7 +94,15 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             BaseStats = null;
             CurrentState = null;
             LastCultivationReward = null;
+            NotifyBaseStatsChanged(previousBaseStats, null);
             NotifyCurrentStateChanged(previousState, null);
+        }
+
+        private void NotifyBaseStatsChanged(CharacterBaseStatsModel? previousBaseStats, CharacterBaseStatsModel? baseStats)
+        {
+            var handler = BaseStatsChanged;
+            if (handler != null)
+                handler(new CharacterBaseStatsChangeNotice(previousBaseStats, baseStats));
         }
 
         private void NotifyCurrentStateChanged(CharacterCurrentStateModel? previousState, CharacterCurrentStateModel? currentState)

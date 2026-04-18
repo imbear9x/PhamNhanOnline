@@ -103,7 +103,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (!hasItem)
                 return;
 
-            WorldModalUIManager.Instance?.ShowItemTooltip(this, item, currentPresentation, force: true);
+            WorldModalUIManager.Instance?.ShowItemTooltip(this, BuildTooltipData(), force: true);
             var handler = Hovered;
             if (handler != null)
                 handler(this);
@@ -160,7 +160,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             var modalUIManager = WorldModalUIManager.Instance;
             if (modalUIManager != null)
             {
-                modalUIManager.HideInventoryItemOptionsPopup(force: true);
+                modalUIManager.HideItemOptionsPopup(force: true);
                 modalUIManager.BeginItemInteraction(this, force: true);
             }
 
@@ -272,6 +272,15 @@ namespace PhamNhanOnline.Client.UI.Inventory
         {
             if (selectedRoot != null && selectedRoot.activeSelf != visible)
                 selectedRoot.SetActive(visible);
+        }
+
+        private ItemTooltipViewData BuildTooltipData()
+        {
+            return new ItemTooltipViewData(
+                item.Name,
+                item.Description,
+                currentPresentation.IconSprite,
+                currentPresentation.NameColor);
         }
     }
 }

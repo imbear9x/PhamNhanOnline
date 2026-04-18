@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Character.Presentation;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Features.World.Presentation;
@@ -120,14 +119,6 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
         {
             AutoWireReferences();
             CharacterSkillPresenterRegistry.Register(this);
-            ClientLog.Info(
-                $"[SkillPresenter] enabled object={BuildHierarchyPath(transform)} " +
-                $"scene={gameObject.scene.name} characterId={(CharacterId.HasValue ? CharacterId.Value.ToString() : "null")} " +
-                $"targetHandle={(TargetHandle.HasValue && TargetHandle.Value.IsValid ? TargetHandle.Value.ToString() : "null")} " +
-                $"playerView={(playerView != null ? playerView.name : "null")} " +
-                $"animator={(animator != null ? animator.name : "null")} " +
-                $"sockets={(sockets != null ? sockets.name : "null")} " +
-                $"worldTargetable={(worldTargetable != null ? worldTargetable.name : "null")}");
         }
 
         private void OnDisable()
@@ -178,23 +169,6 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
 
             if (!Mathf.Approximately(visualRoot.localScale.x, 0f))
                 visualDefaultScaleX = visualRoot.localScale.x;
-        }
-
-        private static string BuildHierarchyPath(Transform node)
-        {
-            if (node == null)
-                return "<null>";
-
-            var names = new List<string>();
-            var current = node;
-            while (current != null)
-            {
-                names.Add(current.name);
-                current = current.parent;
-            }
-
-            names.Reverse();
-            return string.Join("/", names);
         }
 
         private void FaceTowards(Vector2 targetWorldPosition)

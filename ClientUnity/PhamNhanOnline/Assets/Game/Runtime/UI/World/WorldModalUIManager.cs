@@ -14,9 +14,9 @@ namespace PhamNhanOnline.Client.UI.World
         private enum ModalViewKind
         {
             None = 0,
-            InventoryItemTooltip = 1,
+            ItemTooltip = 1,
             CraftRecipeTooltip = 2,
-            InventoryItemOptionsPopup = 3,
+            ItemOptionsPopup = 3,
             QuantityPopup = 4,
             PotentialUpgradeOptionsPopup = 5
         }
@@ -24,7 +24,7 @@ namespace PhamNhanOnline.Client.UI.World
         public static WorldModalUIManager Instance { get; private set; }
 
         [Header("Tooltip References")]
-        [SerializeField] private InventoryItemTooltipView inventoryItemTooltipView;
+        [SerializeField] private ItemTooltipView inventoryItemTooltipView;
         [SerializeField] private CraftRecipeTooltipView craftRecipeTooltipView;
 
         [Header("Tooltip Order")]
@@ -32,7 +32,7 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private int craftRecipeTooltipOrderId = 110;
 
         [Header("Popup References")]
-        [SerializeField] private InventoryItemOptionsPopupController inventoryItemOptionsPopupView;
+        [SerializeField] private ItemOptionsPopupView inventoryItemOptionsPopupView;
         [SerializeField] private InventoryUseQuantityPopupView inventoryUseQuantityPopupView;
         [SerializeField] private PotentialUpgradeOptionsPopupView potentialUpgradeOptionsPopupView;
 
@@ -45,7 +45,7 @@ namespace PhamNhanOnline.Client.UI.World
         private readonly Dictionary<int, ModalViewKind> activeModalKindsByOrderId = new Dictionary<int, ModalViewKind>();
         private int? activeItemTooltipOwnerKey;
 
-        public bool IsInventoryItemOptionsPopupVisible =>
+        public bool IsItemOptionsPopupVisible =>
             inventoryItemOptionsPopupView != null && inventoryItemOptionsPopupView.IsVisible;
 
         public bool IsQuantityPopupVisible =>
@@ -74,7 +74,7 @@ namespace PhamNhanOnline.Client.UI.World
                 Instance = null;
         }
 
-        public void ShowItemTooltip(object owner, InventoryItemModel item, InventoryItemPresentation presentation, bool force = false)
+        public void ShowItemTooltip(object owner, ItemTooltipViewData data, bool force = false)
         {
             if (inventoryItemTooltipView == null || owner == null)
                 return;
@@ -83,8 +83,8 @@ namespace PhamNhanOnline.Client.UI.World
             if (IsItemTooltipBlocked())
                 return;
 
-            BeginShow(ModalViewKind.InventoryItemTooltip, inventoryItemTooltipOrderId);
-            inventoryItemTooltipView.Show(item, presentation, force);
+            BeginShow(ModalViewKind.ItemTooltip, inventoryItemTooltipOrderId);
+            inventoryItemTooltipView.Show(data, force);
         }
 
         public void HideItemTooltip(object owner = null, bool force = false)
@@ -107,7 +107,7 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             inventoryItemTooltipView.Hide(force);
-            EndHide(ModalViewKind.InventoryItemTooltip, inventoryItemTooltipOrderId);
+            EndHide(ModalViewKind.ItemTooltip, inventoryItemTooltipOrderId);
         }
 
         public void BeginItemInteraction(object owner, bool force = false)
@@ -153,23 +153,23 @@ namespace PhamNhanOnline.Client.UI.World
             EndHide(ModalViewKind.CraftRecipeTooltip, craftRecipeTooltipOrderId);
         }
 
-        public void ShowInventoryItemOptionsPopup(
-            IReadOnlyList<InventoryItemOptionsPopupController.OptionEntry> options,
+        public void ShowItemOptionsPopup(
+            IReadOnlyList<ItemOptionEntry> options,
             bool force = false)
         {
             if (inventoryItemOptionsPopupView == null)
                 return;
 
-            BeginShow(ModalViewKind.InventoryItemOptionsPopup, inventoryItemOptionsPopupOrderId);
+            BeginShow(ModalViewKind.ItemOptionsPopup, inventoryItemOptionsPopupOrderId);
             inventoryItemOptionsPopupView.Show(options, force);
         }
 
-        public void HideInventoryItemOptionsPopup(bool force = false)
+        public void HideItemOptionsPopup(bool force = false)
         {
             if (inventoryItemOptionsPopupView != null)
                 inventoryItemOptionsPopupView.Hide(force);
 
-            EndHide(ModalViewKind.InventoryItemOptionsPopup, inventoryItemOptionsPopupOrderId);
+            EndHide(ModalViewKind.ItemOptionsPopup, inventoryItemOptionsPopupOrderId);
         }
 
         public void ShowQuantityPopup(
@@ -228,7 +228,7 @@ namespace PhamNhanOnline.Client.UI.World
             activeItemTooltipOwnerKey = null;
             HideItemTooltip(force: force);
             HideRecipeTooltip(force);
-            HideInventoryItemOptionsPopup(force);
+            HideItemOptionsPopup(force);
             HideQuantityPopup(force);
             HidePotentialUpgradeOptionsPopup(force);
         }
@@ -255,14 +255,14 @@ namespace PhamNhanOnline.Client.UI.World
         {
             switch (kind)
             {
-                case ModalViewKind.InventoryItemTooltip:
+                case ModalViewKind.ItemTooltip:
                     HideItemTooltip(force: force);
                     break;
                 case ModalViewKind.CraftRecipeTooltip:
                     HideRecipeTooltip(force);
                     break;
-                case ModalViewKind.InventoryItemOptionsPopup:
-                    HideInventoryItemOptionsPopup(force);
+                case ModalViewKind.ItemOptionsPopup:
+                    HideItemOptionsPopup(force);
                     break;
                 case ModalViewKind.QuantityPopup:
                     HideQuantityPopup(force);
@@ -284,7 +284,7 @@ namespace PhamNhanOnline.Client.UI.World
         private bool IsItemTooltipBlocked()
         {
             return itemTooltipSuppressors.Count > 0 ||
-                   IsInventoryItemOptionsPopupVisible ||
+                   IsItemOptionsPopupVisible ||
                    IsQuantityPopupVisible ||
                    IsPotentialUpgradeOptionsPopupVisible;
         }

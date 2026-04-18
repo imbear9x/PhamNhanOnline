@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Globalization;
 using GameShared.Messages;
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.MartialArts.Application;
+using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.MartialArts;
 using TMPro;
 using UnityEngine;
@@ -12,20 +13,20 @@ namespace PhamNhanOnline.Client.UI.World
 {
     public sealed partial class WorldMartialArtPanelController
     {
+        private const string MissingCharacterName = "Chua co nhan vat";
+        private const string MissingRealmName = "Chua co canh gioi";
+        private const string MissingCultivationText = "0/0";
+        private const string MissingUnallocatedPotentialText = "0";
+
         private void ApplyLoadedState(
             ClientMartialArtState martialArtState,
             CharacterBaseStatsModel? baseStats,
             CharacterCurrentStateModel? currentState,
             bool force)
         {
-            var totalOwnedCount = martialArtState.OwnedMartialArts != null ? martialArtState.OwnedMartialArts.Length : 0;
-            ApplyText(
-                ownedCountText,
-                string.Format(CultureInfo.InvariantCulture, "Cong phap: {0}", totalOwnedCount),
-                force);
-
+            var selectedCharacter = ClientRuntime.Character.SelectedCharacter;
             var activeMartialArt = TryGetActiveMartialArt(martialArtState);
-            var visibleMartialArts = BuildVisibleMartialArtList(martialArtState.OwnedMartialArts, martialArtState.ActiveMartialArtId);
+            var ownedMartialArts = martialArtState.OwnedMartialArts ?? Array.Empty<PlayerMartialArtModel>();
             var preview = martialArtState.CultivationPreview;
             var breakthroughAvailable = baseStats.HasValue && CanAttemptBreakthrough(baseStats.Value);
             var isCultivating = currentState.HasValue &&
@@ -33,12 +34,19 @@ namespace PhamNhanOnline.Client.UI.World
                                  currentState.Value.CurrentState == CharacterStatePracticing);
             var canChangeActive = CanChangeActiveMartialArt(currentState);
 
+            ApplyCharacterSummary(selectedCharacter, currentState, baseStats, force: force);
+
             if (activeMartialArt.HasValue)
             {
                 var presentation = presentationCatalog != null
                     ? presentationCatalog.Resolve(activeMartialArt.Value)
                     : new MartialArtPresentation(null);
                 activeMartialArtSlotView?.SetItem(activeMartialArt.Value, presentation, force: true);
+                activeMartialArtSlotView?.SetSelected(
+                    popupTargetsActiveSlot &&
+                    popupMartialArtId.HasValue &&
+                    popupMartialArtId.Value == activeMartialArt.Value.MartialArtId,
+                    force: true);
                 activeMartialArtSlotView?.SetDragEnabled(canChangeActive);
             }
             else
@@ -47,30 +55,28 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             if (martialArtListView != null)
-                martialArtListView.SetItems(visibleMartialArts, null, presentationCatalog, force: true);
+            {
+                martialArtListView.SetItems(
+                    ownedMartialArts,
+                    popupTargetsActiveSlot ? null : popupMartialArtId,
+                    presentationCatalog,
+                    force: true);
+            }
 
-            ApplyCultivationProgress(baseStats, force);
             ApplyEstimate(activeMartialArt, preview, force);
-            ApplyActionArea(baseStats, currentState, activeMartialArt, preview, breakthroughAvailable, isCultivating, force);
+            ApplyBreakthroughChance(baseStats, force);
+            ApplyButtons(baseStats, currentState, activeMartialArt, preview, breakthroughAvailable, isCultivating, force);
 
-            var status = ResolveStatusText(
-                activeMartialArt,
-                preview,
-                baseStats,
-                currentState,
-                breakthroughAvailable,
-                isCultivating);
+            var status = ResolveStatusText(activeMartialArt, preview, baseStats, currentState, breakthroughAvailable, isCultivating);
             ApplyText(statusText, status, force: true);
         }
 
         private void ApplyMissingState(bool force)
         {
-            var ownedText = loadingOwnedCountText;
-            if (!ClientRuntime.IsInitialized || !martialArtReloadInFlight)
-                ownedText = missingOwnedCountText;
-
-            ApplyText(ownedCountText, ownedText, force);
-            ApplyText(statusText, ResolveMissingStatusText(), force);
+            var selectedCharacter = ClientRuntime.IsInitialized ? ClientRuntime.Character.SelectedCharacter : null;
+            var currentState = ClientRuntime.IsInitialized ? ClientRuntime.Character.CurrentState : null;
+            ApplyCharacterSummary(selectedCharacter, currentState, stats: null, force: force);
+            ApplyText(statusText, lastStatusMessage, force);
 
             activeMartialArtSlotView?.Clear(force: true);
             martialArtListView?.Clear(force: true);
@@ -78,29 +84,14 @@ namespace PhamNhanOnline.Client.UI.World
             if (estimateRoot != null)
                 estimateRoot.SetActive(false);
 
-            ApplyCultivationProgress(null, force);
-            ApplyCultivationButton(visible: false, interactable: false, force: force);
-            ApplyBreakthroughArea(visible: false, interactable: false, chanceTextValue: string.Empty, force: force);
-        }
+            if (breakthroughRoot != null)
+                breakthroughRoot.SetActive(false);
 
-        private void ApplyCultivationProgress(CharacterBaseStatsModel? baseStats, bool force)
-        {
-            var currentCultivation = baseStats.HasValue ? Math.Max(0L, baseStats.Value.Cultivation) : 0L;
-            var maxCultivation = baseStats.HasValue ? Math.Max(0L, baseStats.Value.RealmMaxCultivation) : 0L;
-            ApplyText(
-                cultivationProgressText,
-                string.Format(CultureInfo.InvariantCulture, "{0}/{1}", currentCultivation, maxCultivation),
-                force);
-
-            if (cultivationProgressFillImage != null)
-            {
-                var fillAmount = maxCultivation > 0L
-                    ? Mathf.Clamp01((float)((double)currentCultivation / maxCultivation))
-                    : 0f;
-
-                if (force || !Mathf.Approximately(cultivationProgressFillImage.fillAmount, fillAmount))
-                    cultivationProgressFillImage.fillAmount = fillAmount;
-            }
+            ApplyText(estimateText, string.Empty, force);
+            ApplyText(breakthroughChanceText, string.Empty, force);
+            SetButtonVisible(startCultivationButton, false, force: force);
+            SetButtonVisible(stopCultivationButton, false, force: force);
+            SetButtonVisible(breakthroughButton, false, force: force);
         }
 
         private void ApplyEstimate(PlayerMartialArtModel? activeMartialArt, CultivationPreviewModel? preview, bool force)
@@ -112,30 +103,25 @@ namespace PhamNhanOnline.Client.UI.World
             if (!hasPreview)
             {
                 ApplyText(estimateText, string.Empty, force);
-                ApplyText(estimateDetailText, string.Empty, force);
                 return;
             }
 
-            var previewValue = preview.Value;
+            var hourlyExp = Math.Max(0d, preview.Value.EstimatedCultivationPerMinute) * 60d;
             ApplyText(
                 estimateText,
-                string.Format(
-                    CultureInfo.InvariantCulture,
-                    "Tu vi: +{0:0.##}/phut",
-                    Math.Max(0d, previewValue.EstimatedCultivationPerMinute)),
-                force);
-            ApplyText(
-                estimateDetailText,
-                string.Format(
-                    CultureInfo.InvariantCulture,
-                    "Tiem nang: +{0:0.##}/phut | Qi x{1:0.##} | Linh khi {2:0.##}/phut",
-                    Math.Max(0d, previewValue.EstimatedPotentialPerMinute),
-                    Math.Max(0d, previewValue.QiAbsorptionRate),
-                    Math.Max(0d, previewValue.SpiritualEnergyPerMinute)),
+                string.Format(CultureInfo.InvariantCulture, "+{0:0.##} exp/h", hourlyExp),
                 force);
         }
 
-        private void ApplyActionArea(
+        private void ApplyBreakthroughChance(CharacterBaseStatsModel? baseStats, bool force)
+        {
+            var text = baseStats.HasValue
+                ? string.Format(CultureInfo.InvariantCulture, "{0:0.##}%", Math.Max(0d, baseStats.Value.BreakthroughChancePercent))
+                : string.Empty;
+            ApplyText(breakthroughChanceText, text, force);
+        }
+
+        private void ApplyButtons(
             CharacterBaseStatsModel? baseStats,
             CharacterCurrentStateModel? currentState,
             PlayerMartialArtModel? activeMartialArt,
@@ -144,75 +130,18 @@ namespace PhamNhanOnline.Client.UI.World
             bool isCultivating,
             bool force)
         {
-            if (breakthroughAvailable)
-            {
-                ApplyCultivationButton(visible: false, interactable: false, force: force);
-                ApplyBreakthroughArea(
-                    visible: true,
-                    interactable: !actionInFlight,
-                    chanceTextValue: baseStats.HasValue
-                        ? string.Format(
-                            CultureInfo.InvariantCulture,
-                            "Ti le dot pha: {0:0.##}%",
-                            Math.Max(0d, baseStats.Value.BreakthroughChancePercent))
-                        : string.Empty,
-                    force: force);
-                return;
-            }
+            var showStart = !actionInFlight && CanStartCultivation(activeMartialArt, preview, baseStats, currentState);
+            var showStop = !actionInFlight &&
+                           currentState.HasValue &&
+                           currentState.Value.CurrentState == CharacterStateCultivating;
+            var showBreakthrough = !actionInFlight && breakthroughAvailable;
 
-            ApplyBreakthroughArea(visible: false, interactable: false, chanceTextValue: string.Empty, force: force);
-
-            var canInteract = isCultivating
-                ? !actionInFlight
-                : CanStartCultivation(activeMartialArt, preview, baseStats, currentState) && !actionInFlight;
-            ApplyCultivationButton(visible: true, interactable: canInteract, force: force);
-        }
-
-        private void ApplyCultivationButton(bool visible, bool interactable, bool force)
-        {
-            if (startCultivationButton != null)
-            {
-                if (startCultivationButton.gameObject.activeSelf != visible)
-                    startCultivationButton.gameObject.SetActive(visible);
-
-                if (force || startCultivationButton.interactable != interactable)
-                    startCultivationButton.interactable = interactable;
-            }
-
-            ApplyText(startCultivationButtonText, visible ? ResolveCultivationButtonText() : string.Empty, force: true);
-        }
-
-        private void ApplyBreakthroughArea(bool visible, bool interactable, string chanceTextValue, bool force)
-        {
             if (breakthroughRoot != null)
-                breakthroughRoot.SetActive(visible);
+                breakthroughRoot.SetActive(showBreakthrough);
 
-            ApplyText(breakthroughChanceText, visible ? chanceTextValue : string.Empty, force);
-            if (breakthroughButton != null)
-                breakthroughButton.interactable = visible && interactable;
-
-            var label = actionInFlight && actionKind == PanelActionKind.Breakthrough
-                ? breakthroughInFlightText
-                : breakthroughIdleText;
-            ApplyText(breakthroughButtonText, visible ? label : string.Empty, force);
-        }
-
-        private string ResolveCultivationButtonText()
-        {
-            if (actionInFlight &&
-                (actionKind == PanelActionKind.StartCultivation ||
-                 actionKind == PanelActionKind.StopCultivation ||
-                 actionKind == PanelActionKind.SetActive ||
-                 actionKind == PanelActionKind.ClearActive))
-            {
-                return cultivationActionInFlightText;
-            }
-
-            var currentState = ClientRuntime.IsInitialized ? ClientRuntime.Character.CurrentState : null;
-            var isCultivating = currentState.HasValue &&
-                                (currentState.Value.CurrentState == CharacterStateCultivating ||
-                                 currentState.Value.CurrentState == CharacterStatePracticing);
-            return isCultivating ? stopCultivationIdleText : startCultivationIdleText;
+            SetButtonVisible(startCultivationButton, showStart, force: force);
+            SetButtonVisible(stopCultivationButton, showStop, force: force);
+            SetButtonVisible(breakthroughButton, showBreakthrough, force: force);
         }
 
         private string ResolveStatusText(
@@ -223,22 +152,20 @@ namespace PhamNhanOnline.Client.UI.World
             bool breakthroughAvailable,
             bool isCultivating)
         {
+            if (actionInFlight && actionKind == PanelActionKind.Breakthrough)
+                return statusBreakthroughInProgressText;
+
             if (actionInFlight && !string.IsNullOrWhiteSpace(lastStatusMessage))
                 return lastStatusMessage;
 
-            if (currentState.HasValue && currentState.Value.CurrentState == CharacterStateLifespanExpired)
-                return "Nhan vat da het tho nguyen.";
-
             if (breakthroughAvailable)
-                return "Nhan vat da dat nguong dot pha.";
+                return statusBreakthroughRequiredText;
 
             if (isCultivating)
-                return currentState.HasValue && currentState.Value.CurrentState == CharacterStatePracticing
-                    ? "Nhan vat dang luyen che."
-                    : "Nhan vat dang tu luyen.";
+                return statusCultivatingText;
 
             if (!activeMartialArt.HasValue)
-                return noActiveMartialArtText;
+                return statusNoActiveMartialArtText;
 
             if (preview.HasValue && preview.Value.BlockedReason != MessageCode.None)
                 return ResolveBlockedReasonText(preview.Value.BlockedReason, baseStats);
@@ -246,7 +173,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (!string.IsNullOrWhiteSpace(lastStatusMessage))
                 return lastStatusMessage;
 
-            return "San sang tu luyen.";
+            return string.Empty;
         }
 
         private static string ResolveBlockedReasonText(MessageCode blockedReason, CharacterBaseStatsModel? baseStats)
@@ -259,7 +186,7 @@ namespace PhamNhanOnline.Client.UI.World
                     return "Can chon cong phap chu tu.";
                 case MessageCode.CultivationRealmCapReached:
                     return baseStats.HasValue && CanAttemptBreakthrough(baseStats.Value)
-                        ? "Nhan vat da dat nguong dot pha."
+                        ? "Da tu luyen toi dinh phong gap binh canh can dot pha"
                         : "Da dat gioi han tu vi hien tai.";
                 case MessageCode.CharacterLifespanExpired:
                     return "Nhan vat da het tho nguyen.";
@@ -312,41 +239,102 @@ namespace PhamNhanOnline.Client.UI.World
                 : null;
         }
 
-        private static PlayerMartialArtModel[] BuildVisibleMartialArtList(
+        private static bool TryFindOwnedMartialArtById(
             PlayerMartialArtModel[] martialArts,
-            int? activeMartialArtId)
+            int martialArtId,
+            out PlayerMartialArtModel martialArt)
         {
-            if (martialArts == null || martialArts.Length == 0)
-                return Array.Empty<PlayerMartialArtModel>();
-
-            var visible = new System.Collections.Generic.List<PlayerMartialArtModel>(martialArts.Length);
-            for (var i = 0; i < martialArts.Length; i++)
+            if (martialArts != null)
             {
-                var martialArt = martialArts[i];
-                if (activeMartialArtId.HasValue && martialArt.MartialArtId == activeMartialArtId.Value)
-                    continue;
+                for (var i = 0; i < martialArts.Length; i++)
+                {
+                    if (martialArts[i].MartialArtId != martialArtId)
+                        continue;
 
-                visible.Add(martialArt);
+                    martialArt = martialArts[i];
+                    return true;
+                }
             }
 
-            return visible.ToArray();
+            martialArt = default;
+            return false;
         }
 
-        private bool CanRetryReload(Guid? lastRequestedId, float lastAttemptTime, Guid characterId)
+        private void ApplyCharacterSummary(
+            CharacterModel? selectedCharacter,
+            CharacterCurrentStateModel? currentState,
+            CharacterBaseStatsModel? stats,
+            bool force)
         {
-            return lastRequestedId != characterId ||
-                   Time.unscaledTime - lastAttemptTime >= reloadRetryCooldownSeconds;
+            if (characterSummaryView == null)
+                return;
+
+            var displayName = selectedCharacter.HasValue
+                ? ResolveCharacterName(selectedCharacter.Value.Name)
+                : MissingCharacterName;
+
+            characterSummaryView.SetCharacterName(displayName, force);
+            characterSummaryView.SetLifespanEndUnixMs(currentState.HasValue ? currentState.Value.LifespanEndUnixMs : null, force);
+
+            if (!stats.HasValue)
+            {
+                characterSummaryView.SetStats("-", "-", "-", "-", "-", "-", force);
+                characterSummaryView.SetRealmProgress(
+                    MissingRealmName,
+                    MissingCultivationText,
+                    MissingUnallocatedPotentialText,
+                    0f,
+                    force);
+                return;
+            }
+
+            var value = stats.Value;
+            characterSummaryView.SetStats(
+                value.FinalHp.ToString(CultureInfo.InvariantCulture),
+                value.FinalMp.ToString(CultureInfo.InvariantCulture),
+                value.FinalAttack.ToString(CultureInfo.InvariantCulture),
+                value.FinalSpeed.ToString(CultureInfo.InvariantCulture),
+                value.FinalLuck.ToString("0.##", CultureInfo.InvariantCulture),
+                value.FinalSense.ToString(CultureInfo.InvariantCulture),
+                force);
+            characterSummaryView.SetRealmProgress(
+                ResolveRealmDisplayName(value),
+                BuildCultivationProgress(value),
+                value.UnallocatedPotential.ToString(CultureInfo.InvariantCulture),
+                ResolveCultivationFillAmount(value),
+                force);
         }
 
-        private string ResolveMissingStatusText()
+        private static string ResolveCharacterName(string rawName)
         {
-            if (!string.IsNullOrWhiteSpace(lastStatusMessage))
-                return lastStatusMessage;
+            return string.IsNullOrWhiteSpace(rawName) ? "-" : rawName.Trim();
+        }
 
-            if (characterReloadInFlight || martialArtReloadInFlight)
-                return "Dang tai du lieu cong phap...";
+        private static string ResolveRealmDisplayName(CharacterBaseStatsModel stats)
+        {
+            if (!string.IsNullOrWhiteSpace(stats.RealmDisplayName))
+                return stats.RealmDisplayName.Trim();
 
-            return missingStatusText;
+            return stats.RealmTemplateId > 0
+                ? string.Format(CultureInfo.InvariantCulture, "Canh gioi {0}", stats.RealmTemplateId)
+                : MissingRealmName;
+        }
+
+        private static string BuildCultivationProgress(CharacterBaseStatsModel stats)
+        {
+            var maxCultivation = Math.Max(0L, stats.RealmMaxCultivation);
+            var currentCultivation = Math.Max(0L, stats.Cultivation);
+            return string.Format(CultureInfo.InvariantCulture, "{0}/{1}", currentCultivation, maxCultivation);
+        }
+
+        private static float ResolveCultivationFillAmount(CharacterBaseStatsModel stats)
+        {
+            var maxCultivation = Math.Max(0L, stats.RealmMaxCultivation);
+            if (maxCultivation <= 0L)
+                return 0f;
+
+            var currentCultivation = Math.Max(0L, stats.Cultivation);
+            return Mathf.Clamp01((float)currentCultivation / maxCultivation);
         }
 
         private string BuildSnapshot(
@@ -354,11 +342,15 @@ namespace PhamNhanOnline.Client.UI.World
             CharacterBaseStatsModel? baseStats,
             CharacterCurrentStateModel? currentState)
         {
+            var selectedCharacter = ClientRuntime.Character.SelectedCharacter;
             var preview = martialArtState.CultivationPreview;
             return string.Join(
                 "|",
+                selectedCharacter.HasValue ? selectedCharacter.Value.Name ?? string.Empty : string.Empty,
+                currentState.HasValue && currentState.Value.LifespanEndUnixMs.HasValue
+                    ? currentState.Value.LifespanEndUnixMs.Value.ToString(CultureInfo.InvariantCulture)
+                    : string.Empty,
                 martialArtState.HasLoadedMartialArts ? "1" : "0",
-                martialArtState.IsLoading ? "1" : "0",
                 martialArtState.ActiveMartialArtId.HasValue ? martialArtState.ActiveMartialArtId.Value.ToString(CultureInfo.InvariantCulture) : "0",
                 BuildOwnedSnapshot(martialArtState.OwnedMartialArts),
                 BuildPreviewSnapshot(preview),
@@ -413,7 +405,6 @@ namespace PhamNhanOnline.Client.UI.World
                 value.SpiritualEnergyPerMinute.ToString("0.####", CultureInfo.InvariantCulture),
                 value.RealmAbsorptionMultiplier.ToString("0.####", CultureInfo.InvariantCulture),
                 value.EstimatedCultivationPerMinute.ToString("0.####", CultureInfo.InvariantCulture),
-                value.EstimatedPotentialPerMinute.ToString("0.####", CultureInfo.InvariantCulture),
                 ((int)value.BlockedReason).ToString(CultureInfo.InvariantCulture));
         }
 
@@ -425,9 +416,15 @@ namespace PhamNhanOnline.Client.UI.World
             var value = baseStats.Value;
             return string.Join(
                 ":",
-                value.ActiveMartialArtId.ToString(CultureInfo.InvariantCulture),
+                value.FinalHp.ToString(CultureInfo.InvariantCulture),
+                value.FinalMp.ToString(CultureInfo.InvariantCulture),
+                value.FinalAttack.ToString(CultureInfo.InvariantCulture),
+                value.FinalSpeed.ToString(CultureInfo.InvariantCulture),
+                value.FinalSense.ToString(CultureInfo.InvariantCulture),
+                value.FinalLuck.ToString("0.####", CultureInfo.InvariantCulture),
                 value.Cultivation.ToString(CultureInfo.InvariantCulture),
                 value.RealmMaxCultivation.ToString(CultureInfo.InvariantCulture),
+                value.UnallocatedPotential.ToString(CultureInfo.InvariantCulture),
                 value.BreakthroughChancePercent.ToString("0.####", CultureInfo.InvariantCulture),
                 value.HasNextRealm ? "1" : "0",
                 value.RealmDisplayName ?? string.Empty);
@@ -445,6 +442,17 @@ namespace PhamNhanOnline.Client.UI.World
                 value.CultivationStartedUnixMs.HasValue ? value.CultivationStartedUnixMs.Value.ToString(CultureInfo.InvariantCulture) : string.Empty,
                 value.LastCultivationRewardedUnixMs.HasValue ? value.LastCultivationRewardedUnixMs.Value.ToString(CultureInfo.InvariantCulture) : string.Empty,
                 value.LastSavedUnixMs.ToString(CultureInfo.InvariantCulture));
+        }
+
+        private static void SetButtonVisible(UIButtonView button, bool visible, bool force)
+        {
+            if (button == null)
+                return;
+
+            if (button.gameObject.activeSelf != visible)
+                button.gameObject.SetActive(visible);
+
+            button.SetInteractable(visible, force: force || !visible);
         }
 
         private static void ApplyText(TMP_Text textComponent, string value, bool force)

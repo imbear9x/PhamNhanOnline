@@ -25,15 +25,21 @@ namespace PhamNhanOnline.Client.UI.World
         {
             [SerializeField] private string tabId;
             [SerializeField] private string title;
-            [SerializeField] private Button button;
+            [SerializeField] private UIButtonView button;
             [SerializeField] private GameObject contentRoot;
             [SerializeField] private TMP_Text contentText;
+            [NonSerialized] private Action clickHandler;
 
             public string TabId => tabId;
             public string Title => title;
-            public Button Button => button;
+            public UIButtonView Button => button;
             public GameObject ContentRoot => contentRoot;
             public TMP_Text ContentText => contentText;
+            public Action ClickHandler
+            {
+                get { return clickHandler; }
+                set { clickHandler = value; }
+            }
         }
 
         private static WorldMenuController activeInstance;
@@ -41,7 +47,7 @@ namespace PhamNhanOnline.Client.UI.World
         [Header("Screen Roots")]
         [SerializeField] private GameObject panelRoot;
 
-        [SerializeField] private Button closeButton;
+        [SerializeField] private UIButtonView closeButton;
         [SerializeField] private Button dimmerButton;
 
         [Header("Header")]
@@ -106,7 +112,7 @@ namespace PhamNhanOnline.Client.UI.World
         private void OnDestroy()
         {
             if (closeButton != null)
-                closeButton.onClick.RemoveListener(HideMenu);
+                closeButton.Clicked -= HideMenu;
 
             if (dimmerButton != null)
                 dimmerButton.onClick.RemoveListener(HideMenu);
@@ -117,7 +123,10 @@ namespace PhamNhanOnline.Client.UI.World
                 if (button == null)
                     continue;
 
-                button.onClick.RemoveAllListeners();
+                if (tabs[i].ClickHandler != null)
+                    button.Clicked -= tabs[i].ClickHandler;
+
+                tabs[i].ClickHandler = null;
             }
 
             if (isRegistered && ClientRuntime.IsInitialized)
@@ -178,8 +187,8 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (closeButton != null)
             {
-                closeButton.onClick.RemoveListener(HideMenu);
-                closeButton.onClick.AddListener(HideMenu);
+                closeButton.Clicked -= HideMenu;
+                closeButton.Clicked += HideMenu;
             }
 
             if (dimmerButton != null)
@@ -194,9 +203,12 @@ namespace PhamNhanOnline.Client.UI.World
                 if (tab.Button == null)
                     continue;
 
+                if (tab.ClickHandler != null)
+                    tab.Button.Clicked -= tab.ClickHandler;
+
                 var capturedTabId = tab.TabId;
-                tab.Button.onClick.RemoveAllListeners();
-                tab.Button.onClick.AddListener(delegate { ShowTab(capturedTabId); });
+                tab.ClickHandler = delegate { ShowTab(capturedTabId); };
+                tab.Button.Clicked += tab.ClickHandler;
             }
         }
 

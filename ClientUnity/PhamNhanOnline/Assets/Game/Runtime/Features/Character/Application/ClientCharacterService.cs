@@ -189,7 +189,10 @@ namespace PhamNhanOnline.Client.Features.Character.Application
         private void HandleEnterWorldResult(EnterWorldResultPacket packet)
         {
             if (packet.Success == true && packet.Character.HasValue)
+            {
                 characterState.ApplyCharacterData(packet.Character.Value, packet.BaseStats, packet.CurrentState);
+                _ = PrimeWorldStateAfterEnterWorldAsync();
+            }
 
             CompletePending(ref characterEnterWorldCompletionSource, new CharacterEnterWorldResult(
                 packet.Success == true,
@@ -205,6 +208,27 @@ namespace PhamNhanOnline.Client.Features.Character.Application
         private void HandleCharacterBaseStatsChanged(CharacterBaseStatsChangedPacket packet)
         {
             characterState.ApplyBaseStats(packet.BaseStats);
+        }
+
+        private static async Task PrimeWorldStateAfterEnterWorldAsync()
+        {
+            if (!ClientRuntime.IsInitialized || ClientRuntime.Connection.State != ClientConnectionState.Connected)
+                return;
+
+            try
+            {
+                // EnterWorld is the ownership boundary for client snapshot bootstrap.
+                // Panels render state only; they do not fetch these subsystems themselves.
+                await Task.WhenAll(
+                    ClientRuntime.InventoryService.LoadInventoryAsync(forceRefresh: true),
+                    ClientRuntime.MartialArtService.LoadOwnedMartialArtsAsync(forceRefresh: true),
+                    ClientRuntime.SkillService.LoadOwnedSkillsAsync(forceRefresh: true));
+            }
+            catch
+            {
+                // Each service already owns its own state/error result.
+                // Keep EnterWorld flow resilient and let panels render the latest available state.
+            }
         }
 
         private void HandleCharacterCurrentStateChanged(CharacterCurrentStateChangedPacket packet)

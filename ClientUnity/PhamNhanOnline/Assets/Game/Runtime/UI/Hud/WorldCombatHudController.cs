@@ -30,16 +30,9 @@ namespace PhamNhanOnline.Client.UI.Hud
         [SerializeField] private Image castBarFillImage;
         [SerializeField] private TMP_Text castBarText;
 
-        [Header("Behavior")]
-        [SerializeField] private bool autoLoadSkillsOnEnable = true;
-        [SerializeField] private float reloadRetryCooldownSeconds = 2f;
-
         [Header("Display Text")]
         [SerializeField] private string castBarDefaultText = "Dang thi trien...";
 
-        private Guid? lastRequestedCharacterId;
-        private float lastSkillReloadAttemptTime = float.NegativeInfinity;
-        private bool skillReloadInFlight;
         private bool loggedMissingWorldSceneController;
 
         private static WorldSceneController SceneController => WorldSceneController.Instance;
@@ -63,13 +56,11 @@ namespace PhamNhanOnline.Client.UI.Hud
         private void OnEnable()
         {
             Refresh(force: true);
-            TryReloadSkillsOnOpen();
         }
 
         private void Update()
         {
             Refresh(force: false);
-            TryReloadMissingSkills();
         }
 
         private void OnDestroy()
@@ -328,60 +319,6 @@ namespace PhamNhanOnline.Client.UI.Hud
             }
         }
 
-        private void TryReloadSkillsOnOpen()
-        {
-            if (!ClientRuntime.IsInitialized || !autoLoadSkillsOnEnable)
-                return;
-
-            var selectedCharacterId = ClientRuntime.Character.SelectedCharacterId;
-            if (!selectedCharacterId.HasValue || skillReloadInFlight)
-                return;
-
-            if (!CanRetryReload(lastRequestedCharacterId, lastSkillReloadAttemptTime, selectedCharacterId.Value))
-                return;
-
-            _ = ReloadSkillsAsync(selectedCharacterId.Value);
-        }
-
-        private void TryReloadMissingSkills()
-        {
-            if (!ClientRuntime.IsInitialized || !autoLoadSkillsOnEnable || skillReloadInFlight)
-                return;
-
-            if (ClientRuntime.Skills.HasLoadedSkills)
-                return;
-
-            var selectedCharacterId = ClientRuntime.Character.SelectedCharacterId;
-            if (!selectedCharacterId.HasValue)
-                return;
-
-            if (!CanRetryReload(lastRequestedCharacterId, lastSkillReloadAttemptTime, selectedCharacterId.Value))
-                return;
-
-            _ = ReloadSkillsAsync(selectedCharacterId.Value);
-        }
-
-        private async System.Threading.Tasks.Task ReloadSkillsAsync(Guid characterId)
-        {
-            skillReloadInFlight = true;
-            lastRequestedCharacterId = characterId;
-            lastSkillReloadAttemptTime = Time.unscaledTime;
-
-            try
-            {
-                await ClientRuntime.SkillService.LoadOwnedSkillsAsync(forceRefresh: true);
-            }
-            catch (Exception ex)
-            {
-                ClientLog.Warn($"WorldCombatHudController skill reload exception: {ex.Message}");
-            }
-            finally
-            {
-                skillReloadInFlight = false;
-                Refresh(force: true);
-            }
-        }
-
         private void RefreshCastBar(DateTime utcNow, bool force)
         {
             var activeCast = ClientRuntime.Combat.ActiveLocalCast;
@@ -420,12 +357,6 @@ namespace PhamNhanOnline.Client.UI.Hud
 
             if (castBarText != null)
                 castBarText.text = visible ? castBarDefaultText : string.Empty;
-        }
-
-        private bool CanRetryReload(Guid? lastRequestedId, float lastAttemptTime, Guid characterId)
-        {
-            return lastRequestedId != characterId ||
-                   Time.unscaledTime - lastAttemptTime >= reloadRetryCooldownSeconds;
         }
 
         private static string FormatCooldownLabel(int remainingMs)

@@ -1,16 +1,30 @@
 using System;
 using GameShared.Models;
 using PhamNhanOnline.Client.UI.Common;
+using PhamNhanOnline.Client.UI.Inventory;
+using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.MartialArts
 {
-    public sealed class ActiveMartialArtSlotView : MonoBehaviour, IUIDragPayloadSource, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+    public sealed class ActiveMartialArtSlotView : MonoBehaviour,
+        IUIDragPayloadSource,
+        IPointerEnterHandler,
+        IPointerExitHandler,
+        IPointerDownHandler,
+        IPointerUpHandler,
+        IPointerClickHandler,
+        IDropHandler,
+        IBeginDragHandler,
+        IDragHandler,
+        IEndDragHandler
     {
         [Header("References")]
         [SerializeField] private Image iconImage;
+        [SerializeField] private GameObject emptyStateRoot;
+        [SerializeField] private GameObject selectedRoot;
 
         [Header("Drag")]
         [SerializeField] private float draggingAlpha = 0.65f;
@@ -18,10 +32,16 @@ namespace PhamNhanOnline.Client.UI.MartialArts
         private PlayerMartialArtModel item;
         private bool hasItem;
         private bool dragEnabled;
+        private bool isSelected;
+        private bool dragSelectionVisible;
         private CanvasGroup canvasGroup;
         private MartialArtDragGhost dragGhost;
         private Sprite currentIconSprite;
+        private MartialArtPresentation currentPresentation;
 
+        public event Action<ActiveMartialArtSlotView> Clicked;
+        public event Action<ActiveMartialArtSlotView> Hovered;
+        public event Action<ActiveMartialArtSlotView> HoverExited;
         public event Action<PlayerMartialArtModel> MartialArtDropped;
 
         public PlayerMartialArtModel Item => item;
@@ -43,25 +63,45 @@ namespace PhamNhanOnline.Client.UI.MartialArts
 
         public void SetItem(PlayerMartialArtModel value, MartialArtPresentation presentation, bool force = false)
         {
+            _ = force;
+
             hasItem = true;
             item = value;
             ApplyPresentation(presentation);
-            ApplyIconVisibility(true);
+
+            if (emptyStateRoot != null)
+                emptyStateRoot.SetActive(false);
+
+            if (iconImage != null)
+            {
+                iconImage.sprite = presentation.IconSprite;
+                iconImage.enabled = presentation.IconSprite != null;
+            }
+
+            SetSelected(selected: false, force: true);
         }
 
         public void Clear(bool force = false)
         {
+            _ = force;
+
             hasItem = false;
             item = default(PlayerMartialArtModel);
             dragEnabled = false;
+            isSelected = false;
+            dragSelectionVisible = false;
             currentIconSprite = null;
-            if (iconImage != null)
-            {
-                iconImage.sprite = null;
-                iconImage.enabled = false;
-            }
-            ResetDragVisuals();
+            currentPresentation = default;
             ApplyEmptyState();
+        }
+
+        public void SetSelected(bool selected, bool force = false)
+        {
+            if (!force && isSelected == selected)
+                return;
+
+            isSelected = selected;
+            ApplySelectionVisual();
         }
 
         public void SetDragEnabled(bool value)
@@ -71,8 +111,68 @@ namespace PhamNhanOnline.Client.UI.MartialArts
                 ResetDragVisuals();
         }
 
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            if (eventData != null && IsValidDraggedMartialArt(eventData.pointerDrag != null ? eventData.pointerDrag.transform : null))
+                SetDragSelectionVisible(true);
+
+            if (eventData != null && eventData.pointerDrag != null)
+                return;
+
+            if (!hasItem)
+                return;
+
+            WorldModalUIManager.Instance?.ShowItemTooltip(this, BuildTooltipData(), force: true);
+            var handler = Hovered;
+            if (handler != null)
+                handler(this);
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            SetDragSelectionVisible(false);
+
+            if (!hasItem)
+                return;
+
+            WorldModalUIManager.Instance?.HideItemTooltip(this, force: true);
+            var handler = HoverExited;
+            if (handler != null)
+                handler(this);
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (!hasItem)
+                return;
+
+            WorldModalUIManager.Instance?.BeginItemInteraction(this, force: true);
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (!hasItem)
+                return;
+
+            WorldModalUIManager.Instance?.EndItemInteraction(this);
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (!hasItem)
+                return;
+
+            var handler = Clicked;
+            if (handler != null)
+                handler(this);
+
+            eventData?.Use();
+        }
+
         public void OnDrop(PointerEventData eventData)
         {
+            SetDragSelectionVisible(false);
+
             if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
                 payload.Kind != UIDragPayloadKind.MartialArt ||
                 payload.SourceKind != UIDragSourceKind.MartialArtListItem ||
@@ -91,6 +191,13 @@ namespace PhamNhanOnline.Client.UI.MartialArts
             if (!dragEnabled || !hasItem || canvasGroup == null)
                 return;
 
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
+            {
+                modalUIManager.HideItemOptionsPopup(force: true);
+                modalUIManager.BeginItemInteraction(this, force: true);
+            }
+
             canvasGroup.blocksRaycasts = false;
             canvasGroup.alpha = draggingAlpha;
             dragGhost = MartialArtDragGhost.Create(transform, currentIconSprite, eventData);
@@ -105,6 +212,12 @@ namespace PhamNhanOnline.Client.UI.MartialArts
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
+            {
+                modalUIManager.EndItemInteraction(this);
+                modalUIManager.HideItemTooltip(this, force: true);
+            }
         }
 
         public bool TryCreateDragPayload(out UIDragPayload payload)
@@ -121,38 +234,94 @@ namespace PhamNhanOnline.Client.UI.MartialArts
 
         private void ApplyEmptyState()
         {
-            ApplyIconVisibility(false);
-        }
-
-        private void ApplyIconVisibility(bool visible)
-        {
             if (iconImage != null)
-                iconImage.gameObject.SetActive(visible);
+            {
+                iconImage.sprite = null;
+                iconImage.enabled = false;
+            }
+
+            if (emptyStateRoot != null)
+                emptyStateRoot.SetActive(true);
+
+            ResetDragVisuals();
+            SetSelected(false, force: true);
         }
 
         private void ApplyPresentation(MartialArtPresentation presentation)
         {
+            currentPresentation = presentation;
             currentIconSprite = presentation.IconSprite;
-            if (iconImage != null)
-            {
-                iconImage.sprite = presentation.IconSprite;
-                iconImage.enabled = presentation.IconSprite != null;
-            }
         }
 
         private void ResetDragVisuals()
         {
-            if (canvasGroup == null)
-                return;
-
-            canvasGroup.blocksRaycasts = true;
-            canvasGroup.alpha = 1f;
+            if (canvasGroup != null)
+            {
+                canvasGroup.blocksRaycasts = true;
+                canvasGroup.alpha = 1f;
+            }
 
             if (dragGhost != null)
             {
                 dragGhost.Dispose();
                 dragGhost = null;
             }
+
+            SetDragSelectionVisible(false);
+        }
+
+        private bool IsValidDraggedMartialArt(Transform dragTransform)
+        {
+            if (!UIDragPayloadResolver.TryResolve(dragTransform, out var payload) ||
+                payload.Kind != UIDragPayloadKind.MartialArt ||
+                payload.SourceKind != UIDragSourceKind.MartialArtListItem ||
+                !payload.HasMartialArt)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private void SetDragSelectionVisible(bool visible)
+        {
+            if (dragSelectionVisible == visible)
+                return;
+
+            dragSelectionVisible = visible;
+            ApplySelectionVisual();
+        }
+
+        private void ApplySelectionVisual()
+        {
+            var visible = isSelected || dragSelectionVisible;
+            if (selectedRoot != null && selectedRoot.activeSelf != visible)
+                selectedRoot.SetActive(visible);
+        }
+
+        private ItemTooltipViewData BuildTooltipData()
+        {
+            var header = string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "{0} | Tang {1}/{2}",
+                string.IsNullOrWhiteSpace(item.Category) ? "Cong phap" : item.Category.Trim(),
+                Math.Max(0, item.CurrentStage),
+                Math.Max(0, item.MaxStage));
+            var description = string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "{0}{1}Qi x{2:0.##}",
+                header,
+                Environment.NewLine,
+                Math.Max(0d, item.QiAbsorptionRate));
+
+            if (!string.IsNullOrWhiteSpace(item.Description))
+                description = string.Concat(description, Environment.NewLine, item.Description.Trim());
+
+            return new ItemTooltipViewData(
+                item.Name,
+                description,
+                currentPresentation.IconSprite,
+                Color.white);
         }
     }
 

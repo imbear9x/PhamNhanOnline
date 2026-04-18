@@ -5,47 +5,12 @@ using System.Linq;
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Inventory.Application;
-using PhamNhanOnline.Client.UI.Inventory;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.World
 {
     public sealed partial class WorldInventoryPanelController
     {
-        private void ApplyCharacterName(string characterName, bool force)
-        {
-            if (characterSummaryView != null)
-                characterSummaryView.SetCharacterName(ResolveCharacterName(characterName), force);
-        }
-
-        private void ApplyStats(
-            string hpValue,
-            string mpValue,
-            string atkValue,
-            string speedValue,
-            string luckValue,
-            string senseValue,
-            bool force)
-        {
-            if (characterSummaryView != null)
-            {
-                characterSummaryView.SetStats(
-                    hpValue,
-                    mpValue,
-                    atkValue,
-                    speedValue,
-                    luckValue,
-                    senseValue,
-                    force);
-            }
-        }
-
-        private void ApplyLifespan(long? lifespanEndUnixMs, bool force)
-        {
-            if (characterSummaryView != null)
-                characterSummaryView.SetLifespanEndUnixMs(lifespanEndUnixMs, force);
-        }
-
         private void ApplyInventoryStatus(string status, bool force)
         {
             status = string.IsNullOrWhiteSpace(status) ? string.Empty : status.Trim();
@@ -85,7 +50,7 @@ namespace PhamNhanOnline.Client.UI.World
                 return InventoryActionInProgressText;
 
             if (!inventoryState.HasLoadedInventory)
-                return inventoryState.IsLoading || inventoryReloadInFlight ? InventoryLoadingText : InventoryNotLoadedText;
+                return InventoryNotLoadedText;
 
             if (bagItemCount <= 0 && equippedItemCount <= 0)
                 return EmptyInventoryText;
@@ -119,18 +84,6 @@ namespace PhamNhanOnline.Client.UI.World
             item = default;
             return false;
         }
-
-        private static string ResolveCharacterName(string rawName)
-        {
-            return string.IsNullOrWhiteSpace(rawName) ? "-" : rawName.Trim();
-        }
-
-        private static int GetTotalHp(CharacterBaseStatsModel stats) => stats.FinalHp;
-        private static int GetTotalMp(CharacterBaseStatsModel stats) => stats.FinalMp;
-        private static int GetTotalAttack(CharacterBaseStatsModel stats) => stats.FinalAttack;
-        private static int GetTotalSpeed(CharacterBaseStatsModel stats) => stats.FinalSpeed;
-        private static int GetTotalSense(CharacterBaseStatsModel stats) => stats.FinalSense;
-        private static double GetTotalLuck(CharacterBaseStatsModel stats) => stats.FinalLuck;
 
         private static string BuildInventorySnapshot(ClientInventoryState inventoryState, IReadOnlyList<InventoryItemModel> items, bool inventoryActionInFlight)
         {

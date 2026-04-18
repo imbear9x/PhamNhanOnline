@@ -3,27 +3,46 @@ using System.Globalization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
+using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Inventory
 {
-    public sealed class InventoryCharacterSummaryView : MonoBehaviour
+    public sealed class CharacterSummaryView : MonoBehaviour
     {
         [Header("References")]
+        [Tooltip("Optional. Leave empty when this panel does not show the character name.")]
         [SerializeField] private TMP_Text characterNameText;
+        [Tooltip("Optional. Leave empty when this panel does not show lifespan.")]
         [SerializeField] private TMP_Text lifespanText;
+        [Tooltip("Optional. Leave empty when this panel does not show HP.")]
         [SerializeField] private TMP_Text hpValueText;
+        [Tooltip("Optional. Leave empty when this panel does not show MP.")]
         [SerializeField] private TMP_Text mpValueText;
+        [Tooltip("Optional. Leave empty when this panel does not show attack.")]
         [SerializeField] private TMP_Text atkValueText;
+        [Tooltip("Optional. Leave empty when this panel does not show speed.")]
         [SerializeField] private TMP_Text speedValueText;
+        [Tooltip("Optional. Leave empty when this panel does not show luck.")]
         [FormerlySerializedAs("fortuneValueText")]
         [SerializeField] private TMP_Text luckValueText;
+        [Tooltip("Optional. Leave empty when this panel does not show sense.")]
         [FormerlySerializedAs("spiritualSenseValueText")]
         [SerializeField] private TMP_Text senseValueText;
+        [Tooltip("Optional. Leave empty when this panel does not show realm name.")]
+        [SerializeField] private TMP_Text realmNameText;
+        [Tooltip("Optional. Leave empty when this panel does not show cultivation progress text.")]
+        [SerializeField] private TMP_Text cultivationProgressText;
+        [Tooltip("Optional. Leave empty when this panel does not show cultivation progress fill.")]
+        [SerializeField] private Image cultivationProgressFillImage;
+        [Tooltip("Optional. Leave empty when this panel does not show unallocated potential.")]
+        [SerializeField] private TMP_Text unallocatedPotentialText;
 
         private string lastCharacterName = string.Empty;
         private string lastStatsSnapshot = string.Empty;
+        private string lastRealmSnapshot = string.Empty;
         private long? lifespanEndUnixMs;
         private string lastLifespanText = string.Empty;
+        private float lastCultivationFillAmount = -1f;
         private float nextLifespanRefreshAtUnscaled;
 
         public void SetCharacterName(string characterName, bool force = false)
@@ -73,6 +92,38 @@ namespace PhamNhanOnline.Client.UI.Inventory
             ApplyStatValue(senseValueText, senseValue, force: true);
         }
 
+        public void SetRealmProgress(
+            string realmName,
+            string cultivationProgressValue,
+            string unallocatedPotentialValue,
+            float cultivationFillAmount,
+            bool force = false)
+        {
+            realmName = NormalizeStatValue(realmName);
+            cultivationProgressValue = NormalizeStatValue(cultivationProgressValue);
+            unallocatedPotentialValue = NormalizeStatValue(unallocatedPotentialValue);
+
+            var normalizedFillAmount = Mathf.Clamp01(cultivationFillAmount);
+            var snapshot = string.Join(
+                "|",
+                realmName,
+                cultivationProgressValue,
+                unallocatedPotentialValue);
+            if (!force &&
+                string.Equals(lastRealmSnapshot, snapshot, StringComparison.Ordinal) &&
+                Mathf.Approximately(lastCultivationFillAmount, normalizedFillAmount))
+            {
+                return;
+            }
+
+            lastRealmSnapshot = snapshot;
+            lastCultivationFillAmount = normalizedFillAmount;
+            ApplyStatValue(realmNameText, realmName, force: true);
+            ApplyStatValue(cultivationProgressText, cultivationProgressValue, force: true);
+            ApplyStatValue(unallocatedPotentialText, unallocatedPotentialValue, force: true);
+            ApplyFillAmount(cultivationProgressFillImage, normalizedFillAmount, force: true);
+        }
+
         public void SetLifespanEndUnixMs(long? value, bool force = false)
         {
             if (!force && lifespanEndUnixMs == value)
@@ -87,6 +138,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
         {
             SetCharacterName("-", force);
             SetStats("-", "-", "-", "-", "-", "-", force);
+            SetRealmProgress("-", "-", "-", 0f, force);
             SetLifespanEndUnixMs(null, force: true);
         }
 
@@ -121,6 +173,18 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 return;
 
             text.text = value;
+        }
+
+        private static void ApplyFillAmount(Image image, float value, bool force)
+        {
+            if (image == null)
+                return;
+
+            var normalized = Mathf.Clamp01(value);
+            if (!force && Mathf.Approximately(image.fillAmount, normalized))
+                return;
+
+            image.fillAmount = normalized;
         }
 
         private void RefreshLifespanText(bool force)

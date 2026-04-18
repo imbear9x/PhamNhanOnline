@@ -1,4 +1,4 @@
-using GameShared.Models;
+using System;
 using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Inventory
 {
-    public sealed class InventoryItemTooltipView : CursorPopupViewModelBase
+    public sealed class ItemTooltipView : CursorPopupViewModelBase
     {
         [Header("References")]
         [SerializeField] private GameObject panelRoot;
@@ -47,10 +47,10 @@ namespace PhamNhanOnline.Client.UI.Inventory
             return panelTransform != null ? panelTransform : base.ResolveViewRectTransform();
         }
 
-        public void Show(InventoryItemModel item, InventoryItemPresentation presentation, bool force = false)
+        public void Show(ItemTooltipViewData data, bool force = false)
         {
-            var snapshot = BuildSnapshot(item, presentation);
-            if (!force && string.Equals(lastSnapshot, snapshot, System.StringComparison.Ordinal))
+            var snapshot = BuildSnapshot(data);
+            if (!force && string.Equals(lastSnapshot, snapshot, StringComparison.Ordinal))
                 return;
 
             lastSnapshot = snapshot;
@@ -58,16 +58,16 @@ namespace PhamNhanOnline.Client.UI.Inventory
             ShowView();
 
             if (iconImage != null)
-                iconImage.sprite = presentation.IconSprite;
+                iconImage.sprite = data.IconSprite;
 
             if (nameText != null)
             {
-                nameText.text = string.IsNullOrWhiteSpace(item.Name) ? emptyName : item.Name.Trim();
-                nameText.color = presentation.NameColor;
+                nameText.text = string.IsNullOrWhiteSpace(data.Title) ? emptyName : data.Title.Trim();
+                nameText.color = data.TitleColor;
             }
 
             if (descriptionText != null)
-                descriptionText.text = string.IsNullOrWhiteSpace(item.Description) ? emptyDescription : item.Description.Trim();
+                descriptionText.text = string.IsNullOrWhiteSpace(data.Description) ? emptyDescription : data.Description.Trim();
 
             PositionViewNearCursor(cursorOffsetBelow, cursorOffsetAbove, screenPadding);
         }
@@ -78,20 +78,19 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 return;
 
             lastSnapshot = string.Empty;
-            SetViewVisible(false);
+            SetViewVisible(false, force);
         }
 
-        private static string BuildSnapshot(InventoryItemModel item, InventoryItemPresentation presentation)
+        private static string BuildSnapshot(ItemTooltipViewData data)
         {
             return string.Concat(
-                item.PlayerItemId.ToString(),
+                data.Title ?? string.Empty,
                 "|",
-                item.Name ?? string.Empty,
+                data.Description ?? string.Empty,
                 "|",
-                item.Description ?? string.Empty,
+                ColorUtility.ToHtmlStringRGBA(data.TitleColor),
                 "|",
-                presentation.IconSprite != null ? presentation.IconSprite.GetInstanceID().ToString() : "0");
+                data.IconSprite != null ? data.IconSprite.GetInstanceID().ToString() : "0");
         }
-
     }
 }

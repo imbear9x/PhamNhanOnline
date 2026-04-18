@@ -86,7 +86,8 @@ namespace PhamNhanOnline.Client.UI.Common
 
         private void OnEnable()
         {
-            CaptureBaseTransform();
+            AutoWireReferences();
+            CaptureBaseTransform(force: true);
             RefreshVisualState(force: true);
         }
 
@@ -198,25 +199,18 @@ namespace PhamNhanOnline.Client.UI.Common
             if (cachedRectTransform == null)
                 cachedRectTransform = transform as RectTransform;
 
-            if (animationTarget == null)
-            {
-                var rootRectTransform = transform as RectTransform;
-                if (targetImage != null && targetImage.rectTransform != null && targetImage.rectTransform != rootRectTransform)
-                    animationTarget = targetImage.rectTransform;
-                else
-                    animationTarget = rootRectTransform;
-            }
-
-            if (cachedAnimationRectTransform == null)
-                cachedAnimationRectTransform = animationTarget;
+            cachedAnimationRectTransform = animationTarget;
         }
 
-        private void CaptureBaseTransform()
+        private void CaptureBaseTransform(bool force = false)
         {
-            if (hasCapturedBaseTransform)
+            if (hasCapturedBaseTransform && !force)
                 return;
 
             hasCapturedBaseTransform = true;
+            if (cachedAnimationRectTransform == null)
+                return;
+
             var transformTarget = cachedAnimationRectTransform != null
                 ? (Transform)cachedAnimationRectTransform
                 : transform;
@@ -324,6 +318,9 @@ namespace PhamNhanOnline.Client.UI.Common
 
         private void ResetAnimatedTransform()
         {
+            if (cachedAnimationRectTransform == null)
+                return;
+
             var transformTarget = cachedAnimationRectTransform != null
                 ? (Transform)cachedAnimationRectTransform
                 : transform;

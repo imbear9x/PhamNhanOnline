@@ -1,85 +1,119 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Messages;
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.UI.Inventory;
+using PhamNhanOnline.Client.UI.MartialArts;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.World
 {
     public sealed partial class WorldMartialArtPanelController
     {
-        private async System.Threading.Tasks.Task ReloadCharacterDataAsync(Guid characterId)
-        {
-            characterReloadInFlight = true;
-            lastRequestedCharacterId = characterId;
-            lastCharacterReloadAttemptTime = Time.unscaledTime;
-            RefreshPanel(force: true);
-
-            try
-            {
-                var result = await ClientRuntime.CharacterService.LoadCharacterDataAsync(characterId);
-                if (!result.Success)
-                {
-                    lastStatusMessage = string.Format(
-                        CultureInfo.InvariantCulture,
-                        "Tai du lieu nhan vat that bai: {0}",
-                        result.Code ?? MessageCode.UnknownError);
-                    ClientLog.Warn($"WorldMartialArtPanelController failed to load character data: {result.Message}");
-                }
-            }
-            catch (Exception ex)
-            {
-                lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi tai du lieu nhan vat: {0}", ex.Message);
-                ClientLog.Warn($"WorldMartialArtPanelController character reload exception: {ex.Message}");
-            }
-            finally
-            {
-                characterReloadInFlight = false;
-                RefreshPanel(force: true);
-            }
-        }
-
-        private async System.Threading.Tasks.Task ReloadMartialArtsAsync(Guid characterId)
-        {
-            martialArtReloadInFlight = true;
-            lastRequestedCharacterId = characterId;
-            lastMartialArtReloadAttemptTime = Time.unscaledTime;
-            RefreshPanel(force: true);
-
-            try
-            {
-                var result = await ClientRuntime.MartialArtService.LoadOwnedMartialArtsAsync(forceRefresh: true);
-                if (!result.Success)
-                {
-                    lastStatusMessage = string.Format(
-                        CultureInfo.InvariantCulture,
-                        "Tai cong phap that bai: {0}",
-                        result.Code ?? MessageCode.UnknownError);
-                    ClientLog.Warn($"WorldMartialArtPanelController failed to load martial arts for {characterId}: {result.Message}");
-                }
-            }
-            catch (Exception ex)
-            {
-                lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi tai cong phap: {0}", ex.Message);
-                ClientLog.Warn($"WorldMartialArtPanelController martial art reload exception: {ex.Message}");
-            }
-            finally
-            {
-                martialArtReloadInFlight = false;
-                RefreshPanel(force: true);
-            }
-        }
+        private const string UseOptionText = "Su dung";
+        private const string UnequipOptionText = "Go ra";
 
         private void HandleMartialArtDropped(PlayerMartialArtModel martialArt)
         {
             _ = SetActiveMartialArtAsync(martialArt);
         }
 
+        private void HandleMartialArtListItemClicked(PlayerMartialArtModel martialArt)
+        {
+            if (actionInFlight)
+                return;
+
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null &&
+                modalUIManager.IsItemOptionsPopupVisible &&
+                !popupTargetsActiveSlot &&
+                popupMartialArtId.HasValue &&
+                popupMartialArtId.Value == martialArt.MartialArtId)
+            {
+                HideMartialArtOptionsPopup();
+                return;
+            }
+
+            ShowMartialArtOptions(martialArt, activeSlot: false);
+        }
+
         private void HandleActiveMartialArtDroppedToList(PlayerMartialArtModel martialArt)
         {
             _ = ClearActiveMartialArtAsync(martialArt);
+        }
+
+        private void HandleActiveMartialArtSlotClicked(ActiveMartialArtSlotView slotView)
+        {
+            if (slotView == null || !slotView.HasItem || actionInFlight)
+                return;
+
+            var martialArt = slotView.Item;
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null &&
+                modalUIManager.IsItemOptionsPopupVisible &&
+                popupTargetsActiveSlot &&
+                popupMartialArtId.HasValue &&
+                popupMartialArtId.Value == martialArt.MartialArtId)
+            {
+                HideMartialArtOptionsPopup();
+                return;
+            }
+
+            ShowMartialArtOptions(martialArt, activeSlot: true);
+        }
+
+        private void ShowMartialArtOptions(PlayerMartialArtModel martialArt, bool activeSlot)
+        {
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager == null)
+                return;
+
+            var options = BuildMartialArtOptions(martialArt, activeSlot);
+            if (options.Count == 0)
+            {
+                HideMartialArtOptionsPopup(force: true);
+                return;
+            }
+
+            popupMartialArtId = martialArt.MartialArtId;
+            popupTargetsActiveSlot = activeSlot;
+            modalUIManager.HideItemTooltip(force: true);
+            modalUIManager.ShowItemOptionsPopup(options, force: true);
+            RefreshPanel(force: true);
+        }
+
+        private List<ItemOptionEntry> BuildMartialArtOptions(PlayerMartialArtModel martialArt, bool activeSlot)
+        {
+            if (activeSlot || martialArt.IsActive)
+            {
+                return new List<ItemOptionEntry>(1)
+                {
+                    new ItemOptionEntry(UnequipOptionText, () => _ = ClearActiveMartialArtAsync(martialArt))
+                };
+            }
+
+            return new List<ItemOptionEntry>(1)
+            {
+                new ItemOptionEntry(UseOptionText, () => _ = SetActiveMartialArtAsync(martialArt))
+            };
+        }
+
+        private void HideMartialArtOptionsPopup(bool force = false)
+        {
+            popupMartialArtId = null;
+            popupTargetsActiveSlot = false;
+
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
+            {
+                modalUIManager.HideItemOptionsPopup(force);
+                modalUIManager.HideItemTooltip(force: true);
+            }
+
+            RefreshPanel(force: true);
         }
 
         private async System.Threading.Tasks.Task SetActiveMartialArtAsync(PlayerMartialArtModel martialArt)
@@ -152,23 +186,9 @@ namespace PhamNhanOnline.Client.UI.World
             }
         }
 
-        private void HandleCultivationButtonClicked()
-        {
-            if (!ClientRuntime.IsInitialized)
-                return;
+        private void HandleStartCultivationButtonClicked() => _ = StartCultivationAsync();
 
-            var currentState = ClientRuntime.Character.CurrentState;
-            if (currentState.HasValue &&
-                (currentState.Value.CurrentState == CharacterStateCultivating ||
-                 currentState.Value.CurrentState == CharacterStatePracticing))
-            {
-                if (currentState.Value.CurrentState == CharacterStateCultivating)
-                    _ = StopCultivationAsync();
-                return;
-            }
-
-            _ = StartCultivationAsync();
-        }
+        private void HandleStopCultivationButtonClicked() => _ = StopCultivationAsync();
 
         private async System.Threading.Tasks.Task StartCultivationAsync()
         {
@@ -282,6 +302,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (actionInFlight)
                 return false;
 
+            HideMartialArtOptionsPopup(force: true);
             actionInFlight = true;
             actionKind = kind;
             lastStatusMessage = status ?? string.Empty;

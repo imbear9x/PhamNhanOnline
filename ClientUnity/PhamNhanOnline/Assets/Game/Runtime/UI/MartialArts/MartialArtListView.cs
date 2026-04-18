@@ -3,24 +3,25 @@ using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Models;
 using PhamNhanOnline.Client.UI.Common;
+using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 namespace PhamNhanOnline.Client.UI.MartialArts
 {
+    [RequireComponent(typeof(LoopGridView))]
     public sealed class MartialArtListView : MonoBehaviour, IDropHandler
     {
         [Header("References")]
-        [SerializeField] private Transform contentRoot;
-        [SerializeField] private MartialArtListItemView itemTemplate;
+        [SerializeField] private LoopGridView loopGridView;
 
-        [Header("Behavior")]
-        [SerializeField] private bool hideTemplateObject = true;
-
-        private readonly List<MartialArtListItemView> spawnedItems = new List<MartialArtListItemView>(8);
+        private readonly HashSet<MartialArtListItemView> subscribedItems = new HashSet<MartialArtListItemView>();
+        private IReadOnlyList<PlayerMartialArtModel> items = Array.Empty<PlayerMartialArtModel>();
+        private MartialArtPresentationCatalog presentationCatalog;
         private string lastSnapshot = string.Empty;
         private int lastItemCount = -1;
         private int? selectedMartialArtId;
+        private bool loopInitialized;
 
         public event Action<PlayerMartialArtModel> ItemClicked;
         public event Action<PlayerMartialArtModel> ItemHovered;
@@ -29,11 +30,8 @@ namespace PhamNhanOnline.Client.UI.MartialArts
 
         private void Awake()
         {
-            if (contentRoot == null && itemTemplate != null)
-                contentRoot = itemTemplate.transform.parent;
-
-            if (hideTemplateObject && itemTemplate != null)
-                itemTemplate.gameObject.SetActive(false);
+            if (loopGridView == null)
+                loopGridView = GetComponent<LoopGridView>();
         }
 
         public void SetItems(
@@ -46,6 +44,8 @@ namespace PhamNhanOnline.Client.UI.MartialArts
             var snapshot = BuildSnapshot(items);
             var selectionChanged = selectedMartialArtId != selectedActiveMartialArtId;
             selectedMartialArtId = selectedActiveMartialArtId;
+            this.items = items;
+            this.presentationCatalog = presentationCatalog;
 
             if (!force &&
                 !selectionChanged &&
@@ -59,74 +59,28 @@ namespace PhamNhanOnline.Client.UI.MartialArts
             lastItemCount = items.Count;
             lastSnapshot = snapshot;
 
-            EnsureItemCount(items.Count);
-            for (var i = 0; i < spawnedItems.Count; i++)
-            {
-                var itemView = spawnedItems[i];
-                if (itemView == null)
-                    continue;
-
-                var shouldBeVisible = i < items.Count;
-                if (itemView.gameObject.activeSelf != shouldBeVisible)
-                    itemView.gameObject.SetActive(shouldBeVisible);
-
-                if (!shouldBeVisible)
-                {
-                    itemView.Clear(force: true);
-                    continue;
-                }
-
-                var presentation = presentationCatalog != null
-                    ? presentationCatalog.Resolve(items[i])
-                    : new MartialArtPresentation(null);
-                itemView.SetItem(items[i], presentation, force: true);
-                itemView.SetSelected(
-                    selectedMartialArtId.HasValue && items[i].MartialArtId == selectedMartialArtId.Value,
-                    force: true);
-            }
+            EnsureLoopInitialized();
+            WorldModalUIManager.Instance?.HideItemTooltip(force: true);
+            loopGridView.SetListItemCount(items.Count, keepPosition: true);
+            loopGridView.RefreshAllShownItem();
         }
 
         public void Clear(bool force = false)
         {
+            items = Array.Empty<PlayerMartialArtModel>();
+            presentationCatalog = null;
             lastItemCount = 0;
             lastSnapshot = string.Empty;
             selectedMartialArtId = null;
 
-            for (var i = 0; i < spawnedItems.Count; i++)
+            if (!ShouldKeepDebugGeneratedItems())
             {
-                var itemView = spawnedItems[i];
-                if (itemView == null)
-                    continue;
-
-                itemView.Clear(force: true);
-                if (itemView.gameObject.activeSelf)
-                    itemView.gameObject.SetActive(false);
-            }
-        }
-
-        private void EnsureItemCount(int targetCount)
-        {
-            if (targetCount <= spawnedItems.Count)
-                return;
-
-            if (itemTemplate == null)
-            {
-                Debug.LogWarning("MartialArtListView is missing itemTemplate.");
-                return;
+                EnsureLoopInitialized();
+                loopGridView.SetListItemCount(0, keepPosition: false);
+                loopGridView.RefreshAllShownItem();
             }
 
-            var parent = contentRoot != null ? contentRoot : itemTemplate.transform.parent;
-            for (var i = spawnedItems.Count; i < targetCount; i++)
-            {
-                var instance = Instantiate(itemTemplate, parent);
-                instance.name = string.Format("{0}_{1}", itemTemplate.name, i);
-                instance.gameObject.SetActive(true);
-                instance.Clicked += HandleItemClicked;
-                instance.Hovered += HandleItemHovered;
-                instance.HoverExited += HandleItemHoverExited;
-                instance.ActiveMartialArtDropped += HandleActiveMartialArtDropped;
-                spawnedItems.Add(instance);
-            }
+            WorldModalUIManager.Instance?.HideItemTooltip(force: force);
         }
 
         public void OnDrop(PointerEventData eventData)
@@ -144,18 +98,70 @@ namespace PhamNhanOnline.Client.UI.MartialArts
                 handler(payload.MartialArt);
         }
 
+        private void EnsureLoopInitialized()
+        {
+            if (loopInitialized || loopGridView == null)
+                return;
+
+            if (ShouldKeepDebugGeneratedItems())
+                return;
+
+            loopGridView.InitGridView(items.Count, OnGetItemByIndex);
+            loopInitialized = true;
+        }
+
+        private bool ShouldKeepDebugGeneratedItems()
+        {
+            return loopGridView != null &&
+                   loopGridView.DebugUseGeneratedItemsEnabled &&
+                   (items == null || items.Count == 0);
+        }
+
         private void UpdateSelectionVisuals(bool force)
         {
-            for (var i = 0; i < spawnedItems.Count; i++)
+            for (var i = 0; i < items.Count; i++)
             {
-                var itemView = spawnedItems[i];
-                if (itemView == null || !itemView.gameObject.activeSelf || !itemView.HasItem)
+                var itemView = loopGridView.GetShownItemByItemIndex(i) as MartialArtListItemView;
+                if (itemView == null || !itemView.HasItem)
                     continue;
 
                 itemView.SetSelected(
                     selectedMartialArtId.HasValue && itemView.Item.MartialArtId == selectedMartialArtId.Value,
                     force);
             }
+        }
+
+        private LoopScrollViewItem OnGetItemByIndex(LoopGridView gridView, int itemIndex)
+        {
+            if (itemIndex < 0 || itemIndex >= items.Count)
+                return null;
+
+            var itemView = gridView.NewListViewItem() as MartialArtListItemView;
+            if (itemView == null)
+                return null;
+
+            SubscribeItem(itemView);
+
+            var item = items[itemIndex];
+            var presentation = presentationCatalog != null
+                ? presentationCatalog.Resolve(item)
+                : new MartialArtPresentation(null);
+            itemView.SetItem(item, presentation, force: true);
+            itemView.SetSelected(
+                selectedMartialArtId.HasValue && selectedMartialArtId.Value == item.MartialArtId,
+                force: true);
+            return itemView;
+        }
+
+        private void SubscribeItem(MartialArtListItemView itemView)
+        {
+            if (itemView == null || !subscribedItems.Add(itemView))
+                return;
+
+            itemView.Clicked += HandleItemClicked;
+            itemView.Hovered += HandleItemHovered;
+            itemView.HoverExited += HandleItemHoverExited;
+            itemView.ActiveMartialArtDropped += HandleActiveMartialArtDropped;
         }
 
         private void HandleItemClicked(MartialArtListItemView itemView)

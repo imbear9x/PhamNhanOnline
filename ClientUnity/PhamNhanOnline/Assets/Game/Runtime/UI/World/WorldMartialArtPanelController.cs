@@ -1,15 +1,11 @@
 ﻿using System;
-using System.Globalization;
-using GameShared.Messages;
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
-using PhamNhanOnline.Client.Core.Logging;
-using PhamNhanOnline.Client.Features.MartialArts.Application;
-using PhamNhanOnline.Client.Network.Session;
+using PhamNhanOnline.Client.UI.Common;
+using PhamNhanOnline.Client.UI.Inventory;
 using PhamNhanOnline.Client.UI.MartialArts;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.World
 {
@@ -31,45 +27,28 @@ namespace PhamNhanOnline.Client.UI.World
         }
 
         [Header("References")]
-        [SerializeField] private TMP_Text ownedCountText;
+        [SerializeField] private CharacterSummaryView characterSummaryView;
         [SerializeField] private TMP_Text statusText;
         [SerializeField] private MartialArtPresentationCatalog presentationCatalog;
         [SerializeField] private ActiveMartialArtSlotView activeMartialArtSlotView;
         [SerializeField] private MartialArtListView martialArtListView;
         [SerializeField] private GameObject estimateRoot;
-        [SerializeField] private Image cultivationProgressFillImage;
-        [SerializeField] private TMP_Text cultivationProgressText;
         [SerializeField] private TMP_Text estimateText;
-        [SerializeField] private TMP_Text estimateDetailText;
-        [SerializeField] private Button startCultivationButton;
-        [SerializeField] private TMP_Text startCultivationButtonText;
         [SerializeField] private GameObject breakthroughRoot;
+        [SerializeField] private UIButtonView startCultivationButton;
+        [SerializeField] private UIButtonView stopCultivationButton;
         [SerializeField] private TMP_Text breakthroughChanceText;
-        [SerializeField] private Button breakthroughButton;
-        [SerializeField] private TMP_Text breakthroughButtonText;
-
-        [Header("Behavior")]
-        [SerializeField] private bool autoLoadMissingCharacterData = true;
-        [SerializeField] private bool autoLoadMissingMartialArts = true;
-        [SerializeField] private float reloadRetryCooldownSeconds = 2f;
+        [SerializeField] private UIButtonView breakthroughButton;
 
         [Header("Display Text")]
-        [SerializeField] private string missingOwnedCountText = "Cong phap: 0";
-        [SerializeField] private string loadingOwnedCountText = "Dang tai cong phap...";
-        [SerializeField] private string missingStatusText = "Chua tai danh sach cong phap.";
-        [SerializeField] private string noActiveMartialArtText = "Keo 1 cong phap da hoc vao o chu tu de xem uoc tinh.";
-        [SerializeField] private string startCultivationIdleText = "Tu luyen";
-        [SerializeField] private string stopCultivationIdleText = "Dung tu luyen";
-        [SerializeField] private string cultivationActionInFlightText = "Dang gui...";
-        [SerializeField] private string breakthroughIdleText = "Dot pha";
-        [SerializeField] private string breakthroughInFlightText = "Dang dot pha...";
+        [SerializeField] private string statusBreakthroughInProgressText = "Dang dot pha";
+        [SerializeField] private string statusBreakthroughRequiredText = "Da tu luyen toi dinh phong gap binh canh can dot pha";
+        [SerializeField] private string statusCultivatingText = "Dang tu luyen";
+        [SerializeField] private string statusNoActiveMartialArtText = "Chua co cong phap";
 
-        private Guid? lastRequestedCharacterId;
-        private float lastCharacterReloadAttemptTime = float.NegativeInfinity;
-        private float lastMartialArtReloadAttemptTime = float.NegativeInfinity;
-        private bool characterReloadInFlight;
-        private bool martialArtReloadInFlight;
         private bool actionInFlight;
+        private int? popupMartialArtId;
+        private bool popupTargetsActiveSlot;
         private PanelActionKind actionKind;
         private string lastStatusMessage = string.Empty;
         private string lastSnapshot = string.Empty;
@@ -77,28 +56,44 @@ namespace PhamNhanOnline.Client.UI.World
         private void Awake()
         {
             if (activeMartialArtSlotView != null)
+            {
                 activeMartialArtSlotView.MartialArtDropped += HandleMartialArtDropped;
+                activeMartialArtSlotView.Clicked += HandleActiveMartialArtSlotClicked;
+            }
 
             if (martialArtListView != null)
+            {
                 martialArtListView.ActiveMartialArtDroppedToList += HandleActiveMartialArtDroppedToList;
+                martialArtListView.ItemClicked += HandleMartialArtListItemClicked;
+            }
 
             if (startCultivationButton != null)
             {
-                startCultivationButton.onClick.RemoveListener(HandleCultivationButtonClicked);
-                startCultivationButton.onClick.AddListener(HandleCultivationButtonClicked);
+                startCultivationButton.Clicked -= HandleStartCultivationButtonClicked;
+                startCultivationButton.Clicked += HandleStartCultivationButtonClicked;
+            }
+
+            if (stopCultivationButton != null)
+            {
+                stopCultivationButton.Clicked -= HandleStopCultivationButtonClicked;
+                stopCultivationButton.Clicked += HandleStopCultivationButtonClicked;
             }
 
             if (breakthroughButton != null)
             {
-                breakthroughButton.onClick.RemoveListener(HandleBreakthroughButtonClicked);
-                breakthroughButton.onClick.AddListener(HandleBreakthroughButtonClicked);
+                breakthroughButton.Clicked -= HandleBreakthroughButtonClicked;
+                breakthroughButton.Clicked += HandleBreakthroughButtonClicked;
             }
         }
 
         private void OnEnable()
         {
             RefreshPanel(force: true);
-            TryReloadMissingData();
+        }
+
+        private void OnDisable()
+        {
+            HideMartialArtOptionsPopup(force: true);
         }
 
         private void Update()
@@ -107,22 +102,30 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             RefreshPanel(force: false);
-            TryReloadMissingData();
         }
 
         private void OnDestroy()
         {
             if (activeMartialArtSlotView != null)
+            {
                 activeMartialArtSlotView.MartialArtDropped -= HandleMartialArtDropped;
+                activeMartialArtSlotView.Clicked -= HandleActiveMartialArtSlotClicked;
+            }
 
             if (martialArtListView != null)
+            {
                 martialArtListView.ActiveMartialArtDroppedToList -= HandleActiveMartialArtDroppedToList;
+                martialArtListView.ItemClicked -= HandleMartialArtListItemClicked;
+            }
 
             if (startCultivationButton != null)
-                startCultivationButton.onClick.RemoveListener(HandleCultivationButtonClicked);
+                startCultivationButton.Clicked -= HandleStartCultivationButtonClicked;
+
+            if (stopCultivationButton != null)
+                stopCultivationButton.Clicked -= HandleStopCultivationButtonClicked;
 
             if (breakthroughButton != null)
-                breakthroughButton.onClick.RemoveListener(HandleBreakthroughButtonClicked);
+                breakthroughButton.Clicked -= HandleBreakthroughButtonClicked;
         }
 
         private void RefreshPanel(bool force)
@@ -136,10 +139,32 @@ namespace PhamNhanOnline.Client.UI.World
             var martialArtState = ClientRuntime.MartialArts;
             var baseStats = ClientRuntime.Character.BaseStats;
             var currentState = ClientRuntime.Character.CurrentState;
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (popupMartialArtId.HasValue &&
+                (modalUIManager == null || !modalUIManager.IsItemOptionsPopupVisible))
+            {
+                popupMartialArtId = null;
+                popupTargetsActiveSlot = false;
+                force = true;
+            }
+
             if (!martialArtState.HasLoadedMartialArts)
             {
                 ApplyMissingState(force);
                 return;
+            }
+
+            if (popupMartialArtId.HasValue)
+            {
+                if (!TryFindOwnedMartialArtById(martialArtState.OwnedMartialArts, popupMartialArtId.Value, out _) ||
+                    (popupTargetsActiveSlot &&
+                     (!martialArtState.ActiveMartialArtId.HasValue || martialArtState.ActiveMartialArtId.Value != popupMartialArtId.Value)))
+                {
+                    popupMartialArtId = null;
+                    popupTargetsActiveSlot = false;
+                    modalUIManager?.HideItemOptionsPopup(force: true);
+                    force = true;
+                }
             }
 
             var snapshot = BuildSnapshot(martialArtState, baseStats, currentState);
@@ -150,30 +175,5 @@ namespace PhamNhanOnline.Client.UI.World
             ApplyLoadedState(martialArtState, baseStats, currentState, force: true);
         }
 
-        private void TryReloadMissingData()
-        {
-            if (!ClientRuntime.IsInitialized || ClientRuntime.Connection.State != ClientConnectionState.Connected)
-                return;
-
-            var selectedCharacterId = ClientRuntime.Character.SelectedCharacterId;
-            if (!selectedCharacterId.HasValue)
-                return;
-
-            if (autoLoadMissingCharacterData &&
-                !characterReloadInFlight &&
-                (!ClientRuntime.Character.BaseStats.HasValue || !ClientRuntime.Character.CurrentState.HasValue) &&
-                CanRetryReload(lastRequestedCharacterId, lastCharacterReloadAttemptTime, selectedCharacterId.Value))
-            {
-                _ = ReloadCharacterDataAsync(selectedCharacterId.Value);
-            }
-
-            if (autoLoadMissingMartialArts &&
-                !martialArtReloadInFlight &&
-                !ClientRuntime.MartialArts.HasLoadedMartialArts &&
-                CanRetryReload(lastRequestedCharacterId, lastMartialArtReloadAttemptTime, selectedCharacterId.Value))
-            {
-                _ = ReloadMartialArtsAsync(selectedCharacterId.Value);
-            }
-        }
     }
 }

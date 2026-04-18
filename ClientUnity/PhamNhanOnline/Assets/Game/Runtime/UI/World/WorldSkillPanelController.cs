@@ -7,7 +7,6 @@ using GameShared.Enums;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Skills.Application;
-using PhamNhanOnline.Client.Network.Session;
 using PhamNhanOnline.Client.UI.Skills;
 using TMPro;
 using UnityEngine;
@@ -25,21 +24,13 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private SkillListView skillListView;
         [SerializeField] private SkillLoadoutSlotsView loadoutSlotsView;
 
-        [Header("Behavior")]
-        [SerializeField] private bool autoLoadMissingSkills = true;
-        [SerializeField] private float reloadRetryCooldownSeconds = 2f;
-
         [Header("Display Text")]
         [SerializeField] private string missingOwnedCountText = "Skill: 0";
-        [SerializeField] private string loadingOwnedCountText = "Dang tai skill...";
         [SerializeField] private string missingStatusText = "Chua tai danh sach skill.";
         [SerializeField] private string emptySkillListText = "Chua so huu skill nao.";
         [SerializeField] private string emptyLoadoutText = "Keo skill vao o de trang bi.";
         [SerializeField] private string actionInFlightText = "Dang cap nhat skill...";
 
-        private Guid? lastRequestedCharacterId;
-        private float lastSkillReloadAttemptTime = float.NegativeInfinity;
-        private bool skillReloadInFlight;
         private bool actionInFlight;
         private string lastStatusMessage = string.Empty;
         private string lastSnapshot = string.Empty;
@@ -56,8 +47,6 @@ namespace PhamNhanOnline.Client.UI.World
         private void OnEnable()
         {
             RefreshPanel(force: true);
-            TryReloadOnOpen();
-            TryReloadMissingData();
         }
 
         private void Update()
@@ -66,7 +55,6 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             RefreshPanel(force: false);
-            TryReloadMissingData();
         }
 
         private void OnDestroy()
@@ -125,8 +113,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ApplyMissingState(bool force)
         {
-            var ownedText = skillReloadInFlight ? loadingOwnedCountText : missingOwnedCountText;
-            ApplyText(ownedCountText, ownedText, force);
+            ApplyText(ownedCountText, missingOwnedCountText, force);
             ApplyText(statusText, ResolveMissingStatusText(), force);
 
             if (skillListView != null)
@@ -143,72 +130,6 @@ namespace PhamNhanOnline.Client.UI.World
 
             var normalizedSlots = BuildNormalizedLoadoutSlots(loadoutSlots, maxLoadoutSlotCount);
             loadoutSlotsView.SetSlots(normalizedSlots, presentationCatalog, !actionInFlight, force: true);
-        }
-
-        private void TryReloadMissingData()
-        {
-            if (!ClientRuntime.IsInitialized || ClientRuntime.Connection.State != ClientConnectionState.Connected)
-                return;
-
-            var selectedCharacterId = ClientRuntime.Character.SelectedCharacterId;
-            if (!selectedCharacterId.HasValue || !autoLoadMissingSkills || skillReloadInFlight)
-                return;
-
-            if (!ClientRuntime.Skills.HasLoadedSkills &&
-                CanRetryReload(lastRequestedCharacterId, lastSkillReloadAttemptTime, selectedCharacterId.Value))
-            {
-                _ = ReloadSkillsAsync(selectedCharacterId.Value);
-            }
-        }
-
-        private void TryReloadOnOpen()
-        {
-            if (!ClientRuntime.IsInitialized || ClientRuntime.Connection.State != ClientConnectionState.Connected)
-                return;
-
-            var selectedCharacterId = ClientRuntime.Character.SelectedCharacterId;
-            if (!selectedCharacterId.HasValue || skillReloadInFlight)
-                return;
-
-            if (!CanRetryReload(lastRequestedCharacterId, lastSkillReloadAttemptTime, selectedCharacterId.Value))
-                return;
-
-            _ = ReloadSkillsAsync(selectedCharacterId.Value);
-        }
-
-        private async System.Threading.Tasks.Task ReloadSkillsAsync(Guid characterId)
-        {
-            skillReloadInFlight = true;
-            lastRequestedCharacterId = characterId;
-            lastSkillReloadAttemptTime = Time.unscaledTime;
-            RefreshPanel(force: true);
-
-            try
-            {
-                var result = await ClientRuntime.SkillService.LoadOwnedSkillsAsync(forceRefresh: true);
-                if (!result.Success)
-                {
-                    lastStatusMessage = string.Format(
-                        CultureInfo.InvariantCulture,
-                        "Tai skill that bai: {0}",
-                        result.Code ?? MessageCode.UnknownError);
-                    ClientLog.Warn(string.Format(
-                        CultureInfo.InvariantCulture,
-                        "WorldSkillPanelController failed to load skills for {0}: {1}",
-                        characterId,
-                        result.Message));
-                }
-            }
-            catch (Exception ex)
-            {
-                lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi tai skill: {0}", ex.Message);
-                ClientLog.Warn($"WorldSkillPanelController skill reload exception: {ex.Message}");
-            }
-            finally
-            {
-                skillReloadInFlight = false;
-                RefreshPanel(force: true);
-            }
         }
 
         private void HandleSkillDroppedToSlot(int slotIndex, PlayerSkillModel skill)
@@ -311,9 +232,6 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (!string.IsNullOrWhiteSpace(lastStatusMessage))
                 return lastStatusMessage;
-
-            if (skillReloadInFlight)
-                return "Dang tai du lieu skill...";
 
             return missingStatusText;
         }
@@ -491,12 +409,6 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             return normalized;
-        }
-
-        private bool CanRetryReload(Guid? lastRequestedId, float lastAttemptTime, Guid characterId)
-        {
-            return lastRequestedId != characterId ||
-                   Time.unscaledTime - lastAttemptTime >= reloadRetryCooldownSeconds;
         }
 
         private static void ApplyText(TMP_Text textComponent, string value, bool force)
