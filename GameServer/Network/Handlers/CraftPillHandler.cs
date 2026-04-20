@@ -11,31 +11,20 @@ namespace GameServer.Network.Handlers;
 
 public sealed class CraftPillHandler : IPacketHandler<CraftPillPacket>
 {
-    private readonly AlchemyPracticeService _alchemyPracticeService;
+    private readonly AlchemyCraftActionService _alchemyCraftActionService;
     private readonly INetworkSender _network;
 
     public CraftPillHandler(
-        AlchemyPracticeService alchemyPracticeService,
+        AlchemyCraftActionService alchemyCraftActionService,
         INetworkSender network)
     {
-        _alchemyPracticeService = alchemyPracticeService;
+        _alchemyCraftActionService = alchemyCraftActionService;
         _network = network;
     }
 
     public async Task HandleAsync(ConnectionSession session, CraftPillPacket packet)
     {
-        if (session.Player is null)
-        {
-            _network.Send(session.ConnectionId, new CraftPillResultPacket
-            {
-                Success = false,
-                Code = MessageCode.CharacterMustEnterWorld,
-                PillRecipeTemplateId = packet.PillRecipeTemplateId
-            });
-            return;
-        }
-
-        var result = await _alchemyPracticeService.StartCraftAsync(
+        var result = await _alchemyCraftActionService.StartCraftAsync(
             session,
             packet.PillRecipeTemplateId!.Value,
             packet.RequestedCraftCount!.Value,
