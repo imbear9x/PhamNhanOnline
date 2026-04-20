@@ -8,12 +8,12 @@ namespace GameServer.Network.Handlers;
 
 public sealed class ChangePasswordHandler : IPacketHandler<ChangePasswordPacket>
 {
-    private readonly AccountService _accountService;
+    private readonly AccountActionService _accountActionService;
     private readonly INetworkSender _server;
 
-    public ChangePasswordHandler(AccountService accountService, INetworkSender server)
+    public ChangePasswordHandler(AccountActionService accountActionService, INetworkSender server)
     {
-        _accountService = accountService;
+        _accountActionService = accountActionService;
         _server = server;
     }
 
@@ -21,20 +21,15 @@ public sealed class ChangePasswordHandler : IPacketHandler<ChangePasswordPacket>
     {
         try
         {
-            await _accountService.ChangePasswordAsync(session.PlayerId, packet.Password!, packet.NewPassword!);
+            var result = await _accountActionService.ChangePasswordAsync(
+                session.PlayerId,
+                packet.Password!,
+                packet.NewPassword!);
 
             _server.Send(session.ConnectionId, new ChangePasswordResultPacket
             {
-                Success = true,
-                Code = MessageCode.None
-            });
-        }
-        catch (GameException ex)
-        {
-            _server.Send(session.ConnectionId, new ChangePasswordResultPacket
-            {
-                Success = false,
-                Code = ex.Code
+                Success = result.Success,
+                Code = result.Code
             });
         }
         catch (Exception)

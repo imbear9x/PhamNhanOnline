@@ -8,12 +8,12 @@ namespace GameServer.Network.Handlers;
 
 public sealed class LoginHandler : IPacketHandler<LoginPacket>
 {
-    private readonly AccountService _accountService;
+    private readonly AccountActionService _accountActionService;
     private readonly INetworkSender _server;
 
-    public LoginHandler(AccountService accountService, INetworkSender server)
+    public LoginHandler(AccountActionService accountActionService, INetworkSender server)
     {
-        _accountService = accountService;
+        _accountActionService = accountActionService;
         _server = server;
     }
 
@@ -21,29 +21,28 @@ public sealed class LoginHandler : IPacketHandler<LoginPacket>
     {
         try
         {
-            var result = await _accountService.LoginWithPasswordAsync(packet.Username!, packet.Password!);
+            var result = await _accountActionService.LoginAsync(packet.Username!, packet.Password!);
+            if (!result.Success || result.Login is null)
+            {
+                _server.Send(session.ConnectionId, new LoginResultPacket
+                {
+                    Success = false,
+                    Code = result.Code,
+                    AccountId = Guid.Empty
+                });
+                return;
+            }
 
-            session.PlayerId = result.Account.AccountId;
+            session.PlayerId = result.Login.Account.AccountId;
             session.IsAuthenticated = true;
-            var resumeToken = _server.IssueResumeToken(session, result.Account.AccountId);
+            var resumeToken = _server.IssueResumeToken(session, result.Login.Account.AccountId);
 
             var response = new LoginResultPacket
             {
                 Success = true,
                 Code = MessageCode.None,
-                AccountId = result.Account.AccountId,
+                AccountId = result.Login.Account.AccountId,
                 ResumeToken = resumeToken
-            };
-
-            _server.Send(session.ConnectionId, response);
-        }
-        catch (GameException ex)
-        {
-            var response = new LoginResultPacket
-            {
-                Success = false,
-                Code = ex.Code,
-                AccountId = Guid.Empty
             };
 
             _server.Send(session.ConnectionId, response);

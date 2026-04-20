@@ -11,112 +11,59 @@ namespace GameServer.Network.Handlers;
 
 public sealed class EnterWorldHandler : IPacketHandler<EnterWorldPacket>
 {
-    private readonly CharacterService _characterService;
-    private readonly CharacterRuntimeService _runtimeService;
-    private readonly CharacterFinalStatService _characterFinalStatService;
+    private readonly WorldEntryService _worldEntryService;
     private readonly CharacterLifecycleService _lifecycleService;
-    private readonly CharacterCombatDeathRecoveryService _deathRecoveryService;
-    private readonly CharacterCultivationService _cultivationService;
-    private readonly PracticeService _practiceService;
-    private readonly AlchemyPracticeService _alchemyPracticeService;
     private readonly PlayerNotificationService _notificationService;
     private readonly WorldInterestService _interestService;
-    private readonly MapManager _mapManager;
     private readonly INetworkSender _server;
-    private readonly GameTimeService _gameTimeService;
 
     public EnterWorldHandler(
-        CharacterService characterService,
-        CharacterRuntimeService runtimeService,
-        CharacterFinalStatService characterFinalStatService,
+        WorldEntryService worldEntryService,
         CharacterLifecycleService lifecycleService,
-        CharacterCombatDeathRecoveryService deathRecoveryService,
-        CharacterCultivationService cultivationService,
-        PracticeService practiceService,
-        AlchemyPracticeService alchemyPracticeService,
         PlayerNotificationService notificationService,
         WorldInterestService interestService,
-        MapManager mapManager,
-        INetworkSender server,
-        GameTimeService gameTimeService)
+        INetworkSender server)
     {
-        _characterService = characterService;
-        _runtimeService = runtimeService;
-        _characterFinalStatService = characterFinalStatService;
+        _worldEntryService = worldEntryService;
         _lifecycleService = lifecycleService;
-        _deathRecoveryService = deathRecoveryService;
-        _cultivationService = cultivationService;
-        _practiceService = practiceService;
-        _alchemyPracticeService = alchemyPracticeService;
         _notificationService = notificationService;
         _interestService = interestService;
-        _mapManager = mapManager;
         _server = server;
-        _gameTimeService = gameTimeService;
     }
 
     public async Task HandleAsync(ConnectionSession session, EnterWorldPacket packet)
     {
         try
         {
-            var data = await _characterService.LoadCharacterSnapshotByAccountAsync(
-                session.PlayerId,
-                packet.CharacterId!.Value);
-
-            if (data is null)
+            var result = await _worldEntryService.EnterAsync(session, packet.CharacterId!.Value);
+            if (!result.Success || result.Player is null || result.Character is null || result.BaseStats is null || result.CurrentState is null)
             {
                 _server.Send(session.ConnectionId, new EnterWorldResultPacket
                 {
                     Success = false,
-                    Code = MessageCode.CharacterNotFound
+                    Code = result.Code
                 });
                 return;
             }
 
-            var cultivationSettlement = await _cultivationService.SettleSnapshotAsync(data);
-            data = cultivationSettlement.Snapshot;
-            await _alchemyPracticeService.EnsureDueSessionCompletedAsync(data.Character.CharacterId);
-            data = await _practiceService.AlignSnapshotStateAsync(data);
-            var ensuredCharacter = await _characterService.EnsureFirstEnterWorldAtUtcAsync(data.Character.CharacterId);
-            data = data with { Character = ensuredCharacter };
-            data = await _lifecycleService.PrepareSnapshotForWorldEntryAsync(data);
-            data = await _deathRecoveryService.RecoverSnapshotToHomeAsync(data);
-            var isLifespanExpired = _lifecycleService.IsLifespanExpired(data);
-
-            session.SelectedCharacterId = data.Character.CharacterId;
-            var player = _runtimeService.AttachPlayerSession(session, data);
-            var preserveHeldWorldState = player.InstanceId != 0 &&
-                                         _mapManager.TryGetInstance(player.MapId, player.InstanceId, out _);
-            _interestService.EnsurePlayerInWorld(
-                player,
-                requestedZoneIndex: preserveHeldWorldState ? player.ZoneIndex : null,
-                autoSelectPublicZone: !preserveHeldWorldState);
-            if (isLifespanExpired)
-            {
-                player.SetCharacterActionsRestricted(true);
-                session.AreCharacterActionsRestricted = true;
-            }
-
-            var runtimeSnapshot = await _characterFinalStatService.ApplyAuthoritativeFinalStatsAsync(player);
-
             _server.Send(session.ConnectionId, new EnterWorldResultPacket
             {
                 Success = true,
-                Code = isLifespanExpired ? MessageCode.CharacterLifespanExpired : MessageCode.None,
-                Character = player.CharacterData.ToModel(),
-                BaseStats = runtimeSnapshot.BaseStats.ToModel(),
-                CurrentState = runtimeSnapshot.CurrentState.ToModel(player.CharacterData, runtimeSnapshot.BaseStats, _gameTimeService.GetCurrentSnapshot())
+                Code = result.Code,
+                Character = result.Character,
+                BaseStats = result.BaseStats,
+                CurrentState = result.CurrentState
             });
 
-            _interestService.PublishWorldSnapshot(player);
+            _interestService.PublishWorldSnapshot(result.Player);
 
-            if (cultivationSettlement.RewardEvent is not null)
-                _server.Send(session.ConnectionId, cultivationSettlement.RewardEvent.ToPacket());
+            if (result.RewardPacket is not null)
+                _server.Send(session.ConnectionId, result.RewardPacket);
 
             await _notificationService.PushUnreadAsync(session);
 
-            if (isLifespanExpired)
-                _lifecycleService.NotifyLifespanExpired(session.ConnectionId, data.Character.CharacterId);
+            if (result.NotifyLifespanExpired)
+                _lifecycleService.NotifyLifespanExpired(session.ConnectionId, result.Player.CharacterData.CharacterId);
         }
         catch (Exception)
         {

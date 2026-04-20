@@ -10,16 +10,16 @@ namespace GameServer.Network.Handlers;
 
 public sealed class CreateCharacterHandler : IPacketHandler<CreateCharacterPacket>
 {
-    private readonly CharacterService _characterService;
+    private readonly CharacterCreationActionService _characterCreationActionService;
     private readonly INetworkSender _server;
     private readonly GameTimeService _gameTimeService;
 
     public CreateCharacterHandler(
-        CharacterService characterService,
+        CharacterCreationActionService characterCreationActionService,
         INetworkSender server,
         GameTimeService gameTimeService)
     {
-        _characterService = characterService;
+        _characterCreationActionService = characterCreationActionService;
         _server = server;
         _gameTimeService = gameTimeService;
     }
@@ -28,11 +28,22 @@ public sealed class CreateCharacterHandler : IPacketHandler<CreateCharacterPacke
     {
         try
         {
-            var created = await _characterService.CreateCharacterAsync(
+            var result = await _characterCreationActionService.CreateAsync(
                 session.PlayerId,
                 packet.Name!,
                 packet.ServerId!.Value,
                 packet.ModelId!.Value);
+            if (!result.Success || result.Snapshot is null)
+            {
+                _server.Send(session.ConnectionId, new CreateCharacterResultPacket
+                {
+                    Success = false,
+                    Code = result.Code
+                });
+                return;
+            }
+
+            var created = result.Snapshot;
 
             _server.Send(session.ConnectionId, new CreateCharacterResultPacket
             {
@@ -43,14 +54,6 @@ public sealed class CreateCharacterHandler : IPacketHandler<CreateCharacterPacke
                 CurrentState = created.CurrentState is null
                     ? null
                     : created.CurrentState.ToModel(created.Character, created.BaseStats, _gameTimeService.GetCurrentSnapshot())
-            });
-        }
-        catch (GameException ex)
-        {
-            _server.Send(session.ConnectionId, new CreateCharacterResultPacket
-            {
-                Success = false,
-                Code = ex.Code
             });
         }
         catch (Exception)

@@ -30,7 +30,9 @@ public static partial class ServiceCollectionExtensions
 
         // add game services
         services.AddScoped<AccountService>();
+        services.AddScoped<AccountActionService>();
         services.AddScoped<CharacterService>();
+        services.AddScoped<CharacterCreationActionService>();
         services.AddScoped<ItemService>();
         services.AddScoped<MartialArtService>();
         services.AddScoped<SkillService>();
@@ -44,6 +46,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<EquipmentStatService>();
         services.AddScoped<CharacterFinalStatService>();
         services.AddScoped<MartialArtActionService>();
+        services.AddScoped<WorldEntryService>();
         services.AddScoped<PillRecipeService>();
         services.AddScoped<AlchemyService>();
         services.AddScoped<HerbService>();

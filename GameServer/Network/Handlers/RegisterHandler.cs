@@ -8,12 +8,12 @@ namespace GameServer.Network.Handlers;
 
 public sealed class RegisterHandler : IPacketHandler<RegisterPacket>
 {
-    private readonly AccountService _accountService;
+    private readonly AccountActionService _accountActionService;
     private readonly INetworkSender _server;
 
-    public RegisterHandler(AccountService accountService, INetworkSender server)
+    public RegisterHandler(AccountActionService accountActionService, INetworkSender server)
     {
-        _accountService = accountService;
+        _accountActionService = accountActionService;
         _server         = server;
     }
 
@@ -21,26 +21,12 @@ public sealed class RegisterHandler : IPacketHandler<RegisterPacket>
     {
         try
         {
-            // Email is accepted at the network layer; AccountService currently uses username/password.
-            await _accountService.RegisterWithPasswordAsync(packet.Username!, packet.Password!);
-
-            var response = new RegisterResultPacket
+            var result = await _accountActionService.RegisterAsync(packet.Username!, packet.Password!);
+            _server.Send(session.ConnectionId, new RegisterResultPacket
             {
-                Success = true,
-                Code = MessageCode.None
-            };
-
-            _server.Send(session.ConnectionId, response);
-        }
-        catch (GameException ex)
-        {
-            var response = new RegisterResultPacket
-            {
-                Success = false,
-                Code = ex.Code
-            };
-
-            _server.Send(session.ConnectionId, response);
+                Success = result.Success,
+                Code = result.Code
+            });
         }
         catch (Exception)
         {
