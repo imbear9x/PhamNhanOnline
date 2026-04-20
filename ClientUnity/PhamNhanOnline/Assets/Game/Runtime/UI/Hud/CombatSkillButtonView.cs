@@ -1,4 +1,5 @@
 using System;
+using DG.Tweening;
 using GameShared.Models;
 using PhamNhanOnline.Client.UI.Skills;
 using TMPro;
@@ -40,6 +41,8 @@ namespace PhamNhanOnline.Client.UI.Hud
         private Vector3 idleScale = Vector3.one;
         private Vector2 idleAnchoredPosition;
         private bool pressVisualInitialized;
+        private Tween scaleTween;
+        private Tween positionTween;
 
         public event Action<int> Clicked;
 
@@ -53,11 +56,6 @@ namespace PhamNhanOnline.Client.UI.Hud
             AutoWireReferences();
             if (button != null)
                 button.onClick.AddListener(HandleButtonClicked);
-        }
-
-        private void Update()
-        {
-            UpdatePressAnimation();
         }
 
         private void OnEnable()
@@ -75,6 +73,8 @@ namespace PhamNhanOnline.Client.UI.Hud
         {
             if (button != null)
                 button.onClick.RemoveListener(HandleButtonClicked);
+
+            KillTweens();
         }
 
         public void SetSlotIndex(int value)
@@ -102,7 +102,10 @@ namespace PhamNhanOnline.Client.UI.Hud
             hasSkill = hasAssignedSkill;
             isInteractable = resolvedVisible && hasAssignedSkill && interactable;
             if (!isInteractable)
+            {
                 isPressed = false;
+                RefreshPressVisuals(force: false);
+            }
 
             if (button != null)
                 button.interactable = isInteractable;
@@ -162,16 +165,19 @@ namespace PhamNhanOnline.Client.UI.Hud
                 return;
 
             isPressed = true;
+            RefreshPressVisuals(force: false);
         }
 
         public void OnPointerUp(PointerEventData eventData)
         {
             isPressed = false;
+            RefreshPressVisuals(force: false);
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
             isPressed = false;
+            RefreshPressVisuals(force: false);
         }
 
         private void AutoWireReferences()
@@ -195,7 +201,7 @@ namespace PhamNhanOnline.Client.UI.Hud
             }
         }
 
-        private void UpdatePressAnimation()
+        private void RefreshPressVisuals(bool force)
         {
             if (pressVisualRoot == null)
                 return;
@@ -206,10 +212,29 @@ namespace PhamNhanOnline.Client.UI.Hud
             var targetAnchoredPosition = isPressed && isInteractable
                 ? idleAnchoredPosition + new Vector2(0f, pressedYOffset)
                 : idleAnchoredPosition;
-            var lerpFactor = 1f - Mathf.Exp(-Mathf.Max(0.01f, pressLerpSpeed) * Time.unscaledDeltaTime);
+            var duration = 1f / Mathf.Max(0.01f, pressLerpSpeed);
 
-            pressVisualRoot.localScale = Vector3.LerpUnclamped(pressVisualRoot.localScale, targetScale, lerpFactor);
-            pressVisualRoot.anchoredPosition = Vector2.LerpUnclamped(pressVisualRoot.anchoredPosition, targetAnchoredPosition, lerpFactor);
+            if (force || !gameObject.activeInHierarchy)
+            {
+                KillTweens();
+                pressVisualRoot.localScale = targetScale;
+                pressVisualRoot.anchoredPosition = targetAnchoredPosition;
+                return;
+            }
+
+            KillTweens();
+            scaleTween = pressVisualRoot
+                .DOScale(targetScale, duration)
+                .SetEase(Ease.OutQuad)
+                .SetUpdate(true);
+            positionTween = DOTween
+                .To(
+                    () => pressVisualRoot.anchoredPosition,
+                    value => pressVisualRoot.anchoredPosition = value,
+                    targetAnchoredPosition,
+                    duration)
+                .SetEase(Ease.OutQuad)
+                .SetUpdate(true);
         }
 
         private void ResetPressVisuals(bool immediate)
@@ -219,11 +244,7 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (pressVisualRoot == null)
                 return;
 
-            if (immediate)
-            {
-                pressVisualRoot.localScale = idleScale;
-                pressVisualRoot.anchoredPosition = idleAnchoredPosition;
-            }
+            RefreshPressVisuals(force: immediate);
         }
 
         private bool CanAnimatePress(PointerEventData eventData)
@@ -233,6 +254,21 @@ namespace PhamNhanOnline.Client.UI.Hud
                    isVisible &&
                    hasSkill &&
                    isInteractable;
+        }
+
+        private void KillTweens()
+        {
+            if (scaleTween != null)
+            {
+                scaleTween.Kill();
+                scaleTween = null;
+            }
+
+            if (positionTween != null)
+            {
+                positionTween.Kill();
+                positionTween = null;
+            }
         }
     }
 }

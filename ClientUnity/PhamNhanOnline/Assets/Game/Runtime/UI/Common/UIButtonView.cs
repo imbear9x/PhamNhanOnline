@@ -1,4 +1,5 @@
 using System;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
@@ -17,6 +18,8 @@ namespace PhamNhanOnline.Client.UI.Common
         private const float HoverScaleMultiplier = 1.1f;
         private const float PressedScaleMultiplier = 0.9f;
         private static readonly Vector2 PressedOffset = new Vector2(2f, -2f);
+        private const float ColorTweenDuration = 0.1f;
+        private const float TransformTweenDuration = 0.12f;
 
         private enum VisualState
         {
@@ -68,9 +71,11 @@ namespace PhamNhanOnline.Client.UI.Common
         private RectTransform cachedRectTransform;
         private RectTransform cachedAnimationRectTransform;
         private Vector3 baseLocalScale = Vector3.one;
-        private Vector3 baseLocalPosition = Vector3.zero;
         private Vector2 baseAnchoredPosition = Vector2.zero;
         private bool hasCapturedBaseTransform;
+        private Tween colorTween;
+        private Tween scaleTween;
+        private Tween positionTween;
 
         public event Action Clicked;
         public event Action RightClicked;
@@ -95,7 +100,8 @@ namespace PhamNhanOnline.Client.UI.Common
         {
             isPressed = false;
             isPointerInside = false;
-            RefreshVisualState(force: true);
+            KillTweens();
+            ApplyVisualState(ResolveVisualState(), force: true);
         }
 
         public void SetInteractable(bool value, bool force = false)
@@ -211,14 +217,8 @@ namespace PhamNhanOnline.Client.UI.Common
             if (cachedAnimationRectTransform == null)
                 return;
 
-            var transformTarget = cachedAnimationRectTransform != null
-                ? (Transform)cachedAnimationRectTransform
-                : transform;
-
-            baseLocalScale = transformTarget.localScale;
-            baseLocalPosition = transformTarget.localPosition;
-            if (cachedAnimationRectTransform != null)
-                baseAnchoredPosition = cachedAnimationRectTransform.anchoredPosition;
+            baseLocalScale = cachedAnimationRectTransform.localScale;
+            baseAnchoredPosition = cachedAnimationRectTransform.anchoredPosition;
         }
 
         private void RefreshVisualState(bool force)
@@ -228,7 +228,7 @@ namespace PhamNhanOnline.Client.UI.Common
                 return;
 
             currentState = nextState;
-            ApplyVisualState(nextState);
+            ApplyVisualState(nextState, force);
         }
 
         private VisualState ResolveVisualState()
@@ -245,28 +245,61 @@ namespace PhamNhanOnline.Client.UI.Common
             return VisualState.Normal;
         }
 
-        private void ApplyVisualState(VisualState state)
+        private void ApplyVisualState(VisualState state, bool force)
         {
             if (targetImage == null)
             {
-                ApplyTransformState(state);
+                ApplyTransformState(state, force);
                 return;
             }
 
             switch (transitionMode)
             {
                 case TransitionMode.Sprite:
+                    if (colorTween != null)
+                    {
+                        colorTween.Kill();
+                        colorTween = null;
+                    }
+
                     targetImage.sprite = ResolveSprite(state, targetImage.sprite);
                     break;
                 default:
-                    targetImage.color = ResolveColor(state);
+                    ApplyColorState(state, force);
                     break;
             }
 
-            ApplyTransformState(state);
+            ApplyTransformState(state, force);
         }
 
-        private void ApplyTransformState(VisualState state)
+        private void ApplyColorState(VisualState state, bool force)
+        {
+            var targetColor = ResolveColor(state);
+            if (targetImage == null)
+                return;
+
+            if (force || !gameObject.activeInHierarchy)
+            {
+                if (colorTween != null)
+                {
+                    colorTween.Kill();
+                    colorTween = null;
+                }
+
+                targetImage.color = targetColor;
+                return;
+            }
+
+            if (colorTween != null && colorTween.IsActive())
+                colorTween.Kill();
+
+            colorTween = DOTween
+                .To(() => targetImage.color, value => targetImage.color = value, targetColor, ColorTweenDuration)
+                .SetEase(Ease.OutQuad)
+                .SetUpdate(true);
+        }
+
+        private void ApplyTransformState(VisualState state, bool force)
         {
             if (!CanAnimateTransform())
             {
@@ -288,17 +321,32 @@ namespace PhamNhanOnline.Client.UI.Common
                     break;
             }
 
-            var transformTarget = cachedAnimationRectTransform != null
-                ? (Transform)cachedAnimationRectTransform
-                : transform;
-            transformTarget.localScale = baseLocalScale * scaleMultiplier;
-            if (cachedAnimationRectTransform != null)
+            if (cachedAnimationRectTransform == null)
+                return;
+
+            var targetScale = baseLocalScale * scaleMultiplier;
+            var targetAnchoredPosition = baseAnchoredPosition + positionOffset;
+            if (force || !gameObject.activeInHierarchy)
             {
-                cachedAnimationRectTransform.anchoredPosition = baseAnchoredPosition + positionOffset;
+                KillTransformTweens();
+                cachedAnimationRectTransform.localScale = targetScale;
+                cachedAnimationRectTransform.anchoredPosition = targetAnchoredPosition;
                 return;
             }
 
-            transformTarget.localPosition = baseLocalPosition + new Vector3(positionOffset.x, positionOffset.y, 0f);
+            KillTransformTweens();
+            scaleTween = cachedAnimationRectTransform
+                .DOScale(targetScale, TransformTweenDuration)
+                .SetEase(Ease.OutQuad)
+                .SetUpdate(true);
+            positionTween = DOTween
+                .To(
+                    () => cachedAnimationRectTransform.anchoredPosition,
+                    value => cachedAnimationRectTransform.anchoredPosition = value,
+                    targetAnchoredPosition,
+                    TransformTweenDuration)
+                .SetEase(Ease.OutQuad)
+                .SetUpdate(true);
         }
 
         private bool CanAnimateTransform()
@@ -321,18 +369,9 @@ namespace PhamNhanOnline.Client.UI.Common
             if (cachedAnimationRectTransform == null)
                 return;
 
-            var transformTarget = cachedAnimationRectTransform != null
-                ? (Transform)cachedAnimationRectTransform
-                : transform;
-
-            transformTarget.localScale = baseLocalScale;
-            if (cachedAnimationRectTransform != null)
-            {
-                cachedAnimationRectTransform.anchoredPosition = baseAnchoredPosition;
-                return;
-            }
-
-            transformTarget.localPosition = baseLocalPosition;
+            KillTransformTweens();
+            cachedAnimationRectTransform.localScale = baseLocalScale;
+            cachedAnimationRectTransform.anchoredPosition = baseAnchoredPosition;
         }
 
         private static bool IsDrivenByLayoutGroup(RectTransform rectTransform)
@@ -376,6 +415,31 @@ namespace PhamNhanOnline.Client.UI.Common
                     return disabledColor;
                 default:
                     return normalColor;
+            }
+        }
+
+        private void KillTweens()
+        {
+            KillTransformTweens();
+            if (colorTween != null)
+            {
+                colorTween.Kill();
+                colorTween = null;
+            }
+        }
+
+        private void KillTransformTweens()
+        {
+            if (scaleTween != null)
+            {
+                scaleTween.Kill();
+                scaleTween = null;
+            }
+
+            if (positionTween != null)
+            {
+                positionTween.Kill();
+                positionTween = null;
             }
         }
     }

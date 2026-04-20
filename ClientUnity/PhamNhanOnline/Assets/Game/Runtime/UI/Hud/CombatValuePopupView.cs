@@ -1,3 +1,4 @@
+using DG.Tweening;
 using TMPro;
 using PhamNhanOnline.Client.Infrastructure.Pooling;
 using UnityEngine;
@@ -21,9 +22,8 @@ namespace PhamNhanOnline.Client.UI.Hud
         [SerializeField] private Vector2 randomHorizontalOffsetRange = new Vector2(-0.12f, 0.12f);
 
         private Vector3 startWorldPosition;
-        private float elapsedSeconds;
-        private bool isPlaying;
         private PooledInstance pooledInstance;
+        private Sequence playSequence;
 
         private void Awake()
         {
@@ -35,46 +35,11 @@ namespace PhamNhanOnline.Client.UI.Hud
             AutoWireReferences();
         }
 
-        private void Update()
-        {
-            if (!isPlaying)
-                return;
-
-            elapsedSeconds += Time.deltaTime;
-            var normalized = lifetimeSeconds > 0f
-                ? Mathf.Clamp01(elapsedSeconds / lifetimeSeconds)
-                : 1f;
-
-            var verticalOffset = Mathf.LerpUnclamped(0f, riseDistanceWorldUnits, normalized);
-            var scale = Mathf.LerpUnclamped(startScale, endScale, normalized);
-            var alpha = normalized <= fadeStartNormalized
-                ? 1f
-                : 1f - Mathf.InverseLerp(fadeStartNormalized, 1f, normalized);
-
-            if (rectTransform != null)
-            {
-                rectTransform.position = startWorldPosition + (Vector3.up * verticalOffset);
-                rectTransform.localScale = Vector3.one * scale;
-            }
-            else
-            {
-                transform.position = startWorldPosition + (Vector3.up * verticalOffset);
-                transform.localScale = Vector3.one * scale;
-            }
-
-            if (canvasGroup != null)
-                canvasGroup.alpha = Mathf.Clamp01(alpha);
-
-            if (normalized >= 1f)
-                CompleteAndRelease();
-        }
-
         public void Play(string text, Color color, Vector3 worldPosition)
         {
             AutoWireReferences();
+            KillTween();
 
-            elapsedSeconds = 0f;
-            isPlaying = true;
             startWorldPosition = worldPosition + new Vector3(
                 Random.Range(randomHorizontalOffsetRange.x, randomHorizontalOffsetRange.y),
                 0f,
@@ -99,11 +64,38 @@ namespace PhamNhanOnline.Client.UI.Hud
                 valueText.text = text ?? string.Empty;
                 valueText.color = color;
             }
+
+            var duration = Mathf.Max(0.01f, lifetimeSeconds);
+            var fadeStartTime = Mathf.Clamp01(fadeStartNormalized) * duration;
+            var fadeDuration = Mathf.Max(0.01f, duration - fadeStartTime);
+
+            playSequence = DOTween.Sequence().SetUpdate(false);
+            if (rectTransform != null)
+            {
+                playSequence.Join(rectTransform.DOMoveY(startWorldPosition.y + riseDistanceWorldUnits, duration).SetEase(Ease.Linear));
+                playSequence.Join(rectTransform.DOScale(endScale, duration).SetEase(Ease.OutQuad));
+            }
+            else
+            {
+                playSequence.Join(transform.DOMoveY(startWorldPosition.y + riseDistanceWorldUnits, duration).SetEase(Ease.Linear));
+                playSequence.Join(transform.DOScale(endScale, duration).SetEase(Ease.OutQuad));
+            }
+
+            if (canvasGroup != null)
+            {
+                playSequence.Insert(
+                    fadeStartTime,
+                    DOTween
+                        .To(() => canvasGroup.alpha, value => canvasGroup.alpha = value, 0f, fadeDuration)
+                        .SetEase(Ease.Linear));
+            }
+
+            playSequence.OnComplete(CompleteAndRelease);
         }
 
         private void CompleteAndRelease()
         {
-            isPlaying = false;
+            KillTween();
             if (pooledInstance == null)
                 pooledInstance = GetComponent<PooledInstance>();
 
@@ -126,6 +118,20 @@ namespace PhamNhanOnline.Client.UI.Hud
 
             if (pooledInstance == null)
                 pooledInstance = GetComponent<PooledInstance>();
+        }
+
+        private void OnDisable()
+        {
+            KillTween();
+        }
+
+        private void KillTween()
+        {
+            if (playSequence != null)
+            {
+                playSequence.Kill();
+                playSequence = null;
+            }
         }
     }
 }
