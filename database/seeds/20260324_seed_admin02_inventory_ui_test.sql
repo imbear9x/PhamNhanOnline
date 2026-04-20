@@ -82,20 +82,18 @@ upsert_item_templates as (
 upsert_equipment_templates as (
     insert into public.equipment_templates (
         item_template_id,
-        slot_type,
         equipment_type,
         level_requirement
     )
     values
-        (910001, 1, 1, 12),
-        (910002, 2, 3, 10),
-        (910003, 3, 4, 8),
-        (910004, 4, 5, 8),
-        (910010, 1, 1, 18),
-        (910011, 2, 3, 16)
+        (910001, 1, 12),
+        (910002, 3, 10),
+        (910003, 4, 8),
+        (910004, 5, 8),
+        (910010, 1, 18),
+        (910011, 3, 16)
     on conflict (item_template_id) do update
     set
-        slot_type = excluded.slot_type,
         equipment_type = excluded.equipment_type,
         level_requirement = excluded.level_requirement
     returning item_template_id

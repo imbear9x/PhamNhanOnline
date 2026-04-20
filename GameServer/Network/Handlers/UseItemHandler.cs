@@ -1,6 +1,7 @@
 using GameServer.DTO;
 using GameServer.Exceptions;
 using GameServer.Network.Interface;
+using GameServer.Runtime;
 using GameServer.Services;
 using GameServer.Time;
 using GameShared.Messages;
@@ -11,15 +12,18 @@ namespace GameServer.Network.Handlers;
 public sealed class UseItemHandler : IPacketHandler<UseItemPacket>
 {
     private readonly ItemUseService _itemUseService;
+    private readonly SkillRuntimeNotifier _skillNotifier;
     private readonly GameTimeService _gameTimeService;
     private readonly INetworkSender _network;
 
     public UseItemHandler(
         ItemUseService itemUseService,
+        SkillRuntimeNotifier skillNotifier,
         GameTimeService gameTimeService,
         INetworkSender network)
     {
         _itemUseService = itemUseService;
+        _skillNotifier = skillNotifier;
         _gameTimeService = gameTimeService;
         _network = network;
     }
@@ -63,6 +67,9 @@ public sealed class UseItemHandler : IPacketHandler<UseItemPacket>
                 CooldownMs = result.CooldownMs,
                 CooldownEndsUnixMs = ToUnixMs(result.CooldownEndsAtUtc)
             });
+
+            if (result.ChangedSkillSnapshot.HasValue && session.Player is not null)
+                _skillNotifier.NotifyOwnedSkillsChanged(session.Player, result.ChangedSkillSnapshot.Value);
         }
         catch (GameException ex)
         {

@@ -141,7 +141,10 @@ public static class NetworkModelMapper
             SourceType = dto.SourceType,
             SourceMartialArtId = dto.SourceMartialArtId,
             SourceMartialArtName = dto.SourceMartialArtName,
+            SourcePlayerItemId = dto.SourcePlayerItemId,
             UnlockStage = dto.UnlockStage,
+            CanAssignToLoadout = dto.CanAssignToLoadout,
+            LoadoutBlockedReason = dto.LoadoutBlockedReason,
             IsEquipped = dto.IsEquipped,
             EquippedSlotIndex = dto.EquippedSlotIndex
         };
@@ -351,11 +354,10 @@ public static class NetworkModelMapper
             BackgroundIcon = view.Definition.BackgroundIcon,
             Description = view.Description,
             MartialArtBookMartialArtId = view.Definition.MartialArtBook?.MartialArtId,
-            EquipmentSlotType = view.Definition.Equipment is not null ? (int)view.Definition.Equipment.SlotType : null,
             EquipmentType = view.Definition.Equipment is not null ? (int)view.Definition.Equipment.EquipmentType : null,
             LevelRequirement = view.Definition.Equipment?.LevelRequirement,
             IsEquipped = view.IsEquipped,
-            EquippedSlot = view.EquippedSlot.HasValue ? (int)view.EquippedSlot.Value : null,
+            EquippedSlot = view.EquippedSlot,
             EnhanceLevel = view.EnhanceLevel,
             Durability = view.Durability
         };

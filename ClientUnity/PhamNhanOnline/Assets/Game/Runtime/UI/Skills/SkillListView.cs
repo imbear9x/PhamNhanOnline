@@ -211,7 +211,13 @@ namespace PhamNhanOnline.Client.UI.Skills
                     ":",
                     items[i].SourceMartialArtName ?? string.Empty,
                     ":",
-                    items[i].Description ?? string.Empty);
+                    items[i].Description ?? string.Empty,
+                    ":",
+                    items[i].CanAssignToLoadout ? "1" : "0",
+                    ":",
+                    items[i].LoadoutBlockedReason ?? string.Empty,
+                    ":",
+                    items[i].SourcePlayerItemId.HasValue ? items[i].SourcePlayerItemId.Value.ToString(CultureInfo.InvariantCulture) : "0");
             }
 
             return string.Join("|", parts);

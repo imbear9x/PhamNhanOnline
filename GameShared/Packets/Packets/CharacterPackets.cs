@@ -285,6 +285,15 @@ public partial class GetOwnedSkillsResultPacket : IPacket
     public List<SkillLoadoutSlotModel>? LoadoutSlots { get; set; }
 }
 
+[Packet(99)]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class OwnedSkillsChangedPacket : IPacket
+{
+    public int? MaxLoadoutSlotCount { get; set; }
+    public List<PlayerSkillModel>? Skills { get; set; }
+    public List<SkillLoadoutSlotModel>? LoadoutSlots { get; set; }
+}
+
 [Packet(66)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
@@ -325,6 +334,7 @@ public partial class GetInventoryResultPacket : IPacket
 {
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
+    public int? EquipmentSlotCount { get; set; }
     public List<InventoryItemModel>? Items { get; set; }
 }
 
@@ -350,6 +360,7 @@ public partial class EquipInventoryItemResultPacket : IPacket
 {
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
+    public int? EquipmentSlotCount { get; set; }
     public List<InventoryItemModel>? Items { get; set; }
     public CharacterBaseStatsModel? BaseStats { get; set; }
     public CharacterCurrentStateModel? CurrentState { get; set; }
@@ -372,6 +383,7 @@ public partial class UnequipInventoryItemResultPacket : IPacket
 {
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
+    public int? EquipmentSlotCount { get; set; }
     public List<InventoryItemModel>? Items { get; set; }
     public CharacterBaseStatsModel? BaseStats { get; set; }
     public CharacterCurrentStateModel? CurrentState { get; set; }

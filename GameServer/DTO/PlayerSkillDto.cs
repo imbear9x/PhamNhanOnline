@@ -18,6 +18,9 @@ public sealed record PlayerSkillDto(
     int SourceType,
     int SourceMartialArtId,
     string? SourceMartialArtName,
+    long? SourcePlayerItemId,
     int UnlockStage,
+    bool CanAssignToLoadout,
+    string? LoadoutBlockedReason,
     bool IsEquipped,
     int EquippedSlotIndex);

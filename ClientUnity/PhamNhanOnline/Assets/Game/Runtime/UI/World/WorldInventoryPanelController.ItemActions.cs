@@ -38,37 +38,6 @@ namespace PhamNhanOnline.Client.UI.World
             ApplyPreviewSelectionState(force: true);
         }
 
-        private async void HandleInventoryItemDroppedOnEquipmentSlot(InventoryEquipmentSlot slot, InventoryItemModel item)
-        {
-            if (inventoryActionInFlight || !ClientRuntime.IsInitialized)
-                return;
-
-            if (item.EquipmentSlotType != (int)slot)
-                return;
-
-            inventoryActionInFlight = true;
-            ApplyInventoryStatus(InventoryActionInProgressText, force: true);
-
-            try
-            {
-                var result = await ClientRuntime.InventoryService.EquipItemAsync(item.PlayerItemId, (int)slot);
-                if (!result.Success)
-                    ClientLog.Warn($"WorldInventoryPanelController failed to equip item: {result.Message}");
-
-                previewPlayerItemId = null;
-            }
-            catch (Exception ex)
-            {
-                ClientLog.Warn($"WorldInventoryPanelController equip exception: {ex.Message}");
-            }
-            finally
-            {
-                inventoryActionInFlight = false;
-                HideItemOptionsPopup(force: true);
-                RefreshInventory(force: true);
-            }
-        }
-
         private void ShowItemOptions(InventoryItemModel item)
         {
             var modalUIManager = WorldModalUIManager.Instance;
@@ -412,12 +381,6 @@ namespace PhamNhanOnline.Client.UI.World
 
         private async System.Threading.Tasks.Task UseEquipmentItemAsync(InventoryItemModel item)
         {
-            if (!item.EquipmentSlotType.HasValue)
-            {
-                ApplyInventoryStatus(InventoryUnsupportedUseText, force: true);
-                return;
-            }
-
             if (item.IsEquipped)
             {
                 ApplyInventoryStatus(InventoryAlreadyEquippedText, force: true);

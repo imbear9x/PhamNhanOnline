@@ -21,7 +21,6 @@ public struct InventoryItemModel
     public string? BackgroundIcon;
     public string? Description;
     public int? MartialArtBookMartialArtId;
-    public int? EquipmentSlotType;
     public int? EquipmentType;
     public int? LevelRequirement;
     public bool IsEquipped;

@@ -389,10 +389,22 @@ public sealed class CharacterService
         CharacterCurrentStateDto currentState,
         CancellationToken cancellationToken = default)
     {
-        await using var tx = await _db.BeginTransactionAsync(cancellationToken);
-        var updatedBaseStats = await UpdateCharacterBaseStatsAsync(baseStats, cancellationToken);
-        var updatedCurrentState = await UpdateCharacterCurrentStateAsync(currentState, cancellationToken);
-        await tx.CommitAsync(cancellationToken);
+        CharacterBaseStatsDto updatedBaseStats;
+        CharacterCurrentStateDto updatedCurrentState;
+
+        if (_db.Transaction is not null)
+        {
+            updatedBaseStats = await UpdateCharacterBaseStatsAsync(baseStats, cancellationToken);
+            updatedCurrentState = await UpdateCharacterCurrentStateAsync(currentState, cancellationToken);
+        }
+        else
+        {
+            await using var tx = await _db.BeginTransactionAsync(cancellationToken);
+            updatedBaseStats = await UpdateCharacterBaseStatsAsync(baseStats, cancellationToken);
+            updatedCurrentState = await UpdateCharacterCurrentStateAsync(currentState, cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+        }
+
         return new CharacterSnapshotDto(
             (await LoadCharacterSnapshotAsync(baseStats.CharacterId, cancellationToken))!.Character,
             updatedBaseStats,

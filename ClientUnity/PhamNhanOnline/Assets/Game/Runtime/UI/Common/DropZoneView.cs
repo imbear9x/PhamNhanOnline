@@ -24,7 +24,7 @@ namespace PhamNhanOnline.Client.UI.Common
                 payload.SourceKind == UIDragSourceKind.EquipmentSlot &&
                 payload.HasSourceEquipmentSlot)
             {
-                _ = ClientRuntime.InventoryService.UnequipItemAsync((int)payload.SourceEquipmentSlot);
+                _ = WorldCharacterEquipController.Instance.TryUnequipSlotAsync(payload.SourceEquipmentSlotIndex);
                 return;
             }
 

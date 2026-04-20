@@ -7,6 +7,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
     public sealed class ClientCharacterState
     {
         public event Action<CultivationRewardNotice> CultivationRewardGranted;
+        public event Action SelectedCharacterChanged;
         public event Action<CharacterBaseStatsChangeNotice> BaseStatsChanged;
         public event Action<CharacterCurrentStateChangeNotice> CurrentStateChanged;
         public event Action<CharacterStateTransitionNotice> StateTransitioned;
@@ -50,6 +51,7 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             SelectedCharacter = character;
             BaseStats = baseStats;
             CurrentState = currentState;
+            NotifySelectedCharacterChanged();
             NotifyBaseStatsChanged(previousBaseStats, baseStats);
             NotifyCurrentStateChanged(previousState, currentState);
         }
@@ -94,8 +96,16 @@ namespace PhamNhanOnline.Client.Features.Character.Application
             BaseStats = null;
             CurrentState = null;
             LastCultivationReward = null;
+            NotifySelectedCharacterChanged();
             NotifyBaseStatsChanged(previousBaseStats, null);
             NotifyCurrentStateChanged(previousState, null);
+        }
+
+        private void NotifySelectedCharacterChanged()
+        {
+            var handler = SelectedCharacterChanged;
+            if (handler != null)
+                handler();
         }
 
         private void NotifyBaseStatsChanged(CharacterBaseStatsModel? previousBaseStats, CharacterBaseStatsModel? baseStats)

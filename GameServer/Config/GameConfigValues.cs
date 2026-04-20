@@ -15,6 +15,7 @@ public sealed class GameConfigValues
     public int CultivationPotentialPerCultivationPoint { get; init; } = 1;
     public int CultivationSettlementIntervalSeconds { get; init; } = 300;
     public int CharacterHomeGardenPlotCount { get; init; } = 8;
+    public int CharacterEquipmentSlotCount { get; init; } = 4;
     public int CharacterStarterBasicSkillId { get; init; } = 0;
     public int CharacterStarterBasicSkillSlotIndex { get; init; } = 1;
     public int SkillMaxLoadoutSlotCount { get; init; } = 5;

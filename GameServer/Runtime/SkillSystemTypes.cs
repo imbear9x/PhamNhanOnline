@@ -6,5 +6,6 @@ public enum PlayerSkillSourceType
     MartialArtUnlock = 2,
     ItemUse = 3,
     QuestReward = 4,
-    SystemGrant = 5
+    SystemGrant = 5,
+    EquipmentGrant = 6
 }

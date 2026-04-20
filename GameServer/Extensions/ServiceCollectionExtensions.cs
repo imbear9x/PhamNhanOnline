@@ -82,10 +82,12 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<MartialArtSkillRepository>();
         services.AddScoped<PlayerMartialArtRepository>();
         services.AddScoped<PlayerSkillRepository>();
+        services.AddScoped<PlayerSkillGrantSourceRepository>();
         services.AddScoped<PlayerSkillLoadoutRepository>();
         services.AddScoped<ItemTemplateRepository>();
         services.AddScoped<PlayerItemRepository>();
         services.AddScoped<EquipmentTemplateRepository>();
+        services.AddScoped<EquipmentTemplateSkillGrantRepository>();
         services.AddScoped<EquipmentTemplateStatRepository>();
         services.AddScoped<PlayerEquipmentRepository>();
         services.AddScoped<PlayerEquipmentStatBonusRepository>();
@@ -163,6 +165,7 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<WorldInterestService>();
         services.AddSingleton<CharacterRuntimeCalculator>();
         services.AddSingleton<CharacterRuntimeNotifier>();
+        services.AddSingleton<SkillRuntimeNotifier>();
         services.AddSingleton<CharacterRuntimeService>();
         services.AddSingleton<CharacterCombatDeathRecoveryService>();
         services.AddSingleton<GroundItemRuntimeService>();

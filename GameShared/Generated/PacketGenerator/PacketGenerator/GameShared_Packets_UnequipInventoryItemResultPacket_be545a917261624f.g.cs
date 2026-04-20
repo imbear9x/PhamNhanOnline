@@ -24,7 +24,15 @@ public partial class UnequipInventoryItemResultPacket
         return HasCode;
     }
 
-    public bool HasItems => (_mask & (1UL << 2)) != 0;
+    public bool HasEquipmentSlotCount => (_mask & (1UL << 2)) != 0;
+
+    public bool TryGetEquipmentSlotCount(out int? value)
+    {
+        value = EquipmentSlotCount;
+        return HasEquipmentSlotCount;
+    }
+
+    public bool HasItems => (_mask & (1UL << 3)) != 0;
 
     public bool TryGetItems(out global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>? value)
     {
@@ -32,7 +40,7 @@ public partial class UnequipInventoryItemResultPacket
         return HasItems;
     }
 
-    public bool HasBaseStats => (_mask & (1UL << 3)) != 0;
+    public bool HasBaseStats => (_mask & (1UL << 4)) != 0;
 
     public bool TryGetBaseStats(out global::GameShared.Models.CharacterBaseStatsModel? value)
     {
@@ -40,7 +48,7 @@ public partial class UnequipInventoryItemResultPacket
         return HasBaseStats;
     }
 
-    public bool HasCurrentState => (_mask & (1UL << 4)) != 0;
+    public bool HasCurrentState => (_mask & (1UL << 5)) != 0;
 
     public bool TryGetCurrentState(out global::GameShared.Models.CharacterCurrentStateModel? value)
     {
@@ -54,9 +62,10 @@ public partial class UnequipInventoryItemResultPacket
 
         if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
-        if (!global::System.Collections.Generic.EqualityComparer<global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>?>.Default.Equals(Items, default!)) mask |= 1UL << 2;
-        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterBaseStatsModel?>.Default.Equals(BaseStats, default!)) mask |= 1UL << 3;
-        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterCurrentStateModel?>.Default.Equals(CurrentState, default!)) mask |= 1UL << 4;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(EquipmentSlotCount, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>?>.Default.Equals(Items, default!)) mask |= 1UL << 3;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterBaseStatsModel?>.Default.Equals(BaseStats, default!)) mask |= 1UL << 4;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.CharacterCurrentStateModel?>.Default.Equals(CurrentState, default!)) mask |= 1UL << 5;
 
         writer.Write(mask);
 
@@ -65,10 +74,12 @@ public partial class UnequipInventoryItemResultPacket
         if ((mask & (1UL << 1)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, (int)Code.Value);
         if ((mask & (1UL << 2)) != 0)
-            global::GameShared.Packets.PacketModelSerializer.WriteList(writer, Items);
+            global::GameShared.Packets.PacketWriter.Write(writer, EquipmentSlotCount.Value);
         if ((mask & (1UL << 3)) != 0)
-            global::GameShared.Packets.PacketModelSerializer.Write(writer, BaseStats.Value);
+            global::GameShared.Packets.PacketModelSerializer.WriteList(writer, Items);
         if ((mask & (1UL << 4)) != 0)
+            global::GameShared.Packets.PacketModelSerializer.Write(writer, BaseStats.Value);
+        if ((mask & (1UL << 5)) != 0)
             global::GameShared.Packets.PacketModelSerializer.Write(writer, CurrentState.Value);
     }
 
@@ -81,10 +92,12 @@ public partial class UnequipInventoryItemResultPacket
         if ((_mask & (1UL << 1)) != 0)
             Code = (global::GameShared.Messages.MessageCode?)((global::GameShared.Messages.MessageCode)(global::GameShared.Packets.PacketReader.ReadInt(reader)));
         if ((_mask & (1UL << 2)) != 0)
-            Items = (global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>?)global::GameShared.Packets.PacketModelSerializer.ReadList<global::GameShared.Models.InventoryItemModel>(reader)!;
+            EquipmentSlotCount = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 3)) != 0)
-            BaseStats = (global::GameShared.Models.CharacterBaseStatsModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterBaseStatsModel>(reader));
+            Items = (global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>?)global::GameShared.Packets.PacketModelSerializer.ReadList<global::GameShared.Models.InventoryItemModel>(reader)!;
         if ((_mask & (1UL << 4)) != 0)
+            BaseStats = (global::GameShared.Models.CharacterBaseStatsModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterBaseStatsModel>(reader));
+        if ((_mask & (1UL << 5)) != 0)
             CurrentState = (global::GameShared.Models.CharacterCurrentStateModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.CharacterCurrentStateModel>(reader));
     }
 }

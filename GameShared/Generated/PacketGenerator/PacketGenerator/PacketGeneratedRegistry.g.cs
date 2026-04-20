@@ -302,6 +302,9 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.AcknowledgePlayerNotificationResultPacket:
                 id = 98;
                 return true;
+            case global::GameShared.Packets.OwnedSkillsChangedPacket:
+                id = 99;
+                return true;
             default:
                 id = default;
                 return false;
@@ -410,6 +413,7 @@ internal static class PacketGeneratedRegistry
             96 => new global::GameShared.Packets.PlayerNotificationReceivedPacket(),
             97 => new global::GameShared.Packets.AcknowledgePlayerNotificationPacket(),
             98 => new global::GameShared.Packets.AcknowledgePlayerNotificationResultPacket(),
+            99 => new global::GameShared.Packets.OwnedSkillsChangedPacket(),
             _ => null
         };
     }

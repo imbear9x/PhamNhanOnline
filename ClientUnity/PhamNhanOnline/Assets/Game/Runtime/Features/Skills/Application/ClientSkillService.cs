@@ -23,6 +23,7 @@ namespace PhamNhanOnline.Client.Features.Skills.Application
             this.skillState = skillState;
 
             connection.Packets.Subscribe<GetOwnedSkillsResultPacket>(HandleGetOwnedSkillsResult);
+            connection.Packets.Subscribe<OwnedSkillsChangedPacket>(HandleOwnedSkillsChanged);
             connection.Packets.Subscribe<SetSkillLoadoutSlotResultPacket>(HandleSetSkillLoadoutSlotResult);
             connection.StateChanged += HandleConnectionStateChanged;
         }
@@ -152,6 +153,20 @@ namespace PhamNhanOnline.Client.Features.Skills.Application
                 packet.Success == true
                     ? "Skill loadout updated."
                     : string.Format("Failed to update skill loadout: {0}", packet.Code ?? MessageCode.UnknownError)));
+        }
+
+        private void HandleOwnedSkillsChanged(OwnedSkillsChangedPacket packet)
+        {
+            var skills = packet.Skills != null ? packet.Skills.ToArray() : Array.Empty<PlayerSkillModel>();
+            var loadoutSlots = packet.LoadoutSlots != null ? packet.LoadoutSlots.ToArray() : Array.Empty<SkillLoadoutSlotModel>();
+            var maxLoadoutSlotCount = Math.Max(0, packet.MaxLoadoutSlotCount ?? 0);
+
+            skillState.ApplySnapshot(
+                maxLoadoutSlotCount,
+                skills,
+                loadoutSlots,
+                skillState.LastResultCode ?? MessageCode.None,
+                "Skill state updated.");
         }
 
         private void HandleConnectionStateChanged(ClientConnectionState state)

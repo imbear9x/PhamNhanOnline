@@ -9,11 +9,13 @@ namespace GameServer.Services;
 
 public sealed class ItemUseService
 {
+    private readonly GameDb _db;
     private readonly PlayerItemRepository _playerItems;
     private readonly ItemDefinitionCatalog _itemDefinitions;
     private readonly AlchemyDefinitionCatalog _alchemyDefinitions;
     private readonly ItemService _itemService;
     private readonly EquipmentService _equipmentService;
+    private readonly SkillService _skillService;
     private readonly CharacterFinalStatService _characterFinalStatService;
     private readonly MartialArtService _martialArtService;
     private readonly PillRecipeService _pillRecipeService;
@@ -23,11 +25,13 @@ public sealed class ItemUseService
     private readonly CharacterRuntimeNotifier _notifier;
 
     public ItemUseService(
+        GameDb db,
         PlayerItemRepository playerItems,
         ItemDefinitionCatalog itemDefinitions,
         AlchemyDefinitionCatalog alchemyDefinitions,
         ItemService itemService,
         EquipmentService equipmentService,
+        SkillService skillService,
         CharacterFinalStatService characterFinalStatService,
         MartialArtService martialArtService,
         PillRecipeService pillRecipeService,
@@ -36,11 +40,13 @@ public sealed class ItemUseService
         CharacterCultivationService cultivationService,
         CharacterRuntimeNotifier notifier)
     {
+        _db = db;
         _playerItems = playerItems;
         _itemDefinitions = itemDefinitions;
         _alchemyDefinitions = alchemyDefinitions;
         _itemService = itemService;
         _equipmentService = equipmentService;
+        _skillService = skillService;
         _characterFinalStatService = characterFinalStatService;
         _martialArtService = martialArtService;
         _pillRecipeService = pillRecipeService;
@@ -96,14 +102,32 @@ public sealed class ItemUseService
         var equipmentDefinition = itemDefinition.Equipment
             ?? throw new GameException(MessageCode.InventoryItemInvalid);
 
-        await _equipmentService.EquipItemAsync(
+        var firstAvailableSlotIndex = await _equipmentService.GetFirstAvailableSlotIndexAsync(
             player.CharacterData.CharacterId,
-            playerItemId,
-            equipmentDefinition.SlotType,
             cancellationToken);
+        if (!firstAvailableSlotIndex.HasValue)
+            throw new GameException(MessageCode.EquipmentSlotInvalid);
 
-        var runtimeSnapshot = await _characterFinalStatService.ApplyAuthoritativeFinalStatsAsync(player, cancellationToken);
-        var items = await _itemService.GetInventoryAsync(player.CharacterData.CharacterId, cancellationToken);
+        OwnedSkillsSnapshotDto? changedSkillSnapshot = null;
+        CharacterRuntimeSnapshot runtimeSnapshot;
+        IReadOnlyList<InventoryItemView> items;
+        await using (var tx = await _db.BeginTransactionAsync(cancellationToken))
+        {
+            await _equipmentService.EquipItemAsync(
+                player.CharacterData.CharacterId,
+                playerItemId,
+                firstAvailableSlotIndex.Value,
+                cancellationToken);
+
+            var skillSync = await _skillService.SyncEquipmentGrantedSkillsAsync(player.CharacterData.CharacterId, cancellationToken);
+            if (skillSync.Changed)
+                changedSkillSnapshot = skillSync.Snapshot;
+
+            runtimeSnapshot = await _characterFinalStatService.ApplyAuthoritativeFinalStatsAsync(player, cancellationToken);
+            items = await _itemService.GetInventoryAsync(player.CharacterData.CharacterId, cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+        }
+
         return new UseItemExecutionResult(
             items,
             runtimeSnapshot.BaseStats,
@@ -112,6 +136,7 @@ public sealed class ItemUseService
             null,
             quantity,
             1,
+            changedSkillSnapshot,
             null,
             null);
     }
@@ -143,6 +168,7 @@ public sealed class ItemUseService
             quantity,
             1,
             null,
+            null,
             null);
     }
 
@@ -164,6 +190,7 @@ public sealed class ItemUseService
             null,
             quantity,
             1,
+            null,
             null,
             null);
     }
@@ -228,6 +255,7 @@ public sealed class ItemUseService
             null,
             quantity,
             quantity,
+            null,
             cooldownMs > 0 ? cooldownMs : null,
             cooldownEndsAtUtc);
     }
@@ -280,5 +308,6 @@ public readonly record struct UseItemExecutionResult(
     CultivationPreviewDto? CultivationPreview,
     int RequestedQuantity,
     int AppliedQuantity,
+    OwnedSkillsSnapshotDto? ChangedSkillSnapshot,
     int? CooldownMs,
     DateTime? CooldownEndsAtUtc);

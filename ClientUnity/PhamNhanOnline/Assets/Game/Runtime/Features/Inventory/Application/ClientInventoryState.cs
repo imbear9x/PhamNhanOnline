@@ -13,6 +13,7 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
         public MessageCode? LastResultCode { get; private set; }
         public string LastStatusMessage { get; private set; } = string.Empty;
         public DateTime? LastLoadedAtUtc { get; private set; }
+        public int EquipmentSlotCount { get; private set; }
         public InventoryItemModel[] Items { get; private set; } = Array.Empty<InventoryItemModel>();
 
         public void BeginLoading()
@@ -24,13 +25,14 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
             NotifyChanged();
         }
 
-        public void ApplyInventory(InventoryItemModel[] items, MessageCode? code, string statusMessage)
+        public void ApplyInventory(InventoryItemModel[] items, int equipmentSlotCount, MessageCode? code, string statusMessage)
         {
             HasLoadedInventory = true;
             IsLoading = false;
             LastResultCode = code;
             LastStatusMessage = statusMessage ?? string.Empty;
             LastLoadedAtUtc = DateTime.UtcNow;
+            EquipmentSlotCount = Math.Max(0, equipmentSlotCount);
             Items = items ?? Array.Empty<InventoryItemModel>();
             NotifyChanged();
         }
@@ -65,6 +67,7 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
             LastResultCode = null;
             LastStatusMessage = string.Empty;
             LastLoadedAtUtc = null;
+            EquipmentSlotCount = 0;
             Items = Array.Empty<InventoryItemModel>();
             NotifyChanged();
         }

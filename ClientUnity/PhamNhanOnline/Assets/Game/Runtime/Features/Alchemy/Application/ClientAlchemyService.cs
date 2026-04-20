@@ -342,6 +342,7 @@ namespace PhamNhanOnline.Client.Features.Alchemy.Application
             {
                 inventoryState.ApplyInventory(
                     inventoryItems,
+                    inventoryState.EquipmentSlotCount,
                     packet.Code,
                     packet.Success == true ? "Inventory updated after starting alchemy." : "Inventory refreshed after alchemy attempt.");
             }

@@ -34,6 +34,7 @@ namespace PhamNhanOnline.Client.UI.Skills
         private CanvasGroup canvasGroup;
         private SkillDragGhost dragGhost;
         private Sprite currentIconSprite;
+        private bool canAssignToLoadout;
 
         public event Action<SkillListItemView> Clicked;
         public event Action<SkillListItemView> Hovered;
@@ -53,6 +54,7 @@ namespace PhamNhanOnline.Client.UI.Skills
         {
             hasItem = true;
             item = value;
+            canAssignToLoadout = value.CanAssignToLoadout;
             ApplyPresentation(presentation);
 
             if (nameText != null)
@@ -81,6 +83,9 @@ namespace PhamNhanOnline.Client.UI.Skills
 
             if (force)
                 SetSelected(isSelected, force: true);
+
+            if (canvasGroup != null)
+                canvasGroup.alpha = canAssignToLoadout ? 1f : 0.72f;
         }
 
         public void Clear(bool force = false)
@@ -88,6 +93,7 @@ namespace PhamNhanOnline.Client.UI.Skills
             hasItem = false;
             item = default(PlayerSkillModel);
             currentIconSprite = null;
+            canAssignToLoadout = false;
 
             if (iconImage != null)
             {
@@ -104,6 +110,9 @@ namespace PhamNhanOnline.Client.UI.Skills
 
             ResetDragVisuals();
             SetSelected(false, force);
+
+            if (canvasGroup != null)
+                canvasGroup.alpha = 1f;
         }
 
         public void SetSelected(bool selected, bool force = false)
@@ -141,6 +150,9 @@ namespace PhamNhanOnline.Client.UI.Skills
             if (!hasItem)
                 return;
 
+            if (!canAssignToLoadout)
+                return;
+
             var handler = Clicked;
             if (handler != null)
                 handler(this);
@@ -148,7 +160,7 @@ namespace PhamNhanOnline.Client.UI.Skills
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (!hasItem)
+            if (!hasItem || !canAssignToLoadout)
                 return;
 
             canvasGroup.blocksRaycasts = false;
@@ -169,7 +181,7 @@ namespace PhamNhanOnline.Client.UI.Skills
 
         public bool TryCreateDragPayload(out UIDragPayload payload)
         {
-            if (!hasItem)
+            if (!hasItem || !canAssignToLoadout)
             {
                 payload = default;
                 return false;

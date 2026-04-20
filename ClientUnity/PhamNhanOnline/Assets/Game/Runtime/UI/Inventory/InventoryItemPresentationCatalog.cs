@@ -162,19 +162,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             if (!equippedSlot.HasValue)
                 return string.Empty;
 
-            switch ((InventoryEquipmentSlot)equippedSlot.Value)
-            {
-                case InventoryEquipmentSlot.Weapon:
-                    return "Vu khi";
-                case InventoryEquipmentSlot.Armor:
-                    return "Ao";
-                case InventoryEquipmentSlot.Pants:
-                    return "Quan";
-                case InventoryEquipmentSlot.Shoes:
-                    return "Giay";
-                default:
-                    return string.Empty;
-            }
+            return string.Format(System.Globalization.CultureInfo.InvariantCulture, "O {0}", equippedSlot.Value);
         }
 
         private Sprite ResolveIcon(InventoryItemModel item)

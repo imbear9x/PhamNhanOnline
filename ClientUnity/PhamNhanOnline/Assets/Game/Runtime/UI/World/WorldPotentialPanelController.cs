@@ -7,7 +7,6 @@ using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Character.Application;
-using PhamNhanOnline.Client.UI.Inventory;
 using PhamNhanOnline.Client.UI.Potential;
 using TMPro;
 using UnityEngine;
@@ -17,8 +16,6 @@ namespace PhamNhanOnline.Client.UI.World
 {
     public sealed class WorldPotentialPanelController : MonoBehaviour, IPointerClickHandler
     {
-        private const string MissingCharacterName = "Chua co nhan vat";
-
         private static readonly PotentialAllocationTarget[] SupportedTargets =
         {
             PotentialAllocationTarget.BaseHp,
@@ -28,10 +25,6 @@ namespace PhamNhanOnline.Client.UI.World
             PotentialAllocationTarget.BaseLuck,
             PotentialAllocationTarget.BaseSense
         };
-
-        [Header("Character Summary")]
-        [SerializeField] private CharacterSummaryView characterSummaryView;
-
         [Header("Header")]
         [SerializeField] private TMP_Text statusText;
 
@@ -41,11 +34,6 @@ namespace PhamNhanOnline.Client.UI.World
 
         [Header("Behavior")]
         [SerializeField] private int maxVisibleUpgradeOptions = 3;
-
-        [Header("Display Text")]
-        [SerializeField] private string missingRealmName = "Chua co canh gioi";
-        [SerializeField] private string missingCultivationText = "0/0";
-        [SerializeField] private string missingUnallocatedPotentialText = "0";
 
         private bool actionInFlight;
         private bool runtimeEventsBound;
@@ -95,22 +83,19 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
             }
 
-            var selectedCharacter = ClientRuntime.Character.SelectedCharacter;
-            var currentState = ClientRuntime.Character.CurrentState;
             var baseStats = ClientRuntime.Character.BaseStats;
             if (!baseStats.HasValue)
             {
-                ApplyMissingState(selectedCharacter, currentState, force);
+                ApplyMissingState(force);
                 return;
             }
 
             var stats = baseStats.Value;
-            var snapshot = BuildSnapshot(selectedCharacter, currentState, stats);
+            var snapshot = BuildSnapshot(stats);
             if (!force && string.Equals(lastSnapshot, snapshot, StringComparison.Ordinal))
                 return;
 
             lastSnapshot = snapshot;
-            ApplyCharacterSummary(selectedCharacter, currentState, stats, force: true);
             ApplyText(statusText, lastStatusMessage, force: true);
 
             if (rowListView != null)
@@ -121,12 +106,8 @@ namespace PhamNhanOnline.Client.UI.World
                 ShowOptionsForRow(popupRow, stats);
         }
 
-        private void ApplyMissingState(
-            CharacterModel? selectedCharacter = null,
-            CharacterCurrentStateModel? currentState = null,
-            bool force = false)
+        private void ApplyMissingState(bool force = false)
         {
-            ApplyCharacterSummary(selectedCharacter, currentState, stats: null, force: force);
             ApplyText(statusText, lastStatusMessage, force);
 
             if (rowListView != null)
@@ -141,7 +122,6 @@ namespace PhamNhanOnline.Client.UI.World
                 return false;
 
             ClientRuntime.Character.BaseStatsChanged += HandleCharacterBaseStatsChanged;
-            ClientRuntime.Character.CurrentStateChanged += HandleCharacterCurrentStateChanged;
             runtimeEventsBound = true;
             return true;
         }
@@ -154,7 +134,6 @@ namespace PhamNhanOnline.Client.UI.World
             if (ClientRuntime.IsInitialized)
             {
                 ClientRuntime.Character.BaseStatsChanged -= HandleCharacterBaseStatsChanged;
-                ClientRuntime.Character.CurrentStateChanged -= HandleCharacterCurrentStateChanged;
             }
 
             runtimeEventsBound = false;
@@ -163,14 +142,6 @@ namespace PhamNhanOnline.Client.UI.World
         private void HandleCharacterBaseStatsChanged(CharacterBaseStatsChangeNotice notice)
         {
             if (!isActiveAndEnabled)
-                return;
-
-            RefreshPanel(force: true);
-        }
-
-        private void HandleCharacterCurrentStateChanged(CharacterCurrentStateChangeNotice notice)
-        {
-            if (!isActiveAndEnabled || !DidSummaryCurrentStateChange(notice))
                 return;
 
             RefreshPanel(force: true);
@@ -366,83 +337,6 @@ namespace PhamNhanOnline.Client.UI.World
                     "0.##");
         }
 
-        private void ApplyCharacterSummary(
-            CharacterModel? selectedCharacter,
-            CharacterCurrentStateModel? currentState,
-            CharacterBaseStatsModel? stats,
-            bool force)
-        {
-            if (characterSummaryView == null)
-                return;
-
-            var displayName = selectedCharacter.HasValue
-                ? ResolveCharacterName(selectedCharacter.Value.Name)
-                : MissingCharacterName;
-
-            characterSummaryView.SetCharacterName(displayName, force);
-            characterSummaryView.SetLifespanEndUnixMs(currentState.HasValue ? currentState.Value.LifespanEndUnixMs : null, force);
-
-            if (!stats.HasValue)
-            {
-                characterSummaryView.SetStats("-", "-", "-", "-", "-", "-", force);
-                characterSummaryView.SetRealmProgress(
-                    missingRealmName,
-                    missingCultivationText,
-                    missingUnallocatedPotentialText,
-                    0f,
-                    force);
-                return;
-            }
-
-            var value = stats.Value;
-            characterSummaryView.SetStats(
-                value.FinalHp.ToString(CultureInfo.InvariantCulture),
-                value.FinalMp.ToString(CultureInfo.InvariantCulture),
-                value.FinalAttack.ToString(CultureInfo.InvariantCulture),
-                value.FinalSpeed.ToString(CultureInfo.InvariantCulture),
-                value.FinalLuck.ToString("0.##", CultureInfo.InvariantCulture),
-                value.FinalSense.ToString(CultureInfo.InvariantCulture),
-                force);
-            characterSummaryView.SetRealmProgress(
-                ResolveRealmDisplayName(value),
-                BuildCultivationProgress(value),
-                value.UnallocatedPotential.ToString(CultureInfo.InvariantCulture),
-                ResolveCultivationFillAmount(value),
-                force);
-        }
-
-        private static string ResolveCharacterName(string rawName)
-        {
-            return string.IsNullOrWhiteSpace(rawName) ? "-" : rawName.Trim();
-        }
-
-        private static string ResolveRealmDisplayName(CharacterBaseStatsModel stats)
-        {
-            if (!string.IsNullOrWhiteSpace(stats.RealmDisplayName))
-                return stats.RealmDisplayName.Trim();
-
-            return stats.RealmTemplateId > 0
-                ? string.Format(CultureInfo.InvariantCulture, "Canh gioi {0}", stats.RealmTemplateId)
-                : "Chua co canh gioi";
-        }
-
-        private static string BuildCultivationProgress(CharacterBaseStatsModel stats)
-        {
-            var maxCultivation = Math.Max(0L, stats.RealmMaxCultivation);
-            var currentCultivation = Math.Max(0L, stats.Cultivation);
-            return string.Format(CultureInfo.InvariantCulture, "{0}/{1}", currentCultivation, maxCultivation);
-        }
-
-        private static float ResolveCultivationFillAmount(CharacterBaseStatsModel stats)
-        {
-            var maxCultivation = Math.Max(0L, stats.RealmMaxCultivation);
-            if (maxCultivation <= 0L)
-                return 0f;
-
-            var currentCultivation = Math.Max(0L, stats.Cultivation);
-            return Mathf.Clamp01((float)currentCultivation / maxCultivation);
-        }
-
         private static PotentialUpgradePreviewModel? GetPreview(CharacterBaseStatsModel stats, PotentialAllocationTarget target)
         {
             var previews = stats.PotentialUpgradePreviews;
@@ -515,29 +409,10 @@ namespace PhamNhanOnline.Client.UI.World
             };
         }
 
-        private static bool DidSummaryCurrentStateChange(CharacterCurrentStateChangeNotice notice)
-        {
-            if (notice.PreviousState.HasValue != notice.CurrentState.HasValue)
-                return true;
-
-            if (!notice.PreviousState.HasValue || !notice.CurrentState.HasValue)
-                return false;
-
-            return notice.PreviousState.Value.LifespanEndUnixMs != notice.CurrentState.Value.LifespanEndUnixMs;
-        }
-
-        private static string BuildSnapshot(
-            CharacterModel? selectedCharacter,
-            CharacterCurrentStateModel? currentState,
-            CharacterBaseStatsModel stats)
+        private static string BuildSnapshot(CharacterBaseStatsModel stats)
         {
             return string.Join(
                 "|",
-                selectedCharacter.HasValue ? selectedCharacter.Value.Name ?? string.Empty : string.Empty,
-                currentState.HasValue && currentState.Value.LifespanEndUnixMs.HasValue
-                    ? currentState.Value.LifespanEndUnixMs.Value.ToString(CultureInfo.InvariantCulture)
-                    : string.Empty,
-                ResolveRealmDisplayName(stats),
                 stats.RealmMaxCultivation.ToString(CultureInfo.InvariantCulture),
                 stats.Cultivation.ToString(CultureInfo.InvariantCulture),
                 stats.UnallocatedPotential.ToString(CultureInfo.InvariantCulture),

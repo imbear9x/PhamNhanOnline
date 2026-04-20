@@ -10,6 +10,7 @@ public sealed class PlayerSkillEntity
     [Column("skill_id"), NotNull] public int SkillId { get; set; }
     [Column("skill_group_code"), NotNull] public string SkillGroupCode { get; set; } = string.Empty;
     [Column("source_type"), NotNull] public int SourceType { get; set; }
+    [Column("source_player_item_id")] public long? SourcePlayerItemId { get; set; }
     [Column("source_martial_art_id")] public int? SourceMartialArtId { get; set; }
     [Column("source_martial_art_skill_id")] public int? SourceMartialArtSkillId { get; set; }
     [Column("unlocked_at")] public DateTime? UnlockedAt { get; set; }

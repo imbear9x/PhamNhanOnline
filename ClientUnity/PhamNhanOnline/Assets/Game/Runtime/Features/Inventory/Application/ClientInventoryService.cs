@@ -182,6 +182,7 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
             {
                 inventoryState.ApplyInventory(
                     items,
+                    packet.EquipmentSlotCount ?? inventoryState.EquipmentSlotCount,
                     packet.Code ?? MessageCode.None,
                     string.Format("Loaded {0} inventory item(s).", items.Length));
             }
@@ -207,6 +208,7 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
             CompletePending(ref equipCompletionSource, ApplyInventoryActionResult(
                 packet.Success == true,
                 packet.Code,
+                packet.EquipmentSlotCount,
                 packet.Items,
                 packet.BaseStats,
                 packet.CurrentState,
@@ -219,6 +221,7 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
             CompletePending(ref unequipCompletionSource, ApplyInventoryActionResult(
                 packet.Success == true,
                 packet.Code,
+                packet.EquipmentSlotCount,
                 packet.Items,
                 packet.BaseStats,
                 packet.CurrentState,
@@ -231,6 +234,7 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
             CompletePending(ref useItemCompletionSource, ApplyInventoryActionResult(
                 packet.Success == true,
                 packet.Code,
+                inventoryState.EquipmentSlotCount,
                 packet.Items,
                 packet.BaseStats,
                 packet.CurrentState,
@@ -364,6 +368,7 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
         private InventoryActionResult ApplyInventoryActionResult(
             bool success,
             MessageCode? code,
+            int? equipmentSlotCount,
             System.Collections.Generic.List<InventoryItemModel> items,
             CharacterBaseStatsModel? baseStats,
             CharacterCurrentStateModel? currentState,
@@ -375,6 +380,7 @@ namespace PhamNhanOnline.Client.Features.Inventory.Application
             {
                 inventoryState.ApplyInventory(
                     resolvedItems,
+                    equipmentSlotCount ?? inventoryState.EquipmentSlotCount,
                     code ?? MessageCode.None,
                     string.Format("Loaded {0} inventory item(s).", resolvedItems.Length));
             }

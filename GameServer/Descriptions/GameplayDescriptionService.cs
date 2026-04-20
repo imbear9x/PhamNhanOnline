@@ -176,8 +176,6 @@ public sealed class GameplayDescriptionService
 
         if (definition.Equipment is not null)
         {
-            context.Set("equipment.slot_type", definition.Equipment.SlotType.ToString());
-            context.Set("equipment.slot_type_label", GetEquipmentSlotLabel(definition.Equipment.SlotType));
             context.Set("equipment.equipment_type", definition.Equipment.EquipmentType.ToString());
             context.Set("equipment.equipment_type_label", GetEquipmentTypeLabel(definition.Equipment.EquipmentType));
             context.Set("equipment.level_requirement", definition.Equipment.LevelRequirement);
@@ -234,9 +232,8 @@ public sealed class GameplayDescriptionService
         {
             string.Format(
                 CultureInfo.InvariantCulture,
-                "Trang bi {0} ({1}).",
-                GetEquipmentTypeLabel(definition.Equipment.EquipmentType),
-                GetEquipmentSlotLabel(definition.Equipment.SlotType))
+                "Trang bi {0}.",
+                GetEquipmentTypeLabel(definition.Equipment.EquipmentType))
         };
 
         if (definition.Equipment.BaseStats.Count > 0)
@@ -753,18 +750,6 @@ public sealed class GameplayDescriptionService
             3 => "Hiem",
             4 => "Su thi",
             5 => "Truyen thuyet",
-            _ => "Khong ro"
-        };
-    }
-
-    private static string GetEquipmentSlotLabel(EquipmentSlot slot)
-    {
-        return slot switch
-        {
-            EquipmentSlot.Weapon => "Vu khi",
-            EquipmentSlot.Armor => "Ao",
-            EquipmentSlot.Pants => "Quan",
-            EquipmentSlot.Shoes => "Giay",
             _ => "Khong ro"
         };
     }

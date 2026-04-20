@@ -1,5 +1,4 @@
 using GameShared.Models;
-using PhamNhanOnline.Client.UI.Inventory;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -45,7 +44,7 @@ namespace PhamNhanOnline.Client.UI.Common
             bool hasSkill,
             PlayerMartialArtModel martialArt,
             bool hasMartialArt,
-            InventoryEquipmentSlot sourceEquipmentSlot,
+            int sourceEquipmentSlotIndex,
             bool hasSourceEquipmentSlot,
             int sourceIndex,
             bool hasSourceIndex)
@@ -60,7 +59,7 @@ namespace PhamNhanOnline.Client.UI.Common
             HasSkill = hasSkill;
             MartialArt = martialArt;
             HasMartialArt = hasMartialArt;
-            SourceEquipmentSlot = sourceEquipmentSlot;
+            SourceEquipmentSlotIndex = sourceEquipmentSlotIndex;
             HasSourceEquipmentSlot = hasSourceEquipmentSlot;
             SourceIndex = sourceIndex;
             HasSourceIndex = hasSourceIndex;
@@ -76,7 +75,7 @@ namespace PhamNhanOnline.Client.UI.Common
         public bool HasSkill { get; }
         public PlayerMartialArtModel MartialArt { get; }
         public bool HasMartialArt { get; }
-        public InventoryEquipmentSlot SourceEquipmentSlot { get; }
+        public int SourceEquipmentSlotIndex { get; }
         public bool HasSourceEquipmentSlot { get; }
         public int SourceIndex { get; }
         public bool HasSourceIndex { get; }
@@ -84,7 +83,7 @@ namespace PhamNhanOnline.Client.UI.Common
         public static UIDragPayload FromInventoryItem(
             InventoryItemModel inventoryItem,
             UIDragSourceKind sourceKind,
-            InventoryEquipmentSlot? sourceEquipmentSlot = null)
+            int? sourceEquipmentSlotIndex = null)
         {
             return new UIDragPayload(
                 UIDragPayloadKind.InventoryItem,
@@ -97,8 +96,8 @@ namespace PhamNhanOnline.Client.UI.Common
                 hasSkill: false,
                 default,
                 hasMartialArt: false,
-                sourceEquipmentSlot ?? InventoryEquipmentSlot.None,
-                sourceEquipmentSlot.HasValue,
+                sourceEquipmentSlotIndex ?? 0,
+                sourceEquipmentSlotIndex.HasValue,
                 0,
                 hasSourceIndex: false);
         }
@@ -116,7 +115,7 @@ namespace PhamNhanOnline.Client.UI.Common
                 hasSkill: false,
                 default,
                 hasMartialArt: false,
-                InventoryEquipmentSlot.None,
+                0,
                 hasSourceEquipmentSlot: false,
                 0,
                 hasSourceIndex: false);
@@ -135,7 +134,7 @@ namespace PhamNhanOnline.Client.UI.Common
                 hasSkill: true,
                 default,
                 hasMartialArt: false,
-                InventoryEquipmentSlot.None,
+                0,
                 hasSourceEquipmentSlot: false,
                 sourceIndex ?? 0,
                 sourceIndex.HasValue);
@@ -154,7 +153,7 @@ namespace PhamNhanOnline.Client.UI.Common
                 hasSkill: false,
                 martialArt,
                 hasMartialArt: true,
-                InventoryEquipmentSlot.None,
+                0,
                 hasSourceEquipmentSlot: false,
                 0,
                 hasSourceIndex: false);

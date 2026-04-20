@@ -124,6 +124,7 @@ public static partial class ServiceCollectionExtensions
             CultivationPotentialPerCultivationPoint = GetInt(configsByKey, GameConfigKeys.CultivationPotentialPerCultivationPoint, 1),
             CultivationSettlementIntervalSeconds = GetInt(configsByKey, GameConfigKeys.CultivationSettlementIntervalSeconds, 300),
             CharacterHomeGardenPlotCount = GetInt(configsByKey, GameConfigKeys.CharacterHomeGardenPlotCount, 8),
+            CharacterEquipmentSlotCount = GetInt(configsByKey, GameConfigKeys.CharacterEquipmentSlotCount, 4),
             CharacterStarterBasicSkillId = GetInt(configsByKey, GameConfigKeys.CharacterStarterBasicSkillId, 0),
             CharacterStarterBasicSkillSlotIndex = GetInt(configsByKey, GameConfigKeys.CharacterStarterBasicSkillSlotIndex, 1),
             SkillMaxLoadoutSlotCount = GetInt(configsByKey, GameConfigKeys.SkillMaxLoadoutSlotCount, 5)

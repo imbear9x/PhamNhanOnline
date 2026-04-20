@@ -403,7 +403,7 @@ public sealed class ItemService
                     item.AcquiredAt,
                     item.ExpireAt,
                     equipment?.EquippedSlot.HasValue == true,
-                    equipment?.EquippedSlot.HasValue == true ? (EquipmentSlot?)equipment.EquippedSlot.Value : null,
+                    equipment?.EquippedSlot,
                     equipment?.EnhanceLevel ?? 0,
                     equipment?.Durability);
             })

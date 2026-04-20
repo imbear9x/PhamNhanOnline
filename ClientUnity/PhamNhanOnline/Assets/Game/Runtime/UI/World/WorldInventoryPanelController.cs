@@ -27,7 +27,6 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private RectTransform inventoryPanelBounds;
         [SerializeField] private TMP_Text inventoryStatusText;
         [SerializeField] private InventoryItemGridView inventoryGridView;
-        [SerializeField] private EquipmentSlotsPanelView equipmentSlotsView;
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
 
         [Header("Inventory Option Labels")]
@@ -47,12 +46,6 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (inventoryGridView != null)
                 inventoryGridView.ItemClicked += HandleInventoryItemClicked;
-
-            if (equipmentSlotsView != null)
-            {
-                equipmentSlotsView.ItemClicked += HandleInventoryItemClicked;
-                equipmentSlotsView.InventoryItemDroppedOnSlot += HandleInventoryItemDroppedOnEquipmentSlot;
-            }
 
             if (inventoryPanelBounds == null)
                 inventoryPanelBounds = transform as RectTransform;
@@ -87,12 +80,6 @@ namespace PhamNhanOnline.Client.UI.World
             if (inventoryGridView != null)
                 inventoryGridView.ItemClicked -= HandleInventoryItemClicked;
 
-            if (equipmentSlotsView != null)
-            {
-                equipmentSlotsView.ItemClicked -= HandleInventoryItemClicked;
-                equipmentSlotsView.InventoryItemDroppedOnSlot -= HandleInventoryItemDroppedOnEquipmentSlot;
-            }
-
         }
 
         private void RefreshInventory(bool force)
@@ -106,9 +93,8 @@ namespace PhamNhanOnline.Client.UI.World
 
             var inventoryState = ClientRuntime.Inventory;
             var allItems = SortInventoryItems(inventoryState.Items);
-            var equippedItems = allItems.Where(x => x.IsEquipped).OrderBy(x => x.EquippedSlot ?? int.MaxValue).ThenBy(x => x.Name ?? string.Empty, StringComparer.OrdinalIgnoreCase).ToList();
             var bagItems = allItems.Where(x => !x.IsEquipped).ToList();
-            var status = ResolveInventoryStatus(inventoryState, bagItems.Count, equippedItems.Count);
+            var status = ResolveInventoryStatus(inventoryState, bagItems.Count);
             var snapshot = BuildInventorySnapshot(inventoryState, allItems, inventoryActionInFlight);
             var modalUIManager = WorldModalUIManager.Instance;
             if (popupPlayerItemId.HasValue &&
@@ -142,9 +128,6 @@ namespace PhamNhanOnline.Client.UI.World
                 inventoryGridView.SetSelectedItem(previewPlayerItemId, force: true);
             }
 
-            if (equipmentSlotsView != null)
-                equipmentSlotsView.SetItems(equippedItems, itemPresentationCatalog, previewPlayerItemId, force: true);
-
             if (popupPlayerItemId.HasValue && !TryFindInventoryItemById(allItems, popupPlayerItemId, out _))
                 HideItemOptionsPopup(force: true);
 
@@ -154,16 +137,6 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (inventoryGridView != null)
                 inventoryGridView.SetSelectedItem(previewPlayerItemId, force);
-
-            if (equipmentSlotsView == null || !ClientRuntime.IsInitialized)
-                return;
-
-            var equippedItems = SortInventoryItems(ClientRuntime.Inventory.Items)
-                .Where(x => x.IsEquipped)
-                .OrderBy(x => x.EquippedSlot ?? int.MaxValue)
-                .ThenBy(x => x.Name ?? string.Empty, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            equipmentSlotsView.SetItems(equippedItems, itemPresentationCatalog, previewPlayerItemId, force);
         }
 
     }

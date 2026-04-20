@@ -24,7 +24,15 @@ public partial class GetInventoryResultPacket
         return HasCode;
     }
 
-    public bool HasItems => (_mask & (1UL << 2)) != 0;
+    public bool HasEquipmentSlotCount => (_mask & (1UL << 2)) != 0;
+
+    public bool TryGetEquipmentSlotCount(out int? value)
+    {
+        value = EquipmentSlotCount;
+        return HasEquipmentSlotCount;
+    }
+
+    public bool HasItems => (_mask & (1UL << 3)) != 0;
 
     public bool TryGetItems(out global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>? value)
     {
@@ -38,7 +46,8 @@ public partial class GetInventoryResultPacket
 
         if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
-        if (!global::System.Collections.Generic.EqualityComparer<global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>?>.Default.Equals(Items, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(EquipmentSlotCount, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>?>.Default.Equals(Items, default!)) mask |= 1UL << 3;
 
         writer.Write(mask);
 
@@ -47,6 +56,8 @@ public partial class GetInventoryResultPacket
         if ((mask & (1UL << 1)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, (int)Code.Value);
         if ((mask & (1UL << 2)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, EquipmentSlotCount.Value);
+        if ((mask & (1UL << 3)) != 0)
             global::GameShared.Packets.PacketModelSerializer.WriteList(writer, Items);
     }
 
@@ -59,6 +70,8 @@ public partial class GetInventoryResultPacket
         if ((_mask & (1UL << 1)) != 0)
             Code = (global::GameShared.Messages.MessageCode?)((global::GameShared.Messages.MessageCode)(global::GameShared.Packets.PacketReader.ReadInt(reader)));
         if ((_mask & (1UL << 2)) != 0)
+            EquipmentSlotCount = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
+        if ((_mask & (1UL << 3)) != 0)
             Items = (global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>?)global::GameShared.Packets.PacketModelSerializer.ReadList<global::GameShared.Models.InventoryItemModel>(reader)!;
     }
 }

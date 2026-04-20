@@ -2,7 +2,6 @@
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.UI.Common;
-using PhamNhanOnline.Client.UI.Inventory;
 using PhamNhanOnline.Client.UI.MartialArts;
 using TMPro;
 using UnityEngine;
@@ -27,7 +26,6 @@ namespace PhamNhanOnline.Client.UI.World
         }
 
         [Header("References")]
-        [SerializeField] private CharacterSummaryView characterSummaryView;
         [SerializeField] private TMP_Text statusText;
         [SerializeField] private MartialArtPresentationCatalog presentationCatalog;
         [SerializeField] private ActiveMartialArtSlotView activeMartialArtSlotView;

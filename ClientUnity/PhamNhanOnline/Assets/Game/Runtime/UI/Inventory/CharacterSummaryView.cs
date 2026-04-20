@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using GameShared.Models;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -9,6 +10,11 @@ namespace PhamNhanOnline.Client.UI.Inventory
 {
     public sealed class CharacterSummaryView : MonoBehaviour
     {
+        private const string MissingCharacterName = "Chua co nhan vat";
+        private const string MissingRealmName = "Chua co canh gioi";
+        private const string MissingCultivationText = "0/0";
+        private const string MissingUnallocatedPotentialText = "0";
+
         [Header("References")]
         [Tooltip("Optional. Leave empty when this panel does not show the character name.")]
         [SerializeField] private TMP_Text characterNameText;
@@ -142,6 +148,48 @@ namespace PhamNhanOnline.Client.UI.Inventory
             SetLifespanEndUnixMs(null, force: true);
         }
 
+        public void ApplyCharacterState(
+            CharacterModel? selectedCharacter,
+            CharacterCurrentStateModel? currentState,
+            CharacterBaseStatsModel? baseStats,
+            bool force = false)
+        {
+            var displayName = selectedCharacter.HasValue
+                ? ResolveCharacterName(selectedCharacter.Value.Name)
+                : MissingCharacterName;
+
+            SetCharacterName(displayName, force);
+            SetLifespanEndUnixMs(currentState.HasValue ? currentState.Value.LifespanEndUnixMs : null, force);
+
+            if (!baseStats.HasValue)
+            {
+                SetStats("-", "-", "-", "-", "-", "-", force);
+                SetRealmProgress(
+                    MissingRealmName,
+                    MissingCultivationText,
+                    MissingUnallocatedPotentialText,
+                    0f,
+                    force);
+                return;
+            }
+
+            var value = baseStats.Value;
+            SetStats(
+                value.FinalHp.ToString(CultureInfo.InvariantCulture),
+                value.FinalMp.ToString(CultureInfo.InvariantCulture),
+                value.FinalAttack.ToString(CultureInfo.InvariantCulture),
+                value.FinalSpeed.ToString(CultureInfo.InvariantCulture),
+                value.FinalLuck.ToString("0.##", CultureInfo.InvariantCulture),
+                value.FinalSense.ToString(CultureInfo.InvariantCulture),
+                force);
+            SetRealmProgress(
+                ResolveRealmDisplayName(value),
+                BuildCultivationProgress(value),
+                value.UnallocatedPotential.ToString(CultureInfo.InvariantCulture),
+                ResolveCultivationFillAmount(value),
+                force);
+        }
+
         private void OnEnable()
         {
             nextLifespanRefreshAtUnscaled = 0f;
@@ -162,6 +210,38 @@ namespace PhamNhanOnline.Client.UI.Inventory
         private static string NormalizeStatValue(string value)
         {
             return string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+        }
+
+        private static string ResolveCharacterName(string rawName)
+        {
+            return string.IsNullOrWhiteSpace(rawName) ? "-" : rawName.Trim();
+        }
+
+        private static string ResolveRealmDisplayName(CharacterBaseStatsModel stats)
+        {
+            if (!string.IsNullOrWhiteSpace(stats.RealmDisplayName))
+                return stats.RealmDisplayName.Trim();
+
+            return stats.RealmTemplateId > 0
+                ? string.Format(CultureInfo.InvariantCulture, "Canh gioi {0}", stats.RealmTemplateId)
+                : MissingRealmName;
+        }
+
+        private static string BuildCultivationProgress(CharacterBaseStatsModel stats)
+        {
+            var maxCultivation = Math.Max(0L, stats.RealmMaxCultivation);
+            var currentCultivation = Math.Max(0L, stats.Cultivation);
+            return string.Format(CultureInfo.InvariantCulture, "{0}/{1}", currentCultivation, maxCultivation);
+        }
+
+        private static float ResolveCultivationFillAmount(CharacterBaseStatsModel stats)
+        {
+            var maxCultivation = Math.Max(0L, stats.RealmMaxCultivation);
+            if (maxCultivation <= 0L)
+                return 0f;
+
+            var currentCultivation = Math.Max(0L, stats.Cultivation);
+            return Mathf.Clamp01((float)currentCultivation / maxCultivation);
         }
 
         private static void ApplyStatValue(TMP_Text text, string value, bool force)

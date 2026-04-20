@@ -13,18 +13,12 @@ namespace PhamNhanOnline.Client.UI.World
 {
     public sealed partial class WorldMartialArtPanelController
     {
-        private const string MissingCharacterName = "Chua co nhan vat";
-        private const string MissingRealmName = "Chua co canh gioi";
-        private const string MissingCultivationText = "0/0";
-        private const string MissingUnallocatedPotentialText = "0";
-
         private void ApplyLoadedState(
             ClientMartialArtState martialArtState,
             CharacterBaseStatsModel? baseStats,
             CharacterCurrentStateModel? currentState,
             bool force)
         {
-            var selectedCharacter = ClientRuntime.Character.SelectedCharacter;
             var activeMartialArt = TryGetActiveMartialArt(martialArtState);
             var ownedMartialArts = martialArtState.OwnedMartialArts ?? Array.Empty<PlayerMartialArtModel>();
             var preview = martialArtState.CultivationPreview;
@@ -33,8 +27,6 @@ namespace PhamNhanOnline.Client.UI.World
                                 (currentState.Value.CurrentState == CharacterStateCultivating ||
                                  currentState.Value.CurrentState == CharacterStatePracticing);
             var canChangeActive = CanChangeActiveMartialArt(currentState);
-
-            ApplyCharacterSummary(selectedCharacter, currentState, baseStats, force: force);
 
             if (activeMartialArt.HasValue)
             {
@@ -73,9 +65,6 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ApplyMissingState(bool force)
         {
-            var selectedCharacter = ClientRuntime.IsInitialized ? ClientRuntime.Character.SelectedCharacter : null;
-            var currentState = ClientRuntime.IsInitialized ? ClientRuntime.Character.CurrentState : null;
-            ApplyCharacterSummary(selectedCharacter, currentState, stats: null, force: force);
             ApplyText(statusText, lastStatusMessage, force);
 
             activeMartialArtSlotView?.Clear(force: true);
@@ -260,96 +249,14 @@ namespace PhamNhanOnline.Client.UI.World
             return false;
         }
 
-        private void ApplyCharacterSummary(
-            CharacterModel? selectedCharacter,
-            CharacterCurrentStateModel? currentState,
-            CharacterBaseStatsModel? stats,
-            bool force)
-        {
-            if (characterSummaryView == null)
-                return;
-
-            var displayName = selectedCharacter.HasValue
-                ? ResolveCharacterName(selectedCharacter.Value.Name)
-                : MissingCharacterName;
-
-            characterSummaryView.SetCharacterName(displayName, force);
-            characterSummaryView.SetLifespanEndUnixMs(currentState.HasValue ? currentState.Value.LifespanEndUnixMs : null, force);
-
-            if (!stats.HasValue)
-            {
-                characterSummaryView.SetStats("-", "-", "-", "-", "-", "-", force);
-                characterSummaryView.SetRealmProgress(
-                    MissingRealmName,
-                    MissingCultivationText,
-                    MissingUnallocatedPotentialText,
-                    0f,
-                    force);
-                return;
-            }
-
-            var value = stats.Value;
-            characterSummaryView.SetStats(
-                value.FinalHp.ToString(CultureInfo.InvariantCulture),
-                value.FinalMp.ToString(CultureInfo.InvariantCulture),
-                value.FinalAttack.ToString(CultureInfo.InvariantCulture),
-                value.FinalSpeed.ToString(CultureInfo.InvariantCulture),
-                value.FinalLuck.ToString("0.##", CultureInfo.InvariantCulture),
-                value.FinalSense.ToString(CultureInfo.InvariantCulture),
-                force);
-            characterSummaryView.SetRealmProgress(
-                ResolveRealmDisplayName(value),
-                BuildCultivationProgress(value),
-                value.UnallocatedPotential.ToString(CultureInfo.InvariantCulture),
-                ResolveCultivationFillAmount(value),
-                force);
-        }
-
-        private static string ResolveCharacterName(string rawName)
-        {
-            return string.IsNullOrWhiteSpace(rawName) ? "-" : rawName.Trim();
-        }
-
-        private static string ResolveRealmDisplayName(CharacterBaseStatsModel stats)
-        {
-            if (!string.IsNullOrWhiteSpace(stats.RealmDisplayName))
-                return stats.RealmDisplayName.Trim();
-
-            return stats.RealmTemplateId > 0
-                ? string.Format(CultureInfo.InvariantCulture, "Canh gioi {0}", stats.RealmTemplateId)
-                : MissingRealmName;
-        }
-
-        private static string BuildCultivationProgress(CharacterBaseStatsModel stats)
-        {
-            var maxCultivation = Math.Max(0L, stats.RealmMaxCultivation);
-            var currentCultivation = Math.Max(0L, stats.Cultivation);
-            return string.Format(CultureInfo.InvariantCulture, "{0}/{1}", currentCultivation, maxCultivation);
-        }
-
-        private static float ResolveCultivationFillAmount(CharacterBaseStatsModel stats)
-        {
-            var maxCultivation = Math.Max(0L, stats.RealmMaxCultivation);
-            if (maxCultivation <= 0L)
-                return 0f;
-
-            var currentCultivation = Math.Max(0L, stats.Cultivation);
-            return Mathf.Clamp01((float)currentCultivation / maxCultivation);
-        }
-
         private string BuildSnapshot(
             ClientMartialArtState martialArtState,
             CharacterBaseStatsModel? baseStats,
             CharacterCurrentStateModel? currentState)
         {
-            var selectedCharacter = ClientRuntime.Character.SelectedCharacter;
             var preview = martialArtState.CultivationPreview;
             return string.Join(
                 "|",
-                selectedCharacter.HasValue ? selectedCharacter.Value.Name ?? string.Empty : string.Empty,
-                currentState.HasValue && currentState.Value.LifespanEndUnixMs.HasValue
-                    ? currentState.Value.LifespanEndUnixMs.Value.ToString(CultureInfo.InvariantCulture)
-                    : string.Empty,
                 martialArtState.HasLoadedMartialArts ? "1" : "0",
                 martialArtState.ActiveMartialArtId.HasValue ? martialArtState.ActiveMartialArtId.Value.ToString(CultureInfo.InvariantCulture) : "0",
                 BuildOwnedSnapshot(martialArtState.OwnedMartialArts),

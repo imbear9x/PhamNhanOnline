@@ -428,7 +428,7 @@ Checklist:
 
 1. Root ô trang bị
 - Tạo `EquipmentSlotsRoot`.
-- Gắn `EquipmentSlotsPanelView` lên object này.
+- Không cần `EquipmentSlotsPanelView` nữa; `CharacterEquipmentLoadoutView` tự sinh slot runtime từ `slotTemplate`.
 - Trong `slots`, khai báo đủ 4 binding:
 - `Weapon -> WeaponSlot`
 - `Armor -> ArmorSlot`

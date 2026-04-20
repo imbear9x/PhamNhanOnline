@@ -20,9 +20,6 @@ namespace PhamNhanOnline.Client.UI.Inventory
         IEndDragHandler,
         IDropHandler
     {
-        [Header("Configuration")]
-        [SerializeField] private InventoryEquipmentSlot slotType = InventoryEquipmentSlot.None;
-
         [Header("References")]
         [SerializeField] private Image iconImage;
         [SerializeField] private GameObject emptyStateRoot;
@@ -33,6 +30,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         private InventoryItemModel item;
         private bool hasItem;
+        private int slotIndex = 1;
         private CanvasGroup canvasGroup;
         private InventoryDragGhost dragGhost;
         private InventoryItemPresentation currentPresentation;
@@ -42,7 +40,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
         public event Action<EquipmentSlotView> HoverExited;
         public event Action<EquipmentSlotView, InventoryItemModel> InventoryItemDropped;
 
-        public InventoryEquipmentSlot SlotType => slotType;
+        public int SlotIndex => slotIndex;
         public InventoryItemModel Item => item;
         public bool HasItem => hasItem;
 
@@ -83,6 +81,11 @@ namespace PhamNhanOnline.Client.UI.Inventory
             item = default;
             currentPresentation = default;
             ApplyEmptyState();
+        }
+
+        public void SetSlotIndex(int value)
+        {
+            slotIndex = Mathf.Max(1, value);
         }
 
         public void SetSelected(bool selected, bool force = false)
@@ -203,7 +206,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             }
 
             var droppedItem = payload.InventoryItem;
-            if (droppedItem.EquipmentSlotType != (int)slotType)
+            if (droppedItem.ItemType != (int)InventoryItemType.Equipment)
                 return;
 
             var handler = InventoryItemDropped;
@@ -219,7 +222,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 return false;
             }
 
-            payload = UIDragPayload.FromInventoryItem(item, UIDragSourceKind.EquipmentSlot, slotType);
+            payload = UIDragPayload.FromInventoryItem(item, UIDragSourceKind.EquipmentSlot, slotIndex);
             return true;
         }
 
@@ -265,7 +268,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 return false;
             }
 
-            return payload.InventoryItem.EquipmentSlotType == (int)slotType;
+            return payload.InventoryItem.ItemType == (int)InventoryItemType.Equipment;
         }
 
         private void SetDragSelectionVisible(bool visible)

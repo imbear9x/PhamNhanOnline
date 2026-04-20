@@ -16,12 +16,13 @@ public sealed class ItemDefinitionCatalog
         var itemTemplates = scope.ServiceProvider.GetRequiredService<ItemTemplateRepository>().GetAllAsync().GetAwaiter().GetResult();
         var equipmentTemplates = scope.ServiceProvider.GetRequiredService<EquipmentTemplateRepository>().GetAllAsync().GetAwaiter().GetResult();
         var equipmentTemplateStats = scope.ServiceProvider.GetRequiredService<EquipmentTemplateStatRepository>().GetAllAsync().GetAwaiter().GetResult();
+        var equipmentTemplateSkillGrants = scope.ServiceProvider.GetRequiredService<EquipmentTemplateSkillGrantRepository>().GetAllAsync().GetAwaiter().GetResult();
         var martialArtBooks = scope.ServiceProvider.GetRequiredService<MartialArtBookTemplateRepository>().GetAllAsync().GetAwaiter().GetResult();
         var craftRecipes = scope.ServiceProvider.GetRequiredService<CraftRecipeRepository>().GetAllAsync().GetAwaiter().GetResult();
         var craftRequirements = scope.ServiceProvider.GetRequiredService<CraftRecipeRequirementRepository>().GetAllAsync().GetAwaiter().GetResult();
         var craftMutationBonuses = scope.ServiceProvider.GetRequiredService<CraftRecipeMutationBonusRepository>().GetAllAsync().GetAwaiter().GetResult();
 
-        _itemsById = BuildItems(itemTemplates, equipmentTemplates, equipmentTemplateStats, martialArtBooks);
+        _itemsById = BuildItems(itemTemplates, equipmentTemplates, equipmentTemplateStats, equipmentTemplateSkillGrants, martialArtBooks);
         _itemsByCode = _itemsById.Values.ToDictionary(x => x.Code, StringComparer.OrdinalIgnoreCase);
         _craftRecipesById = BuildCraftRecipes(craftRecipes, craftRequirements, craftMutationBonuses);
     }
@@ -43,6 +44,7 @@ public sealed class ItemDefinitionCatalog
         IReadOnlyCollection<ItemTemplateEntity> itemTemplates,
         IReadOnlyCollection<EquipmentTemplateEntity> equipmentTemplates,
         IReadOnlyCollection<EquipmentTemplateStatEntity> equipmentTemplateStats,
+        IReadOnlyCollection<EquipmentTemplateSkillGrantEntity> equipmentTemplateSkillGrants,
         IReadOnlyCollection<MartialArtBookTemplateEntity> martialArtBooks)
     {
         var statDefsByEquipmentId = equipmentTemplateStats
@@ -58,14 +60,28 @@ public sealed class ItemDefinitionCatalog
                         (CombatValueType)stat.ValueType))
                     .ToArray());
 
+        var skillGrantDefsByEquipmentId = equipmentTemplateSkillGrants
+            .GroupBy(x => x.EquipmentTemplateId)
+            .ToDictionary(
+                x => x.Key,
+                x => (IReadOnlyList<EquipmentSkillGrantDefinition>)x
+                    .OrderBy(grant => grant.DisplayOrder)
+                    .ThenBy(grant => grant.Id)
+                    .Select(grant => new EquipmentSkillGrantDefinition(
+                        grant.Id,
+                        grant.SkillId,
+                        grant.RequiredRealmTemplateId,
+                        grant.DisplayOrder))
+                    .ToArray());
+
         var equipmentByTemplateId = equipmentTemplates.ToDictionary(
             x => x.ItemTemplateId,
             x => new EquipmentDefinition(
                 x.ItemTemplateId,
-                (EquipmentSlot)x.SlotType,
                 (EquipmentType)x.EquipmentType,
                 x.LevelRequirement,
-                statDefsByEquipmentId.GetValueOrDefault(x.ItemTemplateId, Array.Empty<ItemStatModifierDefinition>())));
+                statDefsByEquipmentId.GetValueOrDefault(x.ItemTemplateId, Array.Empty<ItemStatModifierDefinition>()),
+                skillGrantDefsByEquipmentId.GetValueOrDefault(x.ItemTemplateId, Array.Empty<EquipmentSkillGrantDefinition>())));
 
         var martialArtBooksByItemId = martialArtBooks.ToDictionary(
             x => x.ItemTemplateId,

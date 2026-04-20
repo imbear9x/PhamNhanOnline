@@ -26,9 +26,6 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (inventoryGridView != null)
                 inventoryGridView.Clear(force: true);
-
-            if (equipmentSlotsView != null)
-                equipmentSlotsView.Clear(force: true);
         }
 
         private static List<InventoryItemModel> SortInventoryItems(IReadOnlyList<InventoryItemModel> items)
@@ -44,7 +41,7 @@ namespace PhamNhanOnline.Client.UI.World
                 .ToList();
         }
 
-        private string ResolveInventoryStatus(ClientInventoryState inventoryState, int bagItemCount, int equippedItemCount)
+        private string ResolveInventoryStatus(ClientInventoryState inventoryState, int bagItemCount)
         {
             if (inventoryActionInFlight)
                 return InventoryActionInProgressText;
@@ -52,16 +49,10 @@ namespace PhamNhanOnline.Client.UI.World
             if (!inventoryState.HasLoadedInventory)
                 return InventoryNotLoadedText;
 
-            if (bagItemCount <= 0 && equippedItemCount <= 0)
+            if (bagItemCount <= 0)
                 return EmptyInventoryText;
 
-            if (bagItemCount <= 0)
-                return string.Format(CultureInfo.InvariantCulture, "Balo dang trong | {0} trang bi dang mac", equippedItemCount);
-
-            if (equippedItemCount <= 0)
-                return string.Format(CultureInfo.InvariantCulture, "{0} vat pham", bagItemCount);
-
-            return string.Format(CultureInfo.InvariantCulture, "{0} vat pham | {1} trang bi dang mac", bagItemCount, equippedItemCount);
+            return string.Format(CultureInfo.InvariantCulture, "{0} vat pham", bagItemCount);
         }
 
         private static bool TryFindInventoryItemById(IReadOnlyList<InventoryItemModel> items, long? playerItemId, out InventoryItemModel item)

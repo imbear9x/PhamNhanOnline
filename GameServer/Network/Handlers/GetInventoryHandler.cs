@@ -1,6 +1,7 @@
 using GameServer.DTO;
 using GameServer.Network.Interface;
 using GameServer.Services;
+using GameServer.Config;
 using GameShared.Messages;
 using GameShared.Packets;
 
@@ -9,11 +10,13 @@ namespace GameServer.Network.Handlers;
 public sealed class GetInventoryHandler : IPacketHandler<GetInventoryPacket>
 {
     private readonly ItemService _itemService;
+    private readonly GameConfigValues _gameConfig;
     private readonly INetworkSender _network;
 
-    public GetInventoryHandler(ItemService itemService, INetworkSender network)
+    public GetInventoryHandler(ItemService itemService, GameConfigValues gameConfig, INetworkSender network)
     {
         _itemService = itemService;
+        _gameConfig = gameConfig;
         _network = network;
     }
 
@@ -34,6 +37,7 @@ public sealed class GetInventoryHandler : IPacketHandler<GetInventoryPacket>
         {
             Success = true,
             Code = MessageCode.None,
+            EquipmentSlotCount = _gameConfig.CharacterEquipmentSlotCount,
             Items = items.Select(x => x.ToModel()).ToList()
         });
     }

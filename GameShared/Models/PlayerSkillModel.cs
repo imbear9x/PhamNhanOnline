@@ -22,7 +22,10 @@ public struct PlayerSkillModel
     public int SourceType;
     public int SourceMartialArtId;
     public string? SourceMartialArtName;
+    public long? SourcePlayerItemId;
     public int UnlockStage;
+    public bool CanAssignToLoadout;
+    public string? LoadoutBlockedReason;
     public bool IsEquipped;
     public int EquippedSlotIndex;
 }

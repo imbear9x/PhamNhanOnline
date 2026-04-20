@@ -34,14 +34,6 @@ public enum ItemRarity
     Legendary = 5
 }
 
-public enum EquipmentSlot
-{
-    Weapon = 1,
-    Armor = 2,
-    Pants = 3,
-    Shoes = 4
-}
-
 public enum EquipmentType
 {
     Sword = 1,
@@ -71,12 +63,18 @@ public sealed record ItemStatModifierDefinition(
     decimal Value,
     CombatValueType ValueType);
 
+public sealed record EquipmentSkillGrantDefinition(
+    long Id,
+    int SkillId,
+    int? RequiredRealmTemplateId,
+    int DisplayOrder);
+
 public sealed record EquipmentDefinition(
     int ItemTemplateId,
-    EquipmentSlot SlotType,
     EquipmentType EquipmentType,
     int LevelRequirement,
-    IReadOnlyList<ItemStatModifierDefinition> BaseStats);
+    IReadOnlyList<ItemStatModifierDefinition> BaseStats,
+    IReadOnlyList<EquipmentSkillGrantDefinition> SkillGrants);
 
 public sealed record MartialArtBookDefinition(
     int ItemTemplateId,
@@ -136,7 +134,7 @@ public sealed record InventoryItemView(
     DateTime AcquiredAt,
     DateTime? ExpireAt,
     bool IsEquipped,
-    EquipmentSlot? EquippedSlot,
+    int? EquippedSlot,
     int EnhanceLevel,
     int? Durability);
 
@@ -144,7 +142,7 @@ public sealed record EquippedItemView(
     long PlayerItemId,
     ItemDefinition Definition,
     EquipmentDefinition Equipment,
-    EquipmentSlot EquippedSlot,
+    int EquippedSlot,
     int EnhanceLevel,
     int? Durability);
 

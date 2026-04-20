@@ -94,6 +94,7 @@ public enum MessageCode : int
     PracticeCancelLocked = 3055,
     PracticeInvalid = 3056,
     NotificationInvalid = 3057,
+    SkillLoadoutBlocked = 3058,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001,
