@@ -22,4 +22,8 @@ MonoBehaviour:
     sprite: {fileID: 21300000, guid: 525cd5f06d1effc4e98a785e2683fdbc, type: 3}
   - key: hoa_dan_thuat
     sprite: {fileID: 21300000, guid: 09a4ad8f7dd293f458e2c0ac21faa040, type: 3}
+  - key: xich_hoa_kiem_tram
+    sprite: {fileID: 21300000, guid: af8f90419dd1b474bb6aabd8aa091074, type: 3}
+  - key: hoa_dan_thuat
+    sprite: {fileID: 21300000, guid: 525cd5f06d1effc4e98a785e2683fdbc, type: 3}
   skillOverrides: []
