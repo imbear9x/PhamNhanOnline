@@ -14,9 +14,7 @@ public sealed class ItemUseService
     private readonly ItemDefinitionCatalog _itemDefinitions;
     private readonly AlchemyDefinitionCatalog _alchemyDefinitions;
     private readonly ItemService _itemService;
-    private readonly EquipmentService _equipmentService;
-    private readonly SkillService _skillService;
-    private readonly CharacterFinalStatService _characterFinalStatService;
+    private readonly EquipmentActionService _equipmentActionService;
     private readonly MartialArtService _martialArtService;
     private readonly PillRecipeService _pillRecipeService;
     private readonly CharacterRuntimeService _characterRuntimeService;
@@ -30,9 +28,7 @@ public sealed class ItemUseService
         ItemDefinitionCatalog itemDefinitions,
         AlchemyDefinitionCatalog alchemyDefinitions,
         ItemService itemService,
-        EquipmentService equipmentService,
-        SkillService skillService,
-        CharacterFinalStatService characterFinalStatService,
+        EquipmentActionService equipmentActionService,
         MartialArtService martialArtService,
         PillRecipeService pillRecipeService,
         CharacterRuntimeService characterRuntimeService,
@@ -45,9 +41,7 @@ public sealed class ItemUseService
         _itemDefinitions = itemDefinitions;
         _alchemyDefinitions = alchemyDefinitions;
         _itemService = itemService;
-        _equipmentService = equipmentService;
-        _skillService = skillService;
-        _characterFinalStatService = characterFinalStatService;
+        _equipmentActionService = equipmentActionService;
         _martialArtService = martialArtService;
         _pillRecipeService = pillRecipeService;
         _characterRuntimeService = characterRuntimeService;
@@ -99,44 +93,23 @@ public sealed class ItemUseService
         CancellationToken cancellationToken)
     {
         EnsureSingleQuantity(quantity);
-        var equipmentDefinition = itemDefinition.Equipment
+        _ = itemDefinition.Equipment
             ?? throw new GameException(MessageCode.InventoryItemInvalid);
 
-        var firstAvailableSlotIndex = await _equipmentService.GetFirstAvailableSlotIndexAsync(
-            player.CharacterData.CharacterId,
+        var result = await _equipmentActionService.EquipFirstAvailableAsync(
+            player,
+            playerItemId,
             cancellationToken);
-        if (!firstAvailableSlotIndex.HasValue)
-            throw new GameException(MessageCode.EquipmentSlotInvalid);
-
-        OwnedSkillsSnapshotDto? changedSkillSnapshot = null;
-        CharacterRuntimeSnapshot runtimeSnapshot;
-        IReadOnlyList<InventoryItemView> items;
-        await using (var tx = await _db.BeginTransactionAsync(cancellationToken))
-        {
-            await _equipmentService.EquipItemAsync(
-                player.CharacterData.CharacterId,
-                playerItemId,
-                firstAvailableSlotIndex.Value,
-                cancellationToken);
-
-            var skillSync = await _skillService.SyncEquipmentGrantedSkillsAsync(player.CharacterData.CharacterId, cancellationToken);
-            if (skillSync.Changed)
-                changedSkillSnapshot = skillSync.Snapshot;
-
-            runtimeSnapshot = await _characterFinalStatService.ApplyAuthoritativeFinalStatsAsync(player, cancellationToken);
-            items = await _itemService.GetInventoryAsync(player.CharacterData.CharacterId, cancellationToken);
-            await tx.CommitAsync(cancellationToken);
-        }
 
         return new UseItemExecutionResult(
-            items,
-            runtimeSnapshot.BaseStats,
-            runtimeSnapshot.CurrentState,
+            result.Items,
+            result.RuntimeSnapshot.BaseStats,
+            result.RuntimeSnapshot.CurrentState,
             null,
             null,
             quantity,
             1,
-            changedSkillSnapshot,
+            result.ChangedSkillSnapshot,
             null,
             null);
     }

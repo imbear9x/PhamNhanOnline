@@ -35,6 +35,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<MartialArtService>();
         services.AddScoped<SkillService>();
         services.AddScoped<EquipmentService>();
+        services.AddScoped<EquipmentActionService>();
         services.AddScoped<ItemUseService>();
         services.AddScoped<CraftService>();
         services.AddScoped<EquipmentStatService>();
