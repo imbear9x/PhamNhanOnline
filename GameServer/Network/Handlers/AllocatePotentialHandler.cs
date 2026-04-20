@@ -10,19 +10,16 @@ namespace GameServer.Network.Handlers;
 
 public sealed class AllocatePotentialHandler : IPacketHandler<AllocatePotentialPacket>
 {
-    private readonly CharacterCultivationService _cultivationService;
-    private readonly CharacterFinalStatService _characterFinalStatService;
+    private readonly CultivationActionService _cultivationActionService;
     private readonly INetworkSender _network;
     private readonly GameTimeService _gameTimeService;
 
     public AllocatePotentialHandler(
-        CharacterCultivationService cultivationService,
-        CharacterFinalStatService characterFinalStatService,
+        CultivationActionService cultivationActionService,
         INetworkSender network,
         GameTimeService gameTimeService)
     {
-        _cultivationService = cultivationService;
-        _characterFinalStatService = characterFinalStatService;
+        _cultivationActionService = cultivationActionService;
         _network = network;
         _gameTimeService = gameTimeService;
     }
@@ -32,31 +29,22 @@ public sealed class AllocatePotentialHandler : IPacketHandler<AllocatePotentialP
         var target = Enum.IsDefined(typeof(PotentialAllocationTarget), packet.TargetStat ?? 0)
             ? (PotentialAllocationTarget)(packet.TargetStat ?? 0)
             : PotentialAllocationTarget.None;
-        var result = await _cultivationService.AllocatePotentialAsync(
+        var execution = await _cultivationActionService.AllocatePotentialAsync(
             session,
             target,
             packet.RequestedPotentialAmount ?? 0);
 
-        CharacterBaseStatsDto? responseBaseStats = result.BaseStats;
-        CharacterCurrentStateDto? responseCurrentState = result.CurrentState;
-        if (result.Success && session.Player is not null)
-        {
-            var runtimeSnapshot = await _characterFinalStatService.ApplyAuthoritativeFinalStatsAsync(session.Player);
-            responseBaseStats = runtimeSnapshot.BaseStats;
-            responseCurrentState = runtimeSnapshot.CurrentState;
-        }
-
         _network.Send(session.ConnectionId, new AllocatePotentialResultPacket
         {
-            Success = result.Success,
-            Code = result.Code,
-            BaseStats = responseBaseStats?.ToModel(),
-            CurrentState = responseCurrentState is null || responseBaseStats is null || session.Player is null
+            Success = execution.Result.Success,
+            Code = execution.Result.Code,
+            BaseStats = execution.BaseStats?.ToModel(),
+            CurrentState = execution.CurrentState is null || execution.BaseStats is null || session.Player is null
                 ? null
-                : responseCurrentState.ToModel(session.Player.CharacterData, responseBaseStats, _gameTimeService.GetCurrentSnapshot()),
-            RequestedPotentialAmount = result.PotentialAllocation?.RequestedPotentialAmount,
-            SpentPotentialAmount = result.PotentialAllocation?.SpentPotentialAmount,
-            AppliedUpgradeCount = result.PotentialAllocation?.AppliedUpgradeCount
+                : execution.CurrentState.ToModel(session.Player.CharacterData, execution.BaseStats, _gameTimeService.GetCurrentSnapshot()),
+            RequestedPotentialAmount = execution.Result.PotentialAllocation?.RequestedPotentialAmount,
+            SpentPotentialAmount = execution.Result.PotentialAllocation?.SpentPotentialAmount,
+            AppliedUpgradeCount = execution.Result.PotentialAllocation?.AppliedUpgradeCount
         });
     }
 }

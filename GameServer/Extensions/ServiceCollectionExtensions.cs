@@ -36,10 +36,12 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<SkillService>();
         services.AddScoped<EquipmentService>();
         services.AddScoped<EquipmentActionService>();
+        services.AddScoped<CultivationActionService>();
         services.AddScoped<ItemUseService>();
         services.AddScoped<CraftService>();
         services.AddScoped<EquipmentStatService>();
         services.AddScoped<CharacterFinalStatService>();
+        services.AddScoped<MartialArtActionService>();
         services.AddScoped<PillRecipeService>();
         services.AddScoped<AlchemyService>();
         services.AddScoped<HerbService>();
