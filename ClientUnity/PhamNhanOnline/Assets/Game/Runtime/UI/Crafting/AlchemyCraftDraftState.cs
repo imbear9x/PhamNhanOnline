@@ -8,7 +8,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
 {
     public sealed class AlchemyCraftDraftState
     {
-        private sealed class IngredientSelection
+        private sealed class InputSelection
         {
             public readonly List<long> SelectedPlayerItemIds = new List<long>(4);
             public bool Armed;
@@ -41,7 +41,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
             public bool RequiresQuantityPrompt { get; }
         }
 
-        private readonly Dictionary<int, IngredientSelection> selectionsByInputId = new Dictionary<int, IngredientSelection>();
+        private readonly Dictionary<int, InputSelection> selectionsByInputId = new Dictionary<int, InputSelection>();
 
         public bool IsEmpty => selectionsByInputId.Count == 0;
 
@@ -94,7 +94,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
                 if (!selectionsByInputId.TryGetValue(input.InputId, out var selection))
                 {
-                    selection = new IngredientSelection();
+                    selection = new InputSelection();
                     selectionsByInputId[input.InputId] = selection;
                 }
 
@@ -133,10 +133,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
             if (!input.RequiredItem.IsStackable)
                 return selection.SelectedPlayerItemIds.Count;
 
-            if (input.IsOptional)
-                return Math.Max(0, selection.AssignedQuantity);
-
-            return ResolveInventoryQuantity(inventoryItems, input.RequiredItem.ItemTemplateId);
+            return Math.Max(0, selection.AssignedQuantity);
         }
 
         public bool ResolveInputArmed(
@@ -186,9 +183,11 @@ namespace PhamNhanOnline.Client.UI.Crafting
                     continue;
 
                 var availableQuantity = input.RequiredItem.IsStackable
-                    ? ResolveInventoryQuantity(inventoryItems, input.RequiredItem.ItemTemplateId)
-                    : (selectionsByInputId.TryGetValue(input.InputId, out var selection)
-                        ? selection.SelectedPlayerItemIds.Count
+                    ? (selectionsByInputId.TryGetValue(input.InputId, out var selection)
+                        ? Math.Max(0, selection.AssignedQuantity)
+                        : 0)
+                    : (selectionsByInputId.TryGetValue(input.InputId, out var nonStackableSelection)
+                        ? nonStackableSelection.SelectedPlayerItemIds.Count
                         : 0);
                 var craftableForInput = availableQuantity / Math.Max(1, input.RequiredQuantity);
                 maxCraftableCount = Math.Min(maxCraftableCount, craftableForInput);

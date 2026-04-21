@@ -14,6 +14,7 @@ public static class GameConfigKeys
     public const string WorldEmptyPublicInstanceLifetimeSeconds = "world.empty_public_instance_lifetime_seconds";
     public const string CultivationPotentialPerCultivationPoint = "cultivation.potential_per_cultivation_point";
     public const string CultivationSettlementIntervalSeconds = "cultivation.settlement_interval_seconds";
+    public const string AlchemyPracticeCancelRefundProgressThreshold = "alchemy.practice_cancel_refund_progress_threshold";
     public const string CharacterHomeGardenPlotCount = "character.home_garden_plot_count";
     public const string CharacterEquipmentSlotCount = "character.equipment_slot_count";
     public const string CharacterStarterBasicSkillId = "character.starter_basic_skill_id";

@@ -3,6 +3,7 @@ using GameServer.Entities;
 using GameServer.Runtime;
 using GameShared.Models;
 using System.Text.Json;
+using GameServer.Config;
 
 namespace GameServer.DTO;
 
@@ -10,13 +11,16 @@ public sealed class AlchemyModelBuilder
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
+    private readonly GameConfigValues _gameConfig;
     private readonly ItemDefinitionCatalog _itemDefinitions;
     private readonly GameplayDescriptionService _descriptions;
 
     public AlchemyModelBuilder(
+        GameConfigValues gameConfig,
         ItemDefinitionCatalog itemDefinitions,
         GameplayDescriptionService descriptions)
     {
+        _gameConfig = gameConfig;
         _itemDefinitions = itemDefinitions;
         _descriptions = descriptions;
     }
@@ -88,6 +92,14 @@ public sealed class AlchemyModelBuilder
             EffectiveMutationRate = NormalizeRate(validation.EffectiveMutationRate),
             BoostedMutationRate = NormalizeRate(validation.BoostedMutationRate),
             BoostedCraftCount = Math.Max(0, validation.BoostedCraftCount),
+            SuccessRateSegments = validation.SuccessRateSegments
+                .Where(static segment => segment is not null && segment.Count > 0)
+                .Select(segment => new AlchemyCraftRateSegmentModel
+                {
+                    SuccessRate = NormalizeRate(segment.SuccessRate),
+                    Count = Math.Max(0, segment.Count)
+                })
+                .ToList(),
             AppliedOptionalInputs = validation.AppliedOptionalInputs
                 .Select(selection => new AlchemyOptionalInputSelectionModel
                 {
@@ -138,13 +150,22 @@ public sealed class AlchemyModelBuilder
             DefinitionId = session.DefinitionId,
             RequestedCraftCount = payload?.RequestedCraftCount ?? 1,
             BoostedCraftCount = payload?.SelectedOptionalInputs?.Sum(static entry => Math.Max(0, entry.AppliedCount)) ?? 0,
+            SuccessRateSegments = payload?.SuccessRateSegments?
+                .Where(static entry => entry is not null && entry.Count > 0)
+                .Select(entry => new AlchemyCraftRateSegmentModel
+                {
+                    SuccessRate = NormalizeRate(entry.SuccessRate),
+                    Count = Math.Max(0, entry.Count)
+                })
+                .ToList(),
             Title = session.Title,
             TotalDurationSeconds = Math.Max(0L, session.TotalDurationSeconds),
             AccumulatedActiveSeconds = accumulated,
             RemainingDurationSeconds = remaining,
             Progress = progress,
+            CancelRefundProgressThreshold = ResolveCancelRefundProgressThreshold(),
             CanPause = session.PracticeState == (int)PracticeSessionState.Active &&
-                       progress < Math.Clamp(session.CancelLockedProgress, 0d, 1d),
+                       progress < 1d,
             CanCancel = session.PracticeState != (int)PracticeSessionState.ResultPendingAcknowledgement &&
                         session.PracticeState != (int)PracticeSessionState.Completed &&
                         session.PracticeState != (int)PracticeSessionState.Cancelled,
@@ -320,5 +341,10 @@ public sealed class AlchemyModelBuilder
         return rawRate > 1d
             ? Math.Clamp(rawRate / 100d, 0d, 1d)
             : Math.Clamp(rawRate, 0d, 1d);
+    }
+
+    private double ResolveCancelRefundProgressThreshold()
+    {
+        return Math.Clamp(_gameConfig.AlchemyPracticeCancelRefundProgressThreshold, 0d, 1d);
     }
 }

@@ -8,6 +8,9 @@ namespace PhamNhanOnline.Client.UI.Common
 {
     public sealed class DropZoneView : MonoBehaviour, IDropHandler, IPointerClickHandler
     {
+        public event System.Action<UIDragPayload> PayloadDropped;
+        public event System.Action<PointerEventData.InputButton> Clicked;
+
         public void OnDrop(PointerEventData eventData)
         {
             if (!UIDragPayloadResolver.TryResolve(eventData, out var payload))
@@ -16,6 +19,7 @@ namespace PhamNhanOnline.Client.UI.Common
             }
 
             WorldModalUIManager.Instance?.HideAllViews(force: true);
+            PayloadDropped?.Invoke(payload);
 
             if (!ClientRuntime.IsInitialized)
                 return;
@@ -38,9 +42,10 @@ namespace PhamNhanOnline.Client.UI.Common
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (eventData == null || eventData.button != PointerEventData.InputButton.Left)
+            if (eventData == null)
                 return;
 
+            Clicked?.Invoke(eventData.button);
             WorldModalUIManager.Instance?.HideAllViews(force: true);
         }
     }

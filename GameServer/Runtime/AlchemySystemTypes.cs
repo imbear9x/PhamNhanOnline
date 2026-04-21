@@ -158,6 +158,7 @@ public sealed record AlchemyValidationResult(
     IReadOnlyList<long> ConsumedPlayerItemIds,
     IReadOnlyDictionary<long, int> ConsumedStackQuantities,
     IReadOnlyList<AlchemyOptionalInputSelection> AppliedOptionalInputs,
+    IReadOnlyList<AlchemyCraftRateSegment> SuccessRateSegments,
     double EffectiveSuccessRate,
     double EffectiveMutationRate,
     double BoostedSuccessRate,
@@ -168,7 +169,13 @@ public sealed record AlchemyOptionalInputSelection(
     PillRecipeInputDefinition Input,
     int AppliedCount);
 
+public sealed record AlchemyCraftRateSegment(
+    double SuccessRate,
+    int Count);
+
 public sealed record AlchemyCraftRatePlan(
+    IReadOnlyList<double> SuccessRates,
+    IReadOnlyList<AlchemyCraftRateSegment> SuccessRateSegments,
     double EffectiveSuccessRate,
     double EffectiveMutationRate,
     double BoostedSuccessRate,

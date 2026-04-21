@@ -8,11 +8,13 @@ using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Network.Session;
+using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Crafting;
 using PhamNhanOnline.Client.UI.Inventory;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.World
@@ -22,40 +24,29 @@ namespace PhamNhanOnline.Client.UI.World
         private enum QuantityPopupMode
         {
             None = 0,
-            CraftCount = 1,
-            OptionalInputQuantity = 2
+            InputQuantity = 1
         }
 
         [Header("Panel")]
         [SerializeField] private WorldCraftingPanelView panelView;
 
-        [Header("Recipe References")]
-        [SerializeField] private TMP_Text panelTitleText;
-        [SerializeField] private CraftRecipeListView recipeListView;
-        [SerializeField] private CraftRecipeSlotView selectedRecipeSlotView;
-
-        [Header("Inventory References")]
-        [SerializeField] private InventoryItemGridView inventoryGridView;
-        [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
-
-        [Header("Ingredient References")]
-        [SerializeField] private CraftIngredientPanelView ingredientPanelView;
-
-        [Header("Recipe Detail Text")]
-        [SerializeField] private TMP_Text practiceStatusText;
-        [SerializeField] private CraftResultPreviewView craftingResultPreviewView;
-        [SerializeField] private TMP_Text countdownText;
-
-        [Header("Practice Controls")]
-        [SerializeField] private Button closeButton;
-        [SerializeField] private Button craftButton;
-        [SerializeField] private TMP_Text craftButtonText;
-        [SerializeField] private Button pauseResumeButton;
-        [SerializeField] private TMP_Text pauseResumeButtonText;
-        [SerializeField] private Button cancelButton;
-        [SerializeField] private TMP_Text cancelButtonText;
-        
-        
+        [Header("Legacy View Wiring")]
+        [SerializeField] [HideInInspector] private TMP_Text panelTitleText;
+        [SerializeField] [HideInInspector] private CraftRecipeListView recipeListView;
+        [SerializeField] [HideInInspector] private CraftRecipeSlotView selectedRecipeSlotView;
+        [SerializeField] [HideInInspector] private InventoryItemGridView inventoryGridView;
+        [SerializeField] [HideInInspector] private InventoryItemPresentationCatalog itemPresentationCatalog;
+        [FormerlySerializedAs("ingredientPanelView")]
+        [SerializeField] [HideInInspector] private CraftInputPanelView inputPanelView;
+        [SerializeField] [HideInInspector] private CraftResultPreviewView craftingResultPreviewView;
+        [SerializeField] [HideInInspector] private DropZoneView dropZoneView;
+        [SerializeField] [HideInInspector] private Button closeButton;
+        [SerializeField] [HideInInspector] private Button craftButton;
+        [SerializeField] [HideInInspector] private TMP_Text craftButtonText;
+        [SerializeField] [HideInInspector] private Button pauseResumeButton;
+        [SerializeField] [HideInInspector] private TMP_Text pauseResumeButtonText;
+        [SerializeField] [HideInInspector] private Button cancelButton;
+        [SerializeField] [HideInInspector] private TMP_Text cancelButtonText;
 
         [Header("Behavior")]
         [SerializeField] private bool autoLoadOnEnable = true;
@@ -74,7 +65,14 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private string pauseIdleText = "Tam dung";
         [SerializeField] private string resumeIdleText = "Tiep tuc";
         [SerializeField] private string cancelIdleText = "Huy bo";
-        [SerializeField] [Range(1, 6)] private int maxRequiredIngredientSlots = 6;
+        [SerializeField] private string selectRecipeOptionText = "Chon";
+        [SerializeField] private string removeSelectionOptionText = "Bo ra";
+        [SerializeField] private string assignRequiredOptionText = "Gan vao nguyen lieu bat buoc";
+        [SerializeField] private string assignOptionalOptionText = "Gan vao nguyen lieu phu tro";
+
+        [Header("Notification Text")]
+        [SerializeField] private string cancelWithoutRefundWarningTitle = "Canh bao";
+        [SerializeField] [TextArea] private string cancelWithoutRefundWarningMessage = "Huy bo luyen che se khong hoan lai nguyen lieu.";
 
         private readonly AlchemyCraftDraftState draftState = new AlchemyCraftDraftState();
         private bool isInitialized;
@@ -87,6 +85,10 @@ namespace PhamNhanOnline.Client.UI.World
         private long lastDisplayPracticeSessionId;
         private QuantityPopupMode quantityPopupMode;
         private int? quantityPopupInputId;
+        private bool quantityPopupRestoreHadSelection;
+        private int quantityPopupRestoreAssignedQuantity;
+        private int? popupRecipeId;
+        private long? popupInventoryPlayerItemId;
         private CraftingStationType currentStationType = CraftingStationType.Alchemy;
         private string currentStationTitleOverride;
 
@@ -104,6 +106,7 @@ namespace PhamNhanOnline.Client.UI.World
             currentStationType = context.StationType;
             currentStationTitleOverride = resolvedTitleOverride;
             lastSnapshot = string.Empty;
+            HideItemOptionsPopup(force: true);
             HideQuantityPopup(force: true);
             HideRecipeTooltip(force: true);
             HideInventoryTooltip(force: true);
@@ -119,7 +122,11 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void Start()
         {
-            ValidateSerializedReferences();
+            if (panelView == null)
+                return;
+
+            AdoptLegacyBindingsIfNeeded();
+            panelView.ValidateSerializedReferences();
         }
 
         private void OnEnable()
@@ -148,6 +155,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void OnDisable()
         {
+            HideItemOptionsPopup(force: true);
             HideQuantityPopup(force: true);
             if (IsAlchemyStation() && clearDraftWhenClosedWithoutPractice && !HasBlockingAlchemySession())
                 ResetToIdleDraftState();
@@ -160,36 +168,28 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void OnDestroy()
         {
-            if (recipeListView != null)
-            {
-                recipeListView.ItemClicked -= HandleRecipeListClicked;
-                recipeListView.ItemHovered -= HandleRecipeListHovered;
-                recipeListView.ItemHoverExited -= HandleRecipeHoverExited;
-                recipeListView.SelectedRecipeDroppedBackToList -= HandleRecipeDroppedBackToList;
-            }
+            if (panelView == null)
+                return;
 
-            if (selectedRecipeSlotView != null)
-            {
-                selectedRecipeSlotView.RecipeDropped -= HandleSelectedRecipeDropped;
-                selectedRecipeSlotView.Clicked -= HandleSelectedRecipeClicked;
-                selectedRecipeSlotView.Hovered -= HandleSelectedRecipeHovered;
-                selectedRecipeSlotView.HoverExited -= HandleRecipeHoverExited;
-            }
-
-            if (ingredientPanelView != null)
-            {
-                ingredientPanelView.InventoryItemDropped -= HandleIngredientInventoryItemDropped;
-                ingredientPanelView.SlotClicked -= HandleIngredientSlotClicked;
-            }
-
-            if (craftButton != null)
-                craftButton.onClick.RemoveListener(HandleCraftButtonClicked);
-            if (closeButton != null)
-                closeButton.onClick.RemoveListener(HandleCloseButtonClicked);
-            if (pauseResumeButton != null)
-                pauseResumeButton.onClick.RemoveListener(HandlePauseResumeButtonClicked);
-            if (cancelButton != null)
-                cancelButton.onClick.RemoveListener(HandleCancelButtonClicked);
+            panelView.RecipeListClicked -= HandleRecipeListClicked;
+            panelView.RecipeListHovered -= HandleRecipeListHovered;
+            panelView.RecipeHoverExited -= HandleRecipeHoverExited;
+            panelView.SelectedRecipeDropped -= HandleSelectedRecipeDropped;
+            panelView.SelectedRecipeClicked -= HandleSelectedRecipeClicked;
+            panelView.SelectedRecipeHovered -= HandleSelectedRecipeHovered;
+            panelView.SelectedRecipeHoverExited -= HandleRecipeHoverExited;
+            panelView.SelectedRecipeDroppedBackToList -= HandleRecipeDroppedBackToList;
+            panelView.InputInventoryItemDropped -= HandleInputInventoryItemDropped;
+            panelView.InputSlotClicked -= HandleInputSlotClicked;
+            panelView.InputSlotHovered -= HandleInputSlotHovered;
+            panelView.InputSlotHoverExited -= HandleInputSlotHoverExited;
+            panelView.InventoryItemClicked -= HandleCraftingInventoryItemClicked;
+            panelView.DropZonePayloadDropped -= HandleDropZonePayloadDropped;
+            panelView.DropZoneClicked -= HandleDropZoneClicked;
+            panelView.CraftClicked -= HandleCraftButtonClicked;
+            panelView.CloseClicked -= HandleCloseButtonClicked;
+            panelView.PauseResumeClicked -= HandlePauseResumeButtonClicked;
+            panelView.CancelClicked -= HandleCancelButtonClicked;
         }
 
         public void ShowPanel()
@@ -227,65 +227,57 @@ namespace PhamNhanOnline.Client.UI.World
             if (isInitialized)
                 return;
 
+            if (panelView == null)
+                throw new InvalidOperationException($"{nameof(WorldCraftingPanelController)} on '{gameObject.name}' requires {nameof(WorldCraftingPanelView)}.");
+
             if (detachFromMainMenuOnAwake)
                 DetachFromMainMenuRoot();
 
-            if (recipeListView != null)
-            {
-                recipeListView.ItemClicked += HandleRecipeListClicked;
-                recipeListView.ItemHovered += HandleRecipeListHovered;
-                recipeListView.ItemHoverExited += HandleRecipeHoverExited;
-                recipeListView.SelectedRecipeDroppedBackToList += HandleRecipeDroppedBackToList;
-            }
-
-            if (selectedRecipeSlotView != null)
-            {
-                selectedRecipeSlotView.RecipeDropped += HandleSelectedRecipeDropped;
-                selectedRecipeSlotView.Clicked += HandleSelectedRecipeClicked;
-                selectedRecipeSlotView.Hovered += HandleSelectedRecipeHovered;
-                selectedRecipeSlotView.HoverExited += HandleRecipeHoverExited;
-            }
-
-            if (ingredientPanelView != null)
-            {
-                ingredientPanelView.InventoryItemDropped += HandleIngredientInventoryItemDropped;
-                ingredientPanelView.SlotClicked += HandleIngredientSlotClicked;
-                ingredientPanelView.Clear();
-            }
-
-            if (craftButton != null)
-            {
-                craftButton.onClick.RemoveListener(HandleCraftButtonClicked);
-                craftButton.onClick.AddListener(HandleCraftButtonClicked);
-            }
-
-            if (closeButton != null)
-            {
-                closeButton.onClick.RemoveListener(HandleCloseButtonClicked);
-                closeButton.onClick.AddListener(HandleCloseButtonClicked);
-            }
-
-            if (pauseResumeButton != null)
-            {
-                pauseResumeButton.onClick.RemoveListener(HandlePauseResumeButtonClicked);
-                pauseResumeButton.onClick.AddListener(HandlePauseResumeButtonClicked);
-            }
-
-            if (cancelButton != null)
-            {
-                cancelButton.onClick.RemoveListener(HandleCancelButtonClicked);
-                cancelButton.onClick.AddListener(HandleCancelButtonClicked);
-            }
+            AdoptLegacyBindingsIfNeeded();
+            panelView.ValidateSerializedReferences();
+            panelView.RecipeListClicked += HandleRecipeListClicked;
+            panelView.RecipeListHovered += HandleRecipeListHovered;
+            panelView.RecipeHoverExited += HandleRecipeHoverExited;
+            panelView.SelectedRecipeDropped += HandleSelectedRecipeDropped;
+            panelView.SelectedRecipeClicked += HandleSelectedRecipeClicked;
+            panelView.SelectedRecipeHovered += HandleSelectedRecipeHovered;
+            panelView.SelectedRecipeHoverExited += HandleRecipeHoverExited;
+            panelView.SelectedRecipeDroppedBackToList += HandleRecipeDroppedBackToList;
+            panelView.InputInventoryItemDropped += HandleInputInventoryItemDropped;
+            panelView.InputSlotClicked += HandleInputSlotClicked;
+            panelView.InputSlotHovered += HandleInputSlotHovered;
+            panelView.InputSlotHoverExited += HandleInputSlotHoverExited;
+            panelView.InventoryItemClicked += HandleCraftingInventoryItemClicked;
+            panelView.DropZonePayloadDropped += HandleDropZonePayloadDropped;
+            panelView.DropZoneClicked += HandleDropZoneClicked;
+            panelView.CraftClicked += HandleCraftButtonClicked;
+            panelView.CloseClicked += HandleCloseButtonClicked;
+            panelView.PauseResumeClicked += HandlePauseResumeButtonClicked;
+            panelView.CancelClicked += HandleCancelButtonClicked;
+            panelView.ClearInputs();
 
             isInitialized = true;
 
             if (hideAfterInitialize)
-            {
-                if (panelView != null)
-                    panelView.Hide(force: true);
-                else
-                    gameObject.SetActive(false);
-            }
+                panelView.Hide(force: true);
+        }
+
+        private void AdoptLegacyBindingsIfNeeded()
+        {
+            panelView?.AdoptLegacyBindings(
+                panelTitleText,
+                recipeListView,
+                selectedRecipeSlotView,
+                inventoryGridView,
+                itemPresentationCatalog,
+                inputPanelView,
+                craftingResultPreviewView,
+                dropZoneView,
+                closeButton,
+                craftButton,
+                pauseResumeButton,
+                pauseResumeButtonText,
+                cancelButton);
         }
 
         private void Refresh(bool force)
@@ -347,50 +339,39 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ApplyMissingState(bool force)
         {
-            ApplyPanelTitle(force);
-            ApplyText(practiceStatusText, "San sang luyen che", force);
-            ApplyText(countdownText, "--:--", force);
-            if (craftingResultPreviewView != null)
-                craftingResultPreviewView.Clear();
+            if (panelView == null)
+                return;
 
-            if (recipeListView != null)
-                recipeListView.Clear(force: true);
-            if (selectedRecipeSlotView != null)
-                selectedRecipeSlotView.Clear();
-            if (inventoryGridView != null)
-                inventoryGridView.Clear(force: true);
-            ClearIngredientViews();
+            panelView.SetPanelTitle(ResolvePanelTitle(), force);
+            panelView.SetRecipeListInteractionLocked(false);
+            panelView.ClearCraftingResultPreview();
+            panelView.ClearRecipeList(force: true);
+            panelView.ClearSelectedRecipe();
+            panelView.SetInventoryInteractionLocked(false);
+            panelView.ClearInventory(force: true);
+            panelView.ClearInputs();
             ApplyButtons(false, false, false, false, null);
         }
 
         private void ApplyUnsupportedStationState(bool force)
         {
-            ApplyPanelTitle(force);
-            ApplyText(practiceStatusText, ResolveUnsupportedPracticeStatusText(), force);
-            ApplyText(countdownText, "--:--", force);
-            if (craftingResultPreviewView != null)
-                craftingResultPreviewView.Clear();
+            if (panelView == null)
+                return;
 
-            if (recipeListView != null)
-                recipeListView.Clear(force: true);
-            if (selectedRecipeSlotView != null)
-                selectedRecipeSlotView.Clear();
-            if (inventoryGridView != null)
-                inventoryGridView.Clear(force: true);
-
-            ClearIngredientViews();
+            panelView.SetPanelTitle(ResolvePanelTitle(), force);
+            panelView.SetRecipeListInteractionLocked(false);
+            panelView.ClearCraftingResultPreview();
+            panelView.ClearRecipeList(force: true);
+            panelView.ClearSelectedRecipe();
+            panelView.SetInventoryInteractionLocked(false);
+            panelView.ClearInventory(force: true);
+            panelView.ClearInputs();
             HideRecipeTooltip(force: true);
             HideInventoryTooltip(force: true);
             ApplyButtons(false, false, false, false, null);
-
-            if (craftButton != null)
-                craftButton.gameObject.SetActive(false);
-            if (pauseResumeButton != null)
-                pauseResumeButton.gameObject.SetActive(false);
-            if (cancelButton != null)
-                cancelButton.gameObject.SetActive(false);
-            if (countdownText != null)
-                countdownText.gameObject.SetActive(false);
+            panelView.SetCraftButtonState(false, false, craftActionInFlight ? "Dang gui..." : craftIdleText);
+            panelView.SetPauseResumeButtonState(false, false, sessionActionInFlight ? "Dang gui..." : pauseIdleText);
+            panelView.SetCancelButtonState(false, false, sessionActionInFlight ? "Dang gui..." : cancelIdleText);
         }
 
         private void ApplyLoadedState(bool force)
@@ -403,26 +384,27 @@ namespace PhamNhanOnline.Client.UI.World
                           ClientRuntime.Alchemy.LastPreview.Value.PillRecipeTemplateId == selectedRecipeId.Value
                 ? ClientRuntime.Alchemy.LastPreview
                 : null;
+            var interactionLocked = displaySession.HasValue;
 
-            if (recipeListView != null)
-                recipeListView.SetItems(recipes, selectedRecipeId, itemPresentationCatalog, force: true);
+            panelView?.SetRecipeList(recipes, selectedRecipeId, force: true);
+            panelView?.SetRecipeListInteractionLocked(interactionLocked);
+            panelView?.SetInventoryInteractionLocked(interactionLocked);
 
             ApplyInventory(force);
             ApplySelectedRecipe(selectedDetail, displaySession, preview, force);
-            ApplyIngredients(selectedDetail, displaySession, force);
+            ApplyInputs(selectedDetail, displaySession, force);
             ApplyCraftingResultPreview(selectedDetail, displaySession, preview);
-            ApplyPracticeStatus(displaySession, preview, force);
             ApplyButtonsFromState(selectedDetail, displaySession, preview);
         }
 
         private void ApplyPanelTitle(bool force)
         {
-            ApplyText(panelTitleText, ResolvePanelTitle(), force);
+            panelView?.SetPanelTitle(ResolvePanelTitle(), force);
         }
 
         private void ApplyInventory(bool force)
         {
-            if (inventoryGridView == null)
+            if (panelView == null)
                 return;
 
             var inventoryState = ClientRuntime.Inventory;
@@ -436,7 +418,7 @@ namespace PhamNhanOnline.Client.UI.World
                 .ThenBy(static x => x.PlayerItemId)
                 .ToArray();
 
-            inventoryGridView.SetItems(ordered, itemPresentationCatalog, force: true);
+            panelView.SetInventoryItems(ordered, force: true);
         }
 
         private IReadOnlyList<InventoryItemModel> BuildProjectedInventoryItems(IReadOnlyList<InventoryItemModel> items)
@@ -462,9 +444,11 @@ namespace PhamNhanOnline.Client.UI.World
 
                 if (input.RequiredItem.IsStackable)
                 {
-                    var reservedQuantity = input.IsOptional
-                        ? Math.Max(0, selection.AssignedQuantity)
-                        : Math.Max(0, input.RequiredQuantity);
+                    var reservedQuantity = Math.Max(
+                        0,
+                        selection.AssignedQuantity > 0
+                            ? selection.AssignedQuantity
+                            : input.RequiredQuantity);
                     if (reservedQuantity <= 0)
                         continue;
 
@@ -511,85 +495,39 @@ namespace PhamNhanOnline.Client.UI.World
             AlchemyCraftPreviewModel? preview,
             bool force)
         {
+            if (panelView == null)
+                return;
+
             if (!detail.HasValue)
             {
-                if (selectedRecipeSlotView != null)
-                    selectedRecipeSlotView.Clear();
+                panelView.ClearSelectedRecipe();
                 return;
             }
 
             var learnedRecipe = ResolveLearnedRecipe(detail.Value.PillRecipeTemplateId, detail.Value);
-            if (selectedRecipeSlotView != null)
-            {
-                var presentation = itemPresentationCatalog != null
-                    ? itemPresentationCatalog.Resolve(learnedRecipe.ResultPill)
-                    : new InventoryItemPresentation(null, null, Color.white);
-                selectedRecipeSlotView.SetRecipe(
-                    learnedRecipe,
-                    presentation,
-                    ResolveDurationText(detail.Value, activeSession, preview),
-                    ResolveSuccessRateText(detail.Value, preview));
-                selectedRecipeSlotView.SetInteractionLocked(activeSession.HasValue);
-            }
+            panelView.SetSelectedRecipe(
+                learnedRecipe,
+                learnedRecipe.ResultPill,
+                activeSession.HasValue);
         }
 
-        private void ApplyIngredients(PillRecipeDetailModel? detail, PracticeSessionModel? activeSession, bool force)
+        private void ApplyInputs(PillRecipeDetailModel? detail, PracticeSessionModel? activeSession, bool force)
         {
             var inputs = detail.HasValue && detail.Value.Inputs != null
                 ? detail.Value.Inputs
                 : null;
             if (inputs == null || inputs.Count == 0)
             {
-                ClearIngredientViews();
+                panelView?.ClearInputs();
                 return;
             }
 
             var requiredInputs = inputs.Where(static input => !input.IsOptional).ToArray();
             var optionalInputs = inputs.Where(static input => input.IsOptional).ToArray();
 
-            if (ingredientPanelView != null)
-            {
-                ingredientPanelView.SetSlots(
-                    BuildRequiredSlotStates(requiredInputs, activeSession),
-                    BuildOptionalSlotStates(optionalInputs, activeSession));
-            }
-        }
-
-        private void ApplyPracticeStatus(PracticeSessionModel? displaySession, AlchemyCraftPreviewModel? preview, bool force)
-        {
-            if (!displaySession.HasValue)
-            {
-                liveSessionAnchorTime = 0f;
-                liveSessionRemainingSeconds = 0L;
-                ApplyText(practiceStatusText, "San sang luyen che", force);
-                ApplyText(countdownText, "--:--", force);
-                return;
-            }
-
-            if (displaySession.Value.PracticeState == 3)
-            {
-                liveSessionAnchorTime = 0f;
-                liveSessionRemainingSeconds = 0L;
-                ApplyText(practiceStatusText, "Dang doi ket qua luyen che", force);
-                ApplyText(countdownText, FormatDuration(0L), force);
-                return;
-            }
-
-            if (displaySession.Value.PracticeSessionId != 0 && (liveSessionRemainingSeconds <= 0L || liveSessionAnchorTime <= 0f))
-            {
-                liveSessionRemainingSeconds = Math.Max(0L, displaySession.Value.RemainingDurationSeconds);
-                liveSessionAnchorTime = Time.unscaledTime;
-            }
-
-            var progress = ResolveSessionProgress(displaySession.Value, out var remainingSeconds);
-
-            ApplyText(
-                practiceStatusText,
-                displaySession.Value.IsPaused
-                    ? "Dang tam dung"
-                    : "Dang luyen che",
-                force);
-            ApplyText(countdownText, FormatDuration(remainingSeconds), force);
+            panelView?.SetInputSlots(
+                BuildRequiredInputSlotStates(requiredInputs, activeSession),
+                BuildOptionalInputSlotStates(optionalInputs, activeSession));
         }
 
         private void ApplyCraftingResultPreview(
@@ -597,24 +535,25 @@ namespace PhamNhanOnline.Client.UI.World
             PracticeSessionModel? displaySession,
             AlchemyCraftPreviewModel? preview)
         {
-            if (craftingResultPreviewView == null)
+            if (panelView == null)
                 return;
 
-            if (!detail.HasValue || !HasCraftingResultPreviewData(displaySession, preview))
+            if (!detail.HasValue)
             {
-                craftingResultPreviewView.Clear();
+                panelView.ClearCraftingResultPreview();
                 return;
             }
 
             var resultItem = ResolveCraftingResultItem(detail.Value, displaySession);
-            var presentation = itemPresentationCatalog != null
-                ? itemPresentationCatalog.Resolve(resultItem)
-                : new InventoryItemPresentation(null, null, Color.white);
-            craftingResultPreviewView.SetState(
-                presentation,
+            panelView.SetCraftingResultPreview(
+                resultItem,
+                string.IsNullOrWhiteSpace(resultItem.Name) ? "Ket qua luyen che" : resultItem.Name.Trim(),
+                ResolveSuccessRateText(displaySession, detail.Value, preview),
+                ResolveDurationText(detail.Value, displaySession, preview),
                 ResolveCraftingResultQuantity(displaySession, preview),
-                ResolveCraftingResultHiddenFillAmount(displaySession),
-                ResolveCraftingResultProgressText(displaySession));
+                ResolveCraftingResultProgressFillAmount(displaySession),
+                ResolveCraftingResultProgressLabel(displaySession),
+                ResolvePracticeStatusText(displaySession));
         }
 
         private void ApplyButtonsFromState(
@@ -658,34 +597,21 @@ namespace PhamNhanOnline.Client.UI.World
             bool showPracticeButtons,
             string pauseButtonLabel)
         {
-            if (craftButton != null)
-            {
-                craftButton.gameObject.SetActive(!showPracticeButtons && (craftInteractable || craftActionInFlight));
-                craftButton.interactable = craftInteractable;
-            }
-            if (craftButtonText != null)
-                craftButtonText.text = craftActionInFlight ? "Dang gui..." : craftIdleText;
+            if (panelView == null)
+                return;
 
-            if (pauseResumeButton != null)
-            {
-                pauseResumeButton.gameObject.SetActive(showPracticeButtons);
-                pauseResumeButton.interactable = pauseResumeInteractable;
-            }
-
-            if (pauseResumeButtonText != null)
-                pauseResumeButtonText.text = sessionActionInFlight ? "Dang gui..." : (pauseButtonLabel ?? pauseIdleText);
-
-            if (cancelButton != null)
-            {
-                cancelButton.gameObject.SetActive(showPracticeButtons);
-                cancelButton.interactable = cancelInteractable;
-            }
-
-            if (cancelButtonText != null)
-                cancelButtonText.text = sessionActionInFlight ? "Dang gui..." : cancelIdleText;
-
-            if (countdownText != null)
-                countdownText.gameObject.SetActive(showPracticeButtons);
+            panelView.SetCraftButtonState(
+                !showPracticeButtons && (craftInteractable || craftActionInFlight),
+                craftInteractable,
+                craftActionInFlight ? "Dang gui..." : craftIdleText);
+            panelView.SetPauseResumeButtonState(
+                showPracticeButtons,
+                pauseResumeInteractable,
+                sessionActionInFlight ? "Dang gui..." : (pauseButtonLabel ?? pauseIdleText));
+            panelView.SetCancelButtonState(
+                showPracticeButtons,
+                cancelInteractable,
+                sessionActionInFlight ? "Dang gui..." : cancelIdleText);
         }
 
         private void HandleRecipeListClicked(LearnedPillRecipeModel recipe)
@@ -693,7 +619,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (HasBlockingAlchemySession())
                 return;
 
-            SetSelectedRecipe(recipe.PillRecipeTemplateId);
+            ShowRecipeOptions(recipe);
         }
 
         private void HandleRecipeListHovered(LearnedPillRecipeModel recipe)
@@ -711,8 +637,11 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void HandleSelectedRecipeClicked()
         {
+            if (HasBlockingAlchemySession())
+                return;
+
             if (selectedRecipeId.HasValue)
-                _ = ShowRecipeTooltipAsync(selectedRecipeId.Value);
+                ShowSelectedRecipeOptions(selectedRecipeId.Value);
         }
 
         private void HandleSelectedRecipeHovered()
@@ -735,7 +664,7 @@ namespace PhamNhanOnline.Client.UI.World
             HideRecipeTooltip(force: true);
         }
 
-        private void HandleIngredientInventoryItemDropped(int inputId, InventoryItemModel item)
+        private void HandleInputInventoryItemDropped(int inputId, InventoryItemModel item)
         {
             if (HasBlockingAlchemySession() || !TryGetSelectedRecipeDetail(out var detail) || detail.Inputs == null)
                 return;
@@ -747,37 +676,184 @@ namespace PhamNhanOnline.Client.UI.World
             Refresh(force: true);
         }
 
-        private void HandleIngredientSlotClicked(int inputId, bool isOptional, PointerEventData.InputButton button)
+        private void HandleInputSlotClicked(int inputId, bool isOptional, PointerEventData.InputButton button)
         {
-            if (button == PointerEventData.InputButton.Right)
-            {
-                if (draftState.ClearInput(inputId))
-                {
-                    HideQuantityPopup(force: true);
-                    _ = RefreshPreviewAsync();
-                    Refresh(force: true);
-                }
+            if (button != PointerEventData.InputButton.Left && button != PointerEventData.InputButton.Right)
+                return;
 
+            if (HasBlockingAlchemySession() || !TryGetSelectedRecipeDetail(out var detail) || detail.Inputs == null)
+                return;
+
+            if (!TryResolveInput(detail.Inputs, inputId, out var input) ||
+                !input.RequiredItem.IsStackable ||
+                !draftState.TryGetSelection(inputId, out var selection) ||
+                !selection.Armed)
+            {
+                HideItemOptionsPopup(force: true);
                 return;
             }
 
-            if (isOptional &&
-                TryGetSelectedRecipeDetail(out var detail) &&
-                detail.Inputs != null)
-            {
-                var optionalInput = detail.Inputs.FirstOrDefault(input => input.InputId == inputId);
-                if (optionalInput.InputId > 0 &&
-                    optionalInput.RequiredItem.IsStackable &&
-                    draftState.TryGetSelection(inputId, out var selection) &&
-                    selection.Armed)
-                {
-                    ShowOptionalInputQuantityPopup(optionalInput, selection);
-                    return;
-                }
-            }
+            ShowInputQuantityPopup(
+                input,
+                selection,
+                restoreHadSelection: true,
+                restoreAssignedQuantity: Math.Max(0, selection.AssignedQuantity));
+        }
 
+        private void HandleInputSlotHovered(int inputId, bool isOptional)
+        {
             if (selectedRecipeId.HasValue)
                 _ = ShowRecipeTooltipAsync(selectedRecipeId.Value);
+        }
+
+        private void HandleInputSlotHoverExited()
+        {
+            HideRecipeTooltip(force: true);
+        }
+
+        private void HandleCraftingInventoryItemClicked(InventoryItemModel item)
+        {
+            if (HasBlockingAlchemySession())
+                return;
+
+            ShowInventoryItemOptions(item);
+        }
+
+        private void HandleDropZonePayloadDropped(UIDragPayload payload)
+        {
+            if (payload.Kind == UIDragPayloadKind.CraftInputMaterial &&
+                payload.SourceKind == UIDragSourceKind.CraftInputMaterialSlot &&
+                payload.HasSourceIndex)
+            {
+                RemoveInputSelection(payload.SourceIndex);
+            }
+        }
+
+        private void HandleDropZoneClicked(PointerEventData.InputButton button)
+        {
+            if (button == PointerEventData.InputButton.Left)
+                HideItemOptionsPopup(force: true);
+        }
+
+        private void ShowRecipeOptions(LearnedPillRecipeModel recipe)
+        {
+            if (recipe.PillRecipeTemplateId <= 0)
+                return;
+
+            var options = new List<ItemOptionEntry>(1)
+            {
+                new ItemOptionEntry(selectRecipeOptionText, () =>
+                {
+                    HideItemOptionsPopup(force: true);
+                    SetSelectedRecipe(recipe.PillRecipeTemplateId);
+                })
+            };
+
+            popupRecipeId = recipe.PillRecipeTemplateId;
+            popupInventoryPlayerItemId = null;
+            HideRecipeTooltip(force: true);
+            panelView?.ShowItemOptionsPopup(options, force: true);
+        }
+
+        private void ShowSelectedRecipeOptions(int recipeId)
+        {
+            if (recipeId <= 0)
+                return;
+
+            var options = new List<ItemOptionEntry>(1)
+            {
+                new ItemOptionEntry(removeSelectionOptionText, () =>
+                {
+                    HideItemOptionsPopup(force: true);
+                    ClearDraft();
+                    Refresh(force: true);
+                })
+            };
+
+            popupRecipeId = recipeId;
+            popupInventoryPlayerItemId = null;
+            HideRecipeTooltip(force: true);
+            panelView?.ShowItemOptionsPopup(options, force: true);
+        }
+
+        private void ShowInventoryItemOptions(InventoryItemModel item)
+        {
+            var options = BuildInventoryAssignmentOptions(item);
+            if (options.Count == 0)
+            {
+                HideItemOptionsPopup(force: true);
+                return;
+            }
+
+            popupRecipeId = null;
+            popupInventoryPlayerItemId = item.PlayerItemId;
+            HideRecipeTooltip(force: true);
+            HideInventoryTooltip(force: true);
+            panelView?.ShowItemOptionsPopup(options, force: true);
+        }
+
+        private List<ItemOptionEntry> BuildInventoryAssignmentOptions(InventoryItemModel item)
+        {
+            var options = new List<ItemOptionEntry>();
+            if (HasBlockingAlchemySession() || !TryGetSelectedRecipeDetail(out var detail) || detail.Inputs == null)
+                return options;
+
+            var requiredOrdinal = 0;
+            var optionalOrdinal = 0;
+            for (var i = 0; i < detail.Inputs.Count; i++)
+            {
+                var input = detail.Inputs[i];
+                if (input.RequiredItem.ItemTemplateId != item.ItemTemplateId)
+                    continue;
+
+                string label;
+                if (input.IsOptional)
+                {
+                    optionalOrdinal++;
+                    label = optionalOrdinal > 1
+                        ? string.Concat(assignOptionalOptionText, " ", optionalOrdinal.ToString(CultureInfo.InvariantCulture))
+                        : assignOptionalOptionText;
+                }
+                else
+                {
+                    requiredOrdinal++;
+                    label = requiredOrdinal > 1
+                        ? string.Concat(assignRequiredOptionText, " ", requiredOrdinal.ToString(CultureInfo.InvariantCulture))
+                        : assignRequiredOptionText;
+                }
+
+                var capturedInputId = input.InputId;
+                options.Add(new ItemOptionEntry(label, () =>
+                {
+                    HideItemOptionsPopup(force: true);
+                    AssignInventoryItemToInput(capturedInputId, item);
+                }));
+            }
+
+            return options;
+        }
+
+        private void AssignInventoryItemToInput(int inputId, InventoryItemModel item)
+        {
+            if (HasBlockingAlchemySession() || !TryGetSelectedRecipeDetail(out var detail) || detail.Inputs == null)
+                return;
+
+            if (!TryAssignInventoryItemToInput(detail.Inputs, inputId, item))
+                return;
+
+            _ = RefreshPreviewAsync();
+            Refresh(force: true);
+        }
+
+        private void RemoveInputSelection(int inputId)
+        {
+            if (!draftState.ClearInput(inputId))
+                return;
+
+            HideItemOptionsPopup(force: true);
+            HideQuantityPopup(force: true);
+            _ = RefreshPreviewAsync();
+            Refresh(force: true);
         }
 
         private void HandleCraftButtonClicked()
@@ -798,14 +874,8 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
             }
 
-            var maxCraftableCount = Mathf.Max(1, preview.Value.MaxCraftableCount);
-            if (maxCraftableCount <= 1)
-            {
-                _ = StartCraftAsync(detail.PillRecipeTemplateId, 1);
-                return;
-            }
-
-            ShowCraftCountPopup(detail, preview.Value, maxCraftableCount);
+            var requestedCraftCount = Mathf.Max(1, preview.Value.RequestedCraftCount);
+            _ = StartCraftAsync(detail.PillRecipeTemplateId, requestedCraftCount);
         }
 
         private void HandleCloseButtonClicked()
@@ -839,6 +909,12 @@ namespace PhamNhanOnline.Client.UI.World
             var session = GetActiveAlchemySession();
             if (!session.HasValue || !session.Value.CanCancel)
                 return;
+
+            if (ShouldConfirmCancelWithoutRefund(session.Value))
+            {
+                ShowCancelWithoutRefundConfirmation(session.Value.PracticeSessionId);
+                return;
+            }
 
             _ = CancelPracticeAsync(session.Value.PracticeSessionId);
         }
@@ -926,6 +1002,27 @@ namespace PhamNhanOnline.Client.UI.World
             }
         }
 
+        private bool ShouldConfirmCancelWithoutRefund(PracticeSessionModel session)
+        {
+            return session.Progress >= Math.Clamp(session.CancelRefundProgressThreshold, 0d, 1d);
+        }
+
+        private void ShowCancelWithoutRefundConfirmation(long practiceSessionId)
+        {
+            HideItemOptionsPopup(force: true);
+            HideQuantityPopup(force: true);
+            HideRecipeTooltip(force: true);
+            HideInventoryTooltip(force: true);
+
+            WorldModalUIManager.Instance?.ShowNotificationPopup(
+                cancelWithoutRefundWarningTitle,
+                cancelWithoutRefundWarningMessage,
+                Array.Empty<NotificationPopupItemData>(),
+                onConfirm: () => _ = CancelPracticeAsync(practiceSessionId),
+                showCancelButton: true,
+                onCancel: null);
+        }
+
         private async Task ShowRecipeTooltipAsync(int recipeId)
         {
             if (recipeId <= 0)
@@ -935,7 +1032,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (!detail.HasValue)
                 return;
 
-            WorldModalUIManager.Instance?.ShowRecipeTooltip(detail.Value, ResolveAssignedQuantityForTooltip, force: true);
+            panelView?.ShowRecipeTooltip(detail.Value, ResolveAssignedQuantityForTooltip, force: true);
         }
 
         private async Task<PillRecipeDetailModel?> EnsureRecipeDetailLoadedAsync(int recipeId, bool forceRefresh)
@@ -1154,28 +1251,25 @@ namespace PhamNhanOnline.Client.UI.World
             return false;
         }
 
-        private IReadOnlyList<CraftIngredientPanelView.SlotState> BuildRequiredSlotStates(
+        private IReadOnlyList<CraftInputPanelView.SlotState> BuildRequiredInputSlotStates(
             IReadOnlyList<PillRecipeInputModel> requiredInputs,
             PracticeSessionModel? activeSession)
         {
             if (requiredInputs == null || requiredInputs.Count == 0)
-                return Array.Empty<CraftIngredientPanelView.SlotState>();
+                return Array.Empty<CraftInputPanelView.SlotState>();
 
-            var slotCount = Math.Min(Math.Max(1, maxRequiredIngredientSlots), requiredInputs.Count);
-            if (requiredInputs.Count > slotCount)
-                ClientLog.Error($"WorldCraftingPanelController recipe {selectedRecipeId} requires {requiredInputs.Count} mandatory inputs but UI supports only {slotCount}.");
-
-            var states = new List<CraftIngredientPanelView.SlotState>(slotCount);
-            for (var i = 0; i < slotCount; i++)
+            var states = new List<CraftInputPanelView.SlotState>(requiredInputs.Count);
+            for (var i = 0; i < requiredInputs.Count; i++)
             {
                 var input = requiredInputs[i];
-                var presentation = itemPresentationCatalog != null
-                    ? itemPresentationCatalog.Resolve(input.RequiredItem)
+                var presentation = panelView != null
+                    ? panelView.ResolvePresentation(input.RequiredItem)
                     : new InventoryItemPresentation(null, null, Color.white);
                 var currentQuantity = ResolveAssignedQuantity(input, activeSession);
                 var hasSelection = ResolveInputArmed(input, activeSession);
-                states.Add(new CraftIngredientPanelView.SlotState(
+                states.Add(new CraftInputPanelView.SlotState(
                     input.InputId,
+                    input.RequiredItem.ItemTemplateId,
                     presentation,
                     currentQuantity,
                     Math.Max(1, input.RequiredQuantity),
@@ -1189,6 +1283,10 @@ namespace PhamNhanOnline.Client.UI.World
 
         private bool TryAssignInventoryItemToInput(IReadOnlyList<PillRecipeInputModel> inputs, int inputId, InventoryItemModel item)
         {
+            var hadPreviousSelection = draftState.TryGetSelection(inputId, out var previousSelection) && previousSelection.Armed;
+            var previousAssignedQuantity = hadPreviousSelection
+                ? Math.Max(0, previousSelection.AssignedQuantity)
+                : 0;
             var result = draftState.TryAssignInventoryItemToInput(inputs, inputId, item);
             if (!result.Success)
                 return false;
@@ -1197,7 +1295,7 @@ namespace PhamNhanOnline.Client.UI.World
                 TryResolveInput(inputs, inputId, out var input) &&
                 draftState.TryGetSelection(inputId, out var selection))
             {
-                ShowOptionalInputQuantityPopup(input, selection);
+                ShowInputQuantityPopup(input, selection, hadPreviousSelection, previousAssignedQuantity);
             }
 
             return true;
@@ -1206,42 +1304,6 @@ namespace PhamNhanOnline.Client.UI.World
         private bool AreRequiredInputsReady(PillRecipeDetailModel detail, PracticeSessionModel? activeSession)
         {
             return draftState.AreRequiredInputsReady(detail, activeSession, GetConsumedItems(), GetInventoryItems());
-        }
-
-        private string BuildIngredientSummary(IReadOnlyList<PillRecipeInputModel> inputs, PracticeSessionModel? activeSession)
-        {
-            var builder = new StringBuilder();
-            for (var i = 0; i < inputs.Count; i++)
-            {
-                var input = inputs[i];
-                if (builder.Length > 0)
-                    builder.AppendLine();
-
-                var currentQuantity = ResolveAssignedQuantity(input, activeSession);
-                builder.Append("* ");
-                builder.Append(string.IsNullOrWhiteSpace(input.RequiredItem.Name) ? "Nguyen lieu" : input.RequiredItem.Name.Trim());
-                builder.Append(' ');
-                builder.Append(currentQuantity.ToString(CultureInfo.InvariantCulture));
-                builder.Append('/');
-                builder.Append(Math.Max(1, input.RequiredQuantity).ToString(CultureInfo.InvariantCulture));
-                if (input.IsOptional)
-                    builder.Append(" (tuy chon)");
-            }
-
-            var preview = ClientRuntime.Alchemy.LastPreview;
-            if (!activeSession.HasValue &&
-                selectedRecipeId.HasValue &&
-                preview.HasValue &&
-                preview.Value.PillRecipeTemplateId == selectedRecipeId.Value &&
-                preview.Value.MaxCraftableCount > 0)
-            {
-                builder.AppendLine();
-                builder.Append("* Toi da ");
-                builder.Append(preview.Value.MaxCraftableCount.ToString(CultureInfo.InvariantCulture));
-                builder.Append(" vien");
-            }
-
-            return builder.ToString();
         }
 
         private long[] BuildSelectedPlayerItemIds()
@@ -1289,46 +1351,31 @@ namespace PhamNhanOnline.Client.UI.World
             return Mathf.Clamp01((float)(totalDuration - remainingSeconds) / totalDuration);
         }
 
-        private float ResolveCraftingResultHiddenFillAmount(PracticeSessionModel? displaySession)
+        private float ResolveCraftingResultProgressFillAmount(PracticeSessionModel? displaySession)
         {
             if (!displaySession.HasValue)
                 return 0f;
 
             if (displaySession.Value.PracticeState == 3)
-                return 0f;
+                return 1f;
 
-            return 1f - ResolveSessionProgress(displaySession.Value, out _);
+            return ResolveSessionProgress(displaySession.Value, out _);
         }
 
-        private bool HasCraftingResultPreviewData(
-            PracticeSessionModel? displaySession,
-            AlchemyCraftPreviewModel? preview)
-        {
-            var pendingResult = ClientRuntime.Alchemy.PendingPracticeResult;
-            if (pendingResult.HasValue && pendingResult.Value.PracticeType == 2)
-                return true;
-
-            if (displaySession.HasValue)
-                return true;
-
-            return preview.HasValue &&
-                   selectedRecipeId.HasValue &&
-                   preview.Value.PillRecipeTemplateId == selectedRecipeId.Value &&
-                   preview.Value.MaxCraftableCount > 0;
-        }
-
-        private string ResolveCraftingResultProgressText(PracticeSessionModel? displaySession)
+        private string ResolveCraftingResultProgressLabel(PracticeSessionModel? displaySession)
         {
             if (!displaySession.HasValue)
-                return "0%";
+                return string.Empty;
 
             if (displaySession.Value.PracticeState == 3)
-                return "100%";
+                return "100%  00:00";
 
-            return string.Concat(
-                Mathf.RoundToInt(ResolveSessionProgress(displaySession.Value, out _) * 100f)
+            var progress = string.Concat(
+                Mathf.RoundToInt(ResolveSessionProgress(displaySession.Value, out var remainingSeconds) * 100f)
                     .ToString(CultureInfo.InvariantCulture),
                 "%");
+
+            return string.Concat(progress, "  ", FormatDuration(remainingSeconds));
         }
 
         private int ResolveCraftingResultQuantity(
@@ -1356,10 +1403,23 @@ namespace PhamNhanOnline.Client.UI.World
                 selectedRecipeId.HasValue &&
                 preview.Value.PillRecipeTemplateId == selectedRecipeId.Value)
             {
-                return Math.Max(0, preview.Value.MaxCraftableCount);
+                return Math.Max(0, preview.Value.RequestedCraftCount);
             }
 
             return 0;
+        }
+
+        private string ResolvePracticeStatusText(PracticeSessionModel? displaySession)
+        {
+            if (!displaySession.HasValue)
+                return "San sang luyen che";
+
+            if (displaySession.Value.PracticeState == 3)
+                return "Dang doi ket qua luyen che";
+
+            return displaySession.Value.IsPaused
+                ? "Dang tam dung"
+                : "Dang luyen che";
         }
 
         private ItemTemplateSummaryModel ResolveCraftingResultItem(
@@ -1381,10 +1441,18 @@ namespace PhamNhanOnline.Client.UI.World
             return detail.ResultPill;
         }
 
-        private static string ResolveSuccessRateText(PillRecipeDetailModel detail, AlchemyCraftPreviewModel? preview)
+        private static string ResolveSuccessRateText(
+            PracticeSessionModel? displaySession,
+            PillRecipeDetailModel detail,
+            AlchemyCraftPreviewModel? preview)
         {
-            if (preview.HasValue)
-                return FormatPercent(preview.Value.EffectiveSuccessRate);
+            var segments = displaySession.HasValue
+                ? displaySession.Value.SuccessRateSegments
+                : preview.HasValue
+                    ? preview.Value.SuccessRateSegments
+                    : null;
+            if (segments != null && segments.Count > 0)
+                return FormatSuccessRateSegments(segments);
 
             var rate = NormalizeRate(detail.BaseSuccessRate) + NormalizeRate(detail.CurrentSuccessRateBonus);
             if (detail.SuccessRateCap.HasValue)
@@ -1400,27 +1468,31 @@ namespace PhamNhanOnline.Client.UI.World
             if (activeSession.HasValue)
                 return FormatDuration(activeSession.Value.TotalDurationSeconds);
 
-            return FormatDuration(detail.CraftDurationSeconds);
+            var craftCount = preview.HasValue
+                ? Math.Max(1, preview.Value.RequestedCraftCount)
+                : ResolvePreviewRequestedCraftCount(detail);
+            return FormatDuration(detail.CraftDurationSeconds * craftCount);
         }
 
-        private IReadOnlyList<CraftIngredientPanelView.SlotState> BuildOptionalSlotStates(
+        private IReadOnlyList<CraftInputPanelView.SlotState> BuildOptionalInputSlotStates(
             IReadOnlyList<PillRecipeInputModel> optionalInputs,
             PracticeSessionModel? activeSession)
         {
             if (optionalInputs == null || optionalInputs.Count == 0)
-                return Array.Empty<CraftIngredientPanelView.SlotState>();
+                return Array.Empty<CraftInputPanelView.SlotState>();
 
-            var states = new List<CraftIngredientPanelView.SlotState>(optionalInputs.Count);
+            var states = new List<CraftInputPanelView.SlotState>(optionalInputs.Count);
             for (var i = 0; i < optionalInputs.Count; i++)
             {
                 var input = optionalInputs[i];
-                var presentation = itemPresentationCatalog != null
-                    ? itemPresentationCatalog.Resolve(input.RequiredItem)
+                var presentation = panelView != null
+                    ? panelView.ResolvePresentation(input.RequiredItem)
                     : new InventoryItemPresentation(null, null, Color.white);
                 var currentQuantity = ResolveAssignedQuantity(input, activeSession);
                 var hasSelection = ResolveInputArmed(input, activeSession);
-                states.Add(new CraftIngredientPanelView.SlotState(
+                states.Add(new CraftInputPanelView.SlotState(
                     input.InputId,
+                    input.RequiredItem.ItemTemplateId,
                     presentation,
                     currentQuantity,
                     Math.Max(1, input.RequiredQuantity),
@@ -1432,39 +1504,25 @@ namespace PhamNhanOnline.Client.UI.World
             return states;
         }
 
-        private void ShowCraftCountPopup(PillRecipeDetailModel detail, AlchemyCraftPreviewModel preview, int maxCraftableCount)
+        private void ShowInputQuantityPopup(
+            PillRecipeInputModel input,
+            AlchemyCraftDraftState.SelectionSnapshot selection,
+            bool restoreHadSelection,
+            int restoreAssignedQuantity)
         {
-            var modalUIManager = WorldModalUIManager.Instance;
-            if (modalUIManager == null)
-            {
-                _ = StartCraftAsync(detail.PillRecipeTemplateId, maxCraftableCount);
-                return;
-            }
-
-            quantityPopupMode = QuantityPopupMode.CraftCount;
-            quantityPopupInputId = null;
-            modalUIManager.ShowQuantityPopup(
-                Mathf.Max(1, maxCraftableCount),
-                HandleQuantityPopupConfirmed,
-                HandleQuantityPopupCancelled,
-                string.IsNullOrWhiteSpace(detail.Name)
-                    ? "Ban muon luyen che bao nhieu vien?"
-                    : string.Concat("Ban muon luyen ", detail.Name.Trim(), " bao nhieu vien?"),
-                initialQuantity: Mathf.Clamp(preview.RequestedCraftCount > 0 ? preview.RequestedCraftCount : 1, 1, Mathf.Max(1, maxCraftableCount)));
-        }
-
-        private void ShowOptionalInputQuantityPopup(PillRecipeInputModel input, AlchemyCraftDraftState.SelectionSnapshot selection)
-        {
-            var modalUIManager = WorldModalUIManager.Instance;
-            if (modalUIManager == null)
+            if (panelView == null || WorldModalUIManager.Instance == null)
                 return;
 
-            quantityPopupMode = QuantityPopupMode.OptionalInputQuantity;
+            quantityPopupMode = QuantityPopupMode.InputQuantity;
             quantityPopupInputId = input.InputId;
+            quantityPopupRestoreHadSelection = restoreHadSelection;
+            quantityPopupRestoreAssignedQuantity = Math.Max(0, restoreAssignedQuantity);
             var maxQuantity = Math.Max(
                 Math.Max(0, selection.AssignedQuantity),
                 Math.Max(0, selection.AssignedQuantity) + ResolveInventoryQuantity(input.RequiredItem.ItemTemplateId));
-            modalUIManager.ShowQuantityPopup(
+            HideItemOptionsPopup(force: true);
+            HideRecipeTooltip(force: true);
+            panelView.ShowQuantityPopup(
                 Mathf.Max(1, maxQuantity),
                 HandleQuantityPopupConfirmed,
                 HandleQuantityPopupCancelled,
@@ -1482,11 +1540,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             switch (mode)
             {
-                case QuantityPopupMode.CraftCount:
-                    if (selectedRecipeId.HasValue)
-                        _ = StartCraftAsync(selectedRecipeId.Value, quantity);
-                    break;
-                case QuantityPopupMode.OptionalInputQuantity:
+                case QuantityPopupMode.InputQuantity:
                     if (inputId.HasValue)
                     {
                         draftState.SetAssignedQuantity(inputId.Value, quantity);
@@ -1499,7 +1553,22 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void HandleQuantityPopupCancelled()
         {
+            var mode = quantityPopupMode;
+            var inputId = quantityPopupInputId;
+            var restoreHadSelection = quantityPopupRestoreHadSelection;
+            var restoreAssignedQuantity = quantityPopupRestoreAssignedQuantity;
             HideQuantityPopup(force: true);
+
+            if (mode == QuantityPopupMode.InputQuantity && inputId.HasValue)
+            {
+                if (restoreHadSelection)
+                    draftState.SetAssignedQuantity(inputId.Value, restoreAssignedQuantity);
+                else
+                    draftState.ClearInput(inputId.Value);
+
+                _ = RefreshPreviewAsync();
+            }
+
             Refresh(force: true);
         }
 
@@ -1507,13 +1576,21 @@ namespace PhamNhanOnline.Client.UI.World
         {
             quantityPopupMode = QuantityPopupMode.None;
             quantityPopupInputId = null;
-            WorldModalUIManager.Instance?.HideQuantityPopup(force);
+            quantityPopupRestoreHadSelection = false;
+            quantityPopupRestoreAssignedQuantity = 0;
+            panelView?.HideQuantityPopup(force);
         }
 
-        private void ClearIngredientViews()
+        private void HideItemOptionsPopup(bool force)
         {
-            if (ingredientPanelView != null)
-                ingredientPanelView.Clear();
+            popupRecipeId = null;
+            popupInventoryPlayerItemId = null;
+            panelView?.HideItemOptionsPopup(force);
+        }
+
+        private void ClearInputViews()
+        {
+            panelView?.ClearInputs();
         }
 
         private void ClearDraft()
@@ -1528,8 +1605,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             ClearDraft();
 
-            if (selectedRecipeSlotView != null)
-                selectedRecipeSlotView.SetInteractionLocked(false);
+            panelView?.SetSelectedRecipeInteractionLocked(false);
 
             HideRecipeTooltip(force: true);
             HideInventoryTooltip(force: true);
@@ -1538,12 +1614,12 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void HideRecipeTooltip(bool force)
         {
-            WorldModalUIManager.Instance?.HideRecipeTooltip(force);
+            panelView?.HideRecipeTooltip(force);
         }
 
         private void HideInventoryTooltip(bool force)
         {
-            WorldModalUIManager.Instance?.HideItemTooltip(force: force);
+            panelView?.HideInventoryTooltip(force);
         }
 
         private static double NormalizeRate(double value)
@@ -1566,17 +1642,6 @@ namespace PhamNhanOnline.Client.UI.World
                 return TimeSpan.FromSeconds(clamped).ToString(@"hh\:mm\:ss");
 
             return TimeSpan.FromSeconds(clamped).ToString(@"mm\:ss");
-        }
-
-        private static void ApplyText(TMP_Text text, string value, bool force)
-        {
-            if (text == null)
-                return;
-
-            if (!force && string.Equals(text.text, value, StringComparison.Ordinal))
-                return;
-
-            text.text = value ?? string.Empty;
         }
 
         private string BuildSnapshot()
@@ -1637,6 +1702,8 @@ namespace PhamNhanOnline.Client.UI.World
                 ":",
                 session.Value.BoostedCraftCount.ToString(CultureInfo.InvariantCulture),
                 ":",
+                BuildSuccessRateSegmentSnapshot(session.Value.SuccessRateSegments),
+                ":",
                 session.Value.RemainingDurationSeconds.ToString(CultureInfo.InvariantCulture),
                 ":",
                 session.Value.CanPause ? "1" : "0",
@@ -1657,13 +1724,54 @@ namespace PhamNhanOnline.Client.UI.World
                 ":",
                 preview.Value.CanCraft ? "1" : "0",
                 ":",
+                preview.Value.RequestedCraftCount.ToString(CultureInfo.InvariantCulture),
+                ":",
                 preview.Value.MaxCraftableCount.ToString(CultureInfo.InvariantCulture),
                 ":",
                 preview.Value.BoostedCraftCount.ToString(CultureInfo.InvariantCulture),
                 ":",
+                BuildSuccessRateSegmentSnapshot(preview.Value.SuccessRateSegments),
+                ":",
                 preview.Value.EffectiveSuccessRate.ToString("0.####", CultureInfo.InvariantCulture),
                 ":",
                 preview.Value.FailureReason ?? string.Empty);
+        }
+
+        private static string FormatSuccessRateSegments(IReadOnlyList<AlchemyCraftRateSegmentModel> segments)
+        {
+            if (segments == null || segments.Count == 0)
+                return string.Empty;
+
+            var normalizedSegments = segments
+                .Where(static segment => segment.Count > 0)
+                .ToArray();
+            if (normalizedSegments.Length == 0)
+                return string.Empty;
+
+            if (normalizedSegments.Length == 1)
+                return FormatPercent(normalizedSegments[0].SuccessRate);
+
+            return string.Join(
+                ", ",
+                normalizedSegments.Select(segment => string.Concat(
+                    FormatPercent(segment.SuccessRate),
+                    " x",
+                    segment.Count.ToString(CultureInfo.InvariantCulture))));
+        }
+
+        private static string BuildSuccessRateSegmentSnapshot(IReadOnlyList<AlchemyCraftRateSegmentModel> segments)
+        {
+            if (segments == null || segments.Count == 0)
+                return string.Empty;
+
+            return string.Join(
+                ",",
+                segments
+                    .Where(static segment => segment.Count > 0)
+                    .Select(segment => string.Concat(
+                        NormalizeRate(segment.SuccessRate).ToString("0.######", CultureInfo.InvariantCulture),
+                        "x",
+                        segment.Count.ToString(CultureInfo.InvariantCulture))));
         }
 
         private bool IsAlchemyStation()
@@ -1706,31 +1814,6 @@ namespace PhamNhanOnline.Client.UI.World
                 default:
                     return "San sang luyen che";
             }
-        }
-
-        private void ValidateSerializedReferences()
-        {
-            ThrowIfMissing(recipeListView, nameof(recipeListView));
-            ThrowIfMissing(selectedRecipeSlotView, nameof(selectedRecipeSlotView));
-            ThrowIfMissing(inventoryGridView, nameof(inventoryGridView));
-            ThrowIfMissing(itemPresentationCatalog, nameof(itemPresentationCatalog));
-            ThrowIfMissing(ingredientPanelView, nameof(ingredientPanelView));
-            ThrowIfMissing(practiceStatusText, nameof(practiceStatusText));
-            ThrowIfMissing(closeButton, nameof(closeButton));
-            ThrowIfMissing(craftButton, nameof(craftButton));
-            ThrowIfMissing(craftButtonText, nameof(craftButtonText));
-            ThrowIfMissing(pauseResumeButton, nameof(pauseResumeButton));
-            ThrowIfMissing(pauseResumeButtonText, nameof(pauseResumeButtonText));
-            ThrowIfMissing(cancelButton, nameof(cancelButton));
-            ThrowIfMissing(cancelButtonText, nameof(cancelButtonText));
-            ThrowIfMissing(craftingResultPreviewView, nameof(craftingResultPreviewView));
-            ThrowIfMissing(countdownText, nameof(countdownText));
-        }
-
-        private void ThrowIfMissing(UnityEngine.Object value, string fieldName)
-        {
-            if (value == null)
-                throw new InvalidOperationException($"{nameof(WorldCraftingPanelController)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
         }
 
         private void DetachFromMainMenuRoot()

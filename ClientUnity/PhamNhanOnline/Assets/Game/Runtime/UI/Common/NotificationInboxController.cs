@@ -5,6 +5,7 @@ using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.UI.Inventory;
+using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.Common
@@ -14,19 +15,12 @@ namespace PhamNhanOnline.Client.UI.Common
         private const int LifespanExpiredNotificationType = 4;
 
         [Header("References")]
-        [SerializeField] private NotificationPopupView popupView;
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
         [SerializeField] private GameObject[] eligibleRoots = Array.Empty<GameObject>();
 
         private long? showingNotificationId;
         private bool acknowledgeInFlight;
         private long? blockedNotificationId;
-
-        protected virtual void Awake()
-        {
-            if (popupView != null)
-                popupView.Confirmed += HandlePopupConfirmed;
-        }
 
         protected virtual void Start()
         {
@@ -52,13 +46,12 @@ namespace PhamNhanOnline.Client.UI.Common
         protected virtual void OnDestroy()
         {
             TryUnsubscribeStateChanged();
-            if (popupView != null)
-                popupView.Confirmed -= HandlePopupConfirmed;
         }
 
         protected virtual void Refresh(bool force)
         {
-            if (popupView == null || !ClientRuntime.IsInitialized)
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager == null || !ClientRuntime.IsInitialized)
                 return;
 
             var notification = ClientRuntime.Notifications.CurrentNotification;
@@ -66,7 +59,7 @@ namespace PhamNhanOnline.Client.UI.Common
             {
                 showingNotificationId = null;
                 blockedNotificationId = null;
-                popupView.Hide(force);
+                modalUIManager.HideNotificationPopup(force);
                 return;
             }
 
@@ -79,7 +72,7 @@ namespace PhamNhanOnline.Client.UI.Common
             if (!force &&
                 showingNotificationId.HasValue &&
                 showingNotificationId.Value == notification.Value.NotificationId &&
-                popupView.IsVisible)
+                modalUIManager.IsNotificationPopupVisible)
             {
                 return;
             }
@@ -87,10 +80,11 @@ namespace PhamNhanOnline.Client.UI.Common
             blockedNotificationId = null;
             showingNotificationId = notification.Value.NotificationId;
             var items = ResolvePopupItems(notification.Value);
-            popupView.Show(
+            modalUIManager.ShowNotificationPopup(
                 ResolveTitle(notification.Value),
                 ResolveMessage(notification.Value),
-                items);
+                items,
+                onConfirm: HandlePopupConfirmed);
         }
 
         protected virtual bool CanShowPopup()
@@ -156,7 +150,7 @@ namespace PhamNhanOnline.Client.UI.Common
                 : (PlayerNotificationModel?)null;
             if (!showingNotificationId.HasValue || acknowledgeInFlight || !ClientRuntime.IsInitialized)
             {
-                popupView.Hide(force: true);
+                WorldModalUIManager.Instance?.HideNotificationPopup(force: true);
                 return;
             }
 
@@ -175,7 +169,7 @@ namespace PhamNhanOnline.Client.UI.Common
                 }
 
                 showingNotificationId = null;
-                popupView.Hide(force: true);
+                WorldModalUIManager.Instance?.HideNotificationPopup(force: true);
 
                 if (notification.HasValue &&
                     notification.Value.NotificationType == LifespanExpiredNotificationType &&
@@ -196,7 +190,6 @@ namespace PhamNhanOnline.Client.UI.Common
 
         protected virtual void ValidateSerializedReferences()
         {
-            ThrowIfMissing(popupView, nameof(popupView));
             ThrowIfMissing(itemPresentationCatalog, nameof(itemPresentationCatalog));
             if (eligibleRoots == null || eligibleRoots.Length == 0)
                 throw new InvalidOperationException($"{nameof(NotificationInboxController)} on '{gameObject.name}' requires at least one eligible root.");

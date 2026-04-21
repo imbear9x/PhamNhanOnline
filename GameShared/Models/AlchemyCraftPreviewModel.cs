@@ -15,6 +15,7 @@ public struct AlchemyCraftPreviewModel
     public double EffectiveMutationRate;
     public double BoostedMutationRate;
     public int BoostedCraftCount;
+    public List<AlchemyCraftRateSegmentModel>? SuccessRateSegments;
     public List<AlchemyOptionalInputSelectionModel>? AppliedOptionalInputs;
     public List<AlchemyConsumedItemModel>? ConsumedItems;
 }

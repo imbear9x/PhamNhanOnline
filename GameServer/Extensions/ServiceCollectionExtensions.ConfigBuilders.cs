@@ -123,6 +123,7 @@ public static partial class ServiceCollectionExtensions
             WorldEmptyPublicInstanceLifetimeSeconds = GetInt(configsByKey, GameConfigKeys.WorldEmptyPublicInstanceLifetimeSeconds, 120),
             CultivationPotentialPerCultivationPoint = GetInt(configsByKey, GameConfigKeys.CultivationPotentialPerCultivationPoint, 1),
             CultivationSettlementIntervalSeconds = GetInt(configsByKey, GameConfigKeys.CultivationSettlementIntervalSeconds, 300),
+            AlchemyPracticeCancelRefundProgressThreshold = GetDouble(configsByKey, GameConfigKeys.AlchemyPracticeCancelRefundProgressThreshold, 0.30d),
             CharacterHomeGardenPlotCount = GetInt(configsByKey, GameConfigKeys.CharacterHomeGardenPlotCount, 8),
             CharacterEquipmentSlotCount = GetInt(configsByKey, GameConfigKeys.CharacterEquipmentSlotCount, 4),
             CharacterStarterBasicSkillId = GetInt(configsByKey, GameConfigKeys.CharacterStarterBasicSkillId, 0),

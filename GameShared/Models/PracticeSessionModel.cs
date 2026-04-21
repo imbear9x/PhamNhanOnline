@@ -11,11 +11,13 @@ public struct PracticeSessionModel
     public int DefinitionId;
     public int RequestedCraftCount;
     public int BoostedCraftCount;
+    public List<AlchemyCraftRateSegmentModel>? SuccessRateSegments;
     public string? Title;
     public long TotalDurationSeconds;
     public long AccumulatedActiveSeconds;
     public long RemainingDurationSeconds;
     public double Progress;
+    public double CancelRefundProgressThreshold;
     public bool CanPause;
     public bool CanCancel;
     public bool IsPaused;

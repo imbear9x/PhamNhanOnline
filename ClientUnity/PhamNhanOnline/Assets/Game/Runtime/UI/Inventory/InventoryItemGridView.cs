@@ -19,6 +19,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
         private int lastItemCount = -1;
         private string lastSnapshot = string.Empty;
         private long? selectedPlayerItemId;
+        private bool interactionLocked;
         private bool loopInitialized;
 
         public event Action<InventoryItemModel> ItemClicked;
@@ -64,6 +65,15 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
             selectedPlayerItemId = playerItemId;
             UpdateSelectionVisuals(force: true);
+        }
+
+        public void SetInteractionLocked(bool locked, bool force = false)
+        {
+            if (!force && interactionLocked == locked)
+                return;
+
+            interactionLocked = locked;
+            UpdateVisibleInteractionLocks();
         }
 
         public void Clear(bool force = false)
@@ -151,6 +161,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 : new InventoryItemPresentation(null, null, Color.white);
             slotView.SetItem(item, presentation, force: true);
             slotView.SetSelected(selectedPlayerItemId.HasValue && selectedPlayerItemId.Value == item.PlayerItemId, force: true);
+            slotView.SetInteractionLocked(interactionLocked);
             return slotView;
         }
 
@@ -160,6 +171,21 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 return;
 
             slotView.Clicked += HandleSlotClicked;
+        }
+
+        private void UpdateVisibleInteractionLocks()
+        {
+            if (loopGridView == null || items == null || items.Count == 0)
+                return;
+
+            for (var i = 0; i < items.Count; i++)
+            {
+                var slot = loopGridView.GetShownItemByItemIndex(i) as InventoryItemSlotView;
+                if (slot == null)
+                    continue;
+
+                slot.SetInteractionLocked(interactionLocked);
+            }
         }
 
         private void ValidateSerializedReferences()

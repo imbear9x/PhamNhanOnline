@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Common
 {
@@ -15,16 +14,22 @@ namespace PhamNhanOnline.Client.UI.Common
         [SerializeField] private GameObject itemListRoot;
         [SerializeField] private Transform itemListContentRoot;
         [SerializeField] private NotificationPopupItemSlotView itemSlotTemplate;
-        [SerializeField] private Button confirmButton;
+        [SerializeField] private UIButtonView confirmButton;
         [SerializeField] private TMP_Text confirmButtonText;
+        [SerializeField] private UIButtonView cancelButton;
+        [SerializeField] private TMP_Text cancelButtonText;
 
         [Header("Fallback")]
         [SerializeField] private string defaultTitleText = "Thong bao";
         [SerializeField] private string defaultConfirmText = "OK";
+        [SerializeField] private string defaultCancelText = "Huy";
 
         private readonly List<NotificationPopupItemSlotView> itemSlotInstances = new List<NotificationPopupItemSlotView>(4);
+        private Action confirmAction;
+        private Action cancelAction;
 
         public event Action Confirmed;
+        public event Action Cancelled;
 
         protected override bool HideOnFirstAwake => true;
 
@@ -35,12 +40,20 @@ namespace PhamNhanOnline.Client.UI.Common
 
             if (confirmButton != null)
             {
-                confirmButton.onClick.RemoveListener(HandleConfirmClicked);
-                confirmButton.onClick.AddListener(HandleConfirmClicked);
+                confirmButton.Clicked -= HandleConfirmClicked;
+                confirmButton.Clicked += HandleConfirmClicked;
+            }
+
+            if (cancelButton != null)
+            {
+                cancelButton.Clicked -= HandleCancelClicked;
+                cancelButton.Clicked += HandleCancelClicked;
             }
 
             if (confirmButtonText != null)
                 confirmButtonText.text = defaultConfirmText;
+            if (cancelButtonText != null)
+                cancelButtonText.text = defaultCancelText;
 
             base.Awake();
         }
@@ -58,17 +71,35 @@ namespace PhamNhanOnline.Client.UI.Common
         protected virtual void OnDestroy()
         {
             if (confirmButton != null)
-                confirmButton.onClick.RemoveListener(HandleConfirmClicked);
+                confirmButton.Clicked -= HandleConfirmClicked;
+            if (cancelButton != null)
+                cancelButton.Clicked -= HandleCancelClicked;
         }
 
-        public void Show(string title, string message, NotificationPopupItemData[] items)
+        public void Show(
+            string title,
+            string message,
+            NotificationPopupItemData[] items,
+            Action onConfirm = null,
+            bool showCancelButton = false,
+            Action onCancel = null,
+            string confirmTextOverride = null,
+            string cancelTextOverride = null)
         {
+            confirmAction = onConfirm;
+            cancelAction = onCancel;
             ShowView();
 
             if (titleText != null)
                 titleText.text = string.IsNullOrWhiteSpace(title) ? defaultTitleText : title.Trim();
             if (messageText != null)
                 messageText.text = string.IsNullOrWhiteSpace(message) ? string.Empty : message.Trim();
+            if (confirmButtonText != null)
+                confirmButtonText.text = string.IsNullOrWhiteSpace(confirmTextOverride) ? defaultConfirmText : confirmTextOverride.Trim();
+            if (cancelButtonText != null)
+                cancelButtonText.text = string.IsNullOrWhiteSpace(cancelTextOverride) ? defaultCancelText : cancelTextOverride.Trim();
+            if (cancelButton != null)
+                cancelButton.gameObject.SetActive(showCancelButton);
 
             BindItems(items);
         }
@@ -77,6 +108,9 @@ namespace PhamNhanOnline.Client.UI.Common
         {
             if (!force && !IsVisible)
                 return;
+
+            confirmAction = null;
+            cancelAction = null;
             SetViewVisible(false, force: true);
             ClearInstancedSlots();
         }
@@ -91,6 +125,8 @@ namespace PhamNhanOnline.Client.UI.Common
             ThrowIfMissing(itemSlotTemplate, nameof(itemSlotTemplate));
             ThrowIfMissing(confirmButton, nameof(confirmButton));
             ThrowIfMissing(confirmButtonText, nameof(confirmButtonText));
+            ThrowIfMissing(cancelButton, nameof(cancelButton));
+            ThrowIfMissing(cancelButtonText, nameof(cancelButtonText));
 
             itemSlotTemplate.gameObject.SetActive(false);
         }
@@ -145,7 +181,19 @@ namespace PhamNhanOnline.Client.UI.Common
 
         private void HandleConfirmClicked()
         {
+            if (confirmAction != null)
+                confirmAction.Invoke();
+            else
+                Hide(force: true);
+
             Confirmed?.Invoke();
+        }
+
+        private void HandleCancelClicked()
+        {
+            Hide(force: true);
+            cancelAction?.Invoke();
+            Cancelled?.Invoke();
         }
 
         protected void ThrowIfMissing(UnityEngine.Object value, string fieldName)

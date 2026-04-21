@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GameServer.Config;
 using GameServer.DTO;
 using GameServer.Network;
 using GameServer.Entities;
@@ -16,15 +17,18 @@ public sealed class PracticeService
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly GameConfigValues _gameConfig;
     private readonly WorldManager _worldManager;
     private readonly CharacterRuntimeService _runtimeService;
 
     public PracticeService(
         IServiceScopeFactory scopeFactory,
+        GameConfigValues gameConfig,
         WorldManager worldManager,
         CharacterRuntimeService runtimeService)
     {
         _scopeFactory = scopeFactory;
+        _gameConfig = gameConfig;
         _worldManager = worldManager;
         _runtimeService = runtimeService;
     }
@@ -116,7 +120,7 @@ public sealed class PracticeService
 
     public bool IsPauseLocked(PlayerPracticeSessionEntity session, DateTime utcNow)
     {
-        return CalculateProgress(session, utcNow) >= Math.Clamp(session.CancelLockedProgress, 0d, 1d);
+        return CalculateProgress(session, utcNow) >= 1d;
     }
 
     public PracticeSessionModel BuildSessionModel(PlayerPracticeSessionEntity session, DateTime utcNow)
@@ -130,11 +134,20 @@ public sealed class PracticeService
             DefinitionId = session.DefinitionId,
             RequestedCraftCount = requestPayload?.RequestedCraftCount ?? 1,
             BoostedCraftCount = requestPayload?.SelectedOptionalInputs?.Sum(static entry => Math.Max(0, entry.AppliedCount)) ?? 0,
+            SuccessRateSegments = requestPayload?.SuccessRateSegments?
+                .Where(static entry => entry is not null && entry.Count > 0)
+                .Select(entry => new AlchemyCraftRateSegmentModel
+                {
+                    SuccessRate = entry.SuccessRate,
+                    Count = Math.Max(0, entry.Count)
+                })
+                .ToList(),
             Title = session.Title,
             TotalDurationSeconds = Math.Max(0L, session.TotalDurationSeconds),
             AccumulatedActiveSeconds = CalculateAccumulatedActiveSeconds(session, utcNow),
             RemainingDurationSeconds = CalculateRemainingDurationSeconds(session, utcNow),
             Progress = CalculateProgress(session, utcNow),
+            CancelRefundProgressThreshold = GetCancelRefundProgressThreshold(),
             CanPause = session.PracticeState == (int)PracticeSessionState.Active &&
                        !IsPauseLocked(session, utcNow),
             CanCancel = session.PracticeState != (int)PracticeSessionState.ResultPendingAcknowledgement &&
@@ -291,7 +304,9 @@ public sealed class PracticeService
             return PracticeMutationResult.Failed(MessageCode.CharacterMustEnterWorld);
 
         await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<GameDb>();
         var repository = scope.ServiceProvider.GetRequiredService<PlayerPracticeSessionRepository>();
+        var itemService = scope.ServiceProvider.GetRequiredService<ItemService>();
         var entity = await ResolveOwnedSessionAsync(repository, session.Player.CharacterData.CharacterId, practiceSessionId, cancellationToken);
         if (entity is null ||
             (entity.PracticeState != (int)PracticeSessionState.Active && entity.PracticeState != (int)PracticeSessionState.Paused))
@@ -299,14 +314,25 @@ public sealed class PracticeService
             return PracticeMutationResult.Failed(MessageCode.PracticeNotActive);
         }
 
+        var utcNow = DateTime.UtcNow;
         if (entity.PracticeState == (int)PracticeSessionState.Active)
-            entity.AccumulatedActiveSeconds = CalculateAccumulatedActiveSeconds(entity, DateTime.UtcNow);
+            entity.AccumulatedActiveSeconds = CalculateAccumulatedActiveSeconds(entity, utcNow);
+
+        var shouldRefundConsumedItems = CalculateProgress(entity, utcNow) < GetCancelRefundProgressThreshold();
+        var requestPayload = DeserializeRequestPayload(entity);
+
+        await using var tx = await db.BeginTransactionAsync(cancellationToken);
 
         entity.PracticeState = (int)PracticeSessionState.Cancelled;
         entity.LastResumedAtUtc = null;
-        entity.PausedAtUtc = DateTime.UtcNow;
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+        entity.PausedAtUtc = utcNow;
+        entity.UpdatedAtUtc = utcNow;
         await repository.UpdateAsync(entity, cancellationToken);
+
+        if (shouldRefundConsumedItems && requestPayload?.ConsumedEntries is { Count: > 0 })
+            await RestoreConsumedItemsAsync(itemService, session.Player.CharacterData.CharacterId, requestPayload.ConsumedEntries, cancellationToken);
+
+        await tx.CommitAsync(cancellationToken);
 
         SyncOnlinePlayerState(session.Player, null);
         return PracticeMutationResult.Succeeded(entity);
@@ -368,6 +394,36 @@ public sealed class PracticeService
         }
 
         return await repository.GetBlockingSessionAsync(playerId, cancellationToken);
+    }
+
+    private double GetCancelRefundProgressThreshold()
+    {
+        return Math.Clamp(_gameConfig.AlchemyPracticeCancelRefundProgressThreshold, 0d, 1d);
+    }
+
+    private static async Task RestoreConsumedItemsAsync(
+        ItemService itemService,
+        Guid playerId,
+        IReadOnlyList<PracticeConsumedEntry> consumedEntries,
+        CancellationToken cancellationToken)
+    {
+        for (var i = 0; i < consumedEntries.Count; i++)
+        {
+            var entry = consumedEntries[i];
+            var quantity = Math.Max(0, entry.Quantity);
+            if (entry.ItemTemplateId <= 0 || quantity <= 0)
+                continue;
+
+            await itemService.AddItemAsync(
+                playerId,
+                entry.ItemTemplateId,
+                quantity,
+                entry.IsBound,
+                entry.ExpireAtUnixMs.HasValue
+                    ? DateTimeOffset.FromUnixTimeMilliseconds(entry.ExpireAtUnixMs.Value).UtcDateTime
+                    : null,
+                cancellationToken);
+        }
     }
 }
 

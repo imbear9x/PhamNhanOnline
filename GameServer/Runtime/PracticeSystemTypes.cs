@@ -20,11 +20,17 @@ public enum PracticeSessionState
 public sealed record PracticeConsumedEntry(
     long PlayerItemId,
     int ItemTemplateId,
-    int Quantity);
+    int Quantity,
+    bool IsBound,
+    long? ExpireAtUnixMs);
 
 public sealed record PracticeOptionalInputEntry(
     int InputId,
     int AppliedCount);
+
+public sealed record PracticeRateSegmentEntry(
+    double SuccessRate,
+    int Count);
 
 public sealed record PracticeRewardEntry(
     int ItemTemplateId,
@@ -34,6 +40,7 @@ public sealed record PracticeSessionPayload(
     int DefinitionId,
     int RequestedCraftCount,
     IReadOnlyList<PracticeOptionalInputEntry> SelectedOptionalInputs,
+    IReadOnlyList<PracticeRateSegmentEntry> SuccessRateSegments,
     IReadOnlyList<PracticeConsumedEntry> ConsumedEntries);
 
 public sealed record PracticeCompletionPayload(

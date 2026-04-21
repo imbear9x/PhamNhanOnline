@@ -11,6 +11,7 @@ namespace PhamNhanOnline.Client.UI.Common
         Recipe = 2,
         Skill = 3,
         MartialArt = 4,
+        CraftInputMaterial = 5,
     }
 
     public enum UIDragSourceKind
@@ -24,6 +25,7 @@ namespace PhamNhanOnline.Client.UI.Common
         SkillLoadoutSlot = 6,
         MartialArtListItem = 7,
         ActiveMartialArtSlot = 8,
+        CraftInputMaterialSlot = 9,
     }
 
     public interface IUIDragPayloadSource
@@ -157,6 +159,25 @@ namespace PhamNhanOnline.Client.UI.Common
                 hasSourceEquipmentSlot: false,
                 0,
                 hasSourceIndex: false);
+        }
+
+        public static UIDragPayload FromCraftInputMaterial(int inputId)
+        {
+            return new UIDragPayload(
+                UIDragPayloadKind.CraftInputMaterial,
+                UIDragSourceKind.CraftInputMaterialSlot,
+                default,
+                hasInventoryItem: false,
+                default,
+                hasRecipe: false,
+                default,
+                hasSkill: false,
+                default,
+                hasMartialArt: false,
+                0,
+                hasSourceEquipmentSlot: false,
+                inputId,
+                hasSourceIndex: true);
         }
     }
 

@@ -6,6 +6,7 @@ using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.World;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace PhamNhanOnline.Client.UI.Crafting
 {
@@ -16,7 +17,8 @@ namespace PhamNhanOnline.Client.UI.Crafting
         [SerializeField] private RectTransform panelTransform;
         [SerializeField] private TMP_Text nameText;
         [SerializeField] private TMP_Text descriptionText;
-        [SerializeField] private TMP_Text ingredientsText;
+        [FormerlySerializedAs("ingredientsText")]
+        [SerializeField] private TMP_Text inputMaterialsText;
 
         [Header("Display")]
         [SerializeField] private string emptyName = "Dan phuong";
@@ -58,8 +60,8 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 nameText.text = string.IsNullOrWhiteSpace(detail.Name) ? emptyName : detail.Name.Trim();
             if (descriptionText != null)
                 descriptionText.text = string.IsNullOrWhiteSpace(detail.Description) ? emptyDescription : detail.Description.Trim();
-            if (ingredientsText != null)
-                ingredientsText.text = BuildIngredientsText(detail, quantityResolver);
+            if (inputMaterialsText != null)
+                inputMaterialsText.text = BuildInputMaterialsText(detail, quantityResolver);
 
             PositionViewNearCursor(cursorOffsetBelow, cursorOffsetAbove, screenPadding);
         }
@@ -73,7 +75,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
             SetViewVisible(false);
         }
 
-        private static string BuildIngredientsText(PillRecipeDetailModel detail, Func<PillRecipeInputModel, int> quantityResolver)
+        private static string BuildInputMaterialsText(PillRecipeDetailModel detail, Func<PillRecipeInputModel, int> quantityResolver)
         {
             if (detail.Inputs == null || detail.Inputs.Count == 0)
                 return "Khong co nguyen lieu.";
@@ -129,7 +131,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
             ThrowIfMissing(panelTransform, nameof(panelTransform));
             ThrowIfMissing(nameText, nameof(nameText));
             ThrowIfMissing(descriptionText, nameof(descriptionText));
-            ThrowIfMissing(ingredientsText, nameof(ingredientsText));
+            ThrowIfMissing(inputMaterialsText, nameof(inputMaterialsText));
 
             if (panelRoot.GetComponent<WorldCraftingPanelController>() != null)
                 throw new InvalidOperationException($"{nameof(CraftRecipeTooltipView)} on '{gameObject.name}' must use its own tooltip root, not the crafting panel root.");

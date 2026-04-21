@@ -14,6 +14,7 @@ public sealed class GameConfigValues
     public int WorldEmptyPublicInstanceLifetimeSeconds { get; init; } = 120;
     public int CultivationPotentialPerCultivationPoint { get; init; } = 1;
     public int CultivationSettlementIntervalSeconds { get; init; } = 300;
+    public double AlchemyPracticeCancelRefundProgressThreshold { get; init; } = 0.30d;
     public int CharacterHomeGardenPlotCount { get; init; } = 8;
     public int CharacterEquipmentSlotCount { get; init; } = 4;
     public int CharacterStarterBasicSkillId { get; init; } = 0;

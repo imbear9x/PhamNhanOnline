@@ -26,6 +26,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
         private string lastSnapshot = string.Empty;
         private int lastItemCount = -1;
         private int? selectedRecipeId;
+        private bool interactionLocked;
         private bool loopInitialized;
 
         public event Action<LearnedPillRecipeModel> ItemClicked;
@@ -91,8 +92,20 @@ namespace PhamNhanOnline.Client.UI.Crafting
             loopListView.RefreshAllShownItem();
         }
 
+        public void SetInteractionLocked(bool locked, bool force = false)
+        {
+            if (!force && interactionLocked == locked)
+                return;
+
+            interactionLocked = locked;
+            UpdateVisibleInteractionLocks();
+        }
+
         public void OnDrop(PointerEventData eventData)
         {
+            if (interactionLocked)
+                return;
+
             if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
                 payload.Kind != UIDragPayloadKind.Recipe ||
                 payload.SourceKind != UIDragSourceKind.CraftRecipeSlot)
@@ -131,6 +144,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
             itemView.SetSelected(
                 selectedRecipeId.HasValue && item.PillRecipeTemplateId == selectedRecipeId.Value,
                 force: true);
+            itemView.SetInteractionLocked(interactionLocked);
             return itemView;
         }
 
@@ -158,6 +172,21 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 itemView.SetSelected(
                     selectedRecipeId.HasValue && itemView.Recipe.PillRecipeTemplateId == selectedRecipeId.Value,
                     force);
+            }
+        }
+
+        private void UpdateVisibleInteractionLocks()
+        {
+            if (loopListView == null || items == null || items.Count == 0)
+                return;
+
+            for (var i = 0; i < items.Count; i++)
+            {
+                var itemView = loopListView.GetShownItemByItemIndex(i) as CraftRecipeListItemView;
+                if (itemView == null)
+                    continue;
+
+                itemView.SetInteractionLocked(interactionLocked);
             }
         }
 

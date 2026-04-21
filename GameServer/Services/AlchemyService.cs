@@ -153,6 +153,7 @@ public sealed class AlchemyService
             consumedPlayerItemIds.ToArray(),
             new Dictionary<long, int>(consumedStackQuantities),
             appliedOptionalInputs.ToArray(),
+            ratePlan.SuccessRateSegments,
             ratePlan.EffectiveSuccessRate,
             ratePlan.EffectiveMutationRate,
             ratePlan.BoostedSuccessRate,
@@ -168,11 +169,29 @@ public sealed class AlchemyService
         CancellationToken cancellationToken = default)
     {
         if (!_definitions.TryGetPillRecipe(recipeId, out var recipe))
-            return new AlchemyCraftRatePlan(0d, 0d, 0d, 0d, 0);
+        {
+            return new AlchemyCraftRatePlan(
+                Array.Empty<double>(),
+                Array.Empty<AlchemyCraftRateSegment>(),
+                0d,
+                0d,
+                0d,
+                0d,
+                0);
+        }
 
         var learned = await _playerPillRecipes.GetByPlayerAndRecipeAsync(playerId, recipeId, cancellationToken);
         if (learned is null)
-            return new AlchemyCraftRatePlan(0d, 0d, 0d, 0d, 0);
+        {
+            return new AlchemyCraftRatePlan(
+                Array.Empty<double>(),
+                Array.Empty<AlchemyCraftRateSegment>(),
+                0d,
+                0d,
+                0d,
+                0d,
+                0);
+        }
 
         var optionalSelections = NormalizeOptionalSelections(recipe, selectedOptionalInputs);
         return BuildCraftRatePlan(
@@ -198,20 +217,13 @@ public sealed class AlchemyService
             return Array.Empty<double>();
 
         var normalizedRequestedCraftCount = Math.Max(1, requestedCraftCount);
-        var masteryBonus = ResolveMasteryBonus(recipe, learned.TotalCraftCount, learned.CurrentSuccessRateBonus);
-        var baseRate = ResolveEffectiveSuccessRate(recipe, masteryBonus, null);
         var optionalSelections = NormalizeOptionalSelections(recipe, selectedOptionalInputs);
-        var rates = new List<double>(normalizedRequestedCraftCount);
-        foreach (var selection in optionalSelections)
-        {
-            var boostedRate = ResolveEffectiveSuccessRate(recipe, masteryBonus, selection.Input);
-            for (var count = 0; count < selection.AppliedCount && rates.Count < normalizedRequestedCraftCount; count++)
-                rates.Add(boostedRate);
-        }
-
-        while (rates.Count < normalizedRequestedCraftCount)
-            rates.Add(baseRate);
-        return rates;
+        return BuildSuccessRates(
+            recipe,
+            learned.TotalCraftCount,
+            learned.CurrentSuccessRateBonus,
+            normalizedRequestedCraftCount,
+            optionalSelections);
     }
 
     public double ResolveMasteryBonusForCurrentProgress(
@@ -237,6 +249,7 @@ public sealed class AlchemyService
             Array.Empty<long>(),
             new Dictionary<long, int>(),
             Array.Empty<AlchemyOptionalInputSelection>(),
+            Array.Empty<AlchemyCraftRateSegment>(),
             0d,
             0d,
             0d,
@@ -409,25 +422,88 @@ public sealed class AlchemyService
         int requestedCraftCount,
         IReadOnlyCollection<AlchemyOptionalInputSelection> appliedOptionalInputs)
     {
-        var masteryBonus = ResolveMasteryBonus(recipe, totalCraftCount, fallbackCurrentBonus);
-        var effectiveSuccessRate = ResolveEffectiveSuccessRate(recipe, masteryBonus, null);
+        var successRates = BuildSuccessRates(
+            recipe,
+            totalCraftCount,
+            fallbackCurrentBonus,
+            requestedCraftCount,
+            appliedOptionalInputs);
+        var successRateSegments = BuildSuccessRateSegments(successRates);
+        var effectiveSuccessRate = successRateSegments.Count > 0
+            ? successRateSegments[^1].SuccessRate
+            : 0d;
         var effectiveMutationRate = ResolveEffectiveMutationRate(recipe, null);
+        var boostedSuccessRate = successRateSegments.Count > 0
+            ? successRateSegments[0].SuccessRate
+            : effectiveSuccessRate;
         var boostedSelection = appliedOptionalInputs.FirstOrDefault(static selection => selection.AppliedCount > 0);
-        var boostedSuccessRate = boostedSelection is null
-            ? effectiveSuccessRate
-            : ResolveEffectiveSuccessRate(recipe, masteryBonus, boostedSelection.Input);
         var boostedMutationRate = boostedSelection is null
             ? effectiveMutationRate
             : ResolveEffectiveMutationRate(recipe, boostedSelection.Input);
-        var boostedCraftCount = Math.Min(
-            Math.Max(1, requestedCraftCount),
-            appliedOptionalInputs.Sum(static selection => Math.Max(0, selection.AppliedCount)));
+        var boostedCraftCount = successRateSegments.Count <= 1
+            ? 0
+            : successRateSegments
+                .Where(segment => segment.SuccessRate > effectiveSuccessRate)
+                .Sum(static segment => Math.Max(0, segment.Count));
         return new AlchemyCraftRatePlan(
+            successRates,
+            successRateSegments,
             effectiveSuccessRate,
             effectiveMutationRate,
             boostedSuccessRate,
             boostedMutationRate,
             boostedCraftCount);
+    }
+
+    private static IReadOnlyList<double> BuildSuccessRates(
+        PillRecipeTemplateDefinition recipe,
+        int totalCraftCount,
+        double fallbackCurrentBonus,
+        int requestedCraftCount,
+        IReadOnlyCollection<AlchemyOptionalInputSelection> appliedOptionalInputs)
+    {
+        var normalizedRequestedCraftCount = Math.Max(1, requestedCraftCount);
+        var masteryBonus = ResolveMasteryBonus(recipe, totalCraftCount, fallbackCurrentBonus);
+        var baseRate = ResolveEffectiveSuccessRate(recipe, masteryBonus, null);
+        var rates = Enumerable.Repeat(baseRate, normalizedRequestedCraftCount).ToArray();
+        foreach (var selection in appliedOptionalInputs)
+        {
+            var appliedCount = Math.Min(Math.Max(0, selection.AppliedCount), rates.Length);
+            var bonusRate = NormalizeRate(selection.Input.SuccessRateBonus);
+            if (appliedCount <= 0 || bonusRate <= 0d)
+                continue;
+
+            for (var index = 0; index < appliedCount; index++)
+                rates[index] = ClampSuccessRate(recipe, rates[index] + bonusRate);
+        }
+
+        return rates;
+    }
+
+    private static IReadOnlyList<AlchemyCraftRateSegment> BuildSuccessRateSegments(IReadOnlyList<double> successRates)
+    {
+        if (successRates is null || successRates.Count == 0)
+            return Array.Empty<AlchemyCraftRateSegment>();
+
+        var segments = new List<AlchemyCraftRateSegment>();
+        var currentRate = RoundRate(successRates[0]);
+        var currentCount = 1;
+        for (var index = 1; index < successRates.Count; index++)
+        {
+            var rate = RoundRate(successRates[index]);
+            if (Math.Abs(rate - currentRate) < 0.000001d)
+            {
+                currentCount++;
+                continue;
+            }
+
+            segments.Add(new AlchemyCraftRateSegment(currentRate, currentCount));
+            currentRate = rate;
+            currentCount = 1;
+        }
+
+        segments.Add(new AlchemyCraftRateSegment(currentRate, currentCount));
+        return segments;
     }
 
     private static double ResolveMasteryBonus(PillRecipeTemplateDefinition recipe, int totalCraftCount, double fallbackCurrentBonus)
@@ -479,5 +555,18 @@ public sealed class AlchemyService
             ? rawRate / 100d
             : rawRate;
         return Math.Clamp(normalized, 0d, 1d);
+    }
+
+    private static double ClampSuccessRate(PillRecipeTemplateDefinition recipe, double rate)
+    {
+        var cappedRate = recipe.SuccessRateCap.HasValue
+            ? Math.Min(rate, NormalizeRate(recipe.SuccessRateCap.Value))
+            : rate;
+        return RoundRate(Math.Clamp(cappedRate, 0d, 1d));
+    }
+
+    private static double RoundRate(double rate)
+    {
+        return Math.Round(rate, 6, MidpointRounding.AwayFromZero);
     }
 }

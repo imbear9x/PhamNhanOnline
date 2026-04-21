@@ -40,6 +40,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
         private Sprite lastIconSprite;
         private Sprite lastBackgroundSprite;
         private bool isSelected;
+        private bool interactionLocked;
         private CanvasGroup canvasGroup;
         private InventoryDragGhost dragGhost;
         private InventoryItemPresentation currentPresentation;
@@ -147,9 +148,16 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 selectedHighlightRoot.SetActive(selected);
         }
 
+        public void SetInteractionLocked(bool locked)
+        {
+            interactionLocked = locked;
+            if (locked)
+                ResetDragVisuals();
+        }
+
         public void OnPointerEnter(PointerEventData eventData)
         {
-            if (!hasItem)
+            if (!hasItem || interactionLocked)
                 return;
 
             WorldModalUIManager.Instance?.ShowItemTooltip(this, BuildTooltipData(), force: true);
@@ -171,7 +179,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (!hasItem)
+            if (!hasItem || interactionLocked)
                 return;
 
             var handler = Clicked;
@@ -183,7 +191,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public void OnPointerDown(PointerEventData eventData)
         {
-            if (!hasItem)
+            if (!hasItem || interactionLocked)
                 return;
 
             var modalUIManager = WorldModalUIManager.Instance;
@@ -193,7 +201,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public void OnPointerUp(PointerEventData eventData)
         {
-            if (!hasItem)
+            if (!hasItem || interactionLocked)
                 return;
 
             WorldModalUIManager.Instance?.EndItemInteraction(this);
@@ -201,7 +209,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public void OnInitializePotentialDrag(PointerEventData eventData)
         {
-            if (!hasItem || eventData == null)
+            if (!hasItem || interactionLocked || eventData == null)
                 return;
 
             eventData.useDragThreshold = false;
@@ -209,7 +217,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (!hasItem)
+            if (!hasItem || interactionLocked)
                 return;
 
             var modalUIManager = WorldModalUIManager.Instance;
@@ -247,7 +255,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
 
         public bool TryCreateDragPayload(out UIDragPayload payload)
         {
-            if (!hasItem)
+            if (!hasItem || interactionLocked)
             {
                 payload = default;
                 return false;

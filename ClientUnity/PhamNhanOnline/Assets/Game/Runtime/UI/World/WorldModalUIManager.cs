@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Crafting;
 using PhamNhanOnline.Client.UI.Inventory;
 using PhamNhanOnline.Client.UI.Potential;
@@ -18,7 +19,8 @@ namespace PhamNhanOnline.Client.UI.World
             CraftRecipeTooltip = 2,
             ItemOptionsPopup = 3,
             QuantityPopup = 4,
-            PotentialUpgradeOptionsPopup = 5
+            PotentialUpgradeOptionsPopup = 5,
+            NotificationPopup = 6
         }
 
         public static WorldModalUIManager Instance { get; private set; }
@@ -35,11 +37,13 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private ItemOptionsPopupView inventoryItemOptionsPopupView;
         [SerializeField] private InventoryUseQuantityPopupView inventoryUseQuantityPopupView;
         [SerializeField] private PotentialUpgradeOptionsPopupView potentialUpgradeOptionsPopupView;
+        [SerializeField] private NotificationPopupView notificationPopupView;
 
         [Header("Popup Order")]
         [SerializeField] private int inventoryItemOptionsPopupOrderId = 200;
         [SerializeField] private int quantityPopupOrderId = 210;
         [SerializeField] private int potentialUpgradeOptionsPopupOrderId = 220;
+        [SerializeField] private int notificationPopupOrderId = 230;
 
         private readonly HashSet<int> itemTooltipSuppressors = new HashSet<int>();
         private readonly Dictionary<int, ModalViewKind> activeModalKindsByOrderId = new Dictionary<int, ModalViewKind>();
@@ -53,6 +57,9 @@ namespace PhamNhanOnline.Client.UI.World
 
         public bool IsPotentialUpgradeOptionsPopupVisible =>
             potentialUpgradeOptionsPopupView != null && potentialUpgradeOptionsPopupView.IsVisible;
+
+        public bool IsNotificationPopupVisible =>
+            notificationPopupView != null && notificationPopupView.IsVisible;
 
         private void Awake()
         {
@@ -222,6 +229,39 @@ namespace PhamNhanOnline.Client.UI.World
             EndHide(ModalViewKind.PotentialUpgradeOptionsPopup, potentialUpgradeOptionsPopupOrderId);
         }
 
+        public void ShowNotificationPopup(
+            string title,
+            string message,
+            NotificationPopupItemData[] items,
+            System.Action onConfirm = null,
+            bool showCancelButton = false,
+            System.Action onCancel = null,
+            string confirmTextOverride = null,
+            string cancelTextOverride = null)
+        {
+            if (notificationPopupView == null)
+                return;
+
+            BeginShow(ModalViewKind.NotificationPopup, notificationPopupOrderId);
+            notificationPopupView.Show(
+                title,
+                message,
+                items,
+                onConfirm,
+                showCancelButton,
+                onCancel,
+                confirmTextOverride,
+                cancelTextOverride);
+        }
+
+        public void HideNotificationPopup(bool force = false)
+        {
+            if (notificationPopupView != null)
+                notificationPopupView.Hide(force);
+
+            EndHide(ModalViewKind.NotificationPopup, notificationPopupOrderId);
+        }
+
         public void HideAllViews(bool force = false)
         {
             itemTooltipSuppressors.Clear();
@@ -231,6 +271,7 @@ namespace PhamNhanOnline.Client.UI.World
             HideItemOptionsPopup(force);
             HideQuantityPopup(force);
             HidePotentialUpgradeOptionsPopup(force);
+            HideNotificationPopup(force);
         }
 
         private void BeginShow(ModalViewKind requestedKind, int orderId)
@@ -270,6 +311,9 @@ namespace PhamNhanOnline.Client.UI.World
                 case ModalViewKind.PotentialUpgradeOptionsPopup:
                     HidePotentialUpgradeOptionsPopup(force);
                     break;
+                case ModalViewKind.NotificationPopup:
+                    HideNotificationPopup(force);
+                    break;
             }
         }
 
@@ -286,7 +330,8 @@ namespace PhamNhanOnline.Client.UI.World
             return itemTooltipSuppressors.Count > 0 ||
                    IsItemOptionsPopupVisible ||
                    IsQuantityPopupVisible ||
-                   IsPotentialUpgradeOptionsPopupVisible;
+                   IsPotentialUpgradeOptionsPopupVisible ||
+                   IsNotificationPopupVisible;
         }
     }
 }

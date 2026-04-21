@@ -119,7 +119,6 @@
     <Compile Include="Assets\Game\Runtime\Features\MartialArts\Application\MartialArtListLoadResult.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryItemPresentationCatalog.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldModalUIManager.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\Crafting\CraftIngredientPanelView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\CharacterActionInputState.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Skills\SkillListView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\ClientCharacterState.cs" />
@@ -196,6 +195,7 @@
     <Compile Include="Assets\Game\Runtime\Features\Combat\Presentation\SkillPooledEffectLifetime.cs" />
     <Compile Include="Assets\Game\Runtime\Infrastructure\Config\ClientBootstrapSettings.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\CharacterActionInputSource.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Crafting\CraftInputPanelView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldLocalMovementSyncConfig.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldPortalPresenter.Interaction.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Alchemy\Application\AlchemyCraftExecuteResult.cs" />
@@ -203,7 +203,6 @@
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\LocalCharacterActionController.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Crafting\CraftRecipeListView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Potential\PotentialUpgradeOptionButtonView.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\Crafting\CraftMaterialSlotView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Auth\Application\AuthOperationResult.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\LoopHorizontalListView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldMartialArtPanelController.cs" />
@@ -249,6 +248,7 @@
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryDragGhost.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\GroundSnapBindings.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldPortalPresenter.Visuals.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Crafting\CraftInputMaterialSlotView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\LoopScrollBarView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\ViewModelBase.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\ClientMapCatalogEntry.cs" />

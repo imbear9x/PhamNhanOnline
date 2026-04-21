@@ -30,6 +30,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
         private LearnedPillRecipeModel recipe;
         private bool hasRecipe;
         private bool isSelected;
+        private bool interactionLocked;
         private CanvasGroup canvasGroup;
         private CraftRecipeDragGhost dragGhost;
         private InventoryItemPresentation currentPresentation;
@@ -103,9 +104,16 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 selectedHighlightRoot.SetActive(selected);
         }
 
+        public void SetInteractionLocked(bool locked)
+        {
+            interactionLocked = locked;
+            if (locked)
+                ResetDragVisuals();
+        }
+
         public void OnPointerEnter(PointerEventData eventData)
         {
-            if (!hasRecipe)
+            if (!hasRecipe || interactionLocked)
                 return;
 
             Hovered?.Invoke(this);
@@ -121,7 +129,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (!hasRecipe)
+            if (!hasRecipe || interactionLocked)
                 return;
 
             Clicked?.Invoke(this);
@@ -129,7 +137,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (!hasRecipe)
+            if (!hasRecipe || interactionLocked)
                 return;
 
             canvasGroup.blocksRaycasts = false;
@@ -150,7 +158,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         public bool TryCreateDragPayload(out UIDragPayload payload)
         {
-            if (!hasRecipe)
+            if (!hasRecipe || interactionLocked)
             {
                 payload = default;
                 return false;

@@ -23,15 +23,8 @@ namespace PhamNhanOnline.Client.UI.Crafting
         [SerializeField] private Transform dragVisualRoot;
         [SerializeField] private Image iconImage;
         [SerializeField] private TMP_Text nameText;
-        [SerializeField] private TMP_Text durationText;
-        [SerializeField] private TMP_Text successRateText;
         [SerializeField] private GameObject detailsRoot;
-        [SerializeField] private GameObject emptyStateRoot;
-        [SerializeField] private GameObject occupiedStateRoot;
-        [SerializeField] private GameObject lockedRoot;
-
-        [Header("Text")]
-        [SerializeField] private string emptyName = "Empty Name";
+        [SerializeField] private GameObject selectedRoot;
 
         [Header("Drag")]
         [SerializeField] private float draggingAlpha = 0.65f;
@@ -71,9 +64,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         public void SetRecipe(
             LearnedPillRecipeModel value,
-            InventoryItemPresentation presentation,
-            string durationLabel,
-            string successRateLabel)
+            InventoryItemPresentation presentation)
         {
             recipe = value;
             hasRecipe = true;
@@ -91,19 +82,11 @@ namespace PhamNhanOnline.Client.UI.Crafting
                 nameText.color = presentation.NameColor;
             }
 
-            if (durationText != null)
-                durationText.text = string.IsNullOrWhiteSpace(durationLabel) ? string.Empty : durationLabel.Trim();
-
-            if (successRateText != null)
-                successRateText.text = string.IsNullOrWhiteSpace(successRateLabel) ? string.Empty : successRateLabel.Trim();
-
             if (detailsRoot != null)
                 detailsRoot.SetActive(true);
 
-            if (emptyStateRoot != null)
-                emptyStateRoot.SetActive(false);
-            if (occupiedStateRoot != null)
-                occupiedStateRoot.SetActive(true);
+            if (selectedRoot != null)
+                selectedRoot.SetActive(true);
         }
 
         public void Clear()
@@ -126,8 +109,6 @@ namespace PhamNhanOnline.Client.UI.Crafting
         {
             dragEnabled = !locked;
             dropEnabled = !locked;
-            if (lockedRoot != null)
-                lockedRoot.SetActive(locked);
 
             if (locked)
                 ResetDragVisuals();
@@ -163,6 +144,9 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         public void OnPointerClick(PointerEventData eventData)
         {
+            if (!hasRecipe || !dragEnabled)
+                return;
+
             Clicked?.Invoke();
         }
 
@@ -180,10 +164,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (!dragEnabled)
-                return;
-
-            if (!hasRecipe)
+            if (!dragEnabled || !hasRecipe)
                 return;
 
             canvasGroup.blocksRaycasts = false;
@@ -204,7 +185,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         public bool TryCreateDragPayload(out UIDragPayload payload)
         {
-            if (!hasRecipe)
+            if (!hasRecipe || !dragEnabled)
             {
                 payload = default;
                 return false;
@@ -217,17 +198,13 @@ namespace PhamNhanOnline.Client.UI.Crafting
         private void ApplyEmptyState()
         {
             if (nameText != null)
-                nameText.text = emptyName;
-            if (durationText != null)
-                durationText.text = string.Empty;
-            if (successRateText != null)
-                successRateText.text = string.Empty;
+                nameText.text = string.Empty;
+
             if (detailsRoot != null)
                 detailsRoot.SetActive(false);
-            if (emptyStateRoot != null)
-                emptyStateRoot.SetActive(true);
-            if (occupiedStateRoot != null)
-                occupiedStateRoot.SetActive(false);
+
+            if (selectedRoot != null)
+                selectedRoot.SetActive(false);
         }
 
         private void ResetDragVisuals()
@@ -248,6 +225,7 @@ namespace PhamNhanOnline.Client.UI.Crafting
         private void ValidateSerializedReferences()
         {
             ThrowIfMissing(iconImage, nameof(iconImage));
+            ThrowIfMissing(detailsRoot, nameof(detailsRoot));
         }
 
         private void ThrowIfMissing(UnityEngine.Object value, string fieldName)

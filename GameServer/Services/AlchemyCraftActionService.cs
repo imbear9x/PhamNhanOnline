@@ -97,6 +97,9 @@ public sealed class AlchemyCraftActionService
                     .Select(selection => new PracticeOptionalInputEntry(selection.Input.Id, Math.Max(0, selection.AppliedCount)))
                     .OrderBy(static entry => entry.InputId)
                     .ToArray(),
+                validation.SuccessRateSegments
+                    .Select(segment => new PracticeRateSegmentEntry(segment.SuccessRate, Math.Max(0, segment.Count)))
+                    .ToArray(),
                 BuildConsumedEntries(validation, inventoryBeforeByPlayerItemId));
 
             await using var tx = await _db.BeginTransactionAsync(cancellationToken);
@@ -115,7 +118,7 @@ public sealed class AlchemyCraftActionService
                 Title = detail.Definition.Name,
                 TotalDurationSeconds = Math.Max(1L, detail.Definition.CraftDurationSeconds) * Math.Max(1, validation.RequestedCraftCount),
                 AccumulatedActiveSeconds = 0L,
-                CancelLockedProgress = 0.8d,
+                CancelLockedProgress = 1d,
                 RequestPayloadJson = _practiceService.SerializePayload(requestPayload),
                 ResultPayloadJson = null,
                 StartedAtUtc = utcNow,
@@ -182,7 +185,14 @@ public sealed class AlchemyCraftActionService
             if (!inventoryByPlayerItemId.TryGetValue(playerItemId, out var item))
                 continue;
 
-            entries.Add(new PracticeConsumedEntry(item.PlayerItemId, item.Definition.Id, 1));
+            entries.Add(new PracticeConsumedEntry(
+                item.PlayerItemId,
+                item.Definition.Id,
+                1,
+                item.IsBound,
+                item.ExpireAt.HasValue
+                    ? new DateTimeOffset(item.ExpireAt.Value).ToUnixTimeMilliseconds()
+                    : null));
         }
 
         foreach (var pair in validation.ConsumedStackQuantities.OrderBy(static x => x.Key))
@@ -190,7 +200,14 @@ public sealed class AlchemyCraftActionService
             if (!inventoryByPlayerItemId.TryGetValue(pair.Key, out var item))
                 continue;
 
-            entries.Add(new PracticeConsumedEntry(item.PlayerItemId, item.Definition.Id, Math.Max(0, pair.Value)));
+            entries.Add(new PracticeConsumedEntry(
+                item.PlayerItemId,
+                item.Definition.Id,
+                Math.Max(0, pair.Value),
+                item.IsBound,
+                item.ExpireAt.HasValue
+                    ? new DateTimeOffset(item.ExpireAt.Value).ToUnixTimeMilliseconds()
+                    : null));
         }
 
         return entries.ToArray();
