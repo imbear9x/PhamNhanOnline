@@ -388,7 +388,7 @@ INSERT INTO public.map_templates (
     spiritual_energy
 )
 VALUES
-    (1, 'Player Home', 0, 'map_home_01', 256, 256, 32, 64, 64, 0, 1, false, true, 100),
+    (1, 'Player Home', 0, 'map_home_01', 256, 256, 32, 64, 64, 0, 1, false, true, 7.5),
     (2, 'Starter Plains', 1, 'map_farm_01', 1024, 1024, 64, 128, 128, 20, 20, true, false, 100)
 ON CONFLICT (id) DO UPDATE
 SET

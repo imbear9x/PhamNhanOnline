@@ -14,6 +14,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private const string AlchemyPortalTargetId = "local-home-crafting-portal";
         private const string SmithingPortalTargetId = "local-home-smithing-portal";
         private const string TalismanPortalTargetId = "local-home-talisman-portal";
+        private const string CultivationPortalTargetId = "local-home-cultivation-portal";
 
         [Header("References")]
         [SerializeField] private WorldTargetable worldTargetable;
@@ -114,6 +115,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (WorldUIController.Instance != null)
             {
+                if (stationType == CraftingStationType.Cultivation)
+                {
+                    WorldUIController.Instance.ShowCultivationPanel();
+                    return;
+                }
+
                 WorldUIController.Instance.ShowCraftingPanel(stationType, panelTitleOverride);
                 return;
             }
@@ -205,6 +212,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                     return SmithingPortalTargetId;
                 case CraftingStationType.Talisman:
                     return TalismanPortalTargetId;
+                case CraftingStationType.Cultivation:
+                    return CultivationPortalTargetId;
                 default:
                     return AlchemyPortalTargetId;
             }

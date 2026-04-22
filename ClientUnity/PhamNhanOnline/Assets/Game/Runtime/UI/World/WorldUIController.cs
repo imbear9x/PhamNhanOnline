@@ -8,7 +8,8 @@ namespace PhamNhanOnline.Client.UI.World
     {
         Alchemy = 0,
         Smithing = 1,
-        Talisman = 2
+        Talisman = 2,
+        Cultivation = 3
     }
 
     public readonly struct CraftingPanelContext
@@ -32,6 +33,7 @@ namespace PhamNhanOnline.Client.UI.World
         [Header("World Panels")]
         [SerializeField] private WorldMenuController worldMenuController;
         [SerializeField] private WorldCraftingPanelController worldCraftingPanelController;
+        [SerializeField] private WorldCultivationPanelController worldCultivationPanelController;
 
         [Header("Behavior")]
         [SerializeField] private bool autoOpenCraftingPanelForActivePractice = true;
@@ -109,9 +111,24 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             HideMenuIfVisible();
+            HideCultivationPanelIfVisible();
 
             worldCraftingPanelController.ConfigureContext(new CraftingPanelContext(stationType, titleOverride));
             worldCraftingPanelController.ShowPanel();
+            return true;
+        }
+
+        public bool ShowCultivationPanel()
+        {
+            if (worldCultivationPanelController == null)
+            {
+                Debug.LogError($"WorldUIController on '{gameObject.name}' is missing required reference '{nameof(worldCultivationPanelController)}'.");
+                return false;
+            }
+
+            HideMenuIfVisible();
+            HideCraftingPanelIfVisible();
+            worldCultivationPanelController.ShowPanel();
             return true;
         }
 
@@ -139,6 +156,18 @@ namespace PhamNhanOnline.Client.UI.World
                 return false;
 
             worldCraftingPanelController.HidePanel();
+            return true;
+        }
+
+        public bool HideCultivationPanelIfVisible()
+        {
+            if (worldCultivationPanelController == null)
+                return false;
+
+            if (!worldCultivationPanelController.IsPanelVisible)
+                return false;
+
+            worldCultivationPanelController.HidePanel();
             return true;
         }
 

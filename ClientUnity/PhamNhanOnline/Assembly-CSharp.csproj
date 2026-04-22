@@ -76,14 +76,12 @@
     <Compile Include="Assets\Game\Runtime\Features\Targeting\Application\ClientTargetState.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterListLoadResult.cs" />
     <Compile Include="Assets\Game\Runtime\Features\PresentationReplication\Application\ClientPresentationReplicationState.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\World\WorldMartialArtPanelController.ViewState.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\CharacterEquipmentLoadoutView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Potential\PotentialStatPresentationCatalog.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\ItemOptionEntry.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldRemotePlayersPresenter.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\InventoryUseQuantityPopupView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\ClientCombatDeathRecoveryService.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\World\WorldMartialArtPanelController.Actions.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldCharacterEquipController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\ClientCharacterRuntimeStateCodes.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\ItemTooltipView.cs" />
@@ -162,6 +160,7 @@
     <Compile Include="Assets\Game\Runtime\Features\Auth\Application\ClientAuthService.cs" />
     <Compile Include="Assets\Game\Runtime\Features\PresentationReplication\Application\ClientPresentationReplicationService.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldSceneBehaviour.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\World\WorldCultivationPanelView.cs" />
     <Compile Include="Assets\Game\Runtime\Shared\Protocol\ServerEndpoint.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Hud\WorldCombatValuePopupController.cs" />
     <Compile Include="Assets\Free_Pack\Demo_GameResource\Script\DestroyEffect.cs" />
@@ -169,6 +168,7 @@
     <Compile Include="Assets\Game\Runtime\UI\MartialArts\MartialArtListView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\NotificationInboxController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Combat\Application\ClientCombatService.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\World\WorldCultivationPanelController.cs" />
     <Compile Include="Assets\Game\Runtime\Network\Transport\LiteNetLibClientTransport.cs" />
     <Compile Include="Assets\Game\Runtime\Infrastructure\Pooling\PooledInstance.cs" />
     <Compile Include="Assets\Free_Pack\Demo_GameResource\Script\CharacterController_2D.cs" />
@@ -187,6 +187,7 @@
     <Compile Include="Assets\Epic Toon FX\Scripts\ETFXPitchRandomizer.cs" />
     <Compile Include="Assets\Game\Runtime\Features\PresentationReplication\Application\ClientPresentationReplicationEvent.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldClickTargetSelectionController.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\World\WorldCultivationPreviewView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldMapZonePanelController.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\MapZoneListView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldInventoryPanelController.ItemActions.cs" />
@@ -205,7 +206,7 @@
     <Compile Include="Assets\Game\Runtime\UI\Potential\PotentialUpgradeOptionButtonView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Auth\Application\AuthOperationResult.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\LoopHorizontalListView.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\World\WorldMartialArtPanelController.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\World\WorldCultivationPanelController.ViewState.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Hud\CombatValuePopupView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CultivationRewardNotice.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryPanelView.cs" />
@@ -225,6 +226,8 @@
     <Compile Include="Assets\Game\Runtime\Infrastructure\SceneLoading\ISceneFlowService.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\VirtualCharacterActionInputSource.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Hud\CombatSkillButtonView.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\World\ArtMaterialSummaryView.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\World\WorldCultivationPanelController.Actions.cs" />
     <Compile Include="Assets\Game\Runtime\Network\Session\ConnectionAttemptResult.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\EnemyPresenter.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterStartCultivationResult.cs" />

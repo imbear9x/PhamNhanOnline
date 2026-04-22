@@ -87,6 +87,7 @@ public sealed class MartialArtService
                 _descriptions.BuildMartialArtDescription(martialArtDefinition),
                 learned.CurrentStage,
                 learned.CurrentExp,
+                ResolveExpRequiredForStage(martialArtDefinition, learned.CurrentStage),
                 martialArtDefinition.MaxStage,
                 martialArtDefinition.QiAbsorptionRate,
                 baseStats.ActiveMartialArtId == martialArtDefinition.Id));
@@ -140,11 +141,22 @@ public sealed class MartialArtService
                     _descriptions.BuildMartialArtDescription(definition),
                     progress.CurrentStage,
                     progress.CurrentExp,
+                    ResolveExpRequiredForStage(definition, progress.CurrentStage),
                     definition.MaxStage,
                     definition.QiAbsorptionRate,
                     activeMartialArtId == definition.Id);
             })
             .ToArray();
+    }
+
+    private static long ResolveExpRequiredForStage(MartialArtDefinition definition, int currentStage)
+    {
+        if (definition.Stages == null || definition.Stages.Count == 0)
+            return 0L;
+
+        var normalizedStage = Math.Max(1, currentStage);
+        var stageDefinition = definition.Stages.FirstOrDefault(x => x.StageLevel == normalizedStage);
+        return stageDefinition?.ExpRequired ?? 0L;
     }
 }
 

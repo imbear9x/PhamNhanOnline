@@ -10,6 +10,7 @@ public sealed record PlayerMartialArtDto(
     string? Description,
     int CurrentStage,
     long CurrentExp,
+    long ExpRequired,
     int MaxStage,
     decimal QiAbsorptionRate,
     bool IsActive);

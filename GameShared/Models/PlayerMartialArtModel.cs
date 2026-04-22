@@ -14,6 +14,7 @@ public struct PlayerMartialArtModel
     public string? Description;
     public int CurrentStage;
     public long CurrentExp;
+    public long ExpRequired;
     public int MaxStage;
     public double QiAbsorptionRate;
     public bool IsActive;

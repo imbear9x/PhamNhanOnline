@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Messages;
@@ -7,13 +7,12 @@ using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.UI.Inventory;
 using PhamNhanOnline.Client.UI.MartialArts;
-using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.World
 {
-    public sealed partial class WorldMartialArtPanelController
+    public sealed partial class WorldCultivationPanelController
     {
-        private const string UseOptionText = "Su dung";
+        private const string SelectOptionText = "L\u1EF1a ch\u1ECDn";
         private const string UnequipOptionText = "Go ra";
 
         private void HandleMartialArtDropped(PlayerMartialArtModel martialArt)
@@ -25,6 +24,12 @@ namespace PhamNhanOnline.Client.UI.World
         {
             if (actionInFlight)
                 return;
+
+            if (!CanChangeActiveMartialArt(ClientRuntime.IsInitialized ? ClientRuntime.Character.CurrentState : null))
+            {
+                HideMartialArtOptionsPopup(force: true);
+                return;
+            }
 
             var modalUIManager = WorldModalUIManager.Instance;
             if (modalUIManager != null &&
@@ -50,6 +55,12 @@ namespace PhamNhanOnline.Client.UI.World
             if (slotView == null || !slotView.HasItem || actionInFlight)
                 return;
 
+            if (!CanChangeActiveMartialArt(ClientRuntime.IsInitialized ? ClientRuntime.Character.CurrentState : null))
+            {
+                HideMartialArtOptionsPopup(force: true);
+                return;
+            }
+
             var martialArt = slotView.Item;
             var modalUIManager = WorldModalUIManager.Instance;
             if (modalUIManager != null &&
@@ -67,10 +78,6 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ShowMartialArtOptions(PlayerMartialArtModel martialArt, bool activeSlot)
         {
-            var modalUIManager = WorldModalUIManager.Instance;
-            if (modalUIManager == null)
-                return;
-
             var options = BuildMartialArtOptions(martialArt, activeSlot);
             if (options.Count == 0)
             {
@@ -80,14 +87,14 @@ namespace PhamNhanOnline.Client.UI.World
 
             popupMartialArtId = martialArt.MartialArtId;
             popupTargetsActiveSlot = activeSlot;
-            modalUIManager.HideItemTooltip(force: true);
-            modalUIManager.ShowItemOptionsPopup(options, force: true);
+            panelView?.HideItemTooltip(force: true);
+            panelView?.ShowItemOptionsPopup(options, force: true);
             RefreshPanel(force: true);
         }
 
         private List<ItemOptionEntry> BuildMartialArtOptions(PlayerMartialArtModel martialArt, bool activeSlot)
         {
-            if (activeSlot || martialArt.IsActive)
+            if (activeSlot)
             {
                 return new List<ItemOptionEntry>(1)
                 {
@@ -97,7 +104,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             return new List<ItemOptionEntry>(1)
             {
-                new ItemOptionEntry(UseOptionText, () => _ = SetActiveMartialArtAsync(martialArt))
+                new ItemOptionEntry(SelectOptionText, () => _ = SetActiveMartialArtAsync(martialArt))
             };
         }
 
@@ -106,13 +113,8 @@ namespace PhamNhanOnline.Client.UI.World
             popupMartialArtId = null;
             popupTargetsActiveSlot = false;
 
-            var modalUIManager = WorldModalUIManager.Instance;
-            if (modalUIManager != null)
-            {
-                modalUIManager.HideItemOptionsPopup(force);
-                modalUIManager.HideItemTooltip(force: true);
-            }
-
+            panelView?.HideItemOptionsPopup(force);
+            panelView?.HideItemTooltip(force: true);
             RefreshPanel(force: true);
         }
 
@@ -138,12 +140,12 @@ namespace PhamNhanOnline.Client.UI.World
                     : string.Format(CultureInfo.InvariantCulture, "Dat cong phap that bai: {0}", result.Code ?? MessageCode.UnknownError);
 
                 if (!result.Success)
-                    ClientLog.Warn($"WorldMartialArtPanelController set active failed: {result.Message}");
+                    ClientLog.Warn($"WorldCultivationPanelController set active failed: {result.Message}");
             }
             catch (Exception ex)
             {
                 lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi dat cong phap chu tu: {0}", ex.Message);
-                ClientLog.Warn($"WorldMartialArtPanelController set active exception: {ex.Message}");
+                ClientLog.Warn($"WorldCultivationPanelController set active exception: {ex.Message}");
             }
             finally
             {
@@ -173,12 +175,12 @@ namespace PhamNhanOnline.Client.UI.World
                     : string.Format(CultureInfo.InvariantCulture, "Go cong phap that bai: {0}", result.Code ?? MessageCode.UnknownError);
 
                 if (!result.Success)
-                    ClientLog.Warn($"WorldMartialArtPanelController clear active failed: {result.Message}");
+                    ClientLog.Warn($"WorldCultivationPanelController clear active failed: {result.Message}");
             }
             catch (Exception ex)
             {
                 lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi go cong phap chu tu: {0}", ex.Message);
-                ClientLog.Warn($"WorldMartialArtPanelController clear active exception: {ex.Message}");
+                ClientLog.Warn($"WorldCultivationPanelController clear active exception: {ex.Message}");
             }
             finally
             {
@@ -213,12 +215,12 @@ namespace PhamNhanOnline.Client.UI.World
                     : string.Format(CultureInfo.InvariantCulture, "Bat dau tu luyen that bai: {0}", result.Code ?? MessageCode.UnknownError);
 
                 if (!result.Success)
-                    ClientLog.Warn($"WorldMartialArtPanelController start cultivation failed: {result.Message}");
+                    ClientLog.Warn($"WorldCultivationPanelController start cultivation failed: {result.Message}");
             }
             catch (Exception ex)
             {
                 lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi bat dau tu luyen: {0}", ex.Message);
-                ClientLog.Warn($"WorldMartialArtPanelController start cultivation exception: {ex.Message}");
+                ClientLog.Warn($"WorldCultivationPanelController start cultivation exception: {ex.Message}");
             }
             finally
             {
@@ -246,12 +248,12 @@ namespace PhamNhanOnline.Client.UI.World
                     : string.Format(CultureInfo.InvariantCulture, "Dung tu luyen that bai: {0}", result.Code ?? MessageCode.UnknownError);
 
                 if (!result.Success)
-                    ClientLog.Warn($"WorldMartialArtPanelController stop cultivation failed: {result.Message}");
+                    ClientLog.Warn($"WorldCultivationPanelController stop cultivation failed: {result.Message}");
             }
             catch (Exception ex)
             {
                 lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi dung tu luyen: {0}", ex.Message);
-                ClientLog.Warn($"WorldMartialArtPanelController stop cultivation exception: {ex.Message}");
+                ClientLog.Warn($"WorldCultivationPanelController stop cultivation exception: {ex.Message}");
             }
             finally
             {
@@ -284,12 +286,12 @@ namespace PhamNhanOnline.Client.UI.World
                     : string.Format(CultureInfo.InvariantCulture, "Dot pha that bai: {0}", result.Code ?? MessageCode.UnknownError);
 
                 if (!result.Success)
-                    ClientLog.Warn($"WorldMartialArtPanelController breakthrough failed: {result.Message}");
+                    ClientLog.Warn($"WorldCultivationPanelController breakthrough failed: {result.Message}");
             }
             catch (Exception ex)
             {
                 lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi dot pha: {0}", ex.Message);
-                ClientLog.Warn($"WorldMartialArtPanelController breakthrough exception: {ex.Message}");
+                ClientLog.Warn($"WorldCultivationPanelController breakthrough exception: {ex.Message}");
             }
             finally
             {

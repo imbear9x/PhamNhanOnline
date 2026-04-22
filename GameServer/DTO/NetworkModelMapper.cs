@@ -100,6 +100,7 @@ public static class NetworkModelMapper
             Description = dto.Description,
             CurrentStage = dto.CurrentStage,
             CurrentExp = dto.CurrentExp,
+            ExpRequired = dto.ExpRequired,
             MaxStage = dto.MaxStage,
             QiAbsorptionRate = (double)dto.QiAbsorptionRate,
             IsActive = dto.IsActive
