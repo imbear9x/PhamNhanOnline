@@ -14442,6 +14442,7 @@ GameObject:
   - component: {fileID: 564190473}
   - component: {fileID: 564190477}
   - component: {fileID: 564190476}
+  - component: {fileID: 564190478}
   m_Layer: 0
   m_Name: TargetStatusPanel
   m_TagString: Untagged
@@ -14483,7 +14484,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   contentRoot: {fileID: 564190471}
-  contentCanvasGroup: {fileID: 0}
+  contentCanvasGroup: {fileID: 564190478}
   avatarImage: {fileID: 1033286953}
   nameText: {fileID: 620267469}
   primaryBarRoot: {fileID: 408794010}
@@ -14549,6 +14550,18 @@ MonoBehaviour:
   npcAvatarSprite: {fileID: 21300000, guid: 58518c7ed82184546a6da94fe5c06f83, type: 3}
   hideWhenNoTarget: 1
   noTargetName: "M\u1EE5c Ti\xEAu X"
+--- !u!225 &564190478
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 564190471}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &565512051
 GameObject:
   m_ObjectHideFlags: 0
@@ -28049,6 +28062,7 @@ GameObject:
   - component: {fileID: 1123530709}
   - component: {fileID: 1123530710}
   - component: {fileID: 1123530711}
+  - component: {fileID: 1123530712}
   m_Layer: 0
   m_Name: PlayerStatusPanel
   m_TagString: Untagged
@@ -28131,13 +28145,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   contentRoot: {fileID: 1123530707}
-  contentCanvasGroup: {fileID: 0}
+  contentCanvasGroup: {fileID: 1123530712}
   avatarImage: {fileID: 1207223685}
   nameText: {fileID: 1317959860}
   primaryBarRoot: {fileID: 1821928984}
   primaryBar: {fileID: 1821928988}
   secondaryBarRoot: {fileID: 274278521}
   secondaryBar: {fileID: 274278524}
+--- !u!225 &1123530712
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1123530707}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &1125274566
 GameObject:
   m_ObjectHideFlags: 0

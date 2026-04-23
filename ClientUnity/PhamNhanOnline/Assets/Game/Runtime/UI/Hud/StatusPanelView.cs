@@ -68,7 +68,13 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         private void Awake()
         {
-            if (contentCanvasGroup == null && contentRoot == null)
+            if (contentRoot == gameObject)
+                contentRoot = null;
+
+            if (contentCanvasGroup == null && contentRoot != null)
+                contentCanvasGroup = contentRoot.GetComponent<CanvasGroup>();
+
+            if (contentCanvasGroup == null)
                 contentCanvasGroup = GetComponent<CanvasGroup>();
         }
 
