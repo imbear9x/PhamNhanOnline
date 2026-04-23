@@ -70,7 +70,8 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (Input.GetKeyDown(closeKey))
             {
-                HidePanel();
+                if (!IsCloseLockedBecauseCultivating())
+                    HidePanel();
                 return;
             }
 
@@ -153,6 +154,9 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void HandleCloseButtonClicked()
         {
+            if (IsCloseLockedBecauseCultivating())
+                return;
+
             HidePanel();
         }
 
@@ -211,6 +215,15 @@ namespace PhamNhanOnline.Client.UI.World
 
             lastSnapshot = snapshot;
             ApplyLoadedState(martialArtState, baseStats, currentState, force: true);
+        }
+
+        private static bool IsCloseLockedBecauseCultivating()
+        {
+            if (!ClientRuntime.IsInitialized)
+                return false;
+
+            var currentState = ClientRuntime.Character.CurrentState;
+            return currentState.HasValue && currentState.Value.CurrentState == CharacterStateCultivating;
         }
 
         private void TrySubscribeRewardEvents()

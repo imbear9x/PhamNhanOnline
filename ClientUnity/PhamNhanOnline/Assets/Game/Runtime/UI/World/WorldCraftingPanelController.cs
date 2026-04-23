@@ -21,6 +21,8 @@ namespace PhamNhanOnline.Client.UI.World
 {
     public sealed class WorldCraftingPanelController : MonoBehaviour
     {
+        private const int CharacterStateCultivating = 3;
+
         private enum QuantityPopupMode
         {
             None = 0,
@@ -40,12 +42,12 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] [HideInInspector] private CraftInputPanelView inputPanelView;
         [SerializeField] [HideInInspector] private CraftResultPreviewView craftingResultPreviewView;
         [SerializeField] [HideInInspector] private DropZoneView dropZoneView;
-        [SerializeField] [HideInInspector] private Button closeButton;
-        [SerializeField] [HideInInspector] private Button craftButton;
+        [SerializeField] [HideInInspector] private UIButtonView closeButton;
+        [SerializeField] [HideInInspector] private UIButtonView craftButton;
         [SerializeField] [HideInInspector] private TMP_Text craftButtonText;
-        [SerializeField] [HideInInspector] private Button pauseResumeButton;
+        [SerializeField] [HideInInspector] private UIButtonView pauseResumeButton;
         [SerializeField] [HideInInspector] private TMP_Text pauseResumeButtonText;
-        [SerializeField] [HideInInspector] private Button cancelButton;
+        [SerializeField] [HideInInspector] private UIButtonView cancelButton;
         [SerializeField] [HideInInspector] private TMP_Text cancelButtonText;
 
         [Header("Behavior")]
@@ -146,7 +148,8 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (Input.GetKeyDown(closeKey))
             {
-                HidePanel();
+                if (!IsCloseLockedBecauseCultivating())
+                    HidePanel();
                 return;
             }
 
@@ -350,6 +353,7 @@ namespace PhamNhanOnline.Client.UI.World
             panelView.SetInventoryInteractionLocked(false);
             panelView.ClearInventory(force: true);
             panelView.ClearInputs();
+            panelView.SetCloseButtonVisible(!IsCloseLockedBecauseCultivating());
             ApplyButtons(false, false, false, false, null);
         }
 
@@ -368,6 +372,7 @@ namespace PhamNhanOnline.Client.UI.World
             panelView.ClearInputs();
             HideRecipeTooltip(force: true);
             HideInventoryTooltip(force: true);
+            panelView.SetCloseButtonVisible(!IsCloseLockedBecauseCultivating());
             ApplyButtons(false, false, false, false, null);
             panelView.SetCraftButtonState(false, false, craftActionInFlight ? "Dang gui..." : craftIdleText);
             panelView.SetPauseResumeButtonState(false, false, sessionActionInFlight ? "Dang gui..." : pauseIdleText);
@@ -389,6 +394,7 @@ namespace PhamNhanOnline.Client.UI.World
             panelView?.SetRecipeList(recipes, selectedRecipeId, force: true);
             panelView?.SetRecipeListInteractionLocked(interactionLocked);
             panelView?.SetInventoryInteractionLocked(interactionLocked);
+            panelView?.SetCloseButtonVisible(!IsCloseLockedBecauseCultivating());
 
             ApplyInventory(force);
             ApplySelectedRecipe(selectedDetail, displaySession, preview, force);
@@ -880,7 +886,19 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void HandleCloseButtonClicked()
         {
+            if (IsCloseLockedBecauseCultivating())
+                return;
+
             HidePanel();
+        }
+
+        private static bool IsCloseLockedBecauseCultivating()
+        {
+            if (!ClientRuntime.IsInitialized)
+                return false;
+
+            var currentState = ClientRuntime.Character.CurrentState;
+            return currentState.HasValue && currentState.Value.CurrentState == CharacterStateCultivating;
         }
 
         private void HandlePauseResumeButtonClicked()

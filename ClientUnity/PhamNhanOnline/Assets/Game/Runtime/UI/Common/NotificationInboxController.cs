@@ -16,11 +16,9 @@ namespace PhamNhanOnline.Client.UI.Common
 
         [Header("References")]
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
-        [SerializeField] private GameObject[] eligibleRoots = Array.Empty<GameObject>();
 
         private long? showingNotificationId;
         private bool acknowledgeInFlight;
-        private long? blockedNotificationId;
 
         protected virtual void Start()
         {
@@ -38,11 +36,6 @@ namespace PhamNhanOnline.Client.UI.Common
             TryUnsubscribeStateChanged();
         }
 
-        protected virtual void Update()
-        {
-            Refresh(force: false);
-        }
-
         protected virtual void OnDestroy()
         {
             TryUnsubscribeStateChanged();
@@ -57,15 +50,10 @@ namespace PhamNhanOnline.Client.UI.Common
             var notification = ClientRuntime.Notifications.CurrentNotification;
             if (!notification.HasValue)
             {
+                var wasShowingInboxPopup = showingNotificationId.HasValue;
                 showingNotificationId = null;
-                blockedNotificationId = null;
-                modalUIManager.HideNotificationPopup(force);
-                return;
-            }
-
-            if (!CanShowPopup())
-            {
-                blockedNotificationId = notification.Value.NotificationId;
+                if (wasShowingInboxPopup)
+                    modalUIManager.HideNotificationPopup(force);
                 return;
             }
 
@@ -77,7 +65,6 @@ namespace PhamNhanOnline.Client.UI.Common
                 return;
             }
 
-            blockedNotificationId = null;
             showingNotificationId = notification.Value.NotificationId;
             var items = ResolvePopupItems(notification.Value);
             modalUIManager.ShowNotificationPopup(
@@ -85,20 +72,6 @@ namespace PhamNhanOnline.Client.UI.Common
                 ResolveMessage(notification.Value),
                 items,
                 onConfirm: HandlePopupConfirmed);
-        }
-
-        protected virtual bool CanShowPopup()
-        {
-            if (eligibleRoots == null || eligibleRoots.Length == 0)
-                return isActiveAndEnabled;
-
-            for (var i = 0; i < eligibleRoots.Length; i++)
-            {
-                if (eligibleRoots[i] != null && eligibleRoots[i].activeInHierarchy)
-                    return true;
-            }
-
-            return false;
         }
 
         protected virtual InventoryItemPresentation ResolvePresentation(ItemTemplateSummaryModel? item)
@@ -191,14 +164,6 @@ namespace PhamNhanOnline.Client.UI.Common
         protected virtual void ValidateSerializedReferences()
         {
             ThrowIfMissing(itemPresentationCatalog, nameof(itemPresentationCatalog));
-            if (eligibleRoots == null || eligibleRoots.Length == 0)
-                throw new InvalidOperationException($"{nameof(NotificationInboxController)} on '{gameObject.name}' requires at least one eligible root.");
-
-            for (var i = 0; i < eligibleRoots.Length; i++)
-            {
-                if (eligibleRoots[i] == null)
-                    throw new InvalidOperationException($"{nameof(NotificationInboxController)} on '{gameObject.name}' has a null entry in '{nameof(eligibleRoots)}' at index {i}.");
-            }
         }
 
         private void HandleNotificationStateChanged()

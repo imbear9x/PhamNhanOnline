@@ -13,9 +13,9 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private TMP_Text titleText;
         [SerializeField] private Slider quantitySlider;
         [SerializeField] private TMP_InputField quantityInput;
-        [SerializeField] private Button confirmButton;
-        [SerializeField] private Button cancelButton;
-        [SerializeField] private Button dimmerButton;
+        [SerializeField] private UIButtonView confirmButton;
+        [SerializeField] private UIButtonView cancelButton;
+        [SerializeField] private UIButtonView dimmerButton;
         [SerializeField] private string defaultHeaderText = "So luong?";
         [SerializeField] private string defaultTitleText = "Chon so luong";
 
@@ -70,6 +70,9 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             ApplyQuantity(currentQuantity, force: true);
+            confirmButton?.SetInteractable(true, force: true);
+            cancelButton?.SetInteractable(true, force: true);
+            dimmerButton?.SetInteractable(true, force: true);
             ShowView();
         }
 
@@ -90,11 +93,11 @@ namespace PhamNhanOnline.Client.UI.World
             if (quantityInput != null)
                 quantityInput.onValueChanged.AddListener(HandleInputValueChanged);
             if (confirmButton != null)
-                confirmButton.onClick.AddListener(HandleConfirmClicked);
+                confirmButton.Clicked += HandleConfirmClicked;
             if (cancelButton != null)
-                cancelButton.onClick.AddListener(HandleCancelClicked);
+                cancelButton.Clicked += HandleCancelClicked;
             if (dimmerButton != null)
-                dimmerButton.onClick.AddListener(HandleCancelClicked);
+                dimmerButton.Clicked += HandleCancelClicked;
         }
 
         private void UnbindUI()
@@ -104,11 +107,11 @@ namespace PhamNhanOnline.Client.UI.World
             if (quantityInput != null)
                 quantityInput.onValueChanged.RemoveListener(HandleInputValueChanged);
             if (confirmButton != null)
-                confirmButton.onClick.RemoveListener(HandleConfirmClicked);
+                confirmButton.Clicked -= HandleConfirmClicked;
             if (cancelButton != null)
-                cancelButton.onClick.RemoveListener(HandleCancelClicked);
+                cancelButton.Clicked -= HandleCancelClicked;
             if (dimmerButton != null)
-                dimmerButton.onClick.RemoveListener(HandleCancelClicked);
+                dimmerButton.Clicked -= HandleCancelClicked;
         }
 
         private void HandleSliderValueChanged(float value)

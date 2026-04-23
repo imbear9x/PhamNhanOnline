@@ -41,6 +41,8 @@ Những gì có thể tự suy ra từ code hoặc đọc ở doc chuyên đề 
 - Phải phân biệt rõ:
   - ref lõi / bắt buộc như `WorldSceneController`, `WorldMapPresenter`, `WorldTargetActionController`, `WorldLocalPlayerPresenter`, panel view bắt buộc
   - ref phụ / optional như text phụ, badge, status text, root hiển thị bổ sung
+- M???c ?????nh khi code UI trong Unity, d??ng `UIButtonView` c???a h??? th???ng thay v?? `UnityEngine.UI.Button`.
+- Ch??? d??ng `Unity Button` khi user y??u c???u r?? ho???c c?? l?? do k??? thu???t ?????c bi???t kh??ng th??? ??i qua `UIButtonView`.
 - Rule bắt buộc:
   - ref lõi nếu thiếu thì không được im lặng `return` hoặc tự chữa cháy theo kiểu `không có thì thôi`
   - phải `ClientLog.Error` sớm để lộ lỗi setup scene/prefab

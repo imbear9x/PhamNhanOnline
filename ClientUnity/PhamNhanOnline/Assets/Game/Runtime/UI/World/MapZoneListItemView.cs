@@ -1,4 +1,5 @@
 using System;
+using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,7 +9,7 @@ namespace PhamNhanOnline.Client.UI.World
     public sealed class MapZoneListItemView : MonoBehaviour
     {
         [Header("References")]
-        [SerializeField] private Button button;
+        [SerializeField] private UIButtonView button;
         [SerializeField] private Image backgroundImage;
         [SerializeField] private TMP_Text zoneNameText;
         [SerializeField] private TMP_Text playerCountText;
@@ -29,19 +30,19 @@ namespace PhamNhanOnline.Client.UI.World
         private void Awake()
         {
             if (button == null)
-                button = GetComponent<Button>();
+                button = GetComponent<UIButtonView>();
 
             if (button != null)
             {
-                button.onClick.RemoveListener(HandleClicked);
-                button.onClick.AddListener(HandleClicked);
+                button.Clicked -= HandleClicked;
+                button.Clicked += HandleClicked;
             }
         }
 
         private void OnDestroy()
         {
             if (button != null)
-                button.onClick.RemoveListener(HandleClicked);
+                button.Clicked -= HandleClicked;
         }
 
         public void SetEntry(MapZoneListView.Entry value, bool force = false)
@@ -56,7 +57,7 @@ namespace PhamNhanOnline.Client.UI.World
                 backgroundImage.color = value.BackgroundColor;
 
             if (button != null)
-                button.interactable = value.IsInteractable;
+                button.SetInteractable(value.IsInteractable, force: true);
 
             if (currentZoneBadgeRoot != null)
                 currentZoneBadgeRoot.SetActive(value.IsCurrentZone);
@@ -77,7 +78,7 @@ namespace PhamNhanOnline.Client.UI.World
                 backgroundImage.color = Color.white;
 
             if (button != null)
-                button.interactable = false;
+                button.SetInteractable(false, force: true);
 
             if (currentZoneBadgeRoot != null)
                 currentZoneBadgeRoot.SetActive(false);

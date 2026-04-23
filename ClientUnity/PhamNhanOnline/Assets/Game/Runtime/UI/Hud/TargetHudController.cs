@@ -2,7 +2,6 @@ using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Features.World.Presentation;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Hud
 {
@@ -10,9 +9,6 @@ namespace PhamNhanOnline.Client.UI.Hud
     {
         [Header("References")]
         [SerializeField] private TargetStatusPanelController targetStatusPanel;
-
-        [Header("Buttons")]
-        [SerializeField] private Button nextTargetButton;
 
         private bool runtimeEventsBound;
         private bool loggedMissingWorldSceneController;
@@ -24,7 +20,6 @@ namespace PhamNhanOnline.Client.UI.Hud
         private void Awake()
         {
             AutoWireReferences();
-            BindButtons();
         }
 
         private void Start()
@@ -49,7 +44,6 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         private void OnDestroy()
         {
-            UnbindButtons();
             UnbindRuntimeEvents();
         }
 
@@ -89,21 +83,6 @@ namespace PhamNhanOnline.Client.UI.Hud
             targetStatusPanel.ShowSnapshot(snapshot, force);
         }
 
-        private void BindButtons()
-        {
-            if (nextTargetButton != null)
-            {
-                nextTargetButton.onClick.RemoveListener(HandleNextTargetClicked);
-                nextTargetButton.onClick.AddListener(HandleNextTargetClicked);
-            }
-        }
-
-        private void UnbindButtons()
-        {
-            if (nextTargetButton != null)
-                nextTargetButton.onClick.RemoveListener(HandleNextTargetClicked);
-        }
-
         private void TryBindRuntimeEvents()
         {
             if (runtimeEventsBound || !ClientRuntime.IsInitialized)
@@ -138,7 +117,7 @@ namespace PhamNhanOnline.Client.UI.Hud
             runtimeEventsBound = false;
         }
 
-        private void HandleNextTargetClicked()
+        public void CycleNearbyTarget()
         {
             var worldSceneController = SceneController;
             if (worldSceneController != null)

@@ -37,11 +37,11 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private DropZoneView dropZoneView;
 
         [Header("Practice Controls")]
-        [SerializeField] private Button closeButton;
-        [SerializeField] private Button craftButton;
-        [SerializeField] private Button pauseResumeButton;
+        [SerializeField] private UIButtonView closeButton;
+        [SerializeField] private UIButtonView craftButton;
+        [SerializeField] private UIButtonView pauseResumeButton;
         [SerializeField] private TMP_Text pauseResumeButtonText;
-        [SerializeField] private Button cancelButton;
+        [SerializeField] private UIButtonView cancelButton;
 
         public event Action<LearnedPillRecipeModel> RecipeListClicked;
         public event Action<LearnedPillRecipeModel> RecipeListHovered;
@@ -99,11 +99,11 @@ namespace PhamNhanOnline.Client.UI.World
             CraftInputPanelView legacyInputPanelView,
             CraftResultPreviewView legacyCraftingResultPreviewView,
             DropZoneView legacyDropZoneView,
-            Button legacyCloseButton,
-            Button legacyCraftButton,
-            Button legacyPauseResumeButton,
+            UIButtonView legacyCloseButton,
+            UIButtonView legacyCraftButton,
+            UIButtonView legacyPauseResumeButton,
             TMP_Text legacyPauseResumeButtonText,
-            Button legacyCancelButton)
+            UIButtonView legacyCancelButton)
         {
             panelTitleText ??= legacyPanelTitleText;
             recipeListView ??= legacyRecipeListView;
@@ -251,7 +251,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (craftButton != null)
             {
                 craftButton.gameObject.SetActive(visible);
-                craftButton.interactable = interactable;
+                craftButton.SetInteractable(interactable, force: true);
             }
         }
 
@@ -260,11 +260,17 @@ namespace PhamNhanOnline.Client.UI.World
             if (pauseResumeButton != null)
             {
                 pauseResumeButton.gameObject.SetActive(visible);
-                pauseResumeButton.interactable = interactable;
+                pauseResumeButton.SetInteractable(interactable, force: true);
             }
 
             if (pauseResumeButtonText != null)
                 pauseResumeButtonText.text = label ?? string.Empty;
+        }
+
+        public void SetCloseButtonVisible(bool visible)
+        {
+            if (closeButton != null && closeButton.gameObject.activeSelf != visible)
+                closeButton.gameObject.SetActive(visible);
         }
 
         public void SetCancelButtonState(bool visible, bool interactable, string label)
@@ -272,7 +278,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (cancelButton != null)
             {
                 cancelButton.gameObject.SetActive(visible);
-                cancelButton.interactable = interactable;
+                cancelButton.SetInteractable(interactable, force: true);
             }
         }
 
@@ -390,26 +396,26 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (closeButton != null)
             {
-                closeButton.onClick.RemoveListener(HandleCloseClicked);
-                closeButton.onClick.AddListener(HandleCloseClicked);
+                closeButton.Clicked -= HandleCloseClicked;
+                closeButton.Clicked += HandleCloseClicked;
             }
 
             if (craftButton != null)
             {
-                craftButton.onClick.RemoveListener(HandleCraftClicked);
-                craftButton.onClick.AddListener(HandleCraftClicked);
+                craftButton.Clicked -= HandleCraftClicked;
+                craftButton.Clicked += HandleCraftClicked;
             }
 
             if (pauseResumeButton != null)
             {
-                pauseResumeButton.onClick.RemoveListener(HandlePauseResumeClicked);
-                pauseResumeButton.onClick.AddListener(HandlePauseResumeClicked);
+                pauseResumeButton.Clicked -= HandlePauseResumeClicked;
+                pauseResumeButton.Clicked += HandlePauseResumeClicked;
             }
 
             if (cancelButton != null)
             {
-                cancelButton.onClick.RemoveListener(HandleCancelClicked);
-                cancelButton.onClick.AddListener(HandleCancelClicked);
+                cancelButton.Clicked -= HandleCancelClicked;
+                cancelButton.Clicked += HandleCancelClicked;
             }
         }
 
@@ -449,16 +455,16 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             if (closeButton != null)
-                closeButton.onClick.RemoveListener(HandleCloseClicked);
+                closeButton.Clicked -= HandleCloseClicked;
 
             if (craftButton != null)
-                craftButton.onClick.RemoveListener(HandleCraftClicked);
+                craftButton.Clicked -= HandleCraftClicked;
 
             if (pauseResumeButton != null)
-                pauseResumeButton.onClick.RemoveListener(HandlePauseResumeClicked);
+                pauseResumeButton.Clicked -= HandlePauseResumeClicked;
 
             if (cancelButton != null)
-                cancelButton.onClick.RemoveListener(HandleCancelClicked);
+                cancelButton.Clicked -= HandleCancelClicked;
         }
 
         private void HandleRecipeListClicked(LearnedPillRecipeModel recipe)

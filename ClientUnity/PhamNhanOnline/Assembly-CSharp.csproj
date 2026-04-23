@@ -69,7 +69,6 @@
     <Compile Include="Assets\Game\Runtime\UI\World\WorldSkillPanelController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\LocalCharacterActionConfig.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryItemGridView.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\World\CombatDeadPanelView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Auth\Application\ClientConnectionRecoveryService.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldTargetActionController.cs" />
     <Compile Include="Assets\Game\Runtime\Network\Transport\NullClientTransport.cs" />
@@ -262,7 +261,6 @@
     <Compile Include="Assets\Free_Pack\Demo_GameResource\Script\ColliderEvent_Sender.cs" />
     <Compile Include="Assets\Game\Runtime\Features\PresentationReplication\Application\ClientPresentationReplicationEventKind.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\ItemTooltipViewData.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\Common\ServerConnectionPopupView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Inventory\Application\InventoryLoadResult.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CombatDeathReturnHomeResult.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryItemPresentation.cs" />

@@ -1,13 +1,10 @@
 using PhamNhanOnline.Client.Core.Application;
-using PhamNhanOnline.Client.UI.Common;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.World
 {
     public sealed class WorldConnectionRecoveryController : MonoBehaviour
     {
-        [SerializeField] private ServerConnectionPopupView popupView;
-
         private void OnEnable()
         {
             if (!ClientRuntime.IsInitialized || ClientRuntime.ConnectionRecovery == null)
@@ -44,21 +41,38 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void RefreshPopup()
         {
-            if (popupView == null || !ClientRuntime.IsInitialized || ClientRuntime.ConnectionRecovery == null)
+            if (!ClientRuntime.IsInitialized || ClientRuntime.ConnectionRecovery == null)
                 return;
 
             var recovery = ClientRuntime.ConnectionRecovery;
             if (!recovery.IsRecovering && !recovery.IsForcedLogoutPending)
             {
-                popupView.Hide();
+                WorldModalUIManager.Instance?.HideNotificationPopup(force: true);
                 return;
             }
 
-            popupView.Show(
-                recovery.ActivePopupMessage,
-                recovery.ActivePopupStatusText,
-                recovery.ActivePopupAllowClose,
-                recovery.IsForcedLogoutPending ? (System.Action)recovery.ConfirmForcedLogout : null);
+            if (WorldModalUIManager.Instance == null)
+                return;
+
+            WorldModalUIManager.Instance.ShowNotificationPopup(
+                "Ket noi",
+                BuildPopupMessage(recovery.ActivePopupMessage, recovery.ActivePopupStatusText),
+                null,
+                recovery.IsForcedLogoutPending ? (System.Action)recovery.ConfirmForcedLogout : null,
+                false,
+                null,
+                "OK");
+        }
+
+        private static string BuildPopupMessage(string message, string status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+                return message ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(message))
+                return status.Trim();
+
+            return string.Concat(message.Trim(), "\n", status.Trim());
         }
     }
 }

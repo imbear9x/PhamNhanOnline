@@ -67,12 +67,13 @@ namespace PhamNhanOnline.Client.UI.World
             {
                 Debug.LogWarning(
                     $"Duplicate {nameof(WorldModalUIManager)} detected on '{gameObject.name}'. " +
-                    $"Keeping '{Instance.gameObject.name}' and disabling this component.");
-                enabled = false;
+                    $"Keeping '{Instance.gameObject.name}' and destroying this duplicate.");
+                Destroy(gameObject);
                 return;
             }
 
             Instance = this;
+            DontDestroyOnLoad(gameObject);
         }
 
         private void OnDestroy()

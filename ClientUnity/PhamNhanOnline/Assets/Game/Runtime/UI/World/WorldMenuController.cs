@@ -415,13 +415,7 @@ namespace PhamNhanOnline.Client.UI.World
             if (tab == null || tab.Button == null)
                 return;
 
-            var image = tab.Button.GetComponent<Image>();
-            if (image != null)
-                image.color = isActive ? new Color(0.30f, 0.42f, 0.60f, 0.96f) : new Color(0.15f, 0.18f, 0.24f, 0.96f);
-
-            var label = tab.Button.GetComponentInChildren<TMP_Text>();
-            if (label != null)
-                label.color = isActive ? new Color(1f, 0.97f, 0.86f, 1f) : Color.white;
+            tab.Button.SetHighlightState(isActive, force: true);
         }
 
         private string ResolveInitialTabId()

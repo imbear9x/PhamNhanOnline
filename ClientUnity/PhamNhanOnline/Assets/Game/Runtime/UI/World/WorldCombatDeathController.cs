@@ -7,26 +7,21 @@ namespace PhamNhanOnline.Client.UI.World
 {
     public sealed class WorldCombatDeathController : MonoBehaviour
     {
-        [Header("View")]
-        [SerializeField] private CombatDeadPanelView panelView;
+        [Header("Popup Text")]
+        [SerializeField] private string popupTitle = "Trong thuong";
+        [SerializeField] private string popupMessage = "Nhan vat da tu thuong. Tam thoi chi co the tro ve dong phu.";
+        [SerializeField] private string confirmButtonText = "Tro ve dong phu";
 
         [Header("Status Text")]
         [SerializeField] private string actionInProgressText = "Dang tro ve dong phu...";
 
         private bool actionInFlight;
-        private bool loggedMissingPanelView;
+        private string statusText = string.Empty;
+        private bool loggedMissingModalManager;
 
         private void Awake()
         {
-            if (panelView != null)
-                panelView.ReturnHomeRequested += HandleReturnHomeRequested;
-
             ApplyViewState(false);
-        }
-
-        private void Start()
-        {
-            LogMissingCriticalDependenciesIfNeeded();
         }
 
         private void OnEnable()
@@ -46,12 +41,6 @@ namespace PhamNhanOnline.Client.UI.World
             ApplyViewState(false);
         }
 
-        private void OnDestroy()
-        {
-            if (panelView != null)
-                panelView.ReturnHomeRequested -= HandleReturnHomeRequested;
-        }
-
         private void HandleCharacterCurrentStateChanged(CharacterCurrentStateChangeNotice notice)
         {
             Refresh();
@@ -67,7 +56,10 @@ namespace PhamNhanOnline.Client.UI.World
 
             var isCombatDead = IsCombatDead(ClientRuntime.Character.CurrentState);
             if (!isCombatDead)
+            {
                 actionInFlight = false;
+                statusText = string.Empty;
+            }
 
             ApplyViewState(isCombatDead);
         }
@@ -78,11 +70,8 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             actionInFlight = true;
-            if (panelView != null)
-            {
-                panelView.SetStatus(actionInProgressText);
-                panelView.SetBusy(true);
-            }
+            statusText = actionInProgressText;
+            ApplyViewState(true);
 
             CombatDeathReturnHomeResult result;
             try
@@ -94,32 +83,36 @@ namespace PhamNhanOnline.Client.UI.World
                 actionInFlight = false;
             }
 
-            if (panelView != null)
-            {
-                panelView.SetStatus(result.Success ? string.Empty : result.Message);
-                panelView.SetBusy(false);
-            }
+            statusText = result.Success ? string.Empty : result.Message;
 
             Refresh();
         }
 
         private void ApplyViewState(bool isCombatDead)
         {
-            if (panelView == null)
-                return;
-
             if (isCombatDead)
             {
                 if (WorldUIController.Instance != null)
                     WorldUIController.Instance.HideMenuIfVisible();
 
-                panelView.Show();
-                panelView.SetBusy(actionInFlight);
+                if (WorldModalUIManager.Instance == null)
+                {
+                    LogMissingModalManagerIfNeeded();
+                    return;
+                }
+
+                WorldModalUIManager.Instance.ShowNotificationPopup(
+                    popupTitle,
+                    BuildPopupMessage(popupMessage, statusText),
+                    null,
+                    HandleReturnHomeRequested,
+                    false,
+                    null,
+                    confirmButtonText);
             }
             else
             {
-                panelView.Hide();
-                panelView.SetBusy(false);
+                WorldModalUIManager.Instance?.HideNotificationPopup(force: true);
             }
         }
 
@@ -129,13 +122,24 @@ namespace PhamNhanOnline.Client.UI.World
                    ClientCharacterRuntimeStateCodes.IsCombatDead(currentState.Value.CurrentState);
         }
 
-        private void LogMissingCriticalDependenciesIfNeeded()
+        private static string BuildPopupMessage(string message, string status)
         {
-            if (panelView == null && !loggedMissingPanelView)
-            {
-                ClientLog.Error("WorldCombatDeathController is missing CombatDeadPanelView.");
-                loggedMissingPanelView = true;
-            }
+            if (string.IsNullOrWhiteSpace(status))
+                return message ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(message))
+                return status.Trim();
+
+            return string.Concat(message.Trim(), "\n\n", status.Trim());
+        }
+
+        private void LogMissingModalManagerIfNeeded()
+        {
+            if (loggedMissingModalManager)
+                return;
+
+            ClientLog.Error("WorldCombatDeathController requires WorldModalUIManager to show the death popup.");
+            loggedMissingModalManager = true;
         }
     }
 }

@@ -70,12 +70,13 @@ namespace PhamNhanOnline.Client.UI.Common
 
         private bool isPointerInside;
         private bool isPressed;
+        private bool isHighlightedState;
         private VisualState currentState = VisualState.Normal;
         private RectTransform cachedRectTransform;
         private RectTransform cachedAnimationRectTransform;
         private Vector3 baseLocalScale = Vector3.one;
         private Vector2 baseAnchoredPosition = Vector2.zero;
-        private bool hasCapturedBaseTransform;
+        private bool isAnimationReady;
         private Tween colorTween;
         private Tween scaleTween;
         private Tween positionTween;
@@ -85,17 +86,24 @@ namespace PhamNhanOnline.Client.UI.Common
 
         public bool Interactable => interactable;
 
+        public bool IsHighlightedState => isHighlightedState;
+
         private void Awake()
         {
             AutoWireReferences();
-            CaptureBaseTransform();
+            RefreshVisualState(force: true);
+        }
+
+        private void Start()
+        {
+            EnsureAnimationReady(force: true);
             RefreshVisualState(force: true);
         }
 
         private void OnEnable()
         {
             AutoWireReferences();
-            CaptureBaseTransform(force: true);
+            isAnimationReady = false;
             RefreshVisualState(force: true);
         }
 
@@ -119,9 +127,19 @@ namespace PhamNhanOnline.Client.UI.Common
             RefreshVisualState(force: true);
         }
 
+        public void SetHighlightState(bool value, bool force = false)
+        {
+            if (!force && isHighlightedState == value)
+                return;
+
+            EnsureAnimationReady();
+            isHighlightedState = value;
+            RefreshVisualState(force: true);
+        }
+
         public void OnPointerEnter(PointerEventData eventData)
         {
-            SyncBaseTransformFromCurrent();
+            EnsureAnimationReady();
             isPointerInside = true;
             RefreshVisualState(force: false);
         }
@@ -140,7 +158,7 @@ namespace PhamNhanOnline.Client.UI.Common
 
             if (eventData.button == PointerEventData.InputButton.Left && leftClickEnabled)
             {
-                SyncBaseTransformFromCurrent();
+                EnsureAnimationReady();
                 isPressed = true;
                 RefreshVisualState(force: false);
             }
@@ -213,30 +231,18 @@ namespace PhamNhanOnline.Client.UI.Common
             cachedAnimationRectTransform = animationTarget;
         }
 
-        private void CaptureBaseTransform(bool force = false)
+        private void EnsureAnimationReady(bool force = false)
         {
-            if (hasCapturedBaseTransform && !force)
+            if (isAnimationReady && !force)
                 return;
 
-            hasCapturedBaseTransform = true;
+            AutoWireReferences();
             if (cachedAnimationRectTransform == null)
                 return;
 
             baseLocalScale = cachedAnimationRectTransform.localScale;
             baseAnchoredPosition = cachedAnimationRectTransform.anchoredPosition;
-        }
-
-        private void SyncBaseTransformFromCurrent()
-        {
-            if (cachedAnimationRectTransform == null)
-                return;
-
-            if (isPressed)
-                return;
-
-            baseLocalScale = cachedAnimationRectTransform.localScale;
-            baseAnchoredPosition = cachedAnimationRectTransform.anchoredPosition;
-            hasCapturedBaseTransform = true;
+            isAnimationReady = true;
         }
 
         private void RefreshVisualState(bool force)
@@ -328,6 +334,9 @@ namespace PhamNhanOnline.Client.UI.Common
             var scaleMultiplier = 1f;
             var positionOffset = Vector2.zero;
 
+            if (isHighlightedState)
+                scaleMultiplier = hoverScaleMultiplier;
+
             switch (state)
             {
                 case VisualState.Highlighted:
@@ -337,7 +346,9 @@ namespace PhamNhanOnline.Client.UI.Common
                 case VisualState.Pressed:
                     if (animClick)
                     {
-                        scaleMultiplier = pressedScaleMultiplier;
+                        if (!isHighlightedState)
+                            scaleMultiplier = pressedScaleMultiplier;
+
                         positionOffset = pressedOffset;
                     }
                     break;
@@ -376,7 +387,7 @@ namespace PhamNhanOnline.Client.UI.Common
             if (!animHover && !animClick)
                 return false;
 
-            if (!hasCapturedBaseTransform)
+            if (!isAnimationReady)
                 return false;
 
             if (animationTarget == null)

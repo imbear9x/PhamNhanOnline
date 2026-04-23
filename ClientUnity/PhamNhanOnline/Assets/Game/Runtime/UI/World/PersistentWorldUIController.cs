@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
+using PhamNhanOnline.Client.UI.Common;
+using PhamNhanOnline.Client.UI.Hud;
 
 namespace PhamNhanOnline.Client.UI.World
 {
@@ -8,8 +9,12 @@ namespace PhamNhanOnline.Client.UI.World
     public sealed class PersistentWorldUIController : MonoBehaviour
     {
         [Header("Quick Actions")]
-        [SerializeField] private Button quickMenuOpenButton;
+        [SerializeField] private UIButtonView quickMenuOpenButton;
+        [SerializeField] private UIButtonView nextTargetButton;
         [SerializeField] private TMP_Text quickMenuOpenButtonText;
+
+        [Header("References")]
+        [SerializeField] private TargetHudController targetHudController;
 
         [Header("Labels")]
         [SerializeField] private string menuClosedLabel = "Menu";
@@ -37,7 +42,10 @@ namespace PhamNhanOnline.Client.UI.World
         private void OnDestroy()
         {
             if (quickMenuOpenButton != null)
-                quickMenuOpenButton.onClick.RemoveListener(HandleQuickMenuOpenClicked);
+                quickMenuOpenButton.Clicked -= HandleQuickMenuOpenClicked;
+
+            if (nextTargetButton != null)
+                nextTargetButton.Clicked -= HandleNextTargetClicked;
         }
 
         private void WireUI()
@@ -45,8 +53,14 @@ namespace PhamNhanOnline.Client.UI.World
             if (quickMenuOpenButton == null)
                 return;
 
-            quickMenuOpenButton.onClick.RemoveListener(HandleQuickMenuOpenClicked);
-            quickMenuOpenButton.onClick.AddListener(HandleQuickMenuOpenClicked);
+            quickMenuOpenButton.Clicked -= HandleQuickMenuOpenClicked;
+            quickMenuOpenButton.Clicked += HandleQuickMenuOpenClicked;
+
+            if (nextTargetButton != null)
+            {
+                nextTargetButton.Clicked -= HandleNextTargetClicked;
+                nextTargetButton.Clicked += HandleNextTargetClicked;
+            }
         }
 
         private void Refresh(bool force)
@@ -72,12 +86,36 @@ namespace PhamNhanOnline.Client.UI.World
             Refresh(force: true);
         }
 
+        private void HandleNextTargetClicked()
+        {
+            if (targetHudController == null)
+            {
+                Debug.LogWarning(
+                    $"PersistentWorldUIController on '{gameObject.name}' is missing required reference '{nameof(targetHudController)}' for next target.");
+                return;
+            }
+
+            targetHudController.CycleNearbyTarget();
+        }
+
         private void ValidateSerializedReferences()
         {
             if (quickMenuOpenButton == null)
             {
                 throw new System.InvalidOperationException(
                     $"PersistentWorldUIController on '{gameObject.name}' is missing required reference '{nameof(quickMenuOpenButton)}'.");
+            }
+
+            if (nextTargetButton == null)
+            {
+                throw new System.InvalidOperationException(
+                    $"PersistentWorldUIController on '{gameObject.name}' is missing required reference '{nameof(nextTargetButton)}'.");
+            }
+
+            if (targetHudController == null)
+            {
+                throw new System.InvalidOperationException(
+                    $"PersistentWorldUIController on '{gameObject.name}' is missing required reference '{nameof(targetHudController)}'.");
             }
         }
     }

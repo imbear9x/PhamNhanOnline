@@ -250,6 +250,12 @@ namespace PhamNhanOnline.Client.UI.World
             SetButtonState(breakthroughButton, visible, interactable, force);
         }
 
+        public void SetCloseButtonVisible(bool visible)
+        {
+            if (closeButton != null && closeButton.gameObject.activeSelf != visible)
+                closeButton.gameObject.SetActive(visible);
+        }
+
         public void ShowItemOptionsPopup(IReadOnlyList<ItemOptionEntry> options, bool force = false)
         {
             WorldModalUIManager.Instance?.ShowItemOptionsPopup(options, force);
@@ -306,6 +312,7 @@ namespace PhamNhanOnline.Client.UI.World
                 closeButton.Clicked -= HandleCloseClicked;
                 closeButton.Clicked += HandleCloseClicked;
             }
+
         }
 
         private void UnbindChildEvents()
@@ -333,6 +340,7 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (closeButton != null)
                 closeButton.Clicked -= HandleCloseClicked;
+
         }
 
         private void HandleActiveMartialArtDropped(PlayerMartialArtModel martialArt)

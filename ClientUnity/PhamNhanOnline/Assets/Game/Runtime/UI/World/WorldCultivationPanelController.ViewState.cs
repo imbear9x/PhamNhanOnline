@@ -55,6 +55,7 @@ namespace PhamNhanOnline.Client.UI.World
             panelView?.ClearMartialArtList(force: true);
             panelView?.ClearCultivationPreview(force);
             panelView?.SetBreakthroughRootVisible(false);
+            panelView?.SetCloseButtonVisible(!IsCloseLockedBecauseCultivating());
             panelView?.SetStartCultivationButtonState(false, false, force: force);
             panelView?.SetStopCultivationButtonState(false, false, force: force);
             panelView?.SetBreakthroughButtonState(false, false, force: force);
@@ -110,8 +111,10 @@ namespace PhamNhanOnline.Client.UI.World
                            currentState.HasValue &&
                            currentState.Value.CurrentState == CharacterStateCultivating;
             var showBreakthrough = !actionInFlight && breakthroughAvailable;
+            var showClose = !IsCloseLockedBecauseCultivating();
 
             panelView?.SetBreakthroughRootVisible(showBreakthrough);
+            panelView?.SetCloseButtonVisible(showClose);
             panelView?.SetStartCultivationButtonState(showStart, showStart, force: force);
             panelView?.SetStopCultivationButtonState(showStop, showStop, force: force);
             panelView?.SetBreakthroughButtonState(showBreakthrough, showBreakthrough, force: force);
