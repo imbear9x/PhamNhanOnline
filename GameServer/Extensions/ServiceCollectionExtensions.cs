@@ -217,6 +217,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<SetActiveMartialArtPacket>, SetActiveMartialArtHandler>();
         services.AddScoped<IPacketHandler<GetOwnedSkillsPacket>, GetOwnedSkillsHandler>();
         services.AddScoped<IPacketHandler<SetSkillLoadoutSlotPacket>, SetSkillLoadoutSlotHandler>();
+        services.AddScoped<IPacketHandler<SwapSkillLoadoutSlotsPacket>, SwapSkillLoadoutSlotsHandler>();
         services.AddScoped<IPacketHandler<GetLearnedPillRecipesPacket>, GetLearnedPillRecipesHandler>();
         services.AddScoped<IPacketHandler<GetPillRecipeDetailPacket>, GetPillRecipeDetailHandler>();
         services.AddScoped<IPacketHandler<PreviewCraftPillPacket>, PreviewCraftPillHandler>();

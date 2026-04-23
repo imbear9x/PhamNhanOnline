@@ -217,6 +217,7 @@
     <Compile Include="Assets\Game\Runtime\Features\Alchemy\Application\AlchemyRecipeDetailLoadResult.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldInventoryPanelController.cs" />
     <Compile Include="Assets\Game\Runtime\Network\Transport\IClientTransportDebugControl.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Common\RadialLayoutGroup.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Skills\Application\ClientSkillService.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\ClientMapView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryItemSlotView.cs" />
@@ -246,7 +247,6 @@
     <Compile Include="Assets\Game\Runtime\UI\Skills\SkillListItemView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldTargetable.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterAllocatePotentialResult.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\Skills\CharacterSkillLoadoutView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Inventory\Application\InventoryActionResult.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryDragGhost.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\GroundSnapBindings.cs" />
@@ -278,6 +278,7 @@
     <Compile Include="Assets\Game\Runtime\Features\World\Application\WorldRuntimeChangeNotices.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldConnectionDebugController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldTravelDebugController.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Skills\WorldSkillPanelView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\LocalFixPortalPresenter.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterBaseStatsChangeNotice.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Skills\SkillPresentationCatalog.cs" />

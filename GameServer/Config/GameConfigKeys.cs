@@ -17,8 +17,7 @@ public static class GameConfigKeys
     public const string AlchemyPracticeCancelRefundProgressThreshold = "alchemy.practice_cancel_refund_progress_threshold";
     public const string CharacterHomeGardenPlotCount = "character.home_garden_plot_count";
     public const string CharacterEquipmentSlotCount = "character.equipment_slot_count";
-    public const string CharacterStarterBasicSkillId = "character.starter_basic_skill_id";
-    public const string CharacterStarterBasicSkillSlotIndex = "character.starter_basic_skill_slot_index";
+    public const string CharacterStarterSkillId = "character.starter_skill_id";
     public const string SkillMaxLoadoutSlotCount = "skill.max_loadout_slot_count";
 }
 

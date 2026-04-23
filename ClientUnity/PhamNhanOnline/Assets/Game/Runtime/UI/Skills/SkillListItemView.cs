@@ -2,6 +2,8 @@ using System;
 using System.Globalization;
 using GameShared.Models;
 using PhamNhanOnline.Client.UI.Common;
+using PhamNhanOnline.Client.UI.Inventory;
+using PhamNhanOnline.Client.UI.World;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -13,6 +15,8 @@ namespace PhamNhanOnline.Client.UI.Skills
         IUIDragPayloadSource,
         IPointerEnterHandler,
         IPointerExitHandler,
+        IPointerDownHandler,
+        IPointerUpHandler,
         IPointerClickHandler,
         IBeginDragHandler,
         IDragHandler,
@@ -21,8 +25,9 @@ namespace PhamNhanOnline.Client.UI.Skills
         [Header("References")]
         [SerializeField] private Image iconImage;
         [SerializeField] private TMP_Text nameText;
-        [SerializeField] private TMP_Text detailText;
         [SerializeField] private TMP_Text cooldownText;
+        [SerializeField] private GameObject slotRoot;
+        [SerializeField] private TMP_Text skillIndexText;
         [SerializeField] private GameObject selectedHighlightRoot;
 
         [Header("Display")]
@@ -60,17 +65,16 @@ namespace PhamNhanOnline.Client.UI.Skills
             if (nameText != null)
                 nameText.text = string.IsNullOrWhiteSpace(value.Name) ? "Skill" : value.Name.Trim();
 
-            if (detailText != null)
+            if (slotRoot != null)
             {
-                var header = string.Format(
-                    CultureInfo.InvariantCulture,
-                    "{0} | Cap {1} | Mo tang {2}",
-                    string.IsNullOrWhiteSpace(value.SourceMartialArtName) ? "Khong ro nguon" : value.SourceMartialArtName.Trim(),
-                    Math.Max(1, value.SkillLevel),
-                    Math.Max(0, value.UnlockStage));
-                detailText.text = string.IsNullOrWhiteSpace(value.Description)
-                    ? header
-                    : string.Concat(header, Environment.NewLine, value.Description.Trim());
+                slotRoot.SetActive(value.IsEquipped && value.EquippedSlotIndex > 0);
+            }
+
+            if (skillIndexText != null)
+            {
+                skillIndexText.text = value.IsEquipped && value.EquippedSlotIndex > 0
+                    ? value.EquippedSlotIndex.ToString(CultureInfo.InvariantCulture)
+                    : string.Empty;
             }
 
             if (cooldownText != null)
@@ -103,10 +107,12 @@ namespace PhamNhanOnline.Client.UI.Skills
 
             if (nameText != null)
                 nameText.text = string.Empty;
-            if (detailText != null)
-                detailText.text = string.Empty;
             if (cooldownText != null)
                 cooldownText.text = string.Empty;
+            if (skillIndexText != null)
+                skillIndexText.text = string.Empty;
+            if (slotRoot != null)
+                slotRoot.SetActive(false);
 
             ResetDragVisuals();
             SetSelected(false, force);
@@ -127,9 +133,13 @@ namespace PhamNhanOnline.Client.UI.Skills
 
         public void OnPointerEnter(PointerEventData eventData)
         {
+            if (eventData != null && eventData.pointerDrag != null)
+                return;
+
             if (!hasItem)
                 return;
 
+            WorldModalUIManager.Instance?.ShowItemTooltip(this, BuildTooltipData(), force: true);
             var handler = Hovered;
             if (handler != null)
                 handler(this);
@@ -140,9 +150,26 @@ namespace PhamNhanOnline.Client.UI.Skills
             if (!hasItem)
                 return;
 
+            WorldModalUIManager.Instance?.HideItemTooltip(this, force: true);
             var handler = HoverExited;
             if (handler != null)
                 handler(this);
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (!hasItem)
+                return;
+
+            WorldModalUIManager.Instance?.BeginItemInteraction(this, force: true);
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (!hasItem)
+                return;
+
+            WorldModalUIManager.Instance?.EndItemInteraction(this);
         }
 
         public void OnPointerClick(PointerEventData eventData)
@@ -163,6 +190,13 @@ namespace PhamNhanOnline.Client.UI.Skills
             if (!hasItem || !canAssignToLoadout)
                 return;
 
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
+            {
+                modalUIManager.HideItemOptionsPopup(force: true);
+                modalUIManager.BeginItemInteraction(this, force: true);
+            }
+
             canvasGroup.blocksRaycasts = false;
             canvasGroup.alpha = draggingAlpha;
             dragGhost = SkillDragGhost.Create(transform, currentIconSprite, eventData);
@@ -177,6 +211,12 @@ namespace PhamNhanOnline.Client.UI.Skills
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
+            {
+                modalUIManager.EndItemInteraction(this);
+                modalUIManager.HideItemTooltip(this, force: true);
+            }
         }
 
         public bool TryCreateDragPayload(out UIDragPayload payload)
@@ -187,7 +227,10 @@ namespace PhamNhanOnline.Client.UI.Skills
                 return false;
             }
 
-            payload = UIDragPayload.FromSkill(item, UIDragSourceKind.SkillListItem);
+            payload = UIDragPayload.FromSkill(
+                item,
+                UIDragSourceKind.SkillListItem,
+                item.IsEquipped && item.EquippedSlotIndex > 0 ? item.EquippedSlotIndex : null);
             return true;
         }
 
@@ -214,6 +257,39 @@ namespace PhamNhanOnline.Client.UI.Skills
 
             iconImage.sprite = presentation.IconSprite;
             iconImage.enabled = presentation.IconSprite != null;
+        }
+
+        private ItemTooltipViewData BuildTooltipData()
+        {
+            var description = string.Format(
+                CultureInfo.InvariantCulture,
+                "Cap {0}",
+                Math.Max(0, item.SkillLevel));
+
+            if (item.CastRange > 0f)
+            {
+                description = string.Concat(
+                    description,
+                    Environment.NewLine,
+                    string.Format(CultureInfo.InvariantCulture, "Tam thi trien: {0:0.##}", Math.Max(0f, item.CastRange)));
+            }
+
+            description = string.Concat(
+                description,
+                Environment.NewLine,
+                string.Format(CultureInfo.InvariantCulture, "Hoi chieu: {0:0.##}s", Math.Max(0d, item.CooldownMs / 1000d)));
+
+            if (!string.IsNullOrWhiteSpace(item.SourceMartialArtName))
+                description = string.Concat(description, Environment.NewLine, "Cong phap: ", item.SourceMartialArtName.Trim());
+
+            if (!string.IsNullOrWhiteSpace(item.Description))
+                description = string.Concat(description, Environment.NewLine, item.Description.Trim());
+
+            return new ItemTooltipViewData(
+                string.IsNullOrWhiteSpace(item.Name) ? "Skill" : item.Name.Trim(),
+                description,
+                currentIconSprite,
+                Color.white);
         }
     }
 }

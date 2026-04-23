@@ -125,7 +125,7 @@ public sealed class CharacterService
         Guid characterId,
         CancellationToken cancellationToken = default)
     {
-        await EnsureStarterBasicSkillAsync(characterId, cancellationToken);
+        await EnsureStarterSkillAsync(characterId, cancellationToken);
     }
 
     public async Task<CharacterSnapshotDto?> LoadCharacterSnapshotByAccountAsync(
@@ -613,19 +613,17 @@ public sealed class CharacterService
         }
     }
 
-    private async Task EnsureStarterBasicSkillAsync(Guid characterId, CancellationToken cancellationToken)
+    private async Task EnsureStarterSkillAsync(Guid characterId, CancellationToken cancellationToken)
     {
-        var starterBasicSkillId = _gameConfig.CharacterStarterBasicSkillId;
-        var starterSkillSlotIndex = _gameConfig.CharacterStarterBasicSkillSlotIndex;
+        var starterSkillId = _gameConfig.CharacterStarterSkillId;
+        if (starterSkillId <= 0)
+            return;
+
         var starterSkill = await _db.GetTable<SkillEntity>()
-            .FirstOrDefaultAsync(x => x.Id == starterBasicSkillId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == starterSkillId, cancellationToken);
         if (starterSkill is null)
             throw new InvalidOperationException(
-                $"Starter basic skill {starterBasicSkillId} is missing from public.skills.");
-
-        if (starterSkill.SkillCategory != (int)SkillCategory.Basic)
-            throw new InvalidOperationException(
-                $"Starter skill {starterBasicSkillId} must have skill_category = {(int)SkillCategory.Basic}.");
+                $"Starter skill {starterSkillId} is missing from public.skills.");
 
         var playerSkill = await _db.GetTable<PlayerSkillEntity>()
             .FirstOrDefaultAsync(
@@ -651,32 +649,6 @@ public sealed class CharacterService
             playerSkill.Id = await _db.InsertEntityWithInt64IdentityAsync(playerSkill, cancellationToken);
         }
 
-        var slotOneLoadout = await _db.GetTable<PlayerSkillLoadoutEntity>()
-            .FirstOrDefaultAsync(
-                x => x.PlayerId == characterId && x.SlotIndex == starterSkillSlotIndex,
-                cancellationToken);
-
-        if (slotOneLoadout is null)
-        {
-            slotOneLoadout = new PlayerSkillLoadoutEntity
-            {
-                PlayerId = characterId,
-                SlotIndex = starterSkillSlotIndex,
-                PlayerSkillId = playerSkill.Id,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            await _db.InsertEntityWithInt64IdentityAsync(slotOneLoadout, cancellationToken);
-            return;
-        }
-
-        if (slotOneLoadout.PlayerSkillId == playerSkill.Id)
-            return;
-
-        slotOneLoadout.PlayerSkillId = playerSkill.Id;
-        slotOneLoadout.UpdatedAt = DateTime.UtcNow;
-        await _db.UpdateAsync(slotOneLoadout, token: cancellationToken);
     }
 }
 

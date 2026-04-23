@@ -20,7 +20,10 @@ namespace PhamNhanOnline.Client.UI.Skills
         private int lastSlotCount = -1;
         private bool lastDragEnabled = true;
 
-        public event Action<int, PlayerSkillModel> SkillDropped;
+        private int? selectedSlotIndex;
+
+        public event Action<int, PlayerSkillModel, int?> SkillDropped;
+        public event Action<SkillLoadoutSlotView> SlotClicked;
 
         private void Awake()
         {
@@ -84,6 +87,24 @@ namespace PhamNhanOnline.Client.UI.Skills
                     slotView.Clear(force: true);
                     slotView.SetDragEnabled(dragEnabled);
                 }
+
+                slotView.SetSelected(selectedSlotIndex.HasValue && selectedSlotIndex.Value == slot.SlotIndex, force: true);
+            }
+        }
+
+        public void SetSelectedSlot(int? slotIndex, bool force = false)
+        {
+            if (!force && selectedSlotIndex == slotIndex)
+                return;
+
+            selectedSlotIndex = slotIndex;
+            for (var i = 0; i < spawnedSlots.Count; i++)
+            {
+                var slotView = spawnedSlots[i];
+                if (slotView == null || !slotView.gameObject.activeSelf)
+                    continue;
+
+                slotView.SetSelected(slotIndex.HasValue && slotView.SlotIndex == slotIndex.Value, force: true);
             }
         }
 
@@ -92,6 +113,7 @@ namespace PhamNhanOnline.Client.UI.Skills
             lastSlotCount = 0;
             lastSnapshot = string.Empty;
             lastDragEnabled = true;
+            selectedSlotIndex = null;
 
             for (var i = 0; i < spawnedSlots.Count; i++)
             {
@@ -124,15 +146,23 @@ namespace PhamNhanOnline.Client.UI.Skills
                 instance.name = string.Format("{0}_{1}", slotTemplate.name, i + 1);
                 instance.gameObject.SetActive(true);
                 instance.SkillDropped += HandleSkillDropped;
+                instance.Clicked += HandleSlotClicked;
                 spawnedSlots.Add(instance);
             }
         }
 
-        private void HandleSkillDropped(int slotIndex, PlayerSkillModel skill)
+        private void HandleSkillDropped(int slotIndex, PlayerSkillModel skill, int? sourceSlotIndex)
         {
             var handler = SkillDropped;
             if (handler != null)
-                handler(slotIndex, skill);
+                handler(slotIndex, skill, sourceSlotIndex);
+        }
+
+        private void HandleSlotClicked(SkillLoadoutSlotView slotView)
+        {
+            var handler = SlotClicked;
+            if (handler != null)
+                handler(slotView);
         }
 
         private static string BuildSnapshot(IReadOnlyList<SkillLoadoutSlotModel> slots)

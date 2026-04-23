@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
@@ -23,7 +24,9 @@ namespace PhamNhanOnline.Client.UI.Hud
         [Header("References")]
         [SerializeField] private SkillPresentationCatalog presentationCatalog;
         [SerializeField] private CombatSkillButtonView basicSkillButton;
-        [SerializeField] private CombatSkillButtonView[] additionalSkillButtons = Array.Empty<CombatSkillButtonView>();
+        [SerializeField] private Transform additionalSkillButtonsRoot;
+        [SerializeField] private CombatSkillButtonView additionalSkillButtonTemplate;
+        [SerializeField] private bool hideAdditionalSkillButtonTemplate = true;
 
         [Header("Cast Bar")]
         [SerializeField] private GameObject castBarRoot;
@@ -33,13 +36,15 @@ namespace PhamNhanOnline.Client.UI.Hud
         [Header("Display Text")]
         [SerializeField] private string castBarDefaultText = "Dang thi trien...";
 
+        private readonly List<CombatSkillButtonView> spawnedAdditionalSkillButtons = new List<CombatSkillButtonView>(8);
         private bool loggedMissingWorldSceneController;
 
         private static WorldSceneController SceneController => WorldSceneController.Instance;
 
         private void Awake()
         {
-            NormalizeButtonSlotIndices();
+            InitializeAdditionalSkillButtonTemplate();
+            NormalizeBasicButtonSlotIndex();
             SubscribeButtons();
             ApplyCastBar(false, 0f);
         }
@@ -72,34 +77,12 @@ namespace PhamNhanOnline.Client.UI.Hud
         {
             if (basicSkillButton != null)
                 basicSkillButton.Clicked += HandleSkillButtonClicked;
-
-            if (additionalSkillButtons == null)
-                return;
-
-            for (var i = 0; i < additionalSkillButtons.Length; i++)
-            {
-                var button = additionalSkillButtons[i];
-                if (button != null)
-                    button.Clicked += HandleSkillButtonClicked;
-            }
         }
 
-        private void NormalizeButtonSlotIndices()
+        private void NormalizeBasicButtonSlotIndex()
         {
             if (basicSkillButton != null)
                 basicSkillButton.SetSlotIndex(BasicSkillSlotIndex);
-
-            if (additionalSkillButtons == null)
-                return;
-
-            for (var i = 0; i < additionalSkillButtons.Length; i++)
-            {
-                var button = additionalSkillButtons[i];
-                if (button == null)
-                    continue;
-
-                button.SetSlotIndex(i + 2);
-            }
         }
 
         private void UnsubscribeButtons()
@@ -107,12 +90,9 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (basicSkillButton != null)
                 basicSkillButton.Clicked -= HandleSkillButtonClicked;
 
-            if (additionalSkillButtons == null)
-                return;
-
-            for (var i = 0; i < additionalSkillButtons.Length; i++)
+            for (var i = 0; i < spawnedAdditionalSkillButtons.Count; i++)
             {
-                var button = additionalSkillButtons[i];
+                var button = spawnedAdditionalSkillButtons[i];
                 if (button != null)
                     button.Clicked -= HandleSkillButtonClicked;
             }
@@ -135,18 +115,20 @@ namespace PhamNhanOnline.Client.UI.Hud
 
             var utcNow = DateTime.UtcNow;
             ClientRuntime.Combat.IsLocalCastActive(utcNow);
+            EnsureAdditionalButtonCount(skillState.MaxLoadoutSlotCount);
             ApplyButtonState(basicSkillButton, BasicSkillSlotIndex, skillState, utcNow);
 
-            if (additionalSkillButtons != null)
+            for (var i = 0; i < spawnedAdditionalSkillButtons.Count; i++)
             {
-                for (var i = 0; i < additionalSkillButtons.Length; i++)
-                {
-                    var button = additionalSkillButtons[i];
-                    if (button == null)
-                        continue;
+                var button = spawnedAdditionalSkillButtons[i];
+                if (button == null)
+                    continue;
 
-                    ApplyButtonState(button, Math.Max(2, button.SkillSlotIndex), skillState, utcNow);
-                }
+                var slotIndex = i + 2;
+                if (slotIndex <= skillState.MaxLoadoutSlotCount)
+                    ApplyButtonState(button, slotIndex, skillState, utcNow);
+                else
+                    button.Hide();
             }
 
             RefreshCastBar(utcNow, force);
@@ -157,17 +139,53 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (basicSkillButton != null)
                 basicSkillButton.Hide();
 
-            if (additionalSkillButtons != null)
+            for (var i = 0; i < spawnedAdditionalSkillButtons.Count; i++)
             {
-                for (var i = 0; i < additionalSkillButtons.Length; i++)
-                {
-                    var button = additionalSkillButtons[i];
-                    if (button != null)
-                        button.Hide();
-                }
+                var button = spawnedAdditionalSkillButtons[i];
+                if (button != null)
+                    button.Hide();
             }
 
             ApplyCastBar(false, 0f);
+        }
+
+        private void InitializeAdditionalSkillButtonTemplate()
+        {
+            if (additionalSkillButtonTemplate == null)
+                return;
+
+            if (additionalSkillButtonsRoot == null)
+                additionalSkillButtonsRoot = additionalSkillButtonTemplate.transform.parent;
+
+            if (hideAdditionalSkillButtonTemplate && additionalSkillButtonTemplate.gameObject.activeSelf)
+                additionalSkillButtonTemplate.gameObject.SetActive(false);
+        }
+
+        private void EnsureAdditionalButtonCount(int maxLoadoutSlotCount)
+        {
+            var targetCount = Math.Max(0, maxLoadoutSlotCount - 1);
+            if (targetCount <= spawnedAdditionalSkillButtons.Count)
+                return;
+
+            if (additionalSkillButtonTemplate == null)
+            {
+                ClientLog.Warn("WorldCombatHudController is missing additionalSkillButtonTemplate.");
+                return;
+            }
+
+            var parent = additionalSkillButtonsRoot != null
+                ? additionalSkillButtonsRoot
+                : additionalSkillButtonTemplate.transform.parent;
+
+            for (var i = spawnedAdditionalSkillButtons.Count; i < targetCount; i++)
+            {
+                var instance = Instantiate(additionalSkillButtonTemplate, parent);
+                instance.name = string.Format("{0}_{1}", additionalSkillButtonTemplate.name, i + 2);
+                instance.gameObject.SetActive(true);
+                instance.SetSlotIndex(i + 2);
+                instance.Clicked += HandleSkillButtonClicked;
+                spawnedAdditionalSkillButtons.Add(instance);
+            }
         }
 
         private void ApplyButtonState(
@@ -182,7 +200,26 @@ namespace PhamNhanOnline.Client.UI.Hud
             PlayerSkillModel skill;
             if (!skillState.TryGetLoadoutSkill(slotIndex, out skill))
             {
-                buttonView.Hide();
+                if (slotIndex == BasicSkillSlotIndex)
+                {
+                    var interactableWithoutSkill = !IsLocalCharacterDead() &&
+                                                  !ClientRuntime.Combat.HasPendingAttackRequest &&
+                                                  !ClientRuntime.Combat.IsLocalCastActive(utcNow);
+                    buttonView.ApplyState(
+                        true,
+                        false,
+                        default(PlayerSkillModel),
+                        default(SkillPresentation),
+                        interactableWithoutSkill,
+                        0f,
+                        string.Empty,
+                        false);
+                }
+                else
+                {
+                    buttonView.Hide();
+                }
+
                 return;
             }
 
@@ -224,7 +261,21 @@ namespace PhamNhanOnline.Client.UI.Hud
                 return;
 
             PlayerSkillModel skill;
-            if (!ClientRuntime.Skills.TryGetLoadoutSkill(slotIndex, out skill))
+            var hasSkill = ClientRuntime.Skills.TryGetLoadoutSkill(slotIndex, out skill);
+            if (!hasSkill && slotIndex == BasicSkillSlotIndex)
+            {
+                var worldSceneController = SceneController;
+                if (worldSceneController == null ||
+                    !worldSceneController.RequestPrimaryActionForCurrentSelection())
+                {
+                    return;
+                }
+
+                Refresh(force: true);
+                return;
+            }
+
+            if (!hasSkill)
                 return;
 
             if (skill.TargetType == SelfSkillTargetType)

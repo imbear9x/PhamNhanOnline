@@ -3,40 +3,42 @@ using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Messages;
 using GameShared.Models;
-using GameShared.Enums;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Skills.Application;
+using PhamNhanOnline.Client.UI.Inventory;
 using PhamNhanOnline.Client.UI.Skills;
-using TMPro;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.World
 {
     public sealed class WorldSkillPanelController : MonoBehaviour
     {
-        private const int BasicSkillSlotIndex = 1;
+        private const string SelectOptionText = "L\u1EF1a ch\u1ECDn";
+        private const string UnequipOptionText = "Go ra";
+        private const string RemoveOptionText = "G\u1EE1 b\u1ECF";
 
         [Header("References")]
-        [SerializeField] private TMP_Text ownedCountText;
-        [SerializeField] private TMP_Text statusText;
-        [SerializeField] private SkillPresentationCatalog presentationCatalog;
-        [SerializeField] private SkillListView skillListView;
-
-        [Header("Display Text")]
-        [SerializeField] private string missingOwnedCountText = "Skill: 0";
-        [SerializeField] private string missingStatusText = "Chua tai danh sach skill.";
-        [SerializeField] private string emptySkillListText = "Chua so huu skill nao.";
-        [SerializeField] private string actionInFlightText = "Dang cap nhat skill...";
+        [SerializeField] private WorldSkillPanelView panelView;
 
         private bool actionInFlight;
-        private string lastStatusMessage = string.Empty;
         private string lastSnapshot = string.Empty;
+        private long? popupSkillId;
+        private int? popupSlotIndex;
+        private bool popupTargetsSlot;
 
         private void Awake()
         {
-            if (skillListView != null)
-                skillListView.EquippedSkillDroppedToList += HandleEquippedSkillDroppedToList;
+            if (panelView == null)
+                panelView = GetComponent<WorldSkillPanelView>();
+
+            if (panelView != null)
+            {
+                panelView.SkillDroppedToSlot += HandleSkillDroppedToSlot;
+                panelView.EquippedSkillDroppedToList += HandleEquippedSkillDroppedToList;
+                panelView.SkillListItemClicked += HandleSkillListItemClicked;
+                panelView.SkillSlotClicked += HandleSkillSlotClicked;
+            }
         }
 
         private void OnEnable()
@@ -54,22 +56,30 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void OnDestroy()
         {
-            if (skillListView != null)
-                skillListView.EquippedSkillDroppedToList -= HandleEquippedSkillDroppedToList;
+            if (panelView != null)
+            {
+                panelView.SkillDroppedToSlot -= HandleSkillDroppedToSlot;
+                panelView.EquippedSkillDroppedToList -= HandleEquippedSkillDroppedToList;
+                panelView.SkillListItemClicked -= HandleSkillListItemClicked;
+                panelView.SkillSlotClicked -= HandleSkillSlotClicked;
+            }
         }
 
         private void RefreshPanel(bool force)
         {
+            if (panelView == null)
+                return;
+
             if (!ClientRuntime.IsInitialized)
             {
-                ApplyMissingState(force);
+                panelView.Clear(force: true);
                 return;
             }
 
             var skillState = ClientRuntime.Skills;
             if (!skillState.HasLoadedSkills)
             {
-                ApplyMissingState(force);
+                panelView.Clear(force: true);
                 return;
             }
 
@@ -78,34 +88,32 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             lastSnapshot = snapshot;
-            ApplyLoadedState(skillState, true);
+            panelView.SetSkills(skillState.Skills ?? Array.Empty<PlayerSkillModel>(), popupTargetsSlot ? null : popupSkillId, force: true);
+            panelView.SetLoadoutSlots(
+                skillState.LoadoutSlots,
+                skillState.MaxLoadoutSlotCount,
+                popupTargetsSlot ? popupSlotIndex : null,
+                !actionInFlight,
+                force: true);
         }
 
-        private void ApplyLoadedState(ClientSkillState skillState, bool force)
+        private void HandleSkillDroppedToSlot(int slotIndex, PlayerSkillModel skill, int? sourceSlotIndex)
         {
-            var visibleSkills = BuildVisibleSkillList(skillState.Skills);
+            if (!CanAssignSkillToSlot(slotIndex, skill, out _))
+                return;
 
-            ApplyText(
-                ownedCountText,
-                string.Format(
-                    CultureInfo.InvariantCulture,
-                    "Skill: {0}",
-                    skillState.Skills != null ? skillState.Skills.Length : 0),
-                force);
+            if (sourceSlotIndex.HasValue &&
+                sourceSlotIndex.Value > 0 &&
+                sourceSlotIndex.Value != slotIndex &&
+                ClientRuntime.IsInitialized &&
+                ClientRuntime.Skills.TryGetLoadoutSkill(slotIndex, out var targetSkill) &&
+                targetSkill.PlayerSkillId != skill.PlayerSkillId)
+            {
+                _ = SwapSkillLoadoutSlotsAsync(sourceSlotIndex.Value, slotIndex);
+                return;
+            }
 
-            if (skillListView != null)
-                skillListView.SetItems(visibleSkills, null, presentationCatalog, true);
-
-            ApplyText(statusText, ResolveStatusText(skillState, visibleSkills), true);
-        }
-
-        private void ApplyMissingState(bool force)
-        {
-            ApplyText(ownedCountText, missingOwnedCountText, force);
-            ApplyText(statusText, ResolveMissingStatusText(), force);
-
-            if (skillListView != null)
-                skillListView.Clear(force: true);
+            _ = SetSkillLoadoutSlotAsync(slotIndex, skill.PlayerSkillId);
         }
 
         private void HandleEquippedSkillDroppedToList(PlayerSkillModel skill)
@@ -113,88 +121,112 @@ namespace PhamNhanOnline.Client.UI.World
             if (!skill.IsEquipped || skill.EquippedSlotIndex <= 0)
                 return;
 
-            if (!CanUnequipSkill(skill, out var blockedMessage))
+            _ = SetSkillLoadoutSlotAsync(skill.EquippedSlotIndex, 0);
+        }
+
+        private void HandleSkillListItemClicked(PlayerSkillModel skill)
+        {
+            if (actionInFlight)
+                return;
+
+            if (!skill.CanAssignToLoadout)
             {
-                lastStatusMessage = blockedMessage;
-                RefreshPanel(force: true);
+                HideSkillOptionsPopup(force: true);
                 return;
             }
 
-            _ = SetSkillLoadoutSlotAsync(skill.EquippedSlotIndex, 0);
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null &&
+                modalUIManager.IsItemOptionsPopupVisible &&
+                !popupTargetsSlot &&
+                popupSkillId.HasValue &&
+                popupSkillId.Value == skill.PlayerSkillId)
+            {
+                HideSkillOptionsPopup();
+                return;
+            }
+
+            ShowSkillOptions(skill, activeSlot: false, slotIndex: null);
+        }
+
+        private void HandleSkillSlotClicked(SkillLoadoutSlotView slotView)
+        {
+            if (slotView == null || !slotView.HasItem || actionInFlight)
+                return;
+
+            var skill = slotView.Item;
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null &&
+                modalUIManager.IsItemOptionsPopupVisible &&
+                popupTargetsSlot &&
+                popupSlotIndex.HasValue &&
+                popupSlotIndex.Value == slotView.SlotIndex)
+            {
+                HideSkillOptionsPopup();
+                return;
+            }
+
+            ShowSkillOptions(skill, activeSlot: true, slotIndex: slotView.SlotIndex);
         }
 
         private async System.Threading.Tasks.Task SetSkillLoadoutSlotAsync(int slotIndex, long playerSkillId)
         {
-            if (!ClientRuntime.IsInitialized || actionInFlight)
+            if (!ClientRuntime.IsInitialized || actionInFlight || slotIndex <= 0)
                 return;
 
-            if (slotIndex <= 0)
-                return;
-
-            if (!BeginAction(actionInFlightText))
-                return;
+            actionInFlight = true;
+            HideSkillOptionsPopup(force: true);
+            RefreshPanel(force: true);
 
             try
             {
                 var result = await ClientRuntime.SkillService.SetSkillLoadoutSlotAsync(slotIndex, playerSkillId);
-                lastStatusMessage = result.Success
-                    ? (playerSkillId > 0 ? "Da cap nhat o skill." : "Da go skill khoi o.")
-                    : string.Format(CultureInfo.InvariantCulture, "Cap nhat skill that bai: {0}", result.Code ?? MessageCode.UnknownError);
-
                 if (!result.Success)
-                    ClientLog.Warn($"WorldSkillPanelController set loadout failed: {result.Message}");
+                {
+                    ClientLog.Warn(
+                        $"WorldSkillPanelController set loadout failed: {result.Message ?? (result.Code ?? MessageCode.UnknownError).ToString()}");
+                }
             }
             catch (Exception ex)
             {
-                lastStatusMessage = string.Format(CultureInfo.InvariantCulture, "Loi cap nhat skill: {0}", ex.Message);
                 ClientLog.Warn($"WorldSkillPanelController set loadout exception: {ex.Message}");
             }
             finally
             {
-                EndAction();
+                actionInFlight = false;
+                RefreshPanel(force: true);
             }
         }
 
-        private bool BeginAction(string status)
+        private async System.Threading.Tasks.Task SwapSkillLoadoutSlotsAsync(
+            int sourceSlotIndex,
+            int targetSlotIndex)
         {
-            if (actionInFlight)
-                return false;
+            if (!ClientRuntime.IsInitialized || actionInFlight || sourceSlotIndex <= 0 || targetSlotIndex <= 0)
+                return;
 
             actionInFlight = true;
-            lastStatusMessage = status ?? string.Empty;
+            HideSkillOptionsPopup(force: true);
             RefreshPanel(force: true);
-            return true;
-        }
 
-        private void EndAction()
-        {
-            actionInFlight = false;
-            RefreshPanel(force: true);
-        }
-
-        private string ResolveStatusText(ClientSkillState skillState, PlayerSkillModel[] visibleSkills)
-        {
-            if (actionInFlight && !string.IsNullOrWhiteSpace(lastStatusMessage))
-                return lastStatusMessage;
-
-            if (!string.IsNullOrWhiteSpace(lastStatusMessage))
-                return lastStatusMessage;
-
-            if (skillState.Skills == null || skillState.Skills.Length == 0)
-                return emptySkillListText;
-
-            if (visibleSkills.Length <= 0)
-                return "Tat ca skill hien dang nam trong loadout.";
-
-            return "Danh sach skill so huu.";
-        }
-
-        private string ResolveMissingStatusText()
-        {
-            if (!string.IsNullOrWhiteSpace(lastStatusMessage))
-                return lastStatusMessage;
-
-            return missingStatusText;
+            try
+            {
+                var result = await ClientRuntime.SkillService.SwapSkillLoadoutSlotsAsync(sourceSlotIndex, targetSlotIndex);
+                if (!result.Success)
+                {
+                    ClientLog.Warn(
+                        $"WorldSkillPanelController swap failed: {result.Message ?? (result.Code ?? MessageCode.UnknownError).ToString()}");
+                }
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Warn($"WorldSkillPanelController swap exception: {ex.Message}");
+            }
+            finally
+            {
+                actionInFlight = false;
+                RefreshPanel(force: true);
+            }
         }
 
         private string BuildSnapshot(ClientSkillState skillState)
@@ -203,9 +235,29 @@ namespace PhamNhanOnline.Client.UI.World
                 "|",
                 skillState.HasLoadedSkills ? "1" : "0",
                 skillState.IsLoading ? "1" : "0",
+                skillState.MaxLoadoutSlotCount.ToString(CultureInfo.InvariantCulture),
                 BuildSkillsSnapshot(skillState.Skills),
-                actionInFlight ? "1" : "0",
-                lastStatusMessage ?? string.Empty);
+                BuildLoadoutSnapshot(skillState.LoadoutSlots),
+                popupTargetsSlot ? "1" : "0",
+                popupSkillId.HasValue ? popupSkillId.Value.ToString(CultureInfo.InvariantCulture) : "0",
+                popupSlotIndex.HasValue ? popupSlotIndex.Value.ToString(CultureInfo.InvariantCulture) : "0",
+                actionInFlight ? "1" : "0");
+        }
+
+        private static bool CanAssignSkillToSlot(int slotIndex, PlayerSkillModel skill, out string blockedMessage)
+        {
+            _ = slotIndex;
+
+            if (!skill.CanAssignToLoadout)
+            {
+                blockedMessage = string.IsNullOrWhiteSpace(skill.LoadoutBlockedReason)
+                    ? "Skill nay hien khong the gan vao loadout."
+                    : skill.LoadoutBlockedReason.Trim();
+                return false;
+            }
+
+            blockedMessage = string.Empty;
+            return true;
         }
 
         private static string BuildSkillsSnapshot(PlayerSkillModel[] skills)
@@ -247,47 +299,105 @@ namespace PhamNhanOnline.Client.UI.World
             return string.Join(";", parts);
         }
 
-        private static PlayerSkillModel[] BuildVisibleSkillList(PlayerSkillModel[] skills)
+        private static string BuildLoadoutSnapshot(SkillLoadoutSlotModel[] slots)
         {
-            if (skills == null || skills.Length == 0)
-                return Array.Empty<PlayerSkillModel>();
+            if (slots == null || slots.Length == 0)
+                return string.Empty;
 
-            var visible = new List<PlayerSkillModel>(skills.Length);
-            for (var i = 0; i < skills.Length; i++)
+            var parts = new string[slots.Length];
+            for (var i = 0; i < slots.Length; i++)
             {
-                if (skills[i].IsEquipped)
-                    continue;
-
-                visible.Add(skills[i]);
+                parts[i] = string.Concat(
+                    slots[i].SlotIndex.ToString(CultureInfo.InvariantCulture),
+                    ":",
+                    slots[i].HasSkill ? "1" : "0",
+                    ":",
+                    slots[i].HasSkill && slots[i].Skill.HasValue
+                        ? slots[i].Skill.Value.PlayerSkillId.ToString(CultureInfo.InvariantCulture)
+                        : "0");
             }
 
-            return visible.ToArray();
+            return string.Join(";", parts);
         }
 
-        private static bool CanUnequipSkill(PlayerSkillModel skill, out string blockedMessage)
+        private void ShowSkillOptions(PlayerSkillModel skill, bool activeSlot, int? slotIndex)
         {
-            var category = (SkillCategory)skill.SkillCategory;
-            if (skill.EquippedSlotIndex == BasicSkillSlotIndex &&
-                category == SkillCategory.Basic)
+            var options = BuildSkillOptions(skill, activeSlot, slotIndex);
+            if (options.Count == 0)
             {
-                blockedMessage = "Skill co ban o o dau tien khong the go trong. Chi co the thay bang mot skill co ban khac.";
-                return false;
+                HideSkillOptionsPopup(force: true);
+                return;
             }
 
-            blockedMessage = string.Empty;
-            return true;
+            popupSkillId = skill.PlayerSkillId;
+            popupSlotIndex = slotIndex;
+            popupTargetsSlot = activeSlot;
+            panelView?.HideItemTooltip(force: true);
+            panelView?.ShowItemOptionsPopup(options, force: true);
+            RefreshPanel(force: true);
         }
 
-        private static void ApplyText(TMP_Text textComponent, string value, bool force)
+        private List<ItemOptionEntry> BuildSkillOptions(PlayerSkillModel skill, bool activeSlot, int? slotIndex)
         {
-            if (textComponent == null)
+            if (activeSlot && slotIndex.HasValue && slotIndex.Value > 0)
+            {
+                return new List<ItemOptionEntry>(1)
+                {
+                    new ItemOptionEntry(UnequipOptionText, () => _ = SetSkillLoadoutSlotAsync(slotIndex.Value, 0))
+                };
+            }
+
+            if (skill.IsEquipped && skill.EquippedSlotIndex > 0)
+            {
+                return new List<ItemOptionEntry>(1)
+                {
+                    new ItemOptionEntry(RemoveOptionText, () => _ = SetSkillLoadoutSlotAsync(skill.EquippedSlotIndex, 0))
+                };
+            }
+
+            return new List<ItemOptionEntry>(1)
+            {
+                new ItemOptionEntry(SelectOptionText, () => _ = EquipSkillToFirstAvailableSlotAsync(skill))
+            };
+        }
+
+        private void HideSkillOptionsPopup(bool force = false)
+        {
+            popupSkillId = null;
+            popupSlotIndex = null;
+            popupTargetsSlot = false;
+
+            panelView?.HideItemOptionsPopup(force);
+            panelView?.HideItemTooltip(force: true);
+            RefreshPanel(force: true);
+        }
+
+        private async System.Threading.Tasks.Task EquipSkillToFirstAvailableSlotAsync(PlayerSkillModel skill)
+        {
+            if (!ClientRuntime.IsInitialized || actionInFlight)
                 return;
 
-            var normalized = value ?? string.Empty;
-            if (!force && string.Equals(textComponent.text, normalized, StringComparison.Ordinal))
-                return;
+            var skillState = ClientRuntime.Skills;
+            var targetSlotIndex = skill.IsEquipped && skill.EquippedSlotIndex > 0
+                ? skill.EquippedSlotIndex
+                : 0;
 
-            textComponent.text = normalized;
+            if (targetSlotIndex <= 0)
+            {
+                for (var i = 0; i < skillState.LoadoutSlots.Length; i++)
+                {
+                    if (skillState.LoadoutSlots[i].SlotIndex > 0 && !skillState.LoadoutSlots[i].HasSkill)
+                    {
+                        targetSlotIndex = skillState.LoadoutSlots[i].SlotIndex;
+                        break;
+                    }
+                }
+            }
+
+            if (targetSlotIndex <= 0)
+                targetSlotIndex = 1;
+
+            await SetSkillLoadoutSlotAsync(targetSlotIndex, skill.PlayerSkillId);
         }
     }
 }

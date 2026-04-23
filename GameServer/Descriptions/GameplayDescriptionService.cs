@@ -555,7 +555,6 @@ public sealed class GameplayDescriptionService
     {
         return category switch
         {
-            SkillCategory.Basic => "Co ban",
             SkillCategory.Normal => "Thuong",
             SkillCategory.Special => "Dac biet",
             _ => "Khong ro"

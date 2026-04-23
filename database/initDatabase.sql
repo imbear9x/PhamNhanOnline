@@ -1369,8 +1369,7 @@ VALUES
     ('cultivation.settlement_interval_seconds', '300', 'Chu ky settle cultivation theo giay.'),
     ('character.home_garden_plot_count', '8', 'So o vuon mac dinh khi tao home cave moi.'),
     ('character.equipment_slot_count', '4', 'So o trang bi co dinh hien tai cua nhan vat.'),
-    ('character.starter_basic_skill_id', '0', 'Skill id basic mac dinh duoc grant cho nhan vat moi.'),
-    ('character.starter_basic_skill_slot_index', '1', 'Loadout slot mac dinh dung de gan starter basic skill.'),
+    ('character.starter_skill_id', '0', 'Skill id mac dinh duoc grant cho nhan vat moi.'),
     ('skill.max_loadout_slot_count', '5', 'So slot loadout skill toi da cua nhan vat.')
 ON CONFLICT (config_key) DO UPDATE
 SET

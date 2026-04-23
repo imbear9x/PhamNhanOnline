@@ -126,8 +126,7 @@ public static partial class ServiceCollectionExtensions
             AlchemyPracticeCancelRefundProgressThreshold = GetDouble(configsByKey, GameConfigKeys.AlchemyPracticeCancelRefundProgressThreshold, 0.30d),
             CharacterHomeGardenPlotCount = GetInt(configsByKey, GameConfigKeys.CharacterHomeGardenPlotCount, 8),
             CharacterEquipmentSlotCount = GetInt(configsByKey, GameConfigKeys.CharacterEquipmentSlotCount, 4),
-            CharacterStarterBasicSkillId = GetInt(configsByKey, GameConfigKeys.CharacterStarterBasicSkillId, 0),
-            CharacterStarterBasicSkillSlotIndex = GetInt(configsByKey, GameConfigKeys.CharacterStarterBasicSkillSlotIndex, 1),
+            CharacterStarterSkillId = GetInt(configsByKey, GameConfigKeys.CharacterStarterSkillId, 0),
             SkillMaxLoadoutSlotCount = GetInt(configsByKey, GameConfigKeys.SkillMaxLoadoutSlotCount, 5)
         };
     }

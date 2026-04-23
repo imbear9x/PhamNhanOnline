@@ -17,8 +17,7 @@ public sealed class GameConfigValues
     public double AlchemyPracticeCancelRefundProgressThreshold { get; init; } = 0.30d;
     public int CharacterHomeGardenPlotCount { get; init; } = 8;
     public int CharacterEquipmentSlotCount { get; init; } = 4;
-    public int CharacterStarterBasicSkillId { get; init; } = 0;
-    public int CharacterStarterBasicSkillSlotIndex { get; init; } = 1;
+    public int CharacterStarterSkillId { get; init; } = 0;
     public int SkillMaxLoadoutSlotCount { get; init; } = 5;
 
     public TimeSpan ResumeWindow => TimeSpan.FromSeconds(Math.Max(0, NetworkReconnectResumeWindowSeconds));

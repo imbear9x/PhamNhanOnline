@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Common
 {
-    public sealed class UIButtonView : MonoBehaviour,
+    public class UIButtonView : MonoBehaviour,
         IPointerEnterHandler,
         IPointerExitHandler,
         IPointerDownHandler,
@@ -15,12 +15,6 @@ namespace PhamNhanOnline.Client.UI.Common
         IPointerClickHandler,
         ISubmitHandler
     {
-        private const float HoverScaleMultiplier = 1.1f;
-        private const float PressedScaleMultiplier = 0.9f;
-        private static readonly Vector2 PressedOffset = new Vector2(2f, -2f);
-        private const float ColorTweenDuration = 0.1f;
-        private const float TransformTweenDuration = 0.12f;
-
         private enum VisualState
         {
             Normal = 0,
@@ -60,6 +54,15 @@ namespace PhamNhanOnline.Client.UI.Common
         [Header("Behavior")]
         [SerializeField] private bool leftClickEnabled = true;
         [SerializeField] private bool rightClickEnabled;
+
+        [Header("Animation")]
+        [SerializeField] private bool animHover;
+        [SerializeField] private bool animClick = true;
+        [SerializeField] private float hoverScaleMultiplier = 1.1f;
+        [SerializeField] private float pressedScaleMultiplier = 0.9f;
+        [SerializeField] private Vector2 pressedOffset = new Vector2(2f, -2f);
+        [SerializeField] private float colorTweenDuration = 0.1f;
+        [SerializeField] private float transformTweenDuration = 0.12f;
 
         [Header("Events")]
         [SerializeField] private UnityEvent onClick;
@@ -118,6 +121,7 @@ namespace PhamNhanOnline.Client.UI.Common
 
         public void OnPointerEnter(PointerEventData eventData)
         {
+            SyncBaseTransformFromCurrent();
             isPointerInside = true;
             RefreshVisualState(force: false);
         }
@@ -136,6 +140,7 @@ namespace PhamNhanOnline.Client.UI.Common
 
             if (eventData.button == PointerEventData.InputButton.Left && leftClickEnabled)
             {
+                SyncBaseTransformFromCurrent();
                 isPressed = true;
                 RefreshVisualState(force: false);
             }
@@ -185,13 +190,13 @@ namespace PhamNhanOnline.Client.UI.Common
             InvokeLeftClick();
         }
 
-        private void InvokeLeftClick()
+        protected virtual void InvokeLeftClick()
         {
             onClick?.Invoke();
             Clicked?.Invoke();
         }
 
-        private void InvokeRightClick()
+        protected virtual void InvokeRightClick()
         {
             onRightClick?.Invoke();
             RightClicked?.Invoke();
@@ -219,6 +224,19 @@ namespace PhamNhanOnline.Client.UI.Common
 
             baseLocalScale = cachedAnimationRectTransform.localScale;
             baseAnchoredPosition = cachedAnimationRectTransform.anchoredPosition;
+        }
+
+        private void SyncBaseTransformFromCurrent()
+        {
+            if (cachedAnimationRectTransform == null)
+                return;
+
+            if (isPressed)
+                return;
+
+            baseLocalScale = cachedAnimationRectTransform.localScale;
+            baseAnchoredPosition = cachedAnimationRectTransform.anchoredPosition;
+            hasCapturedBaseTransform = true;
         }
 
         private void RefreshVisualState(bool force)
@@ -294,7 +312,7 @@ namespace PhamNhanOnline.Client.UI.Common
                 colorTween.Kill();
 
             colorTween = DOTween
-                .To(() => targetImage.color, value => targetImage.color = value, targetColor, ColorTweenDuration)
+                .To(() => targetImage.color, value => targetImage.color = value, targetColor, colorTweenDuration)
                 .SetEase(Ease.OutQuad)
                 .SetUpdate(true);
         }
@@ -313,11 +331,15 @@ namespace PhamNhanOnline.Client.UI.Common
             switch (state)
             {
                 case VisualState.Highlighted:
-                    scaleMultiplier = HoverScaleMultiplier;
+                    if (animHover)
+                        scaleMultiplier = hoverScaleMultiplier;
                     break;
                 case VisualState.Pressed:
-                    scaleMultiplier = PressedScaleMultiplier;
-                    positionOffset = PressedOffset;
+                    if (animClick)
+                    {
+                        scaleMultiplier = pressedScaleMultiplier;
+                        positionOffset = pressedOffset;
+                    }
                     break;
             }
 
@@ -336,7 +358,7 @@ namespace PhamNhanOnline.Client.UI.Common
 
             KillTransformTweens();
             scaleTween = cachedAnimationRectTransform
-                .DOScale(targetScale, TransformTweenDuration)
+                .DOScale(targetScale, transformTweenDuration)
                 .SetEase(Ease.OutQuad)
                 .SetUpdate(true);
             positionTween = DOTween
@@ -344,13 +366,16 @@ namespace PhamNhanOnline.Client.UI.Common
                     () => cachedAnimationRectTransform.anchoredPosition,
                     value => cachedAnimationRectTransform.anchoredPosition = value,
                     targetAnchoredPosition,
-                    TransformTweenDuration)
+                    transformTweenDuration)
                 .SetEase(Ease.OutQuad)
                 .SetUpdate(true);
         }
 
         private bool CanAnimateTransform()
         {
+            if (!animHover && !animClick)
+                return false;
+
             if (!hasCapturedBaseTransform)
                 return false;
 

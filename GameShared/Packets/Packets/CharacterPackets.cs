@@ -321,6 +321,33 @@ public partial class SetSkillLoadoutSlotResultPacket : IPacket
     public List<SkillLoadoutSlotModel>? LoadoutSlots { get; set; }
 }
 
+[Packet(100)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 150)]
+public partial class SwapSkillLoadoutSlotsPacket : IPacket
+{
+    [ValidationCode(MessageCode.SkillLoadoutSlotInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? SourceSlotIndex { get; set; }
+
+    [ValidationCode(MessageCode.SkillLoadoutSlotInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? TargetSlotIndex { get; set; }
+}
+
+[Packet(101)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class SwapSkillLoadoutSlotsResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public int? MaxLoadoutSlotCount { get; set; }
+    public List<PlayerSkillModel>? Skills { get; set; }
+    public List<SkillLoadoutSlotModel>? LoadoutSlots { get; set; }
+}
+
 [Packet(58)]
 [RequireAuth]
 [PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]

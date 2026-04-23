@@ -29,8 +29,7 @@ Bảng `public.game_configs` dùng để chứa các giá trị gameplay có th�
 | `cultivation.potential_per_cultivation_point` | `GameConfigValues.CultivationPotentialPerCultivationPoint` | `int` | Số potential quy đổi trên mỗi cultivation point khi settle cultivation. | `1` |
 | `cultivation.settlement_interval_seconds` | `GameConfigValues.CultivationSettlementIntervalSeconds` | `int` | Chu kỳ settle cultivation theo giây. | `300` |
 | `character.home_garden_plot_count` | `GameConfigValues.CharacterHomeGardenPlotCount` | `int` | Số ô vườn mặc định khi tạo home cave mới. | `8` |
-| `character.starter_basic_skill_id` | `GameConfigValues.CharacterStarterBasicSkillId` | `int` | `public.skills.id` của basic skill hệ thống cấp cho nhân vật mới. | `0` |
-| `character.starter_basic_skill_slot_index` | `GameConfigValues.CharacterStarterBasicSkillSlotIndex` | `int` | Slot loadout mặc định dùng để gắn starter basic skill. | `1` |
+| `character.starter_skill_id` | `GameConfigValues.CharacterStarterSkillId` | `int` | `public.skills.id` của skill hệ thống cấp cho nhân vật mới. | `0` |
 | `skill.max_loadout_slot_count` | `GameConfigValues.SkillMaxLoadoutSlotCount` | `int` | Số slot loadout skill tối đa của nhân vật. | `5` |
 
 ## Nơi server đọc config

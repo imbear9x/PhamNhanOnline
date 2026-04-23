@@ -14,6 +14,7 @@ namespace PhamNhanOnline.Client.Features.Skills.Application
 
         private TaskCompletionSource<SkillListLoadResult> loadCompletionSource;
         private TaskCompletionSource<SkillLoadoutSetResult> setLoadoutCompletionSource;
+        private TaskCompletionSource<SkillLoadoutSetResult> swapLoadoutCompletionSource;
 
         public ClientSkillService(
             ClientConnectionService connection,
@@ -25,6 +26,7 @@ namespace PhamNhanOnline.Client.Features.Skills.Application
             connection.Packets.Subscribe<GetOwnedSkillsResultPacket>(HandleGetOwnedSkillsResult);
             connection.Packets.Subscribe<OwnedSkillsChangedPacket>(HandleOwnedSkillsChanged);
             connection.Packets.Subscribe<SetSkillLoadoutSlotResultPacket>(HandleSetSkillLoadoutSlotResult);
+            connection.Packets.Subscribe<SwapSkillLoadoutSlotsResultPacket>(HandleSwapSkillLoadoutSlotsResult);
             connection.StateChanged += HandleConnectionStateChanged;
         }
 
@@ -88,6 +90,31 @@ namespace PhamNhanOnline.Client.Features.Skills.Application
             return setLoadoutCompletionSource.Task;
         }
 
+        public Task<SkillLoadoutSetResult> SwapSkillLoadoutSlotsAsync(int sourceSlotIndex, int targetSlotIndex)
+        {
+            if (connection.State != ClientConnectionState.Connected)
+            {
+                return Task.FromResult(new SkillLoadoutSetResult(
+                    false,
+                    null,
+                    skillState.MaxLoadoutSlotCount,
+                    skillState.Skills,
+                    skillState.LoadoutSlots,
+                    "Not connected to server."));
+            }
+
+            if (swapLoadoutCompletionSource != null && !swapLoadoutCompletionSource.Task.IsCompleted)
+                return swapLoadoutCompletionSource.Task;
+
+            swapLoadoutCompletionSource = new TaskCompletionSource<SkillLoadoutSetResult>();
+            connection.Send(new SwapSkillLoadoutSlotsPacket
+            {
+                SourceSlotIndex = sourceSlotIndex,
+                TargetSlotIndex = targetSlotIndex
+            });
+            return swapLoadoutCompletionSource.Task;
+        }
+
         private void HandleGetOwnedSkillsResult(GetOwnedSkillsResultPacket packet)
         {
             var skills = packet.Skills != null ? packet.Skills.ToArray() : Array.Empty<PlayerSkillModel>();
@@ -124,35 +151,51 @@ namespace PhamNhanOnline.Client.Features.Skills.Application
 
         private void HandleSetSkillLoadoutSlotResult(SetSkillLoadoutSlotResultPacket packet)
         {
-            var skills = packet.Skills != null ? packet.Skills.ToArray() : Array.Empty<PlayerSkillModel>();
-            var loadoutSlots = packet.LoadoutSlots != null ? packet.LoadoutSlots.ToArray() : Array.Empty<SkillLoadoutSlotModel>();
-            var maxLoadoutSlotCount = Math.Max(0, packet.MaxLoadoutSlotCount ?? 0);
+            CompleteLoadoutMutation(ref setLoadoutCompletionSource, packet.Success == true, packet.Code, packet.MaxLoadoutSlotCount, packet.Skills, packet.LoadoutSlots);
+        }
 
-            if (packet.Success == true)
+        private void HandleSwapSkillLoadoutSlotsResult(SwapSkillLoadoutSlotsResultPacket packet)
+        {
+            CompleteLoadoutMutation(ref swapLoadoutCompletionSource, packet.Success == true, packet.Code, packet.MaxLoadoutSlotCount, packet.Skills, packet.LoadoutSlots);
+        }
+
+        private void CompleteLoadoutMutation(
+            ref TaskCompletionSource<SkillLoadoutSetResult> completionSource,
+            bool success,
+            MessageCode? code,
+            int? maxLoadoutSlotCountValue,
+            System.Collections.Generic.List<PlayerSkillModel> packetSkills,
+            System.Collections.Generic.List<SkillLoadoutSlotModel> packetLoadoutSlots)
+        {
+            var skills = packetSkills != null ? packetSkills.ToArray() : Array.Empty<PlayerSkillModel>();
+            var loadoutSlots = packetLoadoutSlots != null ? packetLoadoutSlots.ToArray() : Array.Empty<SkillLoadoutSlotModel>();
+            var maxLoadoutSlotCount = Math.Max(0, maxLoadoutSlotCountValue ?? 0);
+
+            if (success)
             {
                 skillState.ApplySnapshot(
                     maxLoadoutSlotCount,
                     skills,
                     loadoutSlots,
-                    packet.Code ?? MessageCode.None,
+                    code ?? MessageCode.None,
                     "Skill loadout updated.");
             }
             else
             {
                 skillState.ApplyFailure(
-                    packet.Code,
-                    string.Format("Failed to update skill loadout: {0}", packet.Code ?? MessageCode.UnknownError));
+                    code,
+                    string.Format("Failed to update skill loadout: {0}", code ?? MessageCode.UnknownError));
             }
 
-            CompletePending(ref setLoadoutCompletionSource, new SkillLoadoutSetResult(
-                packet.Success == true,
-                packet.Code,
-                packet.Success == true ? maxLoadoutSlotCount : skillState.MaxLoadoutSlotCount,
-                packet.Success == true ? skills : skillState.Skills,
-                packet.Success == true ? loadoutSlots : skillState.LoadoutSlots,
-                packet.Success == true
+            CompletePending(ref completionSource, new SkillLoadoutSetResult(
+                success,
+                code,
+                success ? maxLoadoutSlotCount : skillState.MaxLoadoutSlotCount,
+                success ? skills : skillState.Skills,
+                success ? loadoutSlots : skillState.LoadoutSlots,
+                success
                     ? "Skill loadout updated."
-                    : string.Format("Failed to update skill loadout: {0}", packet.Code ?? MessageCode.UnknownError)));
+                    : string.Format("Failed to update skill loadout: {0}", code ?? MessageCode.UnknownError)));
         }
 
         private void HandleOwnedSkillsChanged(OwnedSkillsChangedPacket packet)
@@ -184,6 +227,13 @@ namespace PhamNhanOnline.Client.Features.Skills.Application
                 "Connection closed.",
                 false));
             CompletePending(ref setLoadoutCompletionSource, new SkillLoadoutSetResult(
+                false,
+                null,
+                0,
+                Array.Empty<PlayerSkillModel>(),
+                Array.Empty<SkillLoadoutSlotModel>(),
+                "Connection closed."));
+            CompletePending(ref swapLoadoutCompletionSource, new SkillLoadoutSetResult(
                 false,
                 null,
                 0,

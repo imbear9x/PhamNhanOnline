@@ -1,18 +1,14 @@
 using System;
-using DG.Tweening;
 using GameShared.Models;
+using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Skills;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Hud
 {
-    public sealed class CombatSkillButtonView : MonoBehaviour,
-        IPointerDownHandler,
-        IPointerUpHandler,
-        IPointerExitHandler
+    public sealed class CombatSkillButtonView : UIButtonView
     {
         [Header("Identity")]
         [SerializeField] private int skillSlotIndex = 1;
@@ -20,61 +16,23 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         [Header("References")]
         [SerializeField] private GameObject contentRoot;
-        [SerializeField] private Button button;
         [SerializeField] private Image iconImage;
+        [SerializeField] private GameObject emptyStateRoot;
         [SerializeField] private GameObject disabledStateRoot;
         [SerializeField] private Image cooldownFillImage;
         [SerializeField] private TMP_Text cooldownText;
 
-        [Header("Press Animation")]
-        [SerializeField] private RectTransform pressVisualRoot;
-        [SerializeField] private float pressedScale = 1.06f;
-        [SerializeField] private float pressedYOffset = -6f;
-        [SerializeField] private float pressLerpSpeed = 20f;
-
         private bool isVisible;
         private bool hasSkill;
         private bool isInteractable;
-        private bool isPressed;
         private Sprite currentIconSprite;
         private string currentCooldownLabel = string.Empty;
-        private Vector3 idleScale = Vector3.one;
-        private Vector2 idleAnchoredPosition;
-        private bool pressVisualInitialized;
-        private Tween scaleTween;
-        private Tween positionTween;
 
-        public event Action<int> Clicked;
+        public new event Action<int> Clicked;
 
         public int SkillSlotIndex
         {
             get { return skillSlotIndex; }
-        }
-
-        private void Awake()
-        {
-            AutoWireReferences();
-            if (button != null)
-                button.onClick.AddListener(HandleButtonClicked);
-        }
-
-        private void OnEnable()
-        {
-            AutoWireReferences();
-            ResetPressVisuals(immediate: true);
-        }
-
-        private void OnDisable()
-        {
-            ResetPressVisuals(immediate: true);
-        }
-
-        private void OnDestroy()
-        {
-            if (button != null)
-                button.onClick.RemoveListener(HandleButtonClicked);
-
-            KillTweens();
         }
 
         public void SetSlotIndex(int value)
@@ -92,7 +50,8 @@ namespace PhamNhanOnline.Client.UI.Hud
             string cooldownLabel,
             bool showCooldown)
         {
-            var resolvedVisible = visible && hasAssignedSkill;
+            var canShowWithoutSkill = alwaysVisible || skillSlotIndex == 1;
+            var resolvedVisible = visible && (hasAssignedSkill || canShowWithoutSkill);
             if (contentRoot != null && contentRoot.activeSelf != resolvedVisible)
                 contentRoot.SetActive(resolvedVisible);
             else if (contentRoot == null && gameObject.activeSelf != resolvedVisible)
@@ -100,18 +59,14 @@ namespace PhamNhanOnline.Client.UI.Hud
 
             isVisible = resolvedVisible;
             hasSkill = hasAssignedSkill;
-            isInteractable = resolvedVisible && hasAssignedSkill && interactable;
-            if (!isInteractable)
-            {
-                isPressed = false;
-                RefreshPressVisuals(force: false);
-            }
+            isInteractable = resolvedVisible && interactable && (hasAssignedSkill || canShowWithoutSkill);
+            SetInteractable(isInteractable, force: true);
 
-            if (button != null)
-                button.interactable = isInteractable;
+            if (emptyStateRoot != null)
+                emptyStateRoot.SetActive(resolvedVisible && !hasAssignedSkill);
 
             if (disabledStateRoot != null)
-                disabledStateRoot.SetActive(resolvedVisible && hasAssignedSkill && !interactable);
+                disabledStateRoot.SetActive(resolvedVisible && !interactable);
 
             var nextIcon = hasAssignedSkill ? presentation.IconSprite : null;
             if (iconImage != null)
@@ -149,126 +104,14 @@ namespace PhamNhanOnline.Client.UI.Hud
             ApplyState(false, false, default(PlayerSkillModel), default(SkillPresentation), false, 0f, string.Empty, false);
         }
 
-        private void HandleButtonClicked()
+        protected override void InvokeLeftClick()
         {
-            if (!isVisible || !hasSkill || !isInteractable)
+            var canShowWithoutSkill = alwaysVisible || skillSlotIndex == 1;
+            if (!isVisible || !isInteractable || (!hasSkill && !canShowWithoutSkill))
                 return;
 
-            var handler = Clicked;
-            if (handler != null)
-                handler(skillSlotIndex);
-        }
-
-        public void OnPointerDown(PointerEventData eventData)
-        {
-            if (!CanAnimatePress(eventData))
-                return;
-
-            isPressed = true;
-            RefreshPressVisuals(force: false);
-        }
-
-        public void OnPointerUp(PointerEventData eventData)
-        {
-            isPressed = false;
-            RefreshPressVisuals(force: false);
-        }
-
-        public void OnPointerExit(PointerEventData eventData)
-        {
-            isPressed = false;
-            RefreshPressVisuals(force: false);
-        }
-
-        private void AutoWireReferences()
-        {
-            if (button == null)
-                button = GetComponent<Button>();
-
-            if (pressVisualRoot == null)
-            {
-                if (contentRoot != null)
-                    pressVisualRoot = contentRoot.transform as RectTransform;
-                else
-                    pressVisualRoot = transform as RectTransform;
-            }
-
-            if (pressVisualRoot != null && !pressVisualInitialized)
-            {
-                idleScale = pressVisualRoot.localScale;
-                idleAnchoredPosition = pressVisualRoot.anchoredPosition;
-                pressVisualInitialized = true;
-            }
-        }
-
-        private void RefreshPressVisuals(bool force)
-        {
-            if (pressVisualRoot == null)
-                return;
-
-            var targetScale = isPressed && isInteractable
-                ? idleScale * Mathf.Max(0.01f, pressedScale)
-                : idleScale;
-            var targetAnchoredPosition = isPressed && isInteractable
-                ? idleAnchoredPosition + new Vector2(0f, pressedYOffset)
-                : idleAnchoredPosition;
-            var duration = 1f / Mathf.Max(0.01f, pressLerpSpeed);
-
-            if (force || !gameObject.activeInHierarchy)
-            {
-                KillTweens();
-                pressVisualRoot.localScale = targetScale;
-                pressVisualRoot.anchoredPosition = targetAnchoredPosition;
-                return;
-            }
-
-            KillTweens();
-            scaleTween = pressVisualRoot
-                .DOScale(targetScale, duration)
-                .SetEase(Ease.OutQuad)
-                .SetUpdate(true);
-            positionTween = DOTween
-                .To(
-                    () => pressVisualRoot.anchoredPosition,
-                    value => pressVisualRoot.anchoredPosition = value,
-                    targetAnchoredPosition,
-                    duration)
-                .SetEase(Ease.OutQuad)
-                .SetUpdate(true);
-        }
-
-        private void ResetPressVisuals(bool immediate)
-        {
-            isPressed = false;
-            AutoWireReferences();
-            if (pressVisualRoot == null)
-                return;
-
-            RefreshPressVisuals(force: immediate);
-        }
-
-        private bool CanAnimatePress(PointerEventData eventData)
-        {
-            return eventData != null &&
-                   eventData.button == PointerEventData.InputButton.Left &&
-                   isVisible &&
-                   hasSkill &&
-                   isInteractable;
-        }
-
-        private void KillTweens()
-        {
-            if (scaleTween != null)
-            {
-                scaleTween.Kill();
-                scaleTween = null;
-            }
-
-            if (positionTween != null)
-            {
-                positionTween.Kill();
-                positionTween = null;
-            }
+            base.InvokeLeftClick();
+            Clicked?.Invoke(skillSlotIndex);
         }
     }
 }

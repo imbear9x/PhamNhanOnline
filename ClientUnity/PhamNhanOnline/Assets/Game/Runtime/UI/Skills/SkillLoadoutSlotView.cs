@@ -1,6 +1,8 @@
 using System;
 using GameShared.Models;
 using PhamNhanOnline.Client.UI.Common;
+using PhamNhanOnline.Client.UI.Inventory;
+using PhamNhanOnline.Client.UI.World;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -8,30 +10,40 @@ using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Skills
 {
-    public sealed class SkillLoadoutSlotView : MonoBehaviour, IUIDragPayloadSource, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+    public sealed class SkillLoadoutSlotView : MonoBehaviour,
+        IUIDragPayloadSource,
+        IDropHandler,
+        IPointerEnterHandler,
+        IPointerExitHandler,
+        IPointerDownHandler,
+        IPointerUpHandler,
+        IPointerClickHandler,
+        IBeginDragHandler,
+        IDragHandler,
+        IEndDragHandler
     {
         [Header("References")]
         [SerializeField] private Image iconImage;
         [SerializeField] private TMP_Text slotLabelText;
         [SerializeField] private GameObject emptyStateRoot;
-        [SerializeField] private GameObject occupiedStateRoot;
         [SerializeField] private GameObject selectedHighlightRoot;
-
-        [Header("Slot")]
-        [SerializeField] private int slotIndex = 1;
 
         [Header("Drag")]
         [SerializeField] private float draggingAlpha = 0.65f;
 
+        private int slotIndex = 1;
         private PlayerSkillModel item;
         private bool hasItem;
         private bool dragEnabled = true;
         private bool isSelected;
+        private bool dragSelectionVisible;
         private CanvasGroup canvasGroup;
         private SkillDragGhost dragGhost;
         private Sprite currentIconSprite;
+        private SkillPresentation currentPresentation;
 
-        public event Action<int, PlayerSkillModel> SkillDropped;
+        public event Action<int, PlayerSkillModel, int?> SkillDropped;
+        public event Action<SkillLoadoutSlotView> Clicked;
 
         public int SlotIndex => slotIndex;
         public PlayerSkillModel Item => item;
@@ -61,10 +73,10 @@ namespace PhamNhanOnline.Client.UI.Skills
             ApplyIconVisibility(true);
             if (emptyStateRoot != null)
                 emptyStateRoot.SetActive(false);
-            if (occupiedStateRoot != null)
-                occupiedStateRoot.SetActive(true);
             if (force)
                 SetSelected(isSelected, true);
+            else
+                ApplySelectionVisual();
         }
 
         public void Clear(bool force = false)
@@ -72,6 +84,8 @@ namespace PhamNhanOnline.Client.UI.Skills
             hasItem = false;
             item = default(PlayerSkillModel);
             currentIconSprite = null;
+            currentPresentation = default;
+            dragSelectionVisible = false;
             if (iconImage != null)
             {
                 iconImage.sprite = null;
@@ -89,8 +103,7 @@ namespace PhamNhanOnline.Client.UI.Skills
                 return;
 
             isSelected = selected;
-            if (selectedHighlightRoot != null)
-                selectedHighlightRoot.SetActive(selected);
+            ApplySelectionVisual();
         }
 
         public void SetDragEnabled(bool value)
@@ -100,8 +113,62 @@ namespace PhamNhanOnline.Client.UI.Skills
                 ResetDragVisuals();
         }
 
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            if (eventData != null && IsValidDraggedSkill(eventData.pointerDrag != null ? eventData.pointerDrag.transform : null))
+                SetDragSelectionVisible(true);
+
+            if (eventData != null && eventData.pointerDrag != null)
+                return;
+
+            if (!hasItem)
+                return;
+
+            WorldModalUIManager.Instance?.ShowItemTooltip(this, BuildTooltipData(), force: true);
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            SetDragSelectionVisible(false);
+
+            if (!hasItem)
+                return;
+
+            WorldModalUIManager.Instance?.HideItemTooltip(this, force: true);
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (!hasItem)
+                return;
+
+            WorldModalUIManager.Instance?.BeginItemInteraction(this, force: true);
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (!hasItem)
+                return;
+
+            WorldModalUIManager.Instance?.EndItemInteraction(this);
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (!hasItem || !dragEnabled)
+                return;
+
+            var handler = Clicked;
+            if (handler != null)
+                handler(this);
+
+            eventData?.Use();
+        }
+
         public void OnDrop(PointerEventData eventData)
         {
+            SetDragSelectionVisible(false);
+
             if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
                 payload.Kind != UIDragPayloadKind.Skill ||
                 !payload.HasSkill)
@@ -122,13 +189,20 @@ namespace PhamNhanOnline.Client.UI.Skills
                 return;
             }
 
-            DispatchDroppedSkill(payload.Skill);
+            DispatchDroppedSkill(payload.Skill, payload.HasSourceIndex ? payload.SourceIndex : (int?)null);
         }
 
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (!dragEnabled || !hasItem || canvasGroup == null)
                 return;
+
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
+            {
+                modalUIManager.HideItemOptionsPopup(force: true);
+                modalUIManager.BeginItemInteraction(this, force: true);
+            }
 
             canvasGroup.blocksRaycasts = false;
             canvasGroup.alpha = draggingAlpha;
@@ -144,6 +218,12 @@ namespace PhamNhanOnline.Client.UI.Skills
         public void OnEndDrag(PointerEventData eventData)
         {
             ResetDragVisuals();
+            var modalUIManager = WorldModalUIManager.Instance;
+            if (modalUIManager != null)
+            {
+                modalUIManager.EndItemInteraction(this);
+                modalUIManager.HideItemTooltip(this, force: true);
+            }
         }
 
         public bool TryCreateDragPayload(out UIDragPayload payload)
@@ -158,11 +238,11 @@ namespace PhamNhanOnline.Client.UI.Skills
             return true;
         }
 
-        private void DispatchDroppedSkill(PlayerSkillModel skill)
+        private void DispatchDroppedSkill(PlayerSkillModel skill, int? sourceSlotIndex)
         {
             var handler = SkillDropped;
             if (handler != null)
-                handler(slotIndex, skill);
+                handler(slotIndex, skill, sourceSlotIndex);
         }
 
         private void ApplyEmptyState()
@@ -170,8 +250,6 @@ namespace PhamNhanOnline.Client.UI.Skills
             ApplyIconVisibility(false);
             if (emptyStateRoot != null)
                 emptyStateRoot.SetActive(true);
-            if (occupiedStateRoot != null)
-                occupiedStateRoot.SetActive(false);
         }
 
         private void ApplyIconVisibility(bool visible)
@@ -182,6 +260,7 @@ namespace PhamNhanOnline.Client.UI.Skills
 
         private void ApplyPresentation(SkillPresentation presentation)
         {
+            currentPresentation = presentation;
             currentIconSprite = presentation.IconSprite;
             if (iconImage == null)
                 return;
@@ -203,6 +282,75 @@ namespace PhamNhanOnline.Client.UI.Skills
                 dragGhost.Dispose();
                 dragGhost = null;
             }
+
+            SetDragSelectionVisible(false);
+        }
+
+        private bool IsValidDraggedSkill(Transform dragTransform)
+        {
+            if (!UIDragPayloadResolver.TryResolve(dragTransform, out var payload) ||
+                payload.Kind != UIDragPayloadKind.Skill ||
+                !payload.HasSkill)
+            {
+                return false;
+            }
+
+            if (payload.SourceKind != UIDragSourceKind.SkillListItem &&
+                payload.SourceKind != UIDragSourceKind.SkillLoadoutSlot)
+            {
+                return false;
+            }
+
+            return !payload.HasSourceIndex || payload.SourceIndex != slotIndex;
+        }
+
+        private void SetDragSelectionVisible(bool visible)
+        {
+            if (dragSelectionVisible == visible)
+                return;
+
+            dragSelectionVisible = visible;
+            ApplySelectionVisual();
+        }
+
+        private void ApplySelectionVisual()
+        {
+            var visible = hasItem || isSelected || dragSelectionVisible;
+            if (selectedHighlightRoot != null && selectedHighlightRoot.activeSelf != visible)
+                selectedHighlightRoot.SetActive(visible);
+        }
+
+        private ItemTooltipViewData BuildTooltipData()
+        {
+            var description = string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "Cap {0}",
+                Math.Max(0, item.SkillLevel));
+
+            if (item.CastRange > 0f)
+            {
+                description = string.Concat(
+                    description,
+                    Environment.NewLine,
+                    string.Format(System.Globalization.CultureInfo.InvariantCulture, "Tam thi trien: {0:0.##}", Math.Max(0f, item.CastRange)));
+            }
+
+            description = string.Concat(
+                description,
+                Environment.NewLine,
+                string.Format(System.Globalization.CultureInfo.InvariantCulture, "Hoi chieu: {0:0.##}s", Math.Max(0d, item.CooldownMs / 1000d)));
+
+            if (!string.IsNullOrWhiteSpace(item.SourceMartialArtName))
+                description = string.Concat(description, Environment.NewLine, "Cong phap: ", item.SourceMartialArtName.Trim());
+
+            if (!string.IsNullOrWhiteSpace(item.Description))
+                description = string.Concat(description, Environment.NewLine, item.Description.Trim());
+
+            return new ItemTooltipViewData(
+                string.IsNullOrWhiteSpace(item.Name) ? "Skill" : item.Name.Trim(),
+                description,
+                currentPresentation.IconSprite,
+                Color.white);
         }
     }
 

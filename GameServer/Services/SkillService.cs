@@ -15,6 +15,7 @@ public sealed class SkillService
     private const string MissingEquipmentGrantBlockedReason = "Skill tu trang bi hien khong kha dung.";
     private const string RealmRequirementBlockedReason = "Canh gioi hien tai chua du de gan skill nay vao loadout.";
 
+    private readonly GameDb _db;
     private readonly CombatDefinitionCatalog _combatDefinitions;
     private readonly GameConfigValues _gameConfig;
     private readonly CharacterBaseStatRepository _characterBaseStats;
@@ -27,6 +28,7 @@ public sealed class SkillService
     private readonly GameplayDescriptionService _descriptions;
 
     public SkillService(
+        GameDb db,
         CombatDefinitionCatalog combatDefinitions,
         GameConfigValues gameConfig,
         CharacterBaseStatRepository characterBaseStats,
@@ -38,6 +40,7 @@ public sealed class SkillService
         ItemDefinitionCatalog itemDefinitions,
         GameplayDescriptionService descriptions)
     {
+        _db = db;
         _combatDefinitions = combatDefinitions;
         _gameConfig = gameConfig;
         _characterBaseStats = characterBaseStats;
@@ -55,6 +58,60 @@ public sealed class SkillService
         IReadOnlyList<PlayerSkillEntity> playerSkills = await _playerSkills.ListByPlayerIdAsync(playerId, cancellationToken);
         IReadOnlyList<PlayerSkillLoadoutEntity> loadouts = await _playerSkillLoadouts.ListByPlayerIdAsync(playerId, cancellationToken);
         var baseStats = await _characterBaseStats.GetByIdAsync(playerId, cancellationToken);
+        (playerSkills, loadouts) = await NormalizeLoadoutAsync(playerId, playerSkills, loadouts, baseStats, cancellationToken);
+        return await BuildSnapshotAsync(playerId, playerSkills, loadouts, baseStats, cancellationToken);
+    }
+
+    public async Task<OwnedSkillsSnapshotDto> SwapSkillLoadoutSlotsAsync(
+        Guid playerId,
+        int sourceSlotIndex,
+        int targetSlotIndex,
+        CancellationToken cancellationToken = default)
+    {
+        if (sourceSlotIndex < 1 || sourceSlotIndex > _gameConfig.SkillMaxLoadoutSlotCount ||
+            targetSlotIndex < 1 || targetSlotIndex > _gameConfig.SkillMaxLoadoutSlotCount)
+        {
+            throw new GameException(MessageCode.SkillLoadoutSlotInvalid);
+        }
+
+        if (sourceSlotIndex == targetSlotIndex)
+            return await GetOwnedSkillsAsync(playerId, cancellationToken);
+
+        var baseStats = await _characterBaseStats.GetByIdAsync(playerId, cancellationToken);
+        var currentRealmTemplateId = baseStats?.RealmId;
+        var playerItems = await _playerItems.ListByPlayerIdAsync(playerId, cancellationToken);
+        var playerItemsById = playerItems.ToDictionary(x => x.Id);
+        IReadOnlyList<PlayerSkillEntity> playerSkills = await _playerSkills.ListByPlayerIdAsync(playerId, cancellationToken);
+        IReadOnlyList<PlayerSkillLoadoutEntity> loadouts = await _playerSkillLoadouts.ListByPlayerIdAsync(playerId, cancellationToken);
+        (playerSkills, loadouts) = await NormalizeLoadoutAsync(playerId, playerSkills, loadouts, baseStats, cancellationToken);
+
+        var sourceLoadout = loadouts.FirstOrDefault(x => x.SlotIndex == sourceSlotIndex);
+        var targetLoadout = loadouts.FirstOrDefault(x => x.SlotIndex == targetSlotIndex);
+        if (sourceLoadout is null || targetLoadout is null)
+            throw new GameException(MessageCode.SkillLoadoutSlotEmpty);
+
+        var sourceSkill = playerSkills.FirstOrDefault(x => x.Id == sourceLoadout.PlayerSkillId);
+        var targetSkill = playerSkills.FirstOrDefault(x => x.Id == targetLoadout.PlayerSkillId);
+        if (sourceSkill is null || targetSkill is null)
+            throw new GameException(MessageCode.PlayerSkillInvalid);
+
+        ValidateLoadoutChange(targetSlotIndex, sourceSkill, currentRealmTemplateId, playerItemsById);
+        ValidateLoadoutChange(sourceSlotIndex, targetSkill, currentRealmTemplateId, playerItemsById);
+
+        var tempSlotIndex = -Math.Max(sourceSlotIndex, targetSlotIndex);
+
+        if (_db.Transaction is not null)
+        {
+            await SwapLoadoutRowsAsync(sourceLoadout, targetLoadout, sourceSlotIndex, targetSlotIndex, tempSlotIndex, cancellationToken);
+        }
+        else
+        {
+            await using var tx = await _db.BeginTransactionAsync(cancellationToken);
+            await SwapLoadoutRowsAsync(sourceLoadout, targetLoadout, sourceSlotIndex, targetSlotIndex, tempSlotIndex, cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+        }
+
+        loadouts = await _playerSkillLoadouts.ListByPlayerIdAsync(playerId, cancellationToken);
         (playerSkills, loadouts) = await NormalizeLoadoutAsync(playerId, playerSkills, loadouts, baseStats, cancellationToken);
         return await BuildSnapshotAsync(playerId, playerSkills, loadouts, baseStats, cancellationToken);
     }
@@ -334,8 +391,7 @@ public sealed class SkillService
 
         var currentRealmTemplateId = baseStats?.RealmId;
         var skillDtos = playerSkills
-            .OrderByDescending(GetSkillCategoryOrder)
-            .ThenBy(x => x.SkillGroupCode)
+            .OrderBy(x => x.SkillGroupCode)
             .ThenBy(x => x.Id)
             .Select(playerSkill => BuildPlayerSkillDto(playerSkill, equippedSlotByPlayerSkillId, currentRealmTemplateId, playerItemsById))
             .ToArray();
@@ -449,72 +505,6 @@ public sealed class SkillService
 
         if (changed)
             loadouts = await _playerSkillLoadouts.ListByPlayerIdAsync(playerId, cancellationToken);
-
-        var basicSkills = playerSkills
-            .Where(IsBasicSkill)
-            .OrderByDescending(GetSkillLevel)
-            .ThenBy(x => x.Id)
-            .ToArray();
-
-        if (basicSkills.Length == 0)
-            return (playerSkills, loadouts);
-
-        var loadoutsBySlot = loadouts
-            .Where(x => x.SlotIndex >= 1 && x.SlotIndex <= _gameConfig.SkillMaxLoadoutSlotCount)
-            .GroupBy(x => x.SlotIndex)
-            .ToDictionary(x => x.Key, x => x.OrderByDescending(row => row.UpdatedAt).ThenByDescending(row => row.Id).First());
-
-        if (loadoutsBySlot.TryGetValue(_gameConfig.CharacterStarterBasicSkillSlotIndex, out var slotOneLoadout) &&
-            playerSkillById.TryGetValue(slotOneLoadout.PlayerSkillId, out var slotOneSkill) &&
-            CanAssignSkillToSlot(_gameConfig.CharacterStarterBasicSkillSlotIndex, slotOneSkill, currentRealmTemplateId, playerItemsById, out _))
-        {
-            return (playerSkills, loadouts);
-        }
-
-        var basicLoadouts = loadouts
-            .Where(x => playerSkillById.TryGetValue(x.PlayerSkillId, out var skill) && IsBasicSkill(skill))
-            .OrderBy(x => x.SlotIndex)
-            .ThenBy(x => x.Id)
-            .ToArray();
-
-        var preferredBasic = basicLoadouts
-            .Select(x => playerSkillById[x.PlayerSkillId])
-            .FirstOrDefault();
-
-        preferredBasic ??= basicSkills[0];
-
-        if (loadoutsBySlot.TryGetValue(_gameConfig.CharacterStarterBasicSkillSlotIndex, out var firstSlotLoadout))
-        {
-            if (firstSlotLoadout.PlayerSkillId != preferredBasic.Id)
-            {
-                firstSlotLoadout.PlayerSkillId = preferredBasic.Id;
-                firstSlotLoadout.UpdatedAt = DateTime.UtcNow;
-                await _playerSkillLoadouts.UpdateAsync(firstSlotLoadout, cancellationToken);
-                changed = true;
-            }
-        }
-        else
-        {
-            var newLoadout = new PlayerSkillLoadoutEntity
-            {
-                PlayerId = playerId,
-                SlotIndex = _gameConfig.CharacterStarterBasicSkillSlotIndex,
-                PlayerSkillId = preferredBasic.Id,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            await _playerSkillLoadouts.CreateAsync(newLoadout, cancellationToken);
-            changed = true;
-        }
-
-        foreach (var loadout in basicLoadouts)
-        {
-            if (loadout.PlayerSkillId != preferredBasic.Id || loadout.SlotIndex == _gameConfig.CharacterStarterBasicSkillSlotIndex)
-                continue;
-
-            await _playerSkillLoadouts.DeleteAsync(loadout, cancellationToken);
-            changed = true;
-        }
 
         if (!changed)
             return (playerSkills, loadouts);
@@ -736,18 +726,6 @@ public sealed class SkillService
             return false;
         }
 
-        if (slotIndex == _gameConfig.CharacterStarterBasicSkillSlotIndex)
-        {
-            if (IsBasicSkill(playerSkill) || HasEquipmentSource(playerSkill))
-            {
-                blockedReason = string.Empty;
-                return true;
-            }
-
-            blockedReason = "O skill dau tien chi nhan skill co ban hoac skill den tu trang bi.";
-            return false;
-        }
-
         blockedReason = string.Empty;
         return true;
     }
@@ -765,19 +743,8 @@ public sealed class SkillService
             await _playerSkillLoadouts.DeleteAsync(removed[i], cancellationToken);
     }
 
-    private bool HasOwnedBasicSkill(IReadOnlyList<PlayerSkillEntity> playerSkills) =>
-        playerSkills.Any(IsBasicSkill);
-
     private bool HasEquipmentSource(PlayerSkillEntity playerSkill) =>
         playerSkill.SourcePlayerItemId.HasValue && playerSkill.SourcePlayerItemId.Value > 0;
-
-    private bool IsBasicSkill(PlayerSkillEntity playerSkill)
-    {
-        if (!_combatDefinitions.TryGetSkill(playerSkill.SkillId, out var skillDefinition))
-            return false;
-
-        return skillDefinition.SkillCategory == SkillCategory.Basic;
-    }
 
     private int GetSkillLevel(PlayerSkillEntity playerSkill)
     {
@@ -785,14 +752,6 @@ public sealed class SkillService
             return 0;
 
         return skillDefinition.SkillLevel;
-    }
-
-    private int GetSkillCategoryOrder(PlayerSkillEntity playerSkill)
-    {
-        if (!_combatDefinitions.TryGetSkill(playerSkill.SkillId, out var skillDefinition))
-            return 0;
-
-        return skillDefinition.SkillCategory == SkillCategory.Basic ? 1 : 0;
     }
 
     private async Task ClearSlotAsync(
@@ -820,6 +779,27 @@ public sealed class SkillService
 
         for (var i = 0; i < duplicates.Length; i++)
             await _playerSkillLoadouts.DeleteAsync(duplicates[i], cancellationToken);
+    }
+
+    private async Task SwapLoadoutRowsAsync(
+        PlayerSkillLoadoutEntity sourceLoadout,
+        PlayerSkillLoadoutEntity targetLoadout,
+        int sourceSlotIndex,
+        int targetSlotIndex,
+        int tempSlotIndex,
+        CancellationToken cancellationToken)
+    {
+        sourceLoadout.SlotIndex = tempSlotIndex;
+        sourceLoadout.UpdatedAt = DateTime.UtcNow;
+        await _playerSkillLoadouts.UpdateAsync(sourceLoadout, cancellationToken);
+
+        targetLoadout.SlotIndex = sourceSlotIndex;
+        targetLoadout.UpdatedAt = DateTime.UtcNow;
+        await _playerSkillLoadouts.UpdateAsync(targetLoadout, cancellationToken);
+
+        sourceLoadout.SlotIndex = targetSlotIndex;
+        sourceLoadout.UpdatedAt = DateTime.UtcNow;
+        await _playerSkillLoadouts.UpdateAsync(sourceLoadout, cancellationToken);
     }
 
     private readonly record struct EquipmentGrantedSkillCandidate(
