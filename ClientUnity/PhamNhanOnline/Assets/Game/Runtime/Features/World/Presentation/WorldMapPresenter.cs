@@ -11,7 +11,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         [SerializeField] private ClientMapCatalog mapCatalog;
         [SerializeField] private Transform activeMapRoot;
-        [SerializeField] private WorldSceneReadinessService readinessService;
+        private WorldSceneReadinessService readinessService;
+        private WorldSceneController sceneController;
 
         private GameObject activeMapInstance;
         private ClientMapView activeMapView;
@@ -22,6 +23,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public Transform CurrentMapTransform
         {
             get { return activeMapInstance != null ? activeMapInstance.transform : null; }
+        }
+
+        public void Initialize(WorldSceneController controller, WorldSceneReadinessService sceneReadinessService)
+        {
+            if (controller != null)
+                sceneController = controller;
+
+            if (sceneReadinessService != null)
+                readinessService = sceneReadinessService;
         }
 
         private void Start()
@@ -179,6 +189,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var parent = activeMapRoot != null ? activeMapRoot : transform;
             activeMapInstance = Instantiate(mapPrefab, parent, false);
             activeMapInstance.name = mapPrefab.name;
+            if (sceneController != null)
+                sceneController.InjectSceneContextIntoHierarchy(activeMapInstance.transform);
             CachePlayableBounds();
             if (readinessService != null && hasCachedPlayableBounds)
                 readinessService.ReportReady(WorldSceneReadyKey.MapVisual);
@@ -359,8 +371,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void AutoWireReferences()
         {
-            if (readinessService == null)
-                readinessService = GetComponent<WorldSceneReadinessService>();
         }
 
     }

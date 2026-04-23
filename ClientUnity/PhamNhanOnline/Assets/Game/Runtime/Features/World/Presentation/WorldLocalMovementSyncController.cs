@@ -9,8 +9,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 {
     public sealed class WorldLocalMovementSyncController : WorldSceneBehaviour
     {
-        [SerializeField] private WorldLocalPlayerPresenter localPlayerPresenter;
-        [SerializeField] private WorldMapPresenter worldMapPresenter;
+        private WorldLocalPlayerPresenter localPlayerPresenter;
+        private WorldMapPresenter worldMapPresenter;
         [SerializeField] private WorldLocalMovementSyncConfig syncConfig;
         [Header("Debug")]
         [SerializeField] private bool logSyncSendReasons;
@@ -285,7 +285,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             InitializeWorldSceneBehaviour(ref worldMapPresenter);
 
             if (localPlayerPresenter == null)
-                localPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : GetComponent<WorldLocalPlayerPresenter>();
+                localPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : null;
         }
 
         private void ResetSyncState()

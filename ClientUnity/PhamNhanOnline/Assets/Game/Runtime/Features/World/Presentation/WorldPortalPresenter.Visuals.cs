@@ -357,10 +357,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             InitializeWorldSceneBehaviour(ref worldMapPresenter);
 
             if (worldTargetActionController == null)
-                worldTargetActionController = GetComponent<WorldTargetActionController>();
+                worldTargetActionController = SceneController != null ? SceneController.WorldTargetActionController : null;
 
             if (worldLocalMovementSyncController == null)
-                worldLocalMovementSyncController = GetComponent<WorldLocalMovementSyncController>();
+                worldLocalMovementSyncController = SceneController != null ? SceneController.WorldLocalMovementSyncController : null;
         }
 
         private void LogMissingCriticalDependenciesIfNeeded()

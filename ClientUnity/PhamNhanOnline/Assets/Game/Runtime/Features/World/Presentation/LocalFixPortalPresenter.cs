@@ -147,8 +147,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ClientRuntime.Target.CurrentTargetChanged -= HandleCurrentTargetChanged;
             ClientRuntime.Target.CurrentTargetChanged += HandleCurrentTargetChanged;
 
-            var worldTargetActionController = WorldSceneController.Instance != null
-                ? WorldSceneController.Instance.TryResolveWorldTargetActionController()
+            var worldTargetActionController = SceneController != null
+                ? SceneController.TryResolveWorldTargetActionController()
                 : null;
             if (worldTargetActionController != null)
             {
@@ -164,8 +164,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             ClientRuntime.World.MapChanged -= HandleMapChanged;
             ClientRuntime.Target.CurrentTargetChanged -= HandleCurrentTargetChanged;
-            var worldTargetActionController = WorldSceneController.Instance != null
-                ? WorldSceneController.Instance.TryResolveWorldTargetActionController()
+            var worldTargetActionController = SceneController != null
+                ? SceneController.TryResolveWorldTargetActionController()
                 : null;
             if (worldTargetActionController != null)
                 worldTargetActionController.InteractionRequested -= HandleInteractionRequested;

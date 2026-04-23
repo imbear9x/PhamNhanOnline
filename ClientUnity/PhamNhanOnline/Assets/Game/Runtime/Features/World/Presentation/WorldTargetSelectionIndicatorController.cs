@@ -7,7 +7,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     public sealed class WorldTargetSelectionIndicatorController : WorldSceneBehaviour
     {
         [Header("References")]
-        [SerializeField] private WorldMapPresenter worldMapPresenter;
+        private WorldMapPresenter worldMapPresenter;
         [SerializeField] private Transform whiteIndicator;
         [SerializeField] private Transform redIndicator;
 
@@ -92,71 +92,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return true;
             }
 
-            WorldTargetSnapshot snapshot;
-            if (!ClientRuntime.World.TryBuildTargetSnapshot(handle, out snapshot))
-            {
-                worldPosition = default;
-                return false;
-            }
-
-            switch (handle.Kind)
-            {
-                case WorldTargetKind.Player:
-                    return TryResolveObservedCharacterPosition(handle.TargetId, out worldPosition);
-                case WorldTargetKind.Enemy:
-                case WorldTargetKind.Boss:
-                    return TryResolveEnemyPosition(handle.TargetId, out worldPosition);
-                default:
-                    worldPosition = default;
-                    return false;
-            }
-        }
-
-        private bool TryResolveObservedCharacterPosition(string targetId, out Vector2 worldPosition)
-        {
-            worldPosition = default;
-
-            System.Guid characterId;
-            if (!System.Guid.TryParse(targetId, out characterId))
-                return false;
-
-            GameShared.Models.ObservedCharacterModel observedCharacter;
-            if (!ClientRuntime.World.TryGetObservedCharacter(characterId, out observedCharacter))
-                return false;
-
-            return TryMapServerPositionToWorld(
-                new Vector2(observedCharacter.CurrentState.CurrentPosX, observedCharacter.CurrentState.CurrentPosY),
+            return WorldTargetResolutionUtility.TryResolveIndicatorWorldPosition(
+                handle,
+                worldMapPresenter,
+                indicatorHeightOffset,
+                fallbackWorldHeightOffset,
                 out worldPosition);
-        }
-
-        private bool TryResolveEnemyPosition(string targetId, out Vector2 worldPosition)
-        {
-            worldPosition = default;
-
-            int runtimeId;
-            if (!int.TryParse(targetId, out runtimeId))
-                return false;
-
-            GameShared.Models.EnemyRuntimeModel enemy;
-            if (!ClientRuntime.World.TryGetEnemy(runtimeId, out enemy))
-                return false;
-
-            return TryMapServerPositionToWorld(
-                new Vector2(enemy.PosX, enemy.PosY),
-                out worldPosition);
-        }
-
-        private bool TryMapServerPositionToWorld(Vector2 serverPosition, out Vector2 worldPosition)
-        {
-            worldPosition = default;
-            if (worldMapPresenter == null)
-                return false;
-
-            if (!worldMapPresenter.TryMapServerPositionToWorld(serverPosition, out worldPosition))
-                return false;
-
-            worldPosition += new Vector2(0f, fallbackWorldHeightOffset);
-            return true;
         }
 
         private void SetIndicatorsVisible(bool showWhite, bool showRed)

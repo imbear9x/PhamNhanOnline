@@ -4,9 +4,7 @@ using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Character.Presentation;
-using PhamNhanOnline.Client.Features.Skills.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
-using PhamNhanOnline.Client.Features.World.Application;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -165,83 +163,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private bool TryResolveTargetWorldPosition(WorldTargetHandle target, out Vector2 worldPosition)
         {
-            MapPortalModel portal;
-            if (ClientRuntime.World.TryGetPortal(target, out portal))
-            {
-                if (worldPortalPresenter != null &&
-                    worldPortalPresenter.TryResolvePortalWorldPosition(portal, out worldPosition))
-                {
-                    return true;
-                }
-
-                return worldMapPresenter.TryMapServerPositionToWorld(
-                    new Vector2(portal.SourceX, portal.SourceY),
-                    out worldPosition);
-            }
-
-            if (LocalFixPortalPresenter.TryResolveActionWorldPosition(target, out worldPosition))
-                return true;
-
-            WorldTargetable targetable;
-            if (WorldTargetableRegistry.TryGet(target, out targetable) &&
-                targetable != null &&
-                targetable.isActiveAndEnabled &&
-                targetable.TryGetWorldSelectionPosition(out worldPosition))
-            {
-                return true;
-            }
-
-            switch (target.Kind)
-            {
-                case WorldTargetKind.Player:
-                    Guid characterId;
-                    if (!Guid.TryParse(target.TargetId, out characterId))
-                        break;
-
-                    ObservedCharacterModel observedCharacter;
-                    if (ClientRuntime.World.TryGetObservedCharacter(characterId, out observedCharacter))
-                    {
-                        return worldMapPresenter.TryMapServerPositionToWorld(
-                            new Vector2(observedCharacter.CurrentState.CurrentPosX, observedCharacter.CurrentState.CurrentPosY),
-                            out worldPosition);
-                    }
-
-                    break;
-
-                case WorldTargetKind.Enemy:
-                case WorldTargetKind.Boss:
-                    int runtimeId;
-                    if (!int.TryParse(target.TargetId, out runtimeId))
-                        break;
-
-                    EnemyRuntimeModel enemy;
-                    if (ClientRuntime.World.TryGetEnemy(runtimeId, out enemy))
-                    {
-                        return worldMapPresenter.TryMapServerPositionToWorld(
-                            new Vector2(enemy.PosX, enemy.PosY),
-                            out worldPosition);
-                    }
-
-                    break;
-
-                case WorldTargetKind.GroundReward:
-                    int rewardId;
-                    if (!ClientWorldState.TryParseGroundRewardTargetId(target.TargetId, out rewardId))
-                        break;
-
-                    GroundRewardModel reward;
-                    if (ClientRuntime.World.TryGetGroundReward(rewardId, out reward))
-                    {
-                        return worldMapPresenter.TryMapServerPositionToWorld(
-                            new Vector2(reward.PosX, reward.PosY),
-                            out worldPosition);
-                    }
-
-                    break;
-            }
-
-            worldPosition = default;
-            return false;
+            return WorldTargetResolutionUtility.TryResolveWorldPosition(
+                target,
+                worldMapPresenter,
+                worldPortalPresenter,
+                out worldPosition);
         }
 
         private bool TryResolveDistanceServerUnits(Vector2 playerWorldPosition, Vector2 targetWorldPosition, out float distanceServerUnits)
@@ -327,13 +253,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             InitializeWorldSceneBehaviour(ref worldMapPresenter);
             if (worldPortalPresenter == null)
-                worldPortalPresenter = GetComponent<WorldPortalPresenter>();
+                worldPortalPresenter = SceneController != null ? SceneController.WorldPortalPresenter : null;
 
             if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : GetComponent<WorldLocalPlayerPresenter>();
+                worldLocalPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : null;
 
             if (worldLocalMovementSyncController == null)
-                worldLocalMovementSyncController = GetComponent<WorldLocalMovementSyncController>();
+                worldLocalMovementSyncController = SceneController != null ? SceneController.WorldLocalMovementSyncController : null;
         }
 
         private void LogMissingCriticalDependenciesIfNeeded()

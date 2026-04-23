@@ -10,7 +10,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private EnemyPresentationCatalog presentationCatalog;
         [SerializeField] private Transform enemiesRoot;
-        [SerializeField] private WorldMapPresenter worldMapPresenter;
+        private WorldMapPresenter worldMapPresenter;
 
         private readonly Dictionary<int, EnemyPresenter> enemyPresenters = new Dictionary<int, EnemyPresenter>();
         private bool warnedMissingCatalog;

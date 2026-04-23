@@ -22,10 +22,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
 
         [Header("References")]
-        [SerializeField] private WorldMapPresenter worldMapPresenter;
-        [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
-        [SerializeField] private WorldClickTargetSelectionController targetSelectionController;
-        [SerializeField] private WorldTargetActionController targetActionController;
+        private WorldMapPresenter worldMapPresenter;
+        private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
+        private WorldAutoTargetSelectionController autoTargetSelectionController;
+        private WorldTargetActionController targetActionController;
         [SerializeField] private Transform overlayRoot;
 
         [Header("Activation")]
@@ -127,7 +127,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             LogMissingCriticalDependenciesIfNeeded();
             return worldMapPresenter != null &&
                    worldLocalPlayerPresenter != null &&
-                   targetSelectionController != null &&
+                   autoTargetSelectionController != null &&
                    targetActionController != null;
         }
 
@@ -150,7 +150,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 UpsertWorldCircle(
                     "player:auto-select",
                     playerWorldPosition,
-                    targetSelectionController.AutoSelectRadiusWorldUnits,
+                    autoTargetSelectionController.AutoSelectRadiusWorldUnits,
                     autoSelectColor);
             }
 
@@ -326,13 +326,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             InitializeWorldSceneBehaviour(ref worldMapPresenter);
 
             if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : GetComponent<WorldLocalPlayerPresenter>();
+                worldLocalPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : null;
 
-            if (targetSelectionController == null)
-                targetSelectionController = GetComponent<WorldClickTargetSelectionController>();
+            if (autoTargetSelectionController == null)
+                autoTargetSelectionController = SceneController != null ? SceneController.WorldAutoTargetSelectionController : null;
 
             if (targetActionController == null)
-                targetActionController = GetComponent<WorldTargetActionController>();
+                targetActionController = SceneController != null ? SceneController.WorldTargetActionController : null;
         }
 
         private void LogMissingCriticalDependenciesIfNeeded()
@@ -349,9 +349,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 loggedMissingLocalPlayerPresenter = true;
             }
 
-            if (targetSelectionController == null && !loggedMissingSelectionController)
+            if (autoTargetSelectionController == null && !loggedMissingSelectionController)
             {
-                ClientLog.Error("WorldRangeDebugOverlay could not resolve WorldClickTargetSelectionController.");
+                ClientLog.Error("WorldRangeDebugOverlay could not resolve WorldAutoTargetSelectionController.");
                 loggedMissingSelectionController = true;
             }
 

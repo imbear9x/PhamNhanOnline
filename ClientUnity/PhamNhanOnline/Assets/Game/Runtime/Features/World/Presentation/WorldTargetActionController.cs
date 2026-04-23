@@ -16,10 +16,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
 
         [Header("References")]
-        [SerializeField] private WorldMapPresenter worldMapPresenter;
-        [SerializeField] private WorldPortalPresenter worldPortalPresenter;
-        [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
-        [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
+        private WorldMapPresenter worldMapPresenter;
+        private WorldPortalPresenter worldPortalPresenter;
+        private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
+        private WorldLocalMovementSyncController worldLocalMovementSyncController;
 
         [Header("Ranges")]
         [SerializeField] private float interactionRangeServerUnits = 30f;

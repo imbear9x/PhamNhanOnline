@@ -3,11 +3,10 @@ using PhamNhanOnline.Client.Core.Application;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
-    [RequireComponent(typeof(Camera))]
     public sealed class WorldCameraFollowController : WorldSceneBehaviour
     {
-        [SerializeField] private WorldLocalPlayerPresenter localPlayerPresenter;
-        [SerializeField] private WorldMapPresenter worldMapPresenter;
+        private WorldLocalPlayerPresenter localPlayerPresenter;
+        private WorldMapPresenter worldMapPresenter;
         [SerializeField] private Vector3 followOffset = new Vector3(0f, 0f, -10f);
         [SerializeField] private bool smoothFollow = false;
         [SerializeField] private float smoothSpeed = 8f;
@@ -16,16 +15,17 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private Camera cachedCamera;
         private Bounds cachedClampBounds;
         private bool hasCachedClampBounds;
+        private bool loggedMissingWorldCamera;
 
         private void Awake()
         {
-            cachedCamera = GetComponent<Camera>();
             AutoWireReferences();
         }
 
         private void Start()
         {
             AutoWireReferences();
+            LogMissingWorldCameraIfNeeded();
             LogMissingCriticalWorldSceneDependenciesIfNeeded();
             ActivateWorldSceneReadiness();
             TryRefreshCachedClampBoundsIfReady();
@@ -53,6 +53,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (localPlayerPresenter == null)
                 return;
 
+            if (cachedCamera == null)
+                return;
+
             var target = localPlayerPresenter.CurrentPlayerTransform;
             if (target == null)
                 return;
@@ -62,12 +65,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (!smoothFollow)
             {
-                transform.position = desiredPosition;
+                cachedCamera.transform.position = desiredPosition;
                 return;
             }
 
             var t = Mathf.Clamp01(smoothSpeed * Time.deltaTime);
-            transform.position = Vector3.Lerp(transform.position, desiredPosition, t);
+            cachedCamera.transform.position = Vector3.Lerp(cachedCamera.transform.position, desiredPosition, t);
         }
 
         private Vector3 ClampCameraPosition(Vector3 desiredPosition)
@@ -102,6 +105,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private bool TryGetCameraClampBounds(out Bounds bounds)
         {
             bounds = default;
+            if (worldMapPresenter == null)
+                return false;
+
             var currentMapTransform = worldMapPresenter.CurrentMapTransform;
             if (currentMapTransform == null)
                 return false;
@@ -149,8 +155,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             InitializeWorldSceneBehaviour(ref worldMapPresenter);
 
+            if (cachedCamera == null && SceneContext != null)
+                cachedCamera = SceneContext.WorldCamera;
+
             if (localPlayerPresenter == null)
-                localPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : GetComponent<WorldLocalPlayerPresenter>();
+                localPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : null;
+        }
+
+        private void LogMissingWorldCameraIfNeeded()
+        {
+            if (cachedCamera == null && !loggedMissingWorldCamera)
+            {
+                Debug.LogError(
+                    $"WorldCameraFollowController on '{gameObject.name}' could not resolve the world camera from WorldSceneController.");
+                loggedMissingWorldCamera = true;
+            }
         }
     }
 }

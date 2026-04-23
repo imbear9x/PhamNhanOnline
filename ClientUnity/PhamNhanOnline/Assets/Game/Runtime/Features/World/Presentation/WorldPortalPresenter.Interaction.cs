@@ -175,8 +175,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             WorldLocalPlayerPresenter localPlayerPresenter = null;
             if (sceneController != null)
                 localPlayerPresenter = sceneController.WorldLocalPlayerPresenter;
-            if (localPlayerPresenter == null)
-                localPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
 
             var localActionController = localPlayerPresenter != null
                 ? localPlayerPresenter.CurrentLocalActionController
@@ -231,8 +229,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             WorldLocalPlayerPresenter localPlayerPresenter = null;
             if (sceneController != null)
                 localPlayerPresenter = sceneController.WorldLocalPlayerPresenter;
-            if (localPlayerPresenter == null)
-                localPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
             if (localPlayerPresenter == null || localPlayerPresenter.CurrentPlayerTransform == null)
                 return false;
 
@@ -261,8 +257,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 WorldLocalPlayerPresenter localPlayerPresenter = null;
                 if (sceneController != null)
                     localPlayerPresenter = sceneController.WorldLocalPlayerPresenter;
-                if (localPlayerPresenter == null)
-                    localPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
 
                 var playerTransform = localPlayerPresenter != null
                     ? localPlayerPresenter.CurrentPlayerTransform

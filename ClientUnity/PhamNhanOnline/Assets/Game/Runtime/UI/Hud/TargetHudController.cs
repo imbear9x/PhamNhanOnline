@@ -67,17 +67,10 @@ namespace PhamNhanOnline.Client.UI.Hud
             }
 
             WorldTargetSnapshot snapshot;
-            if (!ClientRuntime.World.TryBuildTargetSnapshot(currentTarget.Value, out snapshot))
+            if (!WorldTargetResolutionUtility.TryResolveSnapshot(currentTarget.Value, out snapshot))
             {
-                WorldTargetable targetable;
-                if (!WorldTargetableRegistry.TryGet(currentTarget.Value, out targetable) ||
-                    targetable == null ||
-                    !targetable.TryBuildFallbackSnapshot(out snapshot))
-                {
-                    ClientRuntime.Target.Clear();
-                    targetStatusPanel.ShowNoTarget(force: true);
-                    return;
-                }
+                targetStatusPanel.ShowNoTarget(force: true);
+                return;
             }
 
             targetStatusPanel.ShowSnapshot(snapshot, force);

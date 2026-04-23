@@ -11,7 +11,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private GameObject playerPrefab;
         [SerializeField] private Transform remotePlayersRoot;
-        [SerializeField] private WorldMapPresenter worldMapPresenter;
+        private WorldMapPresenter worldMapPresenter;
         [SerializeField] private float remoteMoveSmoothing = 14f;
         [SerializeField] private float remoteTeleportSnapDistance = 3f;
 

@@ -113,10 +113,8 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             if (targetHudController == null)
-            {
-                throw new System.InvalidOperationException(
+                Debug.LogError(
                     $"PersistentWorldUIController on '{gameObject.name}' is missing required reference '{nameof(targetHudController)}'.");
-            }
         }
     }
 }

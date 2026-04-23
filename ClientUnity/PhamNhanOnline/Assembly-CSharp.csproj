@@ -71,6 +71,7 @@
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryItemGridView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Auth\Application\ClientConnectionRecoveryService.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldTargetActionController.cs" />
+    <Compile Include="Assets\Game\Runtime\Features\World\Presentation\IWorldSceneContextReceiver.cs" />
     <Compile Include="Assets\Game\Runtime\Network\Transport\NullClientTransport.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Targeting\Application\ClientTargetState.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterListLoadResult.cs" />
@@ -103,6 +104,7 @@
     <Compile Include="Assets\Game\Runtime\UI\Screens\Login\LoginSceneUIRegistry.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Combat\Presentation\SkillWorldPresentationCatalog.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\ClientMapCatalog.cs" />
+    <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldAutoTargetSelectionController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Combat\Presentation\CharacterSkillPresenterRegistry.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\LoopScrollViewItem.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Notifications\Application\ClientNotificationService.cs" />
@@ -159,6 +161,7 @@
     <Compile Include="Assets\Game\Runtime\Features\Auth\Application\ClientAuthService.cs" />
     <Compile Include="Assets\Game\Runtime\Features\PresentationReplication\Application\ClientPresentationReplicationService.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldSceneBehaviour.cs" />
+    <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldTargetLifecycleController.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldCultivationPanelView.cs" />
     <Compile Include="Assets\Game\Runtime\Shared\Protocol\ServerEndpoint.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Hud\WorldCombatValuePopupController.cs" />
@@ -184,6 +187,7 @@
     <Compile Include="Assets\Game\Runtime\Features\Combat\Presentation\CharacterSkillPresenter.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\KeyboardCharacterActionInputSource.cs" />
     <Compile Include="Assets\Epic Toon FX\Scripts\ETFXPitchRandomizer.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Hud\StatusPanelView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\PresentationReplication\Application\ClientPresentationReplicationEvent.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldClickTargetSelectionController.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldCultivationPreviewView.cs" />
@@ -200,6 +204,7 @@
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldPortalPresenter.Interaction.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Alchemy\Application\AlchemyCraftExecuteResult.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldCraftingPanelView.cs" />
+    <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldSceneContext.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\LocalCharacterActionController.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Crafting\CraftRecipeListView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Potential\PotentialUpgradeOptionButtonView.cs" />
@@ -220,6 +225,7 @@
     <Compile Include="Assets\Game\Runtime\Features\Skills\Application\ClientSkillService.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\ClientMapView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryItemSlotView.cs" />
+    <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldTargetResolutionUtility.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldCameraFollowController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterDataLoadResult.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldTargetSelectionIndicatorController.cs" />
@@ -246,6 +252,7 @@
     <Compile Include="Assets\Game\Runtime\UI\Skills\SkillListItemView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldTargetable.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterAllocatePotentialResult.cs" />
+    <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldPresentationRuntimeController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Inventory\Application\InventoryActionResult.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\InventoryDragGhost.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\GroundSnapBindings.cs" />

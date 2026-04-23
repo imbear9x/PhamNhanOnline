@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
 {
-    public abstract class WorldSceneBehaviour : MonoBehaviour
+    public abstract class WorldSceneBehaviour : MonoBehaviour, IWorldSceneContextReceiver
     {
         private sealed class ReadyWaitRegistration
         {
@@ -16,34 +16,48 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
 
         private readonly List<ReadyWaitRegistration> readyWaits = new List<ReadyWaitRegistration>();
+        private bool requestedReadinessActivation;
         private bool readyWaitsConfigured;
         private bool readinessEventsBound;
         private bool loggedMissingSceneController;
         private bool loggedMissingMapPresenter;
         private bool loggedMissingReadiness;
 
+        protected WorldSceneContext SceneContext { get; private set; }
         protected WorldSceneController SceneController { get; private set; }
         protected WorldMapPresenter MapPresenter { get; private set; }
         protected WorldSceneReadinessService Readiness { get; private set; }
+
+        public void InitializeWorldSceneContext(WorldSceneContext context)
+        {
+            SceneContext = context;
+            SceneController = context != null ? context.SceneController : null;
+            MapPresenter = context != null ? context.WorldMapPresenter : null;
+            Readiness = context != null ? context.WorldSceneReadinessService : null;
+            EnsureReadyWaitsConfigured();
+            OnWorldSceneContextInitialized(context);
+
+            if (requestedReadinessActivation && isActiveAndEnabled)
+                ActivateWorldSceneReadiness();
+        }
+
+        protected virtual void OnWorldSceneContextInitialized(WorldSceneContext context)
+        {
+        }
 
         protected void InitializeWorldSceneBehaviour(
             WorldSceneController sceneController = null,
             WorldMapPresenter mapPresenter = null,
             WorldSceneReadinessService readinessService = null)
         {
-            if (SceneController == null)
-                SceneController = sceneController ?? GetComponent<WorldSceneController>() ?? WorldSceneController.Instance;
+            if (sceneController != null)
+                SceneController = sceneController;
 
-            if (MapPresenter == null)
-                MapPresenter = mapPresenter ?? GetComponent<WorldMapPresenter>() ?? SceneController?.WorldMapPresenter;
+            if (mapPresenter != null)
+                MapPresenter = mapPresenter;
 
-            if (Readiness == null)
-            {
-                Readiness = readinessService ??
-                            GetComponent<WorldSceneReadinessService>() ??
-                            MapPresenter?.GetComponent<WorldSceneReadinessService>() ??
-                            SceneController?.WorldSceneReadinessService;
-            }
+            if (readinessService != null)
+                Readiness = readinessService;
 
             EnsureReadyWaitsConfigured();
         }
@@ -65,6 +79,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         protected void ActivateWorldSceneReadiness()
         {
+            requestedReadinessActivation = true;
             if (readinessEventsBound || !ClientRuntime.IsInitialized || Readiness == null)
                 return;
 
@@ -76,6 +91,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         protected void DeactivateWorldSceneReadiness()
         {
+            requestedReadinessActivation = false;
             if (!readinessEventsBound || !ClientRuntime.IsInitialized || Readiness == null)
                 return;
 

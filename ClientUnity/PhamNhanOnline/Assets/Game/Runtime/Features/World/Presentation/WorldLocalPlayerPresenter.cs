@@ -16,7 +16,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         [SerializeField] private GameObject playerPrefab;
         [SerializeField] private Transform localPlayerRoot;
-        [SerializeField] private WorldMapPresenter worldMapPresenter;
+        private WorldMapPresenter worldMapPresenter;
         [SerializeField] private LocalCharacterActionConfig localCharacterActionConfig;
         [SerializeField] private float authoritativeSnapDistance = 1.5f;
 

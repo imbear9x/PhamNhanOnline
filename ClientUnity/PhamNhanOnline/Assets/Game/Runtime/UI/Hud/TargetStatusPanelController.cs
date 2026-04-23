@@ -1,23 +1,13 @@
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
-using PhamNhanOnline.Client.Features.World.Presentation;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace PhamNhanOnline.Client.UI.Hud
 {
     public sealed class TargetStatusPanelController : MonoBehaviour
     {
         [Header("References")]
-        [SerializeField] private GameObject contentRoot;
-        [SerializeField] private CanvasGroup contentCanvasGroup;
-        [SerializeField] private Image avatarImage;
-        [SerializeField] private TMP_Text nameText;
-        [SerializeField] private GameObject primaryBarRoot;
-        [SerializeField] private StatBarView primaryBar;
-        [SerializeField] private GameObject secondaryBarRoot;
-        [SerializeField] private StatBarView secondaryBar;
+        [SerializeField] private StatusPanelView statusPanelView;
 
         [Header("Fallback Sprites")]
         [SerializeField] private Sprite defaultAvatarSprite;
@@ -30,147 +20,50 @@ namespace PhamNhanOnline.Client.UI.Hud
         [SerializeField] private bool hideWhenNoTarget = true;
         [SerializeField] private string noTargetName = string.Empty;
 
-        private bool lastVisibleState = true;
-        private string lastTargetKey = string.Empty;
-        private string lastDisplayName = string.Empty;
-        private int lastPrimaryCurrent = int.MinValue;
-        private int lastPrimaryMax = int.MinValue;
-        private int lastSecondaryCurrent = int.MinValue;
-        private int lastSecondaryMax = int.MinValue;
-        private bool lastHasSecondary;
-        private WorldTargetKind lastKind = WorldTargetKind.None;
-
         private void Awake()
         {
-            if (contentCanvasGroup == null && contentRoot == null)
-                contentCanvasGroup = GetComponent<CanvasGroup>();
-
+            AutoWireReferences();
             ShowNoTarget(force: true);
         }
 
         public void ShowSnapshot(WorldTargetSnapshot snapshot, bool force = false)
         {
-            ApplySnapshot(snapshot, force);
+            if (statusPanelView == null)
+                return;
+
+            statusPanelView.Apply(
+                new StatusPanelViewData(
+                    true,
+                    snapshot.Kind + ":" + snapshot.TargetId,
+                    snapshot.DisplayName,
+                    ResolveAvatarSprite(snapshot.Kind),
+                    snapshot.HasPrimaryResource,
+                    snapshot.PrimaryCurrentValue,
+                    snapshot.PrimaryMaxValue,
+                    snapshot.HasSecondaryResource,
+                    snapshot.SecondaryCurrentValue,
+                    snapshot.SecondaryMaxValue),
+                force);
         }
 
         public void ShowNoTarget(bool force = false)
         {
-            ApplyNoTarget(force);
-        }
-
-        private void ApplySnapshot(WorldTargetSnapshot snapshot, bool force)
-        {
-            const bool visible = true;
-            var targetKey = snapshot.Kind + ":" + snapshot.TargetId;
-            var changed =
-                force ||
-                lastVisibleState != visible ||
-                !string.Equals(lastTargetKey, targetKey) ||
-                !string.Equals(lastDisplayName, snapshot.DisplayName) ||
-                lastPrimaryCurrent != snapshot.PrimaryCurrentValue ||
-                lastPrimaryMax != snapshot.PrimaryMaxValue ||
-                lastSecondaryCurrent != snapshot.SecondaryCurrentValue ||
-                lastSecondaryMax != snapshot.SecondaryMaxValue ||
-                lastHasSecondary != snapshot.HasSecondaryResource ||
-                lastKind != snapshot.Kind;
-
-            if (!changed)
+            if (statusPanelView == null)
                 return;
 
-            lastVisibleState = visible;
-            lastTargetKey = targetKey;
-            lastDisplayName = snapshot.DisplayName;
-            lastPrimaryCurrent = snapshot.PrimaryCurrentValue;
-            lastPrimaryMax = snapshot.PrimaryMaxValue;
-            lastSecondaryCurrent = snapshot.SecondaryCurrentValue;
-            lastSecondaryMax = snapshot.SecondaryMaxValue;
-            lastHasSecondary = snapshot.HasSecondaryResource;
-            lastKind = snapshot.Kind;
-
-            SetContentVisible(true, $"snapshot {snapshot.Kind}/{snapshot.TargetId} '{snapshot.DisplayName}'");
-
-            if (nameText != null)
-                nameText.text = snapshot.DisplayName;
-
-            if (primaryBarRoot != null)
-                primaryBarRoot.SetActive(snapshot.HasPrimaryResource);
-            if (primaryBar != null)
-                primaryBar.SetValues(snapshot.PrimaryCurrentValue, snapshot.PrimaryMaxValue, force: true);
-
-            if (secondaryBarRoot != null)
-                secondaryBarRoot.SetActive(snapshot.HasSecondaryResource);
-            if (secondaryBar != null)
-                secondaryBar.SetValues(snapshot.SecondaryCurrentValue, snapshot.SecondaryMaxValue, force: true);
-
-            ApplyAvatar(snapshot.Kind);
-        }
-
-        private void ApplyNoTarget(bool force)
-        {
-            var visible = !hideWhenNoTarget;
-            var changed =
-                force ||
-                lastVisibleState != visible ||
-                !string.Equals(lastDisplayName, noTargetName) ||
-                !string.IsNullOrEmpty(lastTargetKey) ||
-                lastKind != WorldTargetKind.None;
-
-            if (!changed)
-                return;
-
-            lastVisibleState = visible;
-            lastTargetKey = string.Empty;
-            lastDisplayName = noTargetName;
-            lastPrimaryCurrent = int.MinValue;
-            lastPrimaryMax = int.MinValue;
-            lastSecondaryCurrent = int.MinValue;
-            lastSecondaryMax = int.MinValue;
-            lastHasSecondary = false;
-            lastKind = WorldTargetKind.None;
-
-            var currentTarget = ClientRuntime.IsInitialized ? ClientRuntime.Target.CurrentTarget : null;
-            SetContentVisible(
-                visible,
-                currentTarget.HasValue
-                    ? $"no-target current={currentTarget.Value.Kind}/{currentTarget.Value.TargetId} hideWhenNoTarget={hideWhenNoTarget}"
-                    : $"no-target current=<none> hideWhenNoTarget={hideWhenNoTarget}");
-
-            if (nameText != null)
-                nameText.text = noTargetName;
-
-            if (primaryBarRoot != null)
-                primaryBarRoot.SetActive(false);
-            if (secondaryBarRoot != null)
-                secondaryBarRoot.SetActive(false);
-
-            ApplyAvatar(WorldTargetKind.None);
-        }
-
-        private void SetContentVisible(bool visible, string reason)
-        {
-            if (contentRoot != null)
-            {
-                if (contentRoot.activeSelf != visible)
-                    contentRoot.SetActive(visible);
-                return;
-            }
-
-            if (contentCanvasGroup != null)
-            {
-                contentCanvasGroup.alpha = visible ? 1f : 0f;
-                contentCanvasGroup.interactable = visible;
-                contentCanvasGroup.blocksRaycasts = visible;
-            }
-        }
-
-        private void ApplyAvatar(WorldTargetKind kind)
-        {
-            if (avatarImage == null)
-                return;
-
-            var sprite = ResolveAvatarSprite(kind);
-            if (sprite != null && avatarImage.sprite != sprite)
-                avatarImage.sprite = sprite;
+            statusPanelView.Apply(
+                new StatusPanelViewData(
+                    !hideWhenNoTarget,
+                    string.Empty,
+                    noTargetName,
+                    ResolveAvatarSprite(WorldTargetKind.None),
+                    false,
+                    0,
+                    0,
+                    false,
+                    0,
+                    0),
+                force);
         }
 
         private Sprite ResolveAvatarSprite(WorldTargetKind kind)
@@ -190,6 +83,10 @@ namespace PhamNhanOnline.Client.UI.Hud
             }
         }
 
+        private void AutoWireReferences()
+        {
+            if (statusPanelView == null)
+                statusPanelView = GetComponent<StatusPanelView>();
+        }
     }
-
 }

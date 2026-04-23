@@ -26,9 +26,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
 
         [Header("References")]
-        [SerializeField] private WorldMapPresenter worldMapPresenter;
-        [SerializeField] private WorldTargetActionController worldTargetActionController;
-        [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
+        private WorldMapPresenter worldMapPresenter;
+        private WorldTargetActionController worldTargetActionController;
+        private WorldLocalMovementSyncController worldLocalMovementSyncController;
         [SerializeField] private Transform portalRoot;
         [SerializeField] private GameObject portalVisualPrefab;
 

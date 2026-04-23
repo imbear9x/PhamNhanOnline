@@ -13,9 +13,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [Header("References")]
         [SerializeField] private Transform rewardsRoot;
-        [SerializeField] private WorldMapPresenter worldMapPresenter;
-        [SerializeField] private WorldTargetActionController worldTargetActionController;
-        [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
+        private WorldMapPresenter worldMapPresenter;
+        private WorldTargetActionController worldTargetActionController;
+        private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
         [SerializeField] private InventoryItemPresentationCatalog itemPresentationCatalog;
         [SerializeField] private GameObject rewardVisualPrefab;
 
@@ -353,10 +353,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             InitializeWorldSceneBehaviour(ref worldMapPresenter);
 
             if (worldTargetActionController == null)
-                worldTargetActionController = GetComponent<WorldTargetActionController>();
+                worldTargetActionController = SceneController != null ? SceneController.WorldTargetActionController : null;
 
             if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : GetComponent<WorldLocalPlayerPresenter>();
+                worldLocalPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : null;
         }
 
         private void LogMissingCriticalDependenciesIfNeeded()

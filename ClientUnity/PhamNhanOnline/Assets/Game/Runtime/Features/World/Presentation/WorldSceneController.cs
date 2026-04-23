@@ -1,8 +1,8 @@
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
-using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.Infrastructure.Config;
 using PhamNhanOnline.Client.Infrastructure.Pooling;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -15,6 +15,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private bool loggedMissingMapPresenter;
         private bool loggedMissingLocalPlayerPresenter;
         private bool loggedMissingLocalMovementSyncController;
+        private bool loggedMissingClickTargetSelectionController;
+        private bool loggedMissingAutoTargetSelectionController;
+        private bool loggedMissingTargetLifecycleController;
+        private bool loggedMissingTargetActionController;
+        private bool loggedMissingPortalPresenter;
+        private bool loggedMissingGroundRewardPresenter;
 
         [Header("Runtime")]
         [SerializeField] private ClientBootstrapSettings runtimeSettingsOverride;
@@ -27,7 +33,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private WorldSceneReadinessService worldSceneReadinessService;
         [SerializeField] private WorldLocalPlayerPresenter worldLocalPlayerPresenter;
         [SerializeField] private WorldLocalMovementSyncController worldLocalMovementSyncController;
-        [SerializeField] private SkillWorldPresentationCatalog skillWorldPresentationCatalog;
+        [SerializeField] private WorldRemotePlayersPresenter worldRemotePlayersPresenter;
+        [SerializeField] private WorldEnemiesPresenter worldEnemiesPresenter;
+        [SerializeField] private WorldClickTargetSelectionController worldClickTargetSelectionController;
+        [SerializeField] private WorldAutoTargetSelectionController worldAutoTargetSelectionController;
+        [SerializeField] private WorldTargetLifecycleController worldTargetLifecycleController;
+        [SerializeField] private WorldTargetActionController worldTargetActionController;
+        [SerializeField] private WorldTargetSelectionIndicatorController worldTargetSelectionIndicatorController;
+        [SerializeField] private WorldPortalPresenter worldPortalPresenter;
+        [SerializeField] private WorldGroundRewardPresenter worldGroundRewardPresenter;
 
         public Transform MapRoot { get { return mapRoot; } }
         public Transform EntitiesRoot { get { return entitiesRoot; } }
@@ -37,7 +51,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public WorldSceneReadinessService WorldSceneReadinessService { get { return worldSceneReadinessService; } }
         public WorldLocalPlayerPresenter WorldLocalPlayerPresenter { get { return worldLocalPlayerPresenter; } }
         public WorldLocalMovementSyncController WorldLocalMovementSyncController { get { return worldLocalMovementSyncController; } }
-        public SkillWorldPresentationCatalog SkillWorldPresentationCatalog { get { return skillWorldPresentationCatalog; } }
+        public WorldRemotePlayersPresenter WorldRemotePlayersPresenter { get { return worldRemotePlayersPresenter; } }
+        public WorldEnemiesPresenter WorldEnemiesPresenter { get { return worldEnemiesPresenter; } }
+        public WorldClickTargetSelectionController WorldClickTargetSelectionController { get { return worldClickTargetSelectionController; } }
+        public WorldAutoTargetSelectionController WorldAutoTargetSelectionController { get { return worldAutoTargetSelectionController; } }
+        public WorldTargetLifecycleController WorldTargetLifecycleController { get { return worldTargetLifecycleController; } }
+        public WorldTargetActionController WorldTargetActionController { get { return worldTargetActionController; } }
+        public WorldTargetSelectionIndicatorController WorldTargetSelectionIndicatorController { get { return worldTargetSelectionIndicatorController; } }
+        public WorldPortalPresenter WorldPortalPresenter { get { return worldPortalPresenter; } }
+        public WorldGroundRewardPresenter WorldGroundRewardPresenter { get { return worldGroundRewardPresenter; } }
 
         private void Awake()
         {
@@ -51,61 +73,57 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             Instance = this;
-            AutoWireReferences();
             EnsureRuntimeInitialized();
-            EnsureWorldSceneReadinessService();
-            ConfigureSkillPresentation();
+            ValidateRequiredReferences();
+            if (worldMapPresenter != null)
+                worldMapPresenter.Initialize(this, worldSceneReadinessService);
             EnsureClientPoolService();
-            EnsureWorldTargetSelectionController();
-            EnsureWorldTargetActionController();
-            EnsureWorldPortalPresenter();
-            EnsureWorldGroundRewardPresenter();
+            InjectSceneContext();
         }
 
         private void Start()
         {
-            AutoWireReferences();
             LogMissingCriticalSceneRefsIfNeeded();
         }
 
         public void CycleNearbyTarget()
         {
-            var controller = EnsureWorldTargetSelectionController();
+            var controller = worldAutoTargetSelectionController;
             if (controller != null)
                 controller.CycleNearbyTarget();
         }
 
         public void ClearSelectedTarget()
         {
-            var controller = EnsureWorldTargetSelectionController();
+            var controller = worldAutoTargetSelectionController;
             if (controller != null)
                 controller.ClearSelectedTarget();
         }
 
         public void PinCurrentTargetForCombat()
         {
-            var controller = EnsureWorldTargetSelectionController();
+            var controller = worldAutoTargetSelectionController;
             if (controller != null)
                 controller.PinCurrentTargetForCombat();
         }
 
         public void PinCurrentTargetManually()
         {
-            var controller = EnsureWorldTargetSelectionController();
+            var controller = worldAutoTargetSelectionController;
             if (controller != null)
                 controller.PinCurrentTargetManually();
         }
 
         public void ClearPinnedTarget()
         {
-            var controller = EnsureWorldTargetSelectionController();
+            var controller = worldAutoTargetSelectionController;
             if (controller != null)
                 controller.ClearPinnedTarget();
         }
 
         public bool RequestPrimaryTargetAction(PhamNhanOnline.Client.Features.Targeting.Application.WorldTargetHandle target)
         {
-            var controller = EnsureWorldTargetActionController();
+            var controller = worldTargetActionController;
             return controller != null && controller.RequestPrimaryAction(target);
         }
 
@@ -123,17 +141,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         public WorldTargetActionController TryResolveWorldTargetActionController()
         {
-            return EnsureWorldTargetActionController();
-        }
-
-        private void Update()
-        {
-            if (!ClientRuntime.IsInitialized)
-                return;
-
-            ClientRuntime.SkillPresentationService.ConfigureCatalog(skillWorldPresentationCatalog);
-            ClientRuntime.SkillPresentationService.Tick(System.DateTime.UtcNow);
-            ClientRuntime.PresentationReplicationService.Tick(System.DateTime.UtcNow);
+            return worldTargetActionController;
         }
 
         private void EnsureRuntimeInitialized()
@@ -154,88 +162,126 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return ClientPoolService.Ensure(transform);
         }
 
-        private WorldSceneReadinessService EnsureWorldSceneReadinessService()
+        private void InjectSceneContext()
         {
-            if (worldSceneReadinessService == null)
-                worldSceneReadinessService = GetComponent<WorldSceneReadinessService>();
+            var context = new WorldSceneContext
+            {
+                SceneController = this,
+                WorldMapPresenter = worldMapPresenter,
+                WorldSceneReadinessService = worldSceneReadinessService,
+                WorldLocalPlayerPresenter = worldLocalPlayerPresenter,
+                WorldLocalMovementSyncController = worldLocalMovementSyncController,
+                WorldRemotePlayersPresenter = worldRemotePlayersPresenter,
+                WorldEnemiesPresenter = worldEnemiesPresenter,
+                WorldClickTargetSelectionController = worldClickTargetSelectionController,
+                WorldAutoTargetSelectionController = worldAutoTargetSelectionController,
+                WorldTargetLifecycleController = worldTargetLifecycleController,
+                WorldTargetActionController = worldTargetActionController,
+                WorldTargetSelectionIndicatorController = worldTargetSelectionIndicatorController,
+                WorldPortalPresenter = worldPortalPresenter,
+                WorldGroundRewardPresenter = worldGroundRewardPresenter,
+                WorldCamera = worldCamera,
+                MapRoot = mapRoot,
+                EntitiesRoot = entitiesRoot,
+                WorldUiRoot = worldUiRoot
+            };
 
-            if (worldSceneReadinessService == null)
-                ClientLog.Error("WorldSceneController is missing WorldSceneReadinessService. Add it to WorldRoot.");
-
-            return worldSceneReadinessService;
+            var injectedReceivers = new HashSet<IWorldSceneContextReceiver>();
+            InjectSceneContextIntoHierarchy(injectedReceivers, transform, context);
         }
 
-        private void ConfigureSkillPresentation()
+        public void InjectSceneContextIntoHierarchy(Transform root)
         {
-            if (!ClientRuntime.IsInitialized)
+            if (root == null)
                 return;
 
-            ClientRuntime.SkillPresentationService.ConfigureCatalog(skillWorldPresentationCatalog);
-        }
-
-        private WorldClickTargetSelectionController EnsureWorldTargetSelectionController()
-        {
-            var controller = GetComponent<WorldClickTargetSelectionController>();
-            if (controller == null)
+            var context = new WorldSceneContext
             {
-                ClientLog.Error("WorldSceneController is missing WorldClickTargetSelectionController. Add it to WorldRoot.");
-                return null;
-            }
+                SceneController = this,
+                WorldMapPresenter = worldMapPresenter,
+                WorldSceneReadinessService = worldSceneReadinessService,
+                WorldLocalPlayerPresenter = worldLocalPlayerPresenter,
+                WorldLocalMovementSyncController = worldLocalMovementSyncController,
+                WorldRemotePlayersPresenter = worldRemotePlayersPresenter,
+                WorldEnemiesPresenter = worldEnemiesPresenter,
+                WorldClickTargetSelectionController = worldClickTargetSelectionController,
+                WorldAutoTargetSelectionController = worldAutoTargetSelectionController,
+                WorldTargetLifecycleController = worldTargetLifecycleController,
+                WorldTargetActionController = worldTargetActionController,
+                WorldTargetSelectionIndicatorController = worldTargetSelectionIndicatorController,
+                WorldPortalPresenter = worldPortalPresenter,
+                WorldGroundRewardPresenter = worldGroundRewardPresenter,
+                WorldCamera = worldCamera,
+                MapRoot = mapRoot,
+                EntitiesRoot = entitiesRoot,
+                WorldUiRoot = worldUiRoot
+            };
 
-            controller.Initialize(worldCamera, worldMapPresenter);
-            return controller;
+            var injectedReceivers = new HashSet<IWorldSceneContextReceiver>();
+            InjectSceneContextIntoHierarchy(injectedReceivers, root, context);
         }
 
-        private WorldTargetActionController EnsureWorldTargetActionController()
+        private static void InjectSceneContextIntoHierarchy(
+            HashSet<IWorldSceneContextReceiver> injectedReceivers,
+            Transform root,
+            WorldSceneContext context)
         {
-            var controller = GetComponent<WorldTargetActionController>();
-            if (controller == null)
-            {
-                ClientLog.Error("WorldSceneController is missing WorldTargetActionController. Add it to WorldRoot.");
-                return null;
-            }
-
-            return controller;
+            var receiverBehaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
+            for (var i = 0; i < receiverBehaviours.Length; i++)
+                InjectReceiver(injectedReceivers, receiverBehaviours[i], context);
         }
 
-        private WorldPortalPresenter EnsureWorldPortalPresenter()
+        private static void InjectReceiver(
+            HashSet<IWorldSceneContextReceiver> injectedReceivers,
+            MonoBehaviour behaviour,
+            WorldSceneContext context)
         {
-            var presenter = GetComponent<WorldPortalPresenter>();
-            if (presenter == null)
-            {
-                ClientLog.Error("WorldSceneController is missing WorldPortalPresenter. Add it to WorldRoot.");
-                return null;
-            }
+            if (behaviour is not IWorldSceneContextReceiver receiver || !injectedReceivers.Add(receiver))
+                return;
 
-            return presenter;
+            receiver.InitializeWorldSceneContext(context);
         }
 
-        private WorldGroundRewardPresenter EnsureWorldGroundRewardPresenter()
+        private void ValidateRequiredReferences()
         {
-            var presenter = GetComponent<WorldGroundRewardPresenter>();
-            if (presenter == null)
-            {
-                ClientLog.Error("WorldSceneController is missing WorldGroundRewardPresenter. Add it to WorldRoot.");
-                return null;
-            }
-
-            return presenter;
-        }
-
-
-        private void AutoWireReferences()
-        {
-            if (worldMapPresenter == null)
-                worldMapPresenter = GetComponent<WorldMapPresenter>();
-
             if (worldSceneReadinessService == null)
-                worldSceneReadinessService = GetComponent<WorldSceneReadinessService>();
+                ClientLog.Error("WorldSceneController is missing WorldSceneReadinessService. Assign it explicitly.");
 
-            if (worldLocalPlayerPresenter == null)
-                worldLocalPlayerPresenter = GetComponent<WorldLocalPlayerPresenter>();
+            if (worldClickTargetSelectionController == null && !loggedMissingClickTargetSelectionController)
+            {
+                ClientLog.Error("WorldSceneController is missing WorldClickTargetSelectionController. Assign it explicitly.");
+                loggedMissingClickTargetSelectionController = true;
+            }
 
-            if (worldLocalMovementSyncController == null)
-                worldLocalMovementSyncController = GetComponent<WorldLocalMovementSyncController>();
+            if (worldAutoTargetSelectionController == null && !loggedMissingAutoTargetSelectionController)
+            {
+                ClientLog.Error("WorldSceneController is missing WorldAutoTargetSelectionController. Assign it explicitly.");
+                loggedMissingAutoTargetSelectionController = true;
+            }
+
+            if (worldTargetLifecycleController == null && !loggedMissingTargetLifecycleController)
+            {
+                ClientLog.Error("WorldSceneController is missing WorldTargetLifecycleController. Assign it explicitly.");
+                loggedMissingTargetLifecycleController = true;
+            }
+
+            if (worldTargetActionController == null && !loggedMissingTargetActionController)
+            {
+                ClientLog.Error("WorldSceneController is missing WorldTargetActionController. Assign it explicitly.");
+                loggedMissingTargetActionController = true;
+            }
+
+            if (worldPortalPresenter == null && !loggedMissingPortalPresenter)
+            {
+                ClientLog.Error("WorldSceneController is missing WorldPortalPresenter. Assign it explicitly.");
+                loggedMissingPortalPresenter = true;
+            }
+
+            if (worldGroundRewardPresenter == null && !loggedMissingGroundRewardPresenter)
+            {
+                ClientLog.Error("WorldSceneController is missing WorldGroundRewardPresenter. Assign it explicitly.");
+                loggedMissingGroundRewardPresenter = true;
+            }
         }
 
         private void LogMissingCriticalSceneRefsIfNeeded()
@@ -273,12 +319,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void OnDestroy()
         {
-            if (ClientRuntime.IsInitialized)
-            {
-                ClientRuntime.SkillPresentationService.Clear();
-                ClientRuntime.PresentationReplicationService.Clear();
-            }
-
             if (Instance == this)
                 Instance = null;
         }
