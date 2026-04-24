@@ -169,6 +169,15 @@ namespace PhamNhanOnline.Client.Features.Targeting.Application
                 NotifyPinChanged();
         }
 
+        public bool ReleaseManualSelectionControl()
+        {
+            if (!IsManualSelection)
+                return false;
+
+            IsManualSelection = false;
+            return true;
+        }
+
         public bool PinCurrent(TargetPinMode pinMode)
         {
             if (!CurrentTarget.HasValue || pinMode == TargetPinMode.None)

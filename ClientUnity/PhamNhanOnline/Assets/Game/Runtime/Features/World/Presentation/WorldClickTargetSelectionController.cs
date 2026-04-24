@@ -21,8 +21,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private readonly System.Collections.Generic.List<RaycastResult> uiRaycastResults =
             new System.Collections.Generic.List<RaycastResult>(8);
+        private readonly System.Collections.Generic.List<string> blockingUiNames =
+            new System.Collections.Generic.List<string>(8);
+        private readonly Collider2D[] pointerOverlapHits = new Collider2D[16];
         private WorldTargetHandle lastClickedTargetHandle;
         private float lastTargetClickTime = float.NegativeInfinity;
+        private PointerEventData cachedPointerEventData;
+        private EventSystem cachedPointerEventSystem;
 
         public void Initialize(Camera camera, WorldMapPresenter mapPresenter)
         {
@@ -78,14 +83,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var worldPosition3 = worldCamera.ScreenToWorldPoint(Input.mousePosition);
             var worldPosition = new Vector2(worldPosition3.x, worldPosition3.y);
-            var hits = Physics2D.OverlapPointAll(worldPosition, selectableLayers);
-            var bestTargetable = ResolveBestTargetable(hits, worldPosition);
+            var hitCount = CollectPointerOverlapHits(worldPosition);
+            var bestTargetable = ResolveBestTargetable(pointerOverlapHits, hitCount, worldPosition);
             if (bestTargetable != null)
             {
                 var handle = bestTargetable.Handle;
                 var isDoubleClick = IsDoubleClickOnSameTarget(handle);
                 WorldTravelDebugController.SetExternalCharacterStatsDebugLine(
-                    $"Target click hit {hits.Length} collider(s): {bestTargetable.name} -> {handle.Kind}/{handle.TargetId}");
+                    $"Target click hit {hitCount} collider(s): {bestTargetable.name} -> {handle.Kind}/{handle.TargetId}");
+                SuspendAutoSelectionUntilManualMoveInput();
                 bestTargetable.Select();
                 RecordTargetClick(handle);
                 if (isDoubleClick)
@@ -99,9 +105,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             WorldTravelDebugController.SetExternalCharacterStatsDebugLine(
-                $"Target click empty at {worldPosition.x:0.00},{worldPosition.y:0.00} with {hits.Length} collider(s).");
+                $"Target click empty at {worldPosition.x:0.00},{worldPosition.y:0.00} with {hitCount} collider(s).");
             if (clearTargetWhenClickingEmptySpace)
+            {
+                SuspendAutoSelectionUntilManualMoveInput();
                 ClientRuntime.Target.Clear();
+            }
         }
 
         private bool IsDoubleClickOnSameTarget(WorldTargetHandle handle)
@@ -134,33 +143,36 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!EventSystem.current.IsPointerOverGameObject())
                 return false;
 
-            var eventData = new PointerEventData(EventSystem.current)
+            if (cachedPointerEventData == null || cachedPointerEventSystem != EventSystem.current)
             {
-                position = Input.mousePosition
-            };
+                cachedPointerEventData = new PointerEventData(EventSystem.current);
+                cachedPointerEventSystem = EventSystem.current;
+            }
+
+            cachedPointerEventData.position = Input.mousePosition;
 
             uiRaycastResults.Clear();
-            EventSystem.current.RaycastAll(eventData, uiRaycastResults);
+            EventSystem.current.RaycastAll(cachedPointerEventData, uiRaycastResults);
             if (uiRaycastResults.Count == 0)
             {
                 reason = "Target click blocked by UI pointer state, but no UI raycast result was found.";
                 return true;
             }
 
-            var blockingNames = new System.Collections.Generic.List<string>();
+            blockingUiNames.Clear();
             for (var i = 0; i < uiRaycastResults.Count; i++)
             {
                 var uiObject = uiRaycastResults[i].gameObject;
                 if (!IsInteractiveUI(uiObject))
                     continue;
 
-                blockingNames.Add(uiObject.name);
+                blockingUiNames.Add(uiObject.name);
             }
 
-            if (blockingNames.Count == 0)
+            if (blockingUiNames.Count == 0)
                 return false;
 
-            reason = $"Target click blocked by UI: {string.Join(", ", blockingNames)}.";
+            reason = $"Target click blocked by UI: {string.Join(", ", blockingUiNames)}.";
             return true;
         }
 
@@ -187,12 +199,34 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return false;
         }
 
-        private static WorldTargetable ResolveBestTargetable(Collider2D[] hits, Vector2 worldPosition)
+        private int CollectPointerOverlapHits(Vector2 worldPosition)
+        {
+            var contactFilter = new ContactFilter2D
+            {
+                useLayerMask = true,
+                layerMask = selectableLayers,
+                useTriggers = true
+            };
+
+            var hitCount = Physics2D.OverlapPoint(worldPosition, contactFilter, pointerOverlapHits);
+            if (hitCount < pointerOverlapHits.Length)
+                return hitCount;
+
+            var overflowHits = Physics2D.OverlapPointAll(worldPosition, selectableLayers);
+            var overflowCount = Mathf.Min(overflowHits.Length, pointerOverlapHits.Length);
+            System.Array.Clear(pointerOverlapHits, 0, pointerOverlapHits.Length);
+            for (var i = 0; i < overflowCount; i++)
+                pointerOverlapHits[i] = overflowHits[i];
+
+            return overflowCount;
+        }
+
+        private static WorldTargetable ResolveBestTargetable(Collider2D[] hits, int hitCount, Vector2 worldPosition)
         {
             WorldTargetable bestTargetable = null;
             var bestScore = float.MaxValue;
 
-            for (var i = 0; i < hits.Length; i++)
+            for (var i = 0; i < hitCount; i++)
             {
                 var hit = hits[i];
                 if (hit == null)
@@ -230,6 +264,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (worldCamera == null && SceneContext != null)
                 worldCamera = SceneContext.WorldCamera;
+        }
+
+        private void SuspendAutoSelectionUntilManualMoveInput()
+        {
+            var autoSelectionController = SceneController != null
+                ? SceneController.WorldAutoTargetSelectionController
+                : null;
+            if (autoSelectionController != null)
+                autoSelectionController.SuspendAutoSelectionUntilManualMoveInput();
         }
     }
 }

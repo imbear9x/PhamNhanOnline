@@ -1,4 +1,3 @@
-using System.Linq;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
@@ -18,11 +17,10 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private readonly struct Candidate
         {
-            public Candidate(WorldTargetHandle handle, WorldTargetKind kind, Vector2 worldPosition, float distanceSquared, int priority, string sortKey)
+            public Candidate(WorldTargetHandle handle, WorldTargetKind kind, float distanceSquared, int priority, string sortKey)
             {
                 Handle = handle;
                 Kind = kind;
-                WorldPosition = worldPosition;
                 DistanceSquared = distanceSquared;
                 Priority = priority;
                 SortKey = sortKey ?? string.Empty;
@@ -30,10 +28,25 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             public WorldTargetHandle Handle { get; }
             public WorldTargetKind Kind { get; }
-            public Vector2 WorldPosition { get; }
             public float DistanceSquared { get; }
             public int Priority { get; }
             public string SortKey { get; }
+        }
+
+        private sealed class CandidateComparer : System.Collections.Generic.IComparer<Candidate>
+        {
+            public int Compare(Candidate left, Candidate right)
+            {
+                var priorityCompare = left.Priority.CompareTo(right.Priority);
+                if (priorityCompare != 0)
+                    return priorityCompare;
+
+                var distanceCompare = left.DistanceSquared.CompareTo(right.DistanceSquared);
+                if (distanceCompare != 0)
+                    return distanceCompare;
+
+                return System.StringComparer.Ordinal.Compare(left.SortKey, right.SortKey);
+            }
         }
 
         [Header("World References")]
@@ -45,7 +58,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private float autoSelectRadiusWorldUnits = 3.5f;
         [SerializeField] private float autoSelectRefreshIntervalSeconds = 0.2f;
         [SerializeField] private bool clearTargetWhenNoNearbyCandidates = true;
-        [SerializeField] private bool keepCurrentTargetWhileStillNearby = true;
 
         [Header("Cycle & Pin")]
         [SerializeField] private bool blockCycleWhilePinned = true;
@@ -60,11 +72,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             new TargetKindPriorityRule { kind = WorldTargetKind.Player, priority = 4 }
         };
 
+        private static readonly CandidateComparer candidateComparer = new CandidateComparer();
+
         private float lastAutoSelectionTime = float.NegativeInfinity;
-        private WorldTargetHandle manualSelectionRangeTrackedTarget;
-        private bool manualSelectionHasEnteredAutoRange;
+        private bool autoSelectionSuppressedUntilManualMoveInput;
+        private readonly System.Collections.Generic.Dictionary<WorldTargetHandle, Candidate> resolvedCandidates =
+            new System.Collections.Generic.Dictionary<WorldTargetHandle, Candidate>();
+        private readonly System.Collections.Generic.List<Candidate> sortedCandidates =
+            new System.Collections.Generic.List<Candidate>(16);
 
         public float AutoSelectRadiusWorldUnits => Mathf.Max(0f, autoSelectRadiusWorldUnits);
+
+        public void SuspendAutoSelectionUntilManualMoveInput()
+        {
+            autoSelectionSuppressedUntilManualMoveInput = true;
+        }
 
         public void Initialize(WorldMapPresenter mapPresenter, WorldLocalPlayerPresenter localPlayerPresenter)
         {
@@ -83,6 +105,19 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             AutoWireReferences();
             LogMissingCriticalWorldSceneDependenciesIfNeeded();
+            ActivateWorldSceneReadiness();
+        }
+
+        private void OnEnable()
+        {
+            AutoWireReferences();
+            ActivateWorldSceneReadiness();
+        }
+
+        private void OnDisable()
+        {
+            DeactivateWorldSceneReadiness();
+            ResetAutoSelectionRuntimeState();
         }
 
         private void Update()
@@ -107,25 +142,25 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (blockCycleWhilePinned && ClientRuntime.Target.HasPinnedTarget)
                 return;
 
-            Candidate[] candidates;
-            if (!TryBuildNearbyCandidates(out candidates) || candidates.Length == 0)
+            if (!TryBuildSortedNearbyCandidates() || sortedCandidates.Count == 0)
                 return;
 
             var nextIndex = 0;
             var currentTarget = ClientRuntime.Target.CurrentTarget;
             if (currentTarget.HasValue)
             {
-                for (var i = 0; i < candidates.Length; i++)
+                for (var i = 0; i < sortedCandidates.Count; i++)
                 {
-                    if (!candidates[i].Handle.Equals(currentTarget.Value))
+                    if (!sortedCandidates[i].Handle.Equals(currentTarget.Value))
                         continue;
 
-                    nextIndex = (i + 1) % candidates.Length;
+                    nextIndex = (i + 1) % sortedCandidates.Count;
                     break;
                 }
             }
 
-            ClientRuntime.Target.Select(candidates[nextIndex].Handle);
+            SuspendAutoSelectionUntilManualMoveInput();
+            ClientRuntime.Target.Select(sortedCandidates[nextIndex].Handle);
         }
 
         public void ClearSelectedTarget()
@@ -133,6 +168,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (!ClientRuntime.IsInitialized)
                 return;
 
+            SuspendAutoSelectionUntilManualMoveInput();
             ClientRuntime.Target.Clear();
         }
 
@@ -171,7 +207,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             lastAutoSelectionTime = Time.unscaledTime;
 
             var currentTarget = ClientRuntime.Target.CurrentTarget;
-            SyncManualSelectionTracking(currentTarget);
+            if (IsAutoSelectionSuppressed())
+            {
+                if (!TryReleaseSuppressedAutoSelectionFromManualMove())
+                    return;
+
+                currentTarget = ClientRuntime.Target.CurrentTarget;
+            }
+
             if (ClientRuntime.Target.HasPinnedTarget)
             {
                 if (currentTarget.HasValue && IsTargetStillResolvable(currentTarget.Value))
@@ -180,65 +223,65 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 ClientRuntime.Target.ClearPin();
             }
 
-            Candidate[] candidates;
-            if (!TryBuildNearbyCandidates(out candidates))
+            Candidate bestCandidate;
+            if (!TryFindBestNearbyCandidate(out bestCandidate))
                 return;
 
-            if (ClientRuntime.Target.IsManualSelection)
-            {
-                if (!currentTarget.HasValue || !IsTargetStillResolvable(currentTarget.Value))
-                {
-                    ClientRuntime.Target.Clear();
-                    return;
-                }
-
-                for (var i = 0; i < candidates.Length; i++)
-                {
-                    if (!candidates[i].Handle.Equals(currentTarget.Value))
-                        continue;
-
-                    manualSelectionHasEnteredAutoRange = true;
-                    return;
-                }
-
-                if (manualSelectionHasEnteredAutoRange)
-                    ClientRuntime.Target.Clear();
-
-                return;
-            }
-
-            if (candidates.Length == 0)
+            if (!bestCandidate.Handle.IsValid)
             {
                 if (clearTargetWhenNoNearbyCandidates)
                     ClientRuntime.Target.Clear();
                 return;
             }
 
-            if (keepCurrentTargetWhileStillNearby && currentTarget.HasValue)
-            {
-                for (var i = 0; i < candidates.Length; i++)
-                {
-                    if (candidates[i].Handle.Equals(currentTarget.Value))
-                    {
-                        if (ClientRuntime.Target.IsManualSelection)
-                            manualSelectionHasEnteredAutoRange = true;
+            if (currentTarget.HasValue && bestCandidate.Handle.Equals(currentTarget.Value))
+                return;
 
-                        return;
-                    }
+            ClientRuntime.Target.SelectAuto(bestCandidate.Handle);
+        }
+
+        private bool TryBuildSortedNearbyCandidates()
+        {
+            if (!TryCollectNearbyCandidates())
+                return false;
+
+            sortedCandidates.Clear();
+            foreach (var candidate in resolvedCandidates.Values)
+                sortedCandidates.Add(candidate);
+
+            if (sortedCandidates.Count <= 1)
+                return true;
+
+            sortedCandidates.Sort(candidateComparer);
+            return true;
+        }
+
+        private bool TryFindBestNearbyCandidate(out Candidate bestCandidate)
+        {
+            bestCandidate = default;
+            if (!TryCollectNearbyCandidates())
+                return false;
+
+            var hasBestCandidate = false;
+            foreach (var candidate in resolvedCandidates.Values)
+            {
+                if (!hasBestCandidate || candidateComparer.Compare(candidate, bestCandidate) < 0)
+                {
+                    bestCandidate = candidate;
+                    hasBestCandidate = true;
                 }
             }
 
-            ClientRuntime.Target.SelectAuto(candidates[0].Handle);
+            return true;
         }
 
-        private bool TryBuildNearbyCandidates(out Candidate[] candidates)
+        private bool TryCollectNearbyCandidates()
         {
-            candidates = System.Array.Empty<Candidate>();
+            resolvedCandidates.Clear();
             if (!TryResolveLocalPlayerWorldPosition(out var localPlayerWorldPosition))
                 return false;
 
             var maxDistanceSquared = Mathf.Max(0f, autoSelectRadiusWorldUnits) * Mathf.Max(0f, autoSelectRadiusWorldUnits);
-            var resolved = new System.Collections.Generic.Dictionary<WorldTargetHandle, Candidate>();
 
             var registeredTargetables = WorldTargetableRegistry.GetSnapshot();
             for (var i = 0; i < registeredTargetables.Length; i++)
@@ -254,7 +297,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 if (!targetable.TryGetWorldSelectionPosition(out var worldPosition))
                     continue;
 
-                TryAddCandidate(resolved, handle, worldPosition, localPlayerWorldPosition, maxDistanceSquared);
+                TryAddCandidate(handle, worldPosition, localPlayerWorldPosition, maxDistanceSquared);
             }
 
             foreach (var observedCharacter in ClientRuntime.World.ObservedCharacters)
@@ -271,7 +314,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 }
 
                 TryAddCandidate(
-                    resolved,
                     WorldTargetHandle.CreateObservedCharacter(observedCharacter.Character.CharacterId),
                     worldPosition,
                     localPlayerWorldPosition,
@@ -288,18 +330,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                     continue;
 
                 TryAddCandidate(
-                    resolved,
                     WorldTargetHandle.CreateEnemy(enemy.RuntimeId, enemy.Kind == 3),
                     worldPosition,
                     localPlayerWorldPosition,
                     maxDistanceSquared);
             }
 
-            candidates = resolved.Values
-                .OrderBy(candidate => candidate.Priority)
-                .ThenBy(candidate => candidate.DistanceSquared)
-                .ThenBy(candidate => candidate.SortKey, System.StringComparer.Ordinal)
-                .ToArray();
             return true;
         }
 
@@ -327,7 +363,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         }
 
         private void TryAddCandidate(
-            System.Collections.Generic.IDictionary<WorldTargetHandle, Candidate> candidates,
             WorldTargetHandle handle,
             Vector2 worldPosition,
             Vector2 localPlayerWorldPosition,
@@ -347,19 +382,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var candidate = new Candidate(
                 handle,
                 kind,
-                worldPosition,
                 distanceSquared,
                 ResolvePriority(kind),
                 $"{(int)kind}:{handle.TargetId}");
 
             Candidate existing;
-            if (candidates.TryGetValue(handle, out existing))
+            if (resolvedCandidates.TryGetValue(handle, out existing))
             {
                 if (candidate.DistanceSquared >= existing.DistanceSquared)
                     return;
             }
 
-            candidates[handle] = candidate;
+            resolvedCandidates[handle] = candidate;
         }
 
         private int ResolvePriority(WorldTargetKind kind)
@@ -396,20 +430,27 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             return WorldTargetResolutionUtility.IsTargetValid(handle);
         }
 
-        private void SyncManualSelectionTracking(WorldTargetHandle? currentTarget)
+        private bool IsAutoSelectionSuppressed()
         {
-            if (!ClientRuntime.Target.IsManualSelection || !currentTarget.HasValue || !currentTarget.Value.IsValid)
-            {
-                manualSelectionRangeTrackedTarget = default;
-                manualSelectionHasEnteredAutoRange = false;
-                return;
-            }
+            return autoSelectionSuppressedUntilManualMoveInput || ClientRuntime.Target.IsManualSelection;
+        }
 
-            if (manualSelectionRangeTrackedTarget.Equals(currentTarget.Value))
-                return;
+        private bool TryReleaseSuppressedAutoSelectionFromManualMove()
+        {
+            var localActionController = worldLocalPlayerPresenter != null
+                ? worldLocalPlayerPresenter.CurrentLocalActionController
+                : null;
+            if (localActionController == null || !localActionController.HasManualMovementInput)
+                return false;
 
-            manualSelectionRangeTrackedTarget = currentTarget.Value;
-            manualSelectionHasEnteredAutoRange = false;
+            autoSelectionSuppressedUntilManualMoveInput = false;
+            ClientRuntime.Target.ReleaseManualSelectionControl();
+            return true;
+        }
+
+        protected override void OnWorldLoadCycleStarted(int loadVersion, string mapKey)
+        {
+            ResetAutoSelectionRuntimeState();
         }
 
         private bool IsSelectionRuntimeReady()
@@ -423,6 +464,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (worldLocalPlayerPresenter == null)
                 worldLocalPlayerPresenter = SceneController != null ? SceneController.WorldLocalPlayerPresenter : null;
+        }
+
+        private void ResetAutoSelectionRuntimeState()
+        {
+            autoSelectionSuppressedUntilManualMoveInput = false;
+            lastAutoSelectionTime = float.NegativeInfinity;
+            resolvedCandidates.Clear();
+            sortedCandidates.Clear();
         }
     }
 }

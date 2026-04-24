@@ -80,8 +80,20 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         private bool isInputBlockedExternally;
         private bool hasExternalMoveOverride;
         private Vector2 externalMoveOverride;
+        private CharacterActionInputState manualInputState;
 
         public bool IsFacingLeft => facingLeft;
+        public Vector2 CurrentManualMoveInput => new Vector2(manualInputState.Horizontal, manualInputState.Vertical);
+
+        public bool HasManualMovementInput
+        {
+            get
+            {
+                var deadZone = actionConfig != null ? actionConfig.MovementDeadZone : 0.01f;
+                return Mathf.Abs(manualInputState.Horizontal) > deadZone ||
+                       Mathf.Abs(manualInputState.Vertical) > deadZone;
+            }
+        }
 
         public float CurrentHorizontalMoveInput
         {
@@ -151,6 +163,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             {
                 horizontalInput = 0f;
                 verticalInput = 0f;
+                manualInputState = default;
                 hasExternalMoveOverride = false;
                 externalMoveOverride = Vector2.zero;
                 if (body != null)
@@ -219,6 +232,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
                 return;
 
             var inputState = isInputBlockedExternally ? default : ReadInputState();
+            manualInputState = inputState;
             if (hasExternalMoveOverride)
             {
                 horizontalInput = externalMoveOverride.x;
