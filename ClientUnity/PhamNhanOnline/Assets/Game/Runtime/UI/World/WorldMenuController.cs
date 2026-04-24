@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
+using PhamNhanOnline.Client.Features.World.Application;
 using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
@@ -53,6 +55,9 @@ namespace PhamNhanOnline.Client.UI.World
         [Header("Header")]
         [SerializeField] private TMP_Text titleText;
 
+        [Header("Zone")]
+        [SerializeField] private UIButtonView zoneButton;
+
         [Header("Tabs")]
         [SerializeField] private string defaultTabId = QuestTabId;
         [SerializeField] private List<WorldMenuTabBinding> tabs = new List<WorldMenuTabBinding>(5);
@@ -63,6 +68,9 @@ namespace PhamNhanOnline.Client.UI.World
         private bool isRegistered;
         private bool isInitialized;
         private string activeTabId = string.Empty;
+        private int? zoneSupportMapId;
+        private bool zoneSwitchSupported;
+        private bool zoneSupportQueryInFlight;
         public static bool IsAnyMenuOpen
         {
             get
@@ -99,6 +107,7 @@ namespace PhamNhanOnline.Client.UI.World
         {
             TryRegisterScreen();
             TryBindRuntimeEvents();
+            RefreshZoneButtonAvailability();
 
             if (IsMenuVisible)
             {
@@ -225,6 +234,7 @@ namespace PhamNhanOnline.Client.UI.World
                 panelRoot = gameObject;
 
             WireUI();
+            ApplyZoneButtonVisibility(false);
             RefreshAllTabContent();
 
             activeTabId = ResolveInitialTabId();
@@ -267,7 +277,10 @@ namespace PhamNhanOnline.Client.UI.World
         private void HandleConnectionStateChanged(PhamNhanOnline.Client.Network.Session.ClientConnectionState state)
         {
             if (state == PhamNhanOnline.Client.Network.Session.ClientConnectionState.Disconnected)
+            {
+                ResetZoneAvailability();
                 HideMenu();
+            }
         }
 
         private void HandleCharacterCurrentStateChanged(CharacterCurrentStateChangeNotice notice)
@@ -328,6 +341,80 @@ namespace PhamNhanOnline.Client.UI.World
             }
 
             return BuildStatsContent();
+        }
+
+        private void RefreshZoneButtonAvailability()
+        {
+            if (zoneButton == null)
+                return;
+
+            if (!ClientRuntime.IsInitialized || !ClientRuntime.World.CurrentMapId.HasValue)
+            {
+                ResetZoneAvailability();
+                ApplyZoneButtonVisibility(false);
+                return;
+            }
+
+            var currentMapId = ClientRuntime.World.CurrentMapId.Value;
+            if (zoneSupportMapId.HasValue && zoneSupportMapId.Value == currentMapId)
+            {
+                ApplyZoneButtonVisibility(zoneSwitchSupported);
+                return;
+            }
+
+            ApplyZoneButtonVisibility(false);
+            if (!zoneSupportQueryInFlight)
+                _ = RefreshZoneSupportAsync(currentMapId);
+        }
+
+        private async System.Threading.Tasks.Task RefreshZoneSupportAsync(int mapId)
+        {
+            if (zoneSupportQueryInFlight || !ClientRuntime.IsInitialized)
+                return;
+
+            zoneSupportQueryInFlight = true;
+            try
+            {
+                var result = await ClientRuntime.WorldTravelService.GetMapZonesAsync(mapId);
+                if (!ClientRuntime.IsInitialized ||
+                    !ClientRuntime.World.CurrentMapId.HasValue ||
+                    ClientRuntime.World.CurrentMapId.Value != mapId)
+                {
+                    return;
+                }
+
+                zoneSupportMapId = mapId;
+                zoneSwitchSupported = SupportsZoneSwitching(result);
+                ApplyZoneButtonVisibility(zoneSwitchSupported);
+            }
+            finally
+            {
+                zoneSupportQueryInFlight = false;
+            }
+        }
+
+        private static bool SupportsZoneSwitching(MapZonesQueryResult result)
+        {
+            if (!result.Success)
+                return false;
+
+            if (result.MaxZoneCount.HasValue)
+                return result.MaxZoneCount.Value > 1;
+
+            return result.Zones != null && result.Zones.Count(zone => zone.IsActive) > 1;
+        }
+
+        private void ResetZoneAvailability()
+        {
+            zoneSupportMapId = null;
+            zoneSwitchSupported = false;
+            zoneSupportQueryInFlight = false;
+        }
+
+        private void ApplyZoneButtonVisibility(bool visible)
+        {
+            if (zoneButton != null && zoneButton.gameObject.activeSelf != visible)
+                zoneButton.gameObject.SetActive(visible);
         }
 
         private static string BuildStatsContent()
