@@ -68,10 +68,12 @@ public sealed class EnemyDefinitionCatalog
                     x.Code,
                     x.Name,
                     (EnemyKind)x.Kind,
+                    (EnemyAiBehavior)x.AiBehavior,
                     x.MaxHp,
                     x.BaseAttack,
                     (float)x.BaseMoveSpeed,
-                    (float)x.PatrolRadius,
+                    (float)x.PatrolPauseSecondsMin,
+                    (float)x.PatrolPauseSecondsMax,
                     (float)x.DetectionRadius,
                     (float)x.CombatRadius,
                     x.EnableOutOfCombatRestore,
@@ -114,6 +116,8 @@ public sealed class EnemyDefinitionCatalog
                             Math.Max(0, x.InitialSpawnDelaySeconds),
                             new Vector2(x.CenterX, x.CenterY),
                             Math.Max(0f, x.SpawnRadius),
+                            Math.Max(0f, x.PatrolRadius),
+                            (EnemyPatrolRouteType)x.PatrolRouteType,
                             x.Description,
                             entriesByGroupId.GetValueOrDefault(x.Id, Array.Empty<MapEnemySpawnEntryDefinition>())))
                         .ToArray()));

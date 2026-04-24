@@ -46,86 +46,246 @@ public sealed partial class MapInstance
             if (!monster.IsAlive)
                 continue;
 
-            if (monster.HasCombatTarget())
+            var shouldBroadcastDecision = monster.AdvancePatrolMovement(utcNow);
+            var spawnState = _spawnStateByGroupId[monster.SpawnGroupId];
+            if (shouldBroadcastDecision &&
+                monster.State == EnemyRuntimeState.Patrol &&
+                monster.MovementMode == EnemyMovementMode.None)
             {
-                if (!monster.CombatTargetPlayerId.HasValue ||
-                    !_playersById.TryGetValue(monster.CombatTargetPlayerId.Value, out var targetPlayer) ||
-                    !targetPlayer.IsConnected ||
-                    targetPlayer.InstanceId != InstanceId ||
-                    CharacterRuntimeStateCodes.IsDefeated(targetPlayer.RuntimeState.CaptureSnapshot().CurrentState))
-                {
-                    monster.ReturnToPatrol();
-                    _pendingEnemyHpChanges.Enqueue(new EnemyHpChangedRuntimeEvent(
-                        monster.Id,
-                        monster.Hp,
-                        monster.MaxHp,
-                        monster.State));
-                    continue;
-                }
+                monster.WaitAtCurrentPosition(monster.RollPatrolPauseSeconds(_random), utcNow);
+            }
 
-                var combatRadiusSquared = monster.Definition.CombatRadius * monster.Definition.CombatRadius;
-                if (Vector2.DistanceSquared(monster.Position, targetPlayer.Position) > combatRadiusSquared)
+            if (monster.State == EnemyRuntimeState.Combat)
+            {
+                PlayerSession? targetPlayer;
+                if (!TryResolveCombatTargetUnsafe(monster, utcNow, out targetPlayer))
                 {
-                    monster.ReturnToPatrol();
-                    _pendingEnemyHpChanges.Enqueue(new EnemyHpChangedRuntimeEvent(
-                        monster.Id,
-                        monster.Hp,
-                        monster.MaxHp,
-                        monster.State));
-                    continue;
+                    shouldBroadcastDecision |= monster.ReturnToPatrol(utcNow);
                 }
-
-                if (monster.TryConsumeAttackWindow(utcNow, out var selectedSkill))
+                else
                 {
-                    if (selectedSkill is not null)
+                    shouldBroadcastDecision |= monster.EnterCombat(targetPlayer.PlayerId, utcNow);
+                    if (monster.TryConsumeAttackWindow(utcNow, out var selectedSkill))
                     {
-                        _pendingEnemySkillCastRequests.Enqueue(new EnemySkillCastRequestRuntimeEvent(
-                            monster.Id,
-                            targetPlayer.PlayerId,
-                            selectedSkill.SkillId,
-                            Math.Max(0, selectedSkill.OrderIndex)));
-                    }
-                    else
-                    {
-                        _pendingPlayerDamages.Enqueue(new PlayerDamageRuntimeEvent(
-                            targetPlayer.PlayerId,
-                            monster.Id,
-                            Math.Max(1, monster.GetEffectiveAttack(utcNow))));
+                        if (selectedSkill is not null)
+                        {
+                            _pendingEnemySkillCastRequests.Enqueue(new EnemySkillCastRequestRuntimeEvent(
+                                monster.Id,
+                                targetPlayer.PlayerId,
+                                selectedSkill.SkillId,
+                                Math.Max(0, selectedSkill.OrderIndex)));
+                        }
+                        else
+                        {
+                            _pendingPlayerDamages.Enqueue(new PlayerDamageRuntimeEvent(
+                                targetPlayer.PlayerId,
+                                monster.Id,
+                                Math.Max(1, monster.GetEffectiveAttack(utcNow))));
+                        }
                     }
                 }
             }
 
+            if (monster.State == EnemyRuntimeState.Patrol)
+            {
+                if (monster.Definition.AiBehavior == EnemyAiBehavior.Aggressive &&
+                    TryAcquireAggressiveTargetUnsafe(monster, out var aggressiveTarget))
+                {
+                    shouldBroadcastDecision |= monster.EnterCombat(aggressiveTarget.PlayerId, utcNow);
+                }
+                else if (monster.ShouldChooseNewPatrolDestination(utcNow))
+                {
+                    shouldBroadcastDecision |= TryScheduleNextPatrolDecisionUnsafe(monster, spawnState, utcNow);
+                }
+            }
+
             if (!monster.LastDamagedAtUtc.HasValue)
+            {
+                if (shouldBroadcastDecision)
+                    _pendingEnemyMovementDecisions.Enqueue(new EnemyMovementDecisionRuntimeEvent(monster));
+
                 continue;
+            }
 
             if (!monster.Definition.EnableOutOfCombatRestore)
+            {
+                if (shouldBroadcastDecision)
+                    _pendingEnemyMovementDecisions.Enqueue(new EnemyMovementDecisionRuntimeEvent(monster));
+
                 continue;
+            }
 
             var restoreDelaySeconds = Math.Max(0, monster.Definition.OutOfCombatRestoreDelaySeconds);
-            if (restoreDelaySeconds <= 0)
-                continue;
+            if (restoreDelaySeconds <= 0 || utcNow - monster.LastDamagedAtUtc.Value < TimeSpan.FromSeconds(restoreDelaySeconds))
+            {
+                if (shouldBroadcastDecision)
+                    _pendingEnemyMovementDecisions.Enqueue(new EnemyMovementDecisionRuntimeEvent(monster));
 
-            if (utcNow - monster.LastDamagedAtUtc.Value < TimeSpan.FromSeconds(restoreDelaySeconds))
                 continue;
+            }
 
             if (monster.Definition.Kind == EnemyKind.Boss)
             {
-                monster.ReturnToPatrol();
+                shouldBroadcastDecision |= monster.ReturnToPatrol(utcNow);
                 _pendingEnemyHpChanges.Enqueue(new EnemyHpChangedRuntimeEvent(
                     monster.Id,
                     monster.Hp,
                     monster.MaxHp,
                     monster.State));
-                continue;
+            }
+            else
+            {
+                var resetChanged = monster.RestoreFullHealth(utcNow);
+                _pendingEnemyHpChanges.Enqueue(new EnemyHpChangedRuntimeEvent(
+                    monster.Id,
+                    monster.Hp,
+                    monster.MaxHp,
+                    monster.State));
+                shouldBroadcastDecision |= resetChanged;
             }
 
-            monster.RestoreFullHealth(utcNow);
-            _pendingEnemyHpChanges.Enqueue(new EnemyHpChangedRuntimeEvent(
-                monster.Id,
-                monster.Hp,
-                monster.MaxHp,
-                monster.State));
+            if (shouldBroadcastDecision)
+                _pendingEnemyMovementDecisions.Enqueue(new EnemyMovementDecisionRuntimeEvent(monster));
         }
+    }
+
+    private bool TryResolveCombatTargetUnsafe(MonsterEntity monster, DateTime utcNow, out PlayerSession targetPlayer)
+    {
+        targetPlayer = null!;
+
+        var combatRadius = ResolveEffectiveCombatRadius(monster);
+        if (combatRadius <= 0f)
+            return false;
+
+        Guid? pendingAggroOverridePlayerId = monster.PeekPendingAggroOverridePlayerId();
+        if (pendingAggroOverridePlayerId.HasValue &&
+            TryGetValidPlayerInRangeUnsafe(monster, pendingAggroOverridePlayerId.Value, combatRadius, out targetPlayer))
+        {
+            monster.ClearPendingAggroOverride(pendingAggroOverridePlayerId);
+            return true;
+        }
+
+        monster.ClearPendingAggroOverride(pendingAggroOverridePlayerId);
+
+        if (monster.Definition.AiBehavior == EnemyAiBehavior.Passive)
+        {
+            return monster.CombatTargetPlayerId.HasValue &&
+                   TryGetValidPlayerInRangeUnsafe(monster, monster.CombatTargetPlayerId.Value, combatRadius, out targetPlayer);
+        }
+
+        return TryFindNearestPlayerInRangeUnsafe(monster, combatRadius, out targetPlayer);
+    }
+
+    private bool TryAcquireAggressiveTargetUnsafe(MonsterEntity monster, out PlayerSession targetPlayer)
+    {
+        targetPlayer = null!;
+        var aggroRadius = ResolveEffectiveAggroRadius(monster);
+        return aggroRadius > 0f && TryFindNearestPlayerInRangeUnsafe(monster, aggroRadius, out targetPlayer);
+    }
+
+    private float ResolveEffectiveAggroRadius(MonsterEntity monster)
+    {
+        var detectionRadius = Math.Max(0f, monster.Definition.DetectionRadius);
+        var combatRadius = Math.Max(0f, monster.Definition.CombatRadius);
+        if (detectionRadius <= 0f)
+            return combatRadius;
+
+        if (combatRadius <= 0f)
+            return detectionRadius;
+
+        return Math.Min(detectionRadius, combatRadius);
+    }
+
+    private float ResolveEffectiveCombatRadius(MonsterEntity monster)
+    {
+        return ResolveEffectiveAggroRadius(monster);
+    }
+
+    private bool TryGetValidPlayerInRangeUnsafe(
+        MonsterEntity monster,
+        Guid playerId,
+        float range,
+        out PlayerSession targetPlayer)
+    {
+        targetPlayer = null!;
+        if (!_playersById.TryGetValue(playerId, out var player))
+            return false;
+
+        if (!IsValidEnemyTargetUnsafe(monster, player, range))
+            return false;
+
+        targetPlayer = player;
+        return true;
+    }
+
+    private bool TryFindNearestPlayerInRangeUnsafe(
+        MonsterEntity monster,
+        float range,
+        out PlayerSession targetPlayer)
+    {
+        targetPlayer = null!;
+        var rangeSquared = range * range;
+        var bestDistanceSquared = float.MaxValue;
+        foreach (var candidate in _playersById.Values)
+        {
+            if (!IsValidEnemyTargetUnsafe(monster, candidate, range))
+                continue;
+
+            var distanceSquared = Vector2.DistanceSquared(monster.Position, candidate.Position);
+            if (distanceSquared >= bestDistanceSquared)
+                continue;
+
+            bestDistanceSquared = distanceSquared;
+            targetPlayer = candidate;
+        }
+
+        return targetPlayer != null && bestDistanceSquared <= rangeSquared;
+    }
+
+    private bool IsValidEnemyTargetUnsafe(MonsterEntity monster, PlayerSession candidate, float range)
+    {
+        if (!candidate.IsConnected ||
+            candidate.InstanceId != InstanceId ||
+            candidate.MapId != MapId ||
+            CharacterRuntimeStateCodes.IsDefeated(candidate.RuntimeState.CaptureSnapshot().CurrentState))
+        {
+            return false;
+        }
+
+        var rangeSquared = range * range;
+        return Vector2.DistanceSquared(monster.Position, candidate.Position) <= rangeSquared;
+    }
+
+    private bool TryScheduleNextPatrolDecisionUnsafe(MonsterEntity monster, SpawnGroupRuntimeState spawnState, DateTime utcNow)
+    {
+        if (!monster.IsWithinPatrolArea())
+            return monster.StartMovingTo(Definition.ClampPosition(monster.GetPatrolCenterPosition()), monster.Definition.BaseMoveSpeed, utcNow);
+
+        if (spawnState.Group.PatrolRouteType == EnemyPatrolRouteType.Horizontal &&
+            monster.TryGetNextHorizontalPatrolTarget(out var horizontalTarget))
+        {
+            return monster.StartMovingTo(Definition.ClampPosition(horizontalTarget), monster.Definition.BaseMoveSpeed, utcNow);
+        }
+
+        var patrolRadius = Math.Max(0f, spawnState.Group.PatrolRadius);
+        if (patrolRadius <= 0f || monster.Definition.BaseMoveSpeed <= 0f)
+            return monster.WaitAtCurrentPosition(monster.RollPatrolPauseSeconds(_random), utcNow);
+
+        var randomTarget = ResolveRandomPatrolTarget(monster.GetPatrolCenterPosition(), patrolRadius);
+        return monster.StartMovingTo(Definition.ClampPosition(randomTarget), monster.Definition.BaseMoveSpeed, utcNow);
+    }
+
+    private Vector2 ResolveRandomPatrolTarget(Vector2 centerPosition, float patrolRadius)
+    {
+        if (patrolRadius <= 0f)
+            return centerPosition;
+
+        var angle = (_random.NextInt(3600) / 10f) * (MathF.PI / 180f);
+        var distance = patrolRadius * MathF.Sqrt(_random.NextInt(10_000) / 10_000f);
+        var position = new Vector2(
+            centerPosition.X + MathF.Cos(angle) * distance,
+            centerPosition.Y + MathF.Sin(angle) * distance);
+        return Definition.ClampPosition(position);
     }
 
     private void UpdateSkillExecutionsUnsafe(DateTime utcNow)
@@ -186,7 +346,7 @@ public sealed partial class MapInstance
         var enemyTemplateId = ResolveWeightedEnemyTemplateId(state.Group.Entries);
         var definition = state.EnemyDefinitions[enemyTemplateId];
         var position = ResolveSpawnPosition(state.Group);
-        var enemy = new MonsterEntity(_nextMonsterId++, state.Group.Id, definition, position, utcNow);
+        var enemy = new MonsterEntity(_nextMonsterId++, state.Group.Id, definition, state.Group, position, utcNow);
         Monsters.Add(enemy);
         state.AliveEnemyIds.Add(enemy.Id);
         _pendingEnemySpawns.Enqueue(new EnemySpawnRuntimeEvent(enemy));

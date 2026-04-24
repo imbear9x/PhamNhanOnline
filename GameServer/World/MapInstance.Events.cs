@@ -44,6 +44,14 @@ public sealed partial class MapInstance
         }
     }
 
+    public IReadOnlyCollection<EnemyMovementDecisionRuntimeEvent> DequeuePendingEnemyMovementDecisions()
+    {
+        lock (_sync)
+        {
+            return DrainQueueUnsafe(_pendingEnemyMovementDecisions);
+        }
+    }
+
     public IReadOnlyCollection<GroundRewardSpawnRuntimeEvent> DequeuePendingGroundRewardSpawns()
     {
         lock (_sync)
@@ -129,6 +137,8 @@ public readonly record struct EnemyHpChangedRuntimeEvent(
     int CurrentHp,
     int MaxHp,
     EnemyRuntimeState RuntimeState);
+
+public sealed record EnemyMovementDecisionRuntimeEvent(MonsterEntity Enemy);
 
 public sealed record GroundRewardSpawnRuntimeEvent(GroundRewardEntity Reward);
 

@@ -70,10 +70,26 @@ internal static class AdminDependencyCatalog
             [
                 Check("Equipment template", "select count(*) from public.equipment_templates;", "Can tao it nhat 1 Equipment Template truoc khi them Equipment Template Stats.")
             ],
+            ["equipment_template_skill_grants"] =
+            [
+                Check("Equipment template", "select count(*) from public.equipment_templates;", "Can tao it nhat 1 Equipment Template truoc khi them Equipment Skill Grants."),
+                Check("Skill", "select count(*) from public.skills;", "Can tao it nhat 1 Skill truoc khi them Equipment Skill Grants.")
+            ],
             ["player_items"] =
             [
                 Check("Character", "select count(*) from public.characters;", "Can tao it nhat 1 Character truoc khi them Player Items."),
                 Check("Item template", "select count(*) from public.item_templates;", "Can tao it nhat 1 Item Template truoc khi them Player Items.")
+            ],
+            ["character_base_stats"] =
+            [
+                Check("Character", "select count(*) from public.characters;", "Can tao it nhat 1 Character truoc khi them Character Base Stats."),
+                Check("Realm template", "select count(*) from public.realm_templates;", "Can tao it nhat 1 Realm Template truoc khi them Character Base Stats.")
+            ],
+            ["player_skill_grant_sources"] =
+            [
+                Check("Character", "select count(*) from public.characters;", "Can tao it nhat 1 Character truoc khi them Player Skill Grant Sources."),
+                Check("Player skill", "select count(*) from public.player_skills;", "Can tao it nhat 1 Player Skill truoc khi them Player Skill Grant Sources."),
+                Check("Skill", "select count(*) from public.skills;", "Can tao it nhat 1 Skill truoc khi them Player Skill Grant Sources.")
             ],
             ["player_equipments"] =
             [

@@ -65,6 +65,24 @@ public enum EnemyRuntimeState
     Dead = 4
 }
 
+public enum EnemyAiBehavior
+{
+    Passive = 1,
+    Aggressive = 2
+}
+
+public enum EnemyPatrolRouteType
+{
+    Random = 1,
+    Horizontal = 2
+}
+
+public enum EnemyMovementMode
+{
+    None = 0,
+    MoveToPoint = 1
+}
+
 public enum MapInstanceCloseReason
 {
     Expired = 1,
@@ -94,10 +112,12 @@ public sealed record EnemyDefinition(
     string Code,
     string Name,
     EnemyKind Kind,
+    EnemyAiBehavior AiBehavior,
     int MaxHp,
     int BaseAttack,
     float BaseMoveSpeed,
-    float PatrolRadius,
+    float PatrolPauseSecondsMin,
+    float PatrolPauseSecondsMax,
     float DetectionRadius,
     float CombatRadius,
     bool EnableOutOfCombatRestore,
@@ -130,6 +150,8 @@ public sealed record MapEnemySpawnGroupDefinition(
     int InitialSpawnDelaySeconds,
     Vector2 CenterPosition,
     float SpawnRadius,
+    float PatrolRadius,
+    EnemyPatrolRouteType PatrolRouteType,
     string? Description,
     IReadOnlyList<MapEnemySpawnEntryDefinition> Entries);
 

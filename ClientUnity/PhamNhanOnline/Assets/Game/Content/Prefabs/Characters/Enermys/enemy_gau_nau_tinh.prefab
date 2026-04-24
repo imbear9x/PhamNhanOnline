@@ -156,10 +156,12 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3879275371256251249}
+  - component: {fileID: 7777000000000000003}
   - component: {fileID: 4321474490210473762}
   - component: {fileID: 3727199274881311225}
-  - component: {fileID: 7777000000000000002}
-  - component: {fileID: 6899297339345967606}
+  - component: {fileID: 275417931468559828}
+  - component: {fileID: 5322800695587582694}
+  - component: {fileID: 7466736670320346382}
   m_Layer: 7
   m_Name: enemy_gau_nau_tinh
   m_TagString: Untagged
@@ -186,6 +188,19 @@ Transform:
   - {fileID: 2259377953169244701}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7777000000000000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6915535442127511761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbc9dd514761e6340b3cbcb7314c4f30, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  groundContactAnchor: {fileID: 2259377953169244701}
 --- !u!70 &4321474490210473762
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -218,8 +233,8 @@ CapsuleCollider2D:
   m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 0.003563106, y: 0.27036777}
-  m_Size: {x: 0.7085935, y: 0.93965465}
+  m_Offset: {x: 0.003563106, y: 0.04292053}
+  m_Size: {x: 0.7085935, y: 0.8538136}
   m_Direction: 0
 --- !u!114 &3727199274881311225
 MonoBehaviour:
@@ -231,12 +246,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 143bb60b5acb7094c98577db46710a6d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   visualRoot: {fileID: 7546681620866935169}
-  targetable: {fileID: 0}
+  targetable: {fileID: 5322800695587582694}
+  movementView: {fileID: 7466736670320346382}
+  skillPresenter: {fileID: 275417931468559828}
+  movementConfig: {fileID: 11400000, guid: 980196c983704fa4ae3861cbf5372c2c, type: 2}
   hideWhenDead: 1
-  groundSnapBindings: {fileID: 7777000000000000002}
+  groundSnapBindings: {fileID: 7777000000000000003}
   snapToGround: 1
   groundLayerMask:
     serializedVersion: 2
@@ -245,20 +263,8 @@ MonoBehaviour:
   groundProbeDistance: 12
   groundContactOffset: 0
   logGroundingDiagnostics: 0
---- !u!114 &7777000000000000002
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6915535442127511761}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dbc9dd514761e6340b3cbcb7314c4f30, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  groundContactAnchor: {fileID: 2259377953169244701}
---- !u!114 &6899297339345967606
+  movementSnapDistanceWorldUnits: 0.75
+--- !u!114 &275417931468559828
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -268,14 +274,44 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1d11201fa2d55b543866f277391acd3a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   playerView: {fileID: 0}
   visualRoot: {fileID: 7546681620866935169}
   animator: {fileID: 0}
   sockets: {fileID: 0}
-  worldTargetable: {fileID: 0}
+  worldTargetable: {fileID: 5322800695587582694}
   visualFacesLeftByDefault: 1
+--- !u!114 &5322800695587582694
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6915535442127511761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bcb09f48f4fb4552ab5f353ce4a4d22e, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  targetKind: 2
+  targetId:
+  displayNameOverride:
+  interactionCollider: {fileID: 4321474490210473762}
+  autoCreateInteractionCollider: 1
+  autoColliderPadding: {x: 0.15, y: 0.15}
+--- !u!114 &7466736670320346382
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6915535442127511761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e50f72bb1a8c4c84ab0a7380ea26de9d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
 --- !u!1 &7607352987235677024
 GameObject:
   m_ObjectHideFlags: 0
@@ -301,7 +337,7 @@ Transform:
   m_GameObject: {fileID: 7607352987235677024}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.436, z: 0}
+  m_LocalPosition: {x: 0, y: -0.351, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

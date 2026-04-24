@@ -11,46 +11,47 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     public sealed class RemoteCharacterPresenter : MonoBehaviour
     {
         private const string MoveSpeedParameterName = "MoveSpeed";
-        private const float DefaultPacketIntervalSeconds = 0.10f;
-        private const float MinPacketIntervalSeconds = 0.05f;
-        private const float MaxPacketIntervalSeconds = 0.60f;
-        private const float PacketIntervalBlendFactor = 0.35f;
-        private const float MinInterpolationDurationSeconds = 0.04f;
-        private const float MaxInterpolationDurationSeconds = 0.50f;
 
         [SerializeField] private PlayerView playerView;
         [SerializeField] private Transform visualRoot;
         [SerializeField] private Animator animator;
+        [SerializeField] private WorldTargetable targetable;
+        [SerializeField] private CharacterSkillPresenter skillPresenter;
+        [SerializeField] private WorldEntityMovementView movementView;
+        [SerializeField] private LocalCharacterActionController localActionController;
+        [SerializeField] private CharacterActionInputSource[] localInputSourcesToDisable;
+        [SerializeField] private Rigidbody2D body;
+        [SerializeField] private Collider2D bodyCollider;
         [SerializeField] private bool visualFacesLeftByDefault = true;
         [SerializeField] private float moveSmoothing = 14f;
         [SerializeField] private float animationMoveThreshold = 0.02f;
         [SerializeField] private float animationHoldDuration = 0.12f;
-        private Vector3 targetPosition;
-        private float currentMoveSpeed;
-        private float lastSnapshotReceivedAt = -1f;
-        private float estimatedPacketInterval = DefaultPacketIntervalSeconds;
-        private bool hasTargetPosition;
+        private Vector3 lastObservedPosition;
         private float visualDefaultScaleX = 1f;
         private bool facingLeft = true;
         private bool hasMoveSpeedParameter;
         private int moveSpeedParameterHash;
         private bool warnedPositionMapping;
         private float moveAnimationTimer;
-        private WorldTargetable targetable;
-        private CharacterSkillPresenter skillPresenter;
+        private bool hasObservedPosition;
         private bool warnedMissingSkillPresenter;
+        private bool warnedMissingMovementView;
+        private bool warnedMissingTargetable;
+        private bool warnedMissingVisualRoot;
+        private bool warnedMissingAnimator;
         private float teleportSnapDistance = 3f;
 
         public void Initialize(float smoothing, float snapDistance)
         {
             moveSmoothing = Mathf.Max(0.01f, smoothing);
             teleportSnapDistance = Mathf.Max(0.1f, snapDistance);
-            AutoWireReferences();
+            ValidateRequiredReferences();
             DisableLocalOnlyComponents();
             CacheAnimatorParameters();
 
-            if (visualRoot != null)
-                visualDefaultScaleX = visualRoot.localScale.x;
+            var resolvedVisualRoot = ResolveVisualRoot();
+            if (resolvedVisualRoot != null)
+                visualDefaultScaleX = resolvedVisualRoot.localScale.x;
 
             facingLeft = visualFacesLeftByDefault;
             ApplyFacing();
@@ -58,7 +59,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         public void ApplySnapshot(ObservedCharacterModel observedCharacter, WorldMapPresenter worldMapPresenter, bool snap)
         {
-            AutoWireReferences();
+            if (!ValidateRequiredReferences())
+                return;
+
             ConfigureTargetable(observedCharacter);
 
             Vector2 worldPosition;
@@ -85,12 +88,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void Awake()
         {
-            AutoWireReferences();
+            ValidateRequiredReferences();
             DisableLocalOnlyComponents();
             CacheAnimatorParameters();
 
-            if (visualRoot != null)
-                visualDefaultScaleX = visualRoot.localScale.x;
+            var resolvedVisualRoot = ResolveVisualRoot();
+            if (resolvedVisualRoot != null)
+                visualDefaultScaleX = resolvedVisualRoot.localScale.x;
 
             facingLeft = visualFacesLeftByDefault;
             ApplyFacing();
@@ -98,30 +102,31 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void Update()
         {
-            if (!hasTargetPosition)
+            if (movementView == null || !movementView.HasPosition)
                 return;
 
             var currentPosition = transform.position;
-            var nextPosition = Vector3.MoveTowards(
-                currentPosition,
-                targetPosition,
-                currentMoveSpeed * Time.deltaTime);
-
-            if ((targetPosition - nextPosition).sqrMagnitude <= animationMoveThreshold * animationMoveThreshold)
+            if (!hasObservedPosition)
             {
-                nextPosition = targetPosition;
-                currentMoveSpeed = 0f;
+                lastObservedPosition = currentPosition;
+                hasObservedPosition = true;
             }
 
-            transform.position = nextPosition;
-            UpdateFacingAndAnimation(currentPosition, nextPosition);
+            UpdateFacingAndAnimation(lastObservedPosition, currentPosition);
+            lastObservedPosition = currentPosition;
         }
 
         private void SetTargetPosition(Vector2 worldPosition, bool snap)
         {
+            if (movementView == null)
+            {
+                LogMissingMovementView();
+                return;
+            }
+
             var newTargetPosition = new Vector3(worldPosition.x, worldPosition.y, transform.position.z);
-            var movementDelta = hasTargetPosition
-                ? newTargetPosition - targetPosition
+            var movementDelta = movementView.HasPosition
+                ? newTargetPosition - movementView.TargetPosition
                 : newTargetPosition - transform.position;
 
             if (movementDelta.x > animationMoveThreshold)
@@ -129,63 +134,22 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             else if (movementDelta.x < -animationMoveThreshold)
                 facingLeft = true;
 
-            targetPosition = newTargetPosition;
-            hasTargetPosition = true;
-
             if (movementDelta.sqrMagnitude > animationMoveThreshold * animationMoveThreshold)
                 moveAnimationTimer = animationHoldDuration;
 
-            var shouldSnap = snap;
-            if (!shouldSnap)
+            var snapped = movementView.FollowSnapshot(
+                newTargetPosition,
+                snap,
+                moveSmoothing,
+                teleportSnapDistance,
+                animationMoveThreshold);
+            if (snapped)
             {
-                var teleportDistance = Mathf.Max(animationMoveThreshold, teleportSnapDistance);
-                var currentToTargetDistance = Vector3.Distance(transform.position, targetPosition);
-                shouldSnap = currentToTargetDistance >= teleportDistance;
+                moveAnimationTimer = 0f;
+                SyncMoveAnimation(false);
+                lastObservedPosition = transform.position;
+                hasObservedPosition = true;
             }
-
-            if (!shouldSnap)
-            {
-                UpdateMoveSpeedForCurrentTarget();
-                return;
-            }
-
-            transform.position = targetPosition;
-            currentMoveSpeed = 0f;
-            lastSnapshotReceivedAt = Time.unscaledTime;
-            moveAnimationTimer = 0f;
-            SyncMoveAnimation(false);
-        }
-
-        private void UpdateMoveSpeedForCurrentTarget()
-        {
-            var now = Time.unscaledTime;
-            if (lastSnapshotReceivedAt > 0f)
-            {
-                var measuredInterval = Mathf.Clamp(
-                    now - lastSnapshotReceivedAt,
-                    MinPacketIntervalSeconds,
-                    MaxPacketIntervalSeconds);
-                estimatedPacketInterval = Mathf.Lerp(
-                    estimatedPacketInterval,
-                    measuredInterval,
-                    PacketIntervalBlendFactor);
-            }
-            else
-            {
-                estimatedPacketInterval = DefaultPacketIntervalSeconds;
-            }
-
-            lastSnapshotReceivedAt = now;
-
-            var speedScale = Mathf.Clamp(14f / Mathf.Max(0.01f, moveSmoothing), 0.35f, 2f);
-            var interpolationDuration = Mathf.Clamp(
-                estimatedPacketInterval * speedScale,
-                MinInterpolationDurationSeconds,
-                MaxInterpolationDurationSeconds);
-            var distanceToTarget = Vector3.Distance(transform.position, targetPosition);
-            currentMoveSpeed = interpolationDuration > Mathf.Epsilon
-                ? distanceToTarget / interpolationDuration
-                : 0f;
         }
 
         private void UpdateFacingAndAnimation(Vector3 previousPosition, Vector3 nextPosition)
@@ -199,7 +163,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             ApplyFacing();
 
             var isMovingThisFrame = Mathf.Abs(deltaX) > animationMoveThreshold;
-            var remainingDistance = Vector3.Distance(nextPosition, targetPosition);
+            var remainingDistance = movementView != null
+                ? Vector3.Distance(nextPosition, movementView.TargetPosition)
+                : 0f;
             var isChasingTarget = remainingDistance > animationMoveThreshold;
 
             if (isMovingThisFrame || isChasingTarget)
@@ -212,15 +178,17 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void SyncMoveAnimation(bool isMoving)
         {
-            if (animator == null || !hasMoveSpeedParameter)
+            var resolvedAnimator = ResolveAnimator();
+            if (resolvedAnimator == null || !hasMoveSpeedParameter)
                 return;
 
-            animator.SetFloat(moveSpeedParameterHash, isMoving ? 1f : 0f);
+            resolvedAnimator.SetFloat(moveSpeedParameterHash, isMoving ? 1f : 0f);
         }
 
         private void ApplyFacing()
         {
-            if (visualRoot == null)
+            var resolvedVisualRoot = ResolveVisualRoot();
+            if (resolvedVisualRoot == null)
                 return;
 
             if (Mathf.Approximately(visualDefaultScaleX, 0f))
@@ -230,41 +198,46 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 ? visualDefaultScaleX
                 : -visualDefaultScaleX;
 
-            var scale = visualRoot.localScale;
+            var scale = resolvedVisualRoot.localScale;
             scale.x = targetScaleX;
-            visualRoot.localScale = scale;
+            resolvedVisualRoot.localScale = scale;
         }
 
         private void DisableLocalOnlyComponents()
         {
-            var localActionController = GetComponent<LocalCharacterActionController>();
             if (localActionController != null)
                 localActionController.enabled = false;
 
-            var inputSources = GetComponents<CharacterActionInputSource>();
-            for (var i = 0; i < inputSources.Length; i++)
-                inputSources[i].enabled = false;
-
-            var body = playerView != null ? playerView.Body : GetComponent<Rigidbody2D>();
-            if (body != null)
+            if (localInputSourcesToDisable != null)
             {
-                body.velocity = Vector2.zero;
-                body.angularVelocity = 0f;
-                // Keep the rigidbody in the 2D physics world so trigger-based target
-                // colliders can still be hit by OverlapPoint queries.
-                body.bodyType = RigidbodyType2D.Kinematic;
-                body.gravityScale = 0f;
-                body.simulated = true;
+                for (var i = 0; i < localInputSourcesToDisable.Length; i++)
+                {
+                    if (localInputSourcesToDisable[i] != null)
+                        localInputSourcesToDisable[i].enabled = false;
+                }
             }
 
-            var bodyCollider = playerView != null ? playerView.BodyCollider : GetComponent<Collider2D>();
-            if (bodyCollider != null)
-                bodyCollider.enabled = false;
+            var resolvedBody = body != null ? body : playerView != null ? playerView.Body : null;
+            if (resolvedBody != null)
+            {
+                resolvedBody.velocity = Vector2.zero;
+                resolvedBody.angularVelocity = 0f;
+                // Keep the rigidbody in the 2D physics world so trigger-based target
+                // colliders can still be hit by OverlapPoint queries.
+                resolvedBody.bodyType = RigidbodyType2D.Kinematic;
+                resolvedBody.gravityScale = 0f;
+                resolvedBody.simulated = true;
+            }
+
+            var resolvedBodyCollider = bodyCollider != null ? bodyCollider : playerView != null ? playerView.BodyCollider : null;
+            if (resolvedBodyCollider != null)
+                resolvedBodyCollider.enabled = false;
         }
 
         private void CacheAnimatorParameters()
         {
-            if (animator == null)
+            var resolvedAnimator = ResolveAnimator();
+            if (resolvedAnimator == null)
             {
                 hasMoveSpeedParameter = false;
                 moveSpeedParameterHash = 0;
@@ -273,7 +246,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             moveSpeedParameterHash = Animator.StringToHash(MoveSpeedParameterName);
             hasMoveSpeedParameter = false;
-            var parameters = animator.parameters;
+            var parameters = resolvedAnimator.parameters;
             for (var i = 0; i < parameters.Length; i++)
             {
                 var parameter = parameters[i];
@@ -285,40 +258,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
         }
 
-        private void AutoWireReferences()
-        {
-            if (targetable == null)
-                targetable = GetComponent<WorldTargetable>();
-
-            if (skillPresenter == null)
-                skillPresenter = GetComponent<CharacterSkillPresenter>();
-
-            if (playerView == null)
-                playerView = GetComponent<PlayerView>();
-
-            if (playerView != null)
-            {
-                if (visualRoot == null)
-                    visualRoot = playerView.VisualRoot;
-                if (animator == null)
-                    animator = playerView.Animator;
-            }
-
-            if (visualRoot == null)
-            {
-                var child = transform.Find("VisualRoot");
-                visualRoot = child != null ? child : transform;
-            }
-
-            if (animator == null)
-                animator = GetComponentInChildren<Animator>(true);
-
-        }
-
         private void ConfigureTargetable(ObservedCharacterModel observedCharacter)
         {
             if (targetable == null)
-                targetable = gameObject.AddComponent<WorldTargetable>();
+            {
+                LogMissingTargetable();
+                return;
+            }
 
             var handle = WorldTargetHandle.CreateObservedCharacter(observedCharacter.Character.CharacterId);
             targetable.Configure(handle);
@@ -328,7 +274,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 if (!warnedMissingSkillPresenter)
                 {
                     ClientLog.Error(
-                        $"RemoteCharacterPresenter requires CharacterSkillPresenter on prefab '{gameObject.name}'. Add the component to the remote player prefab instead of relying on runtime AddComponent.");
+                        $"RemoteCharacterPresenter requires CharacterSkillPresenter on prefab '{gameObject.name}'. Assign the reference on the prefab.");
                     warnedMissingSkillPresenter = true;
                 }
 
@@ -337,6 +283,86 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             skillPresenter.ConfigureCharacter(observedCharacter.Character.CharacterId);
             skillPresenter.ConfigureTargetHandle(handle);
+        }
+
+        private bool ValidateRequiredReferences()
+        {
+            var valid = true;
+            if (targetable == null)
+            {
+                LogMissingTargetable();
+                valid = false;
+            }
+
+            if (movementView == null)
+            {
+                LogMissingMovementView();
+                valid = false;
+            }
+
+            if (skillPresenter == null)
+            {
+                if (!warnedMissingSkillPresenter)
+                {
+                    ClientLog.Error(
+                        $"RemoteCharacterPresenter requires CharacterSkillPresenter on prefab '{gameObject.name}'. Add the component to the remote player prefab and assign the reference.");
+                    warnedMissingSkillPresenter = true;
+                }
+
+                valid = false;
+            }
+
+            if (ResolveVisualRoot() == null)
+            {
+                if (!warnedMissingVisualRoot)
+                {
+                    ClientLog.Error($"RemoteCharacterPresenter on '{gameObject.name}' requires Visual Root reference or PlayerView.VisualRoot.");
+                    warnedMissingVisualRoot = true;
+                }
+
+                valid = false;
+            }
+
+            if (ResolveAnimator() == null)
+            {
+                if (!warnedMissingAnimator)
+                {
+                    ClientLog.Error($"RemoteCharacterPresenter on '{gameObject.name}' requires Animator reference or PlayerView.Animator.");
+                    warnedMissingAnimator = true;
+                }
+
+                valid = false;
+            }
+
+            return valid;
+        }
+
+        private Transform ResolveVisualRoot()
+        {
+            return visualRoot != null ? visualRoot : playerView != null ? playerView.VisualRoot : null;
+        }
+
+        private Animator ResolveAnimator()
+        {
+            return animator != null ? animator : playerView != null ? playerView.Animator : null;
+        }
+
+        private void LogMissingTargetable()
+        {
+            if (warnedMissingTargetable)
+                return;
+
+            ClientLog.Error($"RemoteCharacterPresenter on '{gameObject.name}' requires WorldTargetable reference.");
+            warnedMissingTargetable = true;
+        }
+
+        private void LogMissingMovementView()
+        {
+            if (warnedMissingMovementView)
+                return;
+
+            ClientLog.Error($"RemoteCharacterPresenter on '{gameObject.name}' requires WorldEntityMovementView reference.");
+            warnedMissingMovementView = true;
         }
     }
 }

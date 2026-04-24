@@ -219,9 +219,11 @@ namespace PhamNhanOnline.Client.Features.World.Application
 
         public void UpsertEnemy(EnemyRuntimeModel enemy)
         {
+            var isNewEnemy = !enemies.ContainsKey(enemy.RuntimeId);
             enemies[enemy.RuntimeId] = enemy;
             NotifyEnemyUpserted(enemy);
-            NotifyEnemiesChanged();
+            if (isNewEnemy)
+                NotifyEnemiesChanged();
         }
 
         public void RemoveEnemy(int runtimeId)

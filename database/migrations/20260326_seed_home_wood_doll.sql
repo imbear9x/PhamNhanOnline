@@ -8,7 +8,6 @@ INSERT INTO public.enemy_templates (
     max_hp,
     base_attack,
     base_move_speed,
-    patrol_radius,
     detection_radius,
     combat_radius,
     enable_out_of_combat_restore,
@@ -27,7 +26,6 @@ VALUES (
     0,
     0,
     0,
-    0,
     true,
     20,
     1000,
@@ -41,7 +39,6 @@ SET
     max_hp = EXCLUDED.max_hp,
     base_attack = EXCLUDED.base_attack,
     base_move_speed = EXCLUDED.base_move_speed,
-    patrol_radius = EXCLUDED.patrol_radius,
     detection_radius = EXCLUDED.detection_radius,
     combat_radius = EXCLUDED.combat_radius,
     enable_out_of_combat_restore = EXCLUDED.enable_out_of_combat_restore,
@@ -50,6 +47,9 @@ SET
     cultivation_reward_total = EXCLUDED.cultivation_reward_total,
     potential_reward_total = EXCLUDED.potential_reward_total,
     description = EXCLUDED.description;
+
+ALTER TABLE public.map_enemy_spawn_groups
+    ADD COLUMN IF NOT EXISTS patrol_radius real NOT NULL DEFAULT 0;
 
 INSERT INTO public.map_enemy_spawn_groups (
     id,
@@ -66,6 +66,7 @@ INSERT INTO public.map_enemy_spawn_groups (
     center_x,
     center_y,
     spawn_radius,
+    patrol_radius,
     description)
 VALUES (
     3003,
@@ -82,6 +83,7 @@ VALUES (
     500,
     125,
     0,
+    0,
     'Sinh 1 nguoi rom trong dong phu rieng cua moi nhan vat.')
 ON CONFLICT (code) DO UPDATE
 SET
@@ -97,6 +99,7 @@ SET
     center_x = EXCLUDED.center_x,
     center_y = EXCLUDED.center_y,
     spawn_radius = EXCLUDED.spawn_radius,
+    patrol_radius = EXCLUDED.patrol_radius,
     description = EXCLUDED.description;
 
 INSERT INTO public.map_enemy_spawn_entries (

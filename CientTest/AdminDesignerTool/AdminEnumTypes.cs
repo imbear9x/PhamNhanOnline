@@ -50,7 +50,6 @@ internal enum CombatSkillType
 
 internal enum SkillCategory
 {
-    Basic = 1,
     Normal = 2,
     Special = 3
 }
@@ -296,6 +295,12 @@ internal enum EnemyKind
     Boss = 3
 }
 
+internal enum EnemyAiBehavior
+{
+    Passive = 1,
+    Aggressive = 2
+}
+
 internal enum MapSpawnRuntimeScope
 {
     Any = 0,
@@ -309,6 +314,12 @@ internal enum EnemySpawnMode
     Timer = 1,
     Objective = 2,
     Manual = 3
+}
+
+internal enum EnemyPatrolRouteType
+{
+    Random = 1,
+    Horizontal = 2
 }
 
 internal enum RewardDeliveryType
@@ -330,7 +341,8 @@ internal enum PlayerSkillSourceType
     MartialArtUnlock = 2,
     ItemUse = 3,
     QuestReward = 4,
-    SystemGrant = 5
+    SystemGrant = 5,
+    EquipmentGrant = 6
 }
 
 internal enum InstanceMode

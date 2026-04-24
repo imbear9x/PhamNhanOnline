@@ -124,6 +124,16 @@ public sealed class WorldInterestService
         });
     }
 
+    public void NotifyEnemyMovementDecision(MapInstance instance, MonsterEntity enemy)
+    {
+        BroadcastToInstancePlayers(instance, new EnemyMovementDecisionPacket
+        {
+            MapId = instance.MapId,
+            InstanceId = instance.InstanceId,
+            Enemy = enemy.ToModel()
+        });
+    }
+
     public void NotifySkillCastStarted(MapInstance instance, PendingSkillExecution execution)
     {
         BroadcastToInstancePlayers(instance, new SkillCastStartedPacket

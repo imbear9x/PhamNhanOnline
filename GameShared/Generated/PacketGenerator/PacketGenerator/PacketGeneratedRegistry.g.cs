@@ -311,6 +311,9 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.SwapSkillLoadoutSlotsResultPacket:
                 id = 101;
                 return true;
+            case global::GameShared.Packets.EnemyMovementDecisionPacket:
+                id = 102;
+                return true;
             default:
                 id = default;
                 return false;
@@ -422,6 +425,7 @@ internal static class PacketGeneratedRegistry
             99 => new global::GameShared.Packets.OwnedSkillsChangedPacket(),
             100 => new global::GameShared.Packets.SwapSkillLoadoutSlotsPacket(),
             101 => new global::GameShared.Packets.SwapSkillLoadoutSlotsResultPacket(),
+            102 => new global::GameShared.Packets.EnemyMovementDecisionPacket(),
             _ => null
         };
     }

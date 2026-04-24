@@ -32,6 +32,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
             connection.Packets.Subscribe<EnemySpawnedPacket>(HandleEnemySpawned);
             connection.Packets.Subscribe<EnemyDespawnedPacket>(HandleEnemyDespawned);
             connection.Packets.Subscribe<EnemyHpChangedPacket>(HandleEnemyHpChanged);
+            connection.Packets.Subscribe<EnemyMovementDecisionPacket>(HandleEnemyMovementDecision);
             connection.Packets.Subscribe<GroundRewardSpawnedPacket>(HandleGroundRewardSpawned);
             connection.Packets.Subscribe<GroundRewardDespawnedPacket>(HandleGroundRewardDespawned);
             connection.Packets.Subscribe<CharacterCurrentStateChangedPacket>(HandleCharacterCurrentStateChanged);
@@ -130,6 +131,14 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 packet.CurrentHp,
                 packet.MaxHp,
                 packet.RuntimeState);
+        }
+
+        private void HandleEnemyMovementDecision(EnemyMovementDecisionPacket packet)
+        {
+            if (!packet.Enemy.HasValue)
+                return;
+
+            worldState.UpsertEnemy(packet.Enemy.Value);
         }
 
         private void HandleGroundRewardSpawned(GroundRewardSpawnedPacket packet)

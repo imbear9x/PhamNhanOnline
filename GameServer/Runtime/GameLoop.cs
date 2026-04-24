@@ -220,6 +220,9 @@ public sealed class GameLoop
         foreach (var spawn in instance.DequeuePendingEnemySpawns())
             _interestService.NotifyEnemySpawned(instance, spawn.Enemy);
 
+        foreach (var movementDecision in instance.DequeuePendingEnemyMovementDecisions())
+            _interestService.NotifyEnemyMovementDecision(instance, movementDecision.Enemy);
+
         foreach (var hpChanged in instance.DequeuePendingEnemyHpChanges())
             _interestService.NotifyEnemyHpChanged(instance, hpChanged);
 

@@ -19,5 +19,5 @@ MonoBehaviour:
   - code: enemy_soi_lang_bang
     prefab: {fileID: 6915535442127511761, guid: 72cc811c897499f4faf924f2f6f49698, type: 3}
   - code: enemy_gau_nau_tinh
-    prefab: {fileID: 6915535442127511761, guid: 0c9de6765fbf0e449b7857dcc72361ae, type: 3}
+    prefab: {fileID: 6915535442127511761, guid: 866264fb8d96a6d458d937b568bd1dd0, type: 3}
   templateOverrides: []

@@ -433,7 +433,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             if (actionConfig == null)
                 return Mathf.Max(0f, serverUnits);
 
-            return Mathf.Max(0f, serverUnits) * Mathf.Max(0f, actionConfig.ServerMoveSpeedScale);
+            return actionConfig.ConvertServerUnitsToWorldUnits(serverUnits);
         }
 
         private bool CanUseFlight()

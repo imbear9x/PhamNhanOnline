@@ -16,4 +16,9 @@ public struct EnemyRuntimeModel
     public float PosX;
     public float PosY;
     public int SpawnGroupId;
+    public int MovementDecisionVersion;
+    public int MovementMode;
+    public float MovementTargetPosX;
+    public float MovementTargetPosY;
+    public float MovementSpeed;
 }

@@ -420,6 +420,8 @@ dotnet run --project CientTest/TestClient/TestClient.csproj
 - đây là tool local nối DB thật, chưa có auth/permission
 - mọi thay đổi schema/table hỗ trợ trong tool phải cân nhắc tác động lên designer workflow
 - enum trong tool hiện được mirror local để build độc lập với `GameServer`
+- moi field DB dang luu enum/int-code ma admin phai nhap tay phai co `AdminColumnBinding` voi `enumType` hoac lookup dropdown; khong de designer nhap so tho neu co enum ro rang trong code
+- moi field moi hoac enum moi dua vao Admin Tool phai co help/tooltip trong `AdminFieldHelpCatalog`, giai thich nghia tung mode/value de tranh seed sai data
 
 ### Workflow
 

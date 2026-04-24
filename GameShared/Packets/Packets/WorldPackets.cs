@@ -185,6 +185,15 @@ public partial class EnemyHpChangedPacket : IPacket
     public int? RuntimeState { get; set; }
 }
 
+[Packet(102)]
+[PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
+public partial class EnemyMovementDecisionPacket : IPacket
+{
+    public int? MapId { get; set; }
+    public int? InstanceId { get; set; }
+    public EnemyRuntimeModel? Enemy { get; set; }
+}
+
 [Packet(51)]
 [PacketTransport(PacketTransportMode.ReliableOrdered, PacketTrafficClass.StateSync)]
 public partial class GroundRewardSpawnedPacket : IPacket

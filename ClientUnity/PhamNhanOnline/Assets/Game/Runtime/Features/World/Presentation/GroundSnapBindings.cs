@@ -9,7 +9,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         public Transform GroundContactAnchor
         {
-            get { return groundContactAnchor != null ? groundContactAnchor : transform.Find("GroundContactAnchor"); }
+            get { return groundContactAnchor; }
         }
     }
 }

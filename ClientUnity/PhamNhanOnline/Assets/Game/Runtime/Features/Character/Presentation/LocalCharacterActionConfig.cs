@@ -77,6 +77,11 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             get { return groundCheckRadius; }
         }
 
+        public float ConvertServerUnitsToWorldUnits(float serverUnits)
+        {
+            return Mathf.Max(0f, serverUnits) * Mathf.Max(0f, serverMoveSpeedScale);
+        }
+
         public static LocalCharacterActionConfig CreateRuntimeDefaults()
         {
             var config = CreateInstance<LocalCharacterActionConfig>();

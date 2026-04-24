@@ -750,6 +750,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             var itemTemplates = resourcesByKey["item_templates"];
             var equipmentTemplates = resourcesByKey["equipment_templates"];
             var equipmentStats = resourcesByKey["equipment_template_stats"];
+            var equipmentSkillGrants = resourcesByKey["equipment_template_skill_grants"];
 
             return new WorkspaceDefinition(
                 new AdminTableLoadRequest(
@@ -804,7 +805,6 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                             NewRowDefaults: new Dictionary<string, object?>
                             {
                                 ["item_template_id"] = parentId,
-                                ["slot_type"] = 1,
                                 ["equipment_type"] = 1,
                                 ["level_requirement"] = 1
                             });
@@ -833,6 +833,28 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                             });
                         },
                         () => BuildEmptyRequest(equipmentStats, "Chon mot item template equipment o bang tren de xem base stat.")),
+                    new WorkspaceChildDefinition(
+                        "Skill Grants",
+                        parentRow =>
+                        {
+                            var parentId = GetRequiredInt(parentRow, "id");
+                            return new AdminTableLoadRequest(
+                                equipmentSkillGrants,
+                                SelectSql: $"""
+                                    select *
+                                    from public.equipment_template_skill_grants
+                                    where equipment_template_id = {parentId}
+                                    order by display_order, id;
+                                    """,
+                                DescriptionOverride: $"Chi hien thi skill grant cua equipment item_template_id = {parentId}.",
+                                HelpTextOverride: "Khi bam Them Dong, tool se tu dien equipment_template_id theo item template dang chon. Moi row la mot skill duoc grant khi mac equipment nay.",
+                                NewRowDefaults: new Dictionary<string, object?>
+                                {
+                                    ["equipment_template_id"] = parentId,
+                                    ["display_order"] = 0
+                                });
+                        },
+                        () => BuildEmptyRequest(equipmentSkillGrants, "Chon mot item template equipment o bang tren de xem skill grant.")),
                 ]);
         }
 
@@ -1350,6 +1372,7 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
             IReadOnlyDictionary<string, AdminResourceDefinition> resourcesByKey)
         {
             var characters = resourcesByKey["characters"];
+            var characterBaseStats = resourcesByKey["character_base_stats"];
             var playerItems = resourcesByKey["player_items"];
             var playerEquipments = resourcesByKey["player_equipments"];
             var playerEquipmentBonuses = resourcesByKey["player_equipment_stat_bonuses"];
@@ -1379,6 +1402,60 @@ internal sealed class MasterDetailWorkspaceControl : UserControl
                         - Một player_item là item instance thật. Bonus stat riêng phải bám theo player_item_id, không bám theo item_template_id.
                         """),
                 [
+                    new WorkspaceChildDefinition(
+                        "Base Stats",
+                        parentRow =>
+                        {
+                            var characterId = GetRequiredGuid(parentRow, "id");
+                            var characterIdSql = ToSqlLiteral(characterId);
+                            var characterName = Convert.ToString(parentRow["name"], CultureInfo.InvariantCulture) ?? "(Khong ten)";
+
+                            return new AdminTableLoadRequest(
+                                characterBaseStats,
+                                SelectSql: $"""
+                                    select *
+                                    from public.character_base_stats
+                                    where character_id = {characterIdSql}
+                                    order by character_id;
+                                    """,
+                                DescriptionOverride: $"Chi hien thi base stat runtime cua nhan vat {characterName}.",
+                                HelpTextOverride: """
+                                    Base stat la row runtime gan truc tiep voi character dang chon.
+
+                                    Cac field hay sua de test movement/combat:
+                                    - base_move_speed: toc do di chuyen server gui xuong client.
+                                    - base_speed: chi so Speed trong stat/combat/progression.
+                                    - realm_id, cultivation, cultivation_progress: tien do tu luyen.
+
+                                    Khi bam Them Dong, tool se tu dien character_id va cac default theo CharacterCreateConfig hien tai.
+                                    """,
+                                NewRowDefaults: new Dictionary<string, object?>
+                                {
+                                    ["character_id"] = characterId,
+                                    ["realm_id"] = 1,
+                                    ["cultivation"] = 0L,
+                                    ["base_hp"] = 100,
+                                    ["base_mp"] = 100,
+                                    ["base_attack"] = 10,
+                                    ["base_move_speed"] = 300.0m,
+                                    ["base_speed"] = 100,
+                                    ["base_sense"] = 10,
+                                    ["base_stamina"] = 100,
+                                    ["lifespan_bonus"] = 0,
+                                    ["base_luck"] = 0.01d,
+                                    ["base_potential"] = 0,
+                                    ["unallocated_potential"] = 0,
+                                    ["hp_upgrade_count"] = 0,
+                                    ["mp_upgrade_count"] = 0,
+                                    ["attack_upgrade_count"] = 0,
+                                    ["speed_upgrade_count"] = 0,
+                                    ["sense_upgrade_count"] = 0,
+                                    ["luck_upgrade_count"] = 0,
+                                    ["cultivation_progress"] = 0m,
+                                    ["potential_reward_locked"] = false
+                                });
+                        },
+                        () => BuildEmptyRequest(characterBaseStats, "Chon mot nhan vat o bang tren de xem base stats cua nhan vat do.")),
                     new WorkspaceChildDefinition(
                         "Player Items",
                         parentRow =>

@@ -226,6 +226,25 @@ internal static class AdminColumnBindingCatalog
             order by pi.id desc;
             """;
 
+        const string playerItemLookupSql = """
+            select pi.id as value,
+                   '[' || pi.id || '] ' || coalesce(c.name, '(ground)') || ' - ' || it.name as display
+            from public.player_items pi
+            inner join public.item_templates it on it.id = pi.item_template_id
+            left join public.characters c on c.id = pi.player_id
+            order by pi.id desc;
+            """;
+
+        const string playerSkillLookupSql = """
+            select
+                ps.id as value,
+                '[' || ps.id || '] ' || c.name || ' - ' || s.code || ' [' || s.skill_group_code || ' Lv.' || s.skill_level || ']' as display
+            from public.player_skills ps
+            inner join public.characters c on c.id = ps.player_id
+            inner join public.skills s on s.id = ps.skill_id
+            order by c.name, ps.id;
+            """;
+
         const string craftRecipeLookupSql = """
             select id as value, code || ' - ' || name as display
             from public.craft_recipes
@@ -235,6 +254,12 @@ internal static class AdminColumnBindingCatalog
         const string spiritualEnergyTemplateLookupSql = """
             select id as value, code || ' - ' || name as display
             from public.spiritual_energy_templates
+            order by id;
+            """;
+
+        const string realmTemplateLookupSql = """
+            select id as value, name || ' (ID ' || id || ')' as display
+            from public.realm_templates
             order by id;
             """;
 
@@ -299,6 +324,7 @@ internal static class AdminColumnBindingCatalog
             """;
 
         Add("martial_arts", "icon", headerText: "Icon Key Công Pháp");
+        Add("martial_arts", "quality", headerText: "Pham Chat", enumType: typeof(ItemRarity));
         Add("martial_arts", "qi_absorption_rate", headerText: "Hệ Số Hấp Thụ Linh Khí");
         Add("martial_art_stages", "martial_art_id", lookupSql: martialArtLookupSql);
         Add("martial_art_stage_stat_bonuses", "martial_art_stage_id", lookupSql: martialArtStageLookupSql);
@@ -330,19 +356,33 @@ internal static class AdminColumnBindingCatalog
         Add("player_skills", "source_type", headerText: "Nguon Skill", enumType: typeof(PlayerSkillSourceType));
         Add("player_skills", "source_martial_art_id", headerText: "Cong Phap Nguon", lookupSql: martialArtLookupSql);
         Add("player_skills", "source_martial_art_skill_id", headerText: "Unlock Skill Nguon", lookupSql: martialArtSkillLookupSql);
+        Add("player_skills", "source_player_item_id", headerText: "Item Instance Nguon", lookupSql: playerItemLookupSql);
 
         Add("item_templates", "item_type", enumType: typeof(ItemType));
         Add("item_templates", "rarity", enumType: typeof(ItemRarity));
 
         Add("characters", "account_id", headerText: "Tai Khoan", lookupSql: accountLookupSql);
+        Add("character_base_stats", "character_id", headerText: "Nhan Vat", lookupSql: characterLookupSql);
+        Add("character_base_stats", "realm_id", headerText: "Canh Gioi", lookupSql: realmTemplateLookupSql);
+        Add("character_base_stats", "base_move_speed", headerText: "Base Move Speed");
+        Add("character_base_stats", "base_speed", headerText: "Base Speed");
+        Add("character_base_stats", "base_sense", headerText: "Base Sense");
+        Add("character_base_stats", "base_luck", headerText: "Base Luck");
+        Add("character_base_stats", "unallocated_potential", headerText: "Diem Potential Chua Dung");
+        Add("character_base_stats", "speed_upgrade_count", headerText: "So Lan Nang Speed");
+        Add("character_base_stats", "sense_upgrade_count", headerText: "So Lan Nang Sense");
+        Add("character_base_stats", "luck_upgrade_count", headerText: "So Lan Nang Luck");
+        Add("character_base_stats", "active_martial_art_id", headerText: "Cong Phap Dang Active", lookupSql: martialArtLookupSql);
 
         Add("equipment_templates", "item_template_id", lookupSql: equipmentItemTemplateLookupSql);
-        Add("equipment_templates", "slot_type", enumType: typeof(EquipmentSlot));
         Add("equipment_templates", "equipment_type", enumType: typeof(EquipmentType));
 
         Add("equipment_template_stats", "equipment_template_id", lookupSql: equipmentTemplateLookupSql);
         Add("equipment_template_stats", "stat_type", enumType: typeof(CharacterStatType));
         Add("equipment_template_stats", "value_type", enumType: typeof(CombatValueType));
+        Add("equipment_template_skill_grants", "equipment_template_id", headerText: "Equipment Template", lookupSql: equipmentTemplateLookupSql);
+        Add("equipment_template_skill_grants", "skill_id", headerText: "Skill Grant", lookupSql: skillLookupSql);
+        Add("equipment_template_skill_grants", "required_realm_template_id", headerText: "Canh Gioi Yeu Cau", lookupSql: realmTemplateLookupSql);
 
         Add("martial_art_book_templates", "item_template_id", lookupSql: martialArtBookItemTemplateLookupSql);
         Add("martial_art_book_templates", "martial_art_id", lookupSql: martialArtLookupSql);
@@ -371,6 +411,7 @@ internal static class AdminColumnBindingCatalog
         Add("game_random_fortune_tags", "game_random_table_id", lookupSql: gameRandomTableLookupSql);
 
         Add("enemy_templates", "kind", enumType: typeof(EnemyKind));
+        Add("enemy_templates", "ai_behavior", headerText: "AI Behavior", enumType: typeof(EnemyAiBehavior));
         Add("enemy_templates", "base_move_speed", headerText: "Base Move Speed");
         Add("enemy_templates", "enable_out_of_combat_restore", headerText: "Tu Hoi Mau Ngoai Combat");
         Add("enemy_templates", "out_of_combat_restore_delay_seconds", headerText: "Delay Hoi Mau Ngoai Combat");
@@ -384,6 +425,7 @@ internal static class AdminColumnBindingCatalog
         Add("map_enemy_spawn_groups", "map_template_id", lookupSql: mapTemplateLookupSql);
         Add("map_enemy_spawn_groups", "runtime_scope", enumType: typeof(MapSpawnRuntimeScope));
         Add("map_enemy_spawn_groups", "spawn_mode", enumType: typeof(EnemySpawnMode));
+        Add("map_enemy_spawn_groups", "patrol_route_type", headerText: "Kieu Patrol", enumType: typeof(EnemyPatrolRouteType));
         Add("map_enemy_spawn_entries", "spawn_group_id", lookupSql: enemySpawnGroupLookupSql);
         Add("map_enemy_spawn_entries", "enemy_template_id", lookupSql: enemyTemplateLookupSql);
         Add("map_instance_configs", "map_template_id", lookupSql: mapTemplateLookupSql);
@@ -431,6 +473,13 @@ internal static class AdminColumnBindingCatalog
         Add("player_equipment_stat_bonuses", "stat_type", headerText: "Chi So", enumType: typeof(CharacterStatType));
         Add("player_equipment_stat_bonuses", "value_type", headerText: "Kieu Gia Tri", enumType: typeof(CombatValueType));
         Add("player_equipment_stat_bonuses", "source_type", headerText: "Nguon Bonus", enumType: typeof(EquipmentBonusSourceType));
+
+        Add("player_skill_grant_sources", "player_id", headerText: "Nhan Vat", lookupSql: characterLookupSql);
+        Add("player_skill_grant_sources", "player_skill_id", headerText: "Player Skill", lookupSql: playerSkillLookupSql);
+        Add("player_skill_grant_sources", "source_type", headerText: "Nguon Skill", enumType: typeof(PlayerSkillSourceType));
+        Add("player_skill_grant_sources", "granted_skill_id", headerText: "Skill Duoc Grant", lookupSql: skillLookupSql);
+        Add("player_skill_grant_sources", "source_player_item_id", headerText: "Item Instance Nguon", lookupSql: playerItemLookupSql);
+        Add("player_skill_grant_sources", "source_equipment_template_id", headerText: "Equipment Template Nguon", lookupSql: equipmentTemplateLookupSql);
 
         return result;
     }

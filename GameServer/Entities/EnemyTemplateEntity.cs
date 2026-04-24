@@ -9,10 +9,12 @@ public sealed class EnemyTemplateEntity
     [Column("code"), NotNull] public string Code { get; set; } = string.Empty;
     [Column("name"), NotNull] public string Name { get; set; } = string.Empty;
     [Column("kind"), NotNull] public int Kind { get; set; }
+    [Column("ai_behavior"), NotNull] public int AiBehavior { get; set; }
     [Column("max_hp"), NotNull] public int MaxHp { get; set; }
     [Column("base_attack"), NotNull] public int BaseAttack { get; set; }
     [Column("base_move_speed"), NotNull] public decimal BaseMoveSpeed { get; set; }
-    [Column("patrol_radius"), NotNull] public decimal PatrolRadius { get; set; }
+    [Column("patrol_pause_seconds_min"), NotNull] public decimal PatrolPauseSecondsMin { get; set; }
+    [Column("patrol_pause_seconds_max"), NotNull] public decimal PatrolPauseSecondsMax { get; set; }
     [Column("detection_radius"), NotNull] public decimal DetectionRadius { get; set; }
     [Column("combat_radius"), NotNull] public decimal CombatRadius { get; set; }
     [Column("enable_out_of_combat_restore"), NotNull] public bool EnableOutOfCombatRestore { get; set; }

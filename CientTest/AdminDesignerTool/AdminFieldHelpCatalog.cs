@@ -150,6 +150,19 @@ internal static class AdminFieldHelpCatalog
 
             ["characters.account_id"] = "Tài khoản sở hữu nhân vật này.\nTrong tool đã có lookup sang tên đăng nhập hoặc credential để dễ đọc hơn UUID gốc.",
 
+            ["martial_arts.quality"] = "Pham chat cua cong phap.\nDung cung thang voi item rarity hien tai: Common, Uncommon, Rare, Epic, Legendary.\nNen chon tu dropdown de tranh nhap sai so.",
+
+            ["character_base_stats.character_id"] = "Character ma row base stat nay thuoc ve.\nMoi character chi nen co toi da mot row trong character_base_stats vi character_id la khoa chinh.",
+            ["character_base_stats.realm_id"] = "Canh gioi hien tai cua nhan vat.\nNen chon tu Realm Templates thay vi go tay ID.",
+            ["character_base_stats.base_move_speed"] = "Toc do di chuyen goc cua character trong runtime movement.\nServer dung gia tri nay de tinh/serialize movement xuong client.\nDefault tao nhan vat hien tai trong CharacterCreateConfig la 300.0.",
+            ["character_base_stats.base_speed"] = "Chi so Speed trong he stat/progression/combat cua character.\nKhac voi base_move_speed: field nay la stat logic, khong phai truc tiep toc do world movement.",
+            ["character_base_stats.base_sense"] = "Chi so Sense goc cua character, dung cho progression/stat tong hop.",
+            ["character_base_stats.base_luck"] = "Chi so Luck goc cua character.\nQuy uoc hien tai dung so thuc nho, vi du 0.01.",
+            ["character_base_stats.unallocated_potential"] = "So diem potential chua phan bo cua character.",
+            ["character_base_stats.speed_upgrade_count"] = "So lan da nang nhom Speed bang potential.\nGia tri nay anh huong cach runtime tinh tier/chi phi nang tiep theo.",
+            ["character_base_stats.active_martial_art_id"] = "Cong phap dang active cua character neu co.\nDe trong neu nhan vat chua active cong phap nao.",
+            ["character_base_stats.potential_reward_locked"] = "Khoa co che phat potential reward cho character nay.\nThuong de false khi seed nhan vat test moi.",
+
             ["player_items.player_id"] = "Nhân vật sở hữu item instance này.\nNếu item đang ở túi hoặc đang mặc thì phải trỏ tới đúng character.\nNếu item đang ở dưới đất thì thường để trống.",
             ["player_items.item_template_id"] = "Template gốc của item instance.\nVí dụ: cùng là `Kim Huyền Kiếm` thì nhiều player_item khác nhau vẫn có thể cùng trỏ về một item_template_id.",
             ["player_items.location_type"] = "Vị trí logic hiện tại của item instance.\nDùng `Inventory` cho item trong túi, `Ground` cho item đang nằm dưới đất, các loại khác dành cho phase sau như mail hoặc storage.",
@@ -167,6 +180,19 @@ internal static class AdminFieldHelpCatalog
             ["player_equipment_stat_bonuses.value"] = "Giá trị bonus riêng của món.\nVí dụ: `10` nếu muốn cộng thêm 10 Attack khi value_type là Flat.",
             ["player_equipment_stat_bonuses.value_type"] = "Cách hiểu giá trị bonus.\nĐể test nhanh, nên dùng `Flat` trước cho dễ kiểm tra trên UI và runtime.",
             ["player_equipment_stat_bonuses.source_type"] = "Nguồn của bonus riêng.\nVí dụ: `DropBonus` cho đồ rơi biến dị, `CraftBonus` cho đồ chế tạo, `RefineBonus` cho luyện hóa.",
+
+            ["equipment_templates.equipment_type"] = "Loai equipment logic.\nEnum hien tai: `Sword`, `Bow`, `Armor`, `Pants`, `Shoes`.\nField `slot_type` da bi drop; slot mac do duoc suy ra tu equipment_type/runtime rule.",
+            ["equipment_template_skill_grants.equipment_template_id"] = "Equipment template se grant skill khi duoc mac.\nNen tao Equipment Core truoc, sau do them skill grant o tab Skill Grants.",
+            ["equipment_template_skill_grants.skill_id"] = "Skill duoc grant khi mac equipment nay.\nNen chon tu dropdown de dung dung row skill/cap skill.",
+            ["equipment_template_skill_grants.required_realm_template_id"] = "Canh gioi toi thieu de skill grant co hieu luc.\nDe trong neu equipment grant skill khong can check canh gioi.",
+            ["equipment_template_skill_grants.display_order"] = "Thu tu hien thi/xu ly cua skill grant tren cung mot equipment.\nDung so tang dan nhu 0, 10, 20 de chen them sau nay de hon.",
+
+            ["player_skill_grant_sources.source_type"] = "Nguon cap skill runtime.\nManual/MartialArtUnlock la nguon truc tiep cua player_skills; EquipmentGrant dung cho skill den tu trang bi.",
+            ["player_skill_grant_sources.source_player_item_id"] = "Item instance cu the dang tao ra skill grant neu source_type = EquipmentGrant.\nDe trong voi cac nguon khong den tu item instance.",
+            ["player_skill_grant_sources.source_equipment_template_id"] = "Equipment template goc tao ra skill grant neu source_type = EquipmentGrant.\nDung de trace skill grant den tu loai trang bi nao.",
+
+            ["craft_recipes.cost_currency_type"] = "Loai currency cost cua recipe.\nRuntime craft hien tai chua noi currency cost; neu field nay co gia tri va cost_currency_value > 0 thi CraftService se chan craft.\nKhuyen nghi de trong/null cho den khi currency system duoc chot enum/source ro rang.",
+            ["craft_recipes.cost_currency_value"] = "So luong currency cost cua recipe.\nRuntime craft hien tai chua noi currency cost; de `0` neu khong muon recipe bi chan boi validation.",
 
             ["pill_templates.item_template_id"] = "Chọn item đại diện cho viên đan này.\nVí dụ: chọn Item Template `hoi_linh_dan`.\nĐiều kiện: trước đó phải có Item Template phù hợp, thường là loại `Consumable`.",
             ["pill_templates.pill_category"] = "Nhóm đan dược.\nVí dụ: `Recovery` cho đan hồi phục, `Buff` cho đan tăng chỉ số, `Breakthrough` cho đan hỗ trợ đột phá.",
@@ -203,10 +229,19 @@ internal static class AdminFieldHelpCatalog
             ["skill_effects.duration_ms"] = "Thời lượng effect tính bằng mili giây.\nBắt buộc với `Stun`, `BuffStat`, `DebuffStat` nếu muốn effect tồn tại theo thời gian.\nVới `Shield`, để trống nghĩa là lá chắn tồn tại tới khi bị phá hết.\nDuration chỉ là config tĩnh; buff runtime không lưu vĩnh viễn xuống DB.",
             ["skill_effects.value_type"] = "Cách hiểu giá trị của effect.\nAllowed hiện tại: `Flat`, `Ratio`, `Percent`.\nField này chủ yếu có nghĩa với `BuffStat`/`DebuffStat`.\nVới damage/heal/resource, phase hiện tại server chủ yếu đọc magnitude từ `formula_type`, `base_value`, `ratio_value`; `value_type` gần như không tham gia tính toán chính.",
             ["enemy_templates.base_move_speed"] = "Tốc độ di chuyển gốc của enemy/boss theo đơn vị logic server trên mỗi giây.\nVề sau client có thể quy đổi sang world units theo tỉ lệ map để biểu diễn movement.\nVí dụ: `100` nghĩa là 10 giây đi hết chiều ngang một map rộng 1000 đơn vị nếu không có modifier khác.",
+            ["enemy_templates.ai_behavior"] = "Hanh vi AI cua enemy.\n`Passive` = chi patrol/idle, khong tu chu dong duoi danh nguoi choi.\n`Aggressive` = co the tu tim/duoi muc tieu trong vung cam nhan theo runtime AI.",
+            ["enemy_templates.patrol_pause_seconds_min"] = "Thoi gian dung toi thieu giua hai lan enemy chon diem patrol tiep theo.\nDung don vi giay. De `0` neu muon enemy di tiep ngay.",
+            ["enemy_templates.patrol_pause_seconds_max"] = "Thoi gian dung toi da giua hai lan enemy chon diem patrol tiep theo.\nNen lon hon hoac bang patrol_pause_seconds_min.",
             ["enemy_templates.enable_out_of_combat_restore"] = "Bật/tắt cơ chế enemy tự hồi đầy máu sau khi thoát combat đủ lâu.\nNên bật cho quái thường hoặc hình nộm luyện tập nếu muốn reset máu tự động.\nCó thể tắt cho boss để tránh đánh lâu rồi bị hồi full máu.",
             ["enemy_templates.out_of_combat_restore_delay_seconds"] = "Số giây kể từ lần bị đánh cuối cùng để enemy tự hồi đầy máu và quay về Patrol.\nVí dụ: `20` nghĩa là nếu 20 giây không bị đánh nữa thì sẽ reset full máu.\nTrường này chỉ có ý nghĩa khi `enable_out_of_combat_restore = true`.",
+            ["map_enemy_spawn_groups.patrol_radius"] = "Ban kinh patrol quanh tam spawn cua group.\nRandom: enemy chon diem ngau nhien quanh center trong ban kinh nay.\nHorizontal: enemy di giua hai diem `center_x - patrol_radius` va `center_x + patrol_radius` tren cung center_y.",
+            ["map_enemy_spawn_groups.patrol_route_type"] = "Kieu patrol cua spawn group.\n`Random` = chon diem ngau nhien quanh center trong patrol_radius.\n`Horizontal` = di trai/phai quanh center, hai dau cach center dung patrol_radius.",
+            ["map_enemy_spawn_groups.spawn_radius"] = "Ban kinh random vi tri spawn ban dau quanh center_x/center_y.\nKhac voi patrol_radius: spawn_radius chi dung luc tao enemy, patrol_radius dung cho hanh vi di tuan sau khi spawn.",
+            ["map_enemy_spawn_groups.spawn_mode"] = "Che do spawn cua group.\n`Timer` la respawn theo thoi gian, `Objective` va `Manual` danh cho phase dieu khien dac biet.",
+            ["map_enemy_spawn_groups.runtime_scope"] = "Pham vi runtime cua spawn group.\nDung dropdown de chon group nay ap dung cho map public/private/instance hay bat ky.",
             ["player_skills.skill_group_code"] = "Nhóm skill mà nhân vật đang sở hữu.\nRuntime dùng trường này để giữ lại duy nhất một cấp hiện hành cho mỗi nhóm skill, bất kể skill đến từ học trực tiếp, công pháp hay nguồn khác.",
             ["player_skills.source_type"] = "Nguồn cấp skill cho nhân vật.\nVí dụ: `1 = cấp tay/manual`, `2 = unlock từ công pháp`, các giá trị khác dành cho item, quest hoặc system grant ở phase sau.",
+            ["player_skills.source_player_item_id"] = "Item instance tao ra skill nay neu source_type la EquipmentGrant hoac nguon item.\nDe trong voi skill hoc tay, cong phap, quest hoac system grant.",
             ["player_skills.source_martial_art_id"] = "Nếu skill này đến từ unlock công pháp thì trường này trỏ về công pháp nguồn.\nNếu skill được cấp độc lập thì có thể để trống.",
             ["player_skills.source_martial_art_skill_id"] = "Nếu skill này đến từ một mốc unlock cụ thể trong `martial_art_skills` thì trường này trỏ về row nguồn.\nNếu skill được cấp độc lập thì có thể để trống.",
 

@@ -59,7 +59,7 @@
     <UnityVersion>2022.3.62f3</UnityVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Analyzer Include="C:\Users\Admin\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.2.1\Analyzers\Microsoft.Unity.Analyzers.dll" />
+    <Analyzer Include="C:\Users\Admin\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.2.2\Analyzers\Microsoft.Unity.Analyzers.dll" />
     <Analyzer Include="D:\Unity\Hub\Editor\2022.3.62f3\Editor\Data\Tools\Unity.SourceGenerators\Unity.SourceGenerators.dll" />
     <Analyzer Include="D:\Unity\Hub\Editor\2022.3.62f3\Editor\Data\Tools\Unity.SourceGenerators\Unity.Properties.SourceGenerator.dll" />
   </ItemGroup>
@@ -121,6 +121,7 @@
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\CharacterActionInputState.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Skills\SkillListView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\ClientCharacterState.cs" />
+    <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldEntityMovementView.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Inventory\CharacterSummaryView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Targeting\Application\WorldTargetInteractionRules.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\PlayerView.cs" />
@@ -229,6 +230,7 @@
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldCameraFollowController.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterDataLoadResult.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\WorldTargetSelectionIndicatorController.cs" />
+    <Compile Include="Assets\Game\Runtime\UI\Skills\SkillUIPresentation.cs" />
     <Compile Include="Assets\Game\Runtime\Infrastructure\SceneLoading\ISceneFlowService.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Presentation\VirtualCharacterActionInputSource.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Hud\CombatSkillButtonView.cs" />
@@ -286,7 +288,6 @@
     <Compile Include="Assets\Game\Runtime\UI\Skills\WorldSkillPanelView.cs" />
     <Compile Include="Assets\Game\Runtime\Features\World\Presentation\LocalFixPortalPresenter.cs" />
     <Compile Include="Assets\Game\Runtime\Features\Character\Application\CharacterBaseStatsChangeNotice.cs" />
-    <Compile Include="Assets\Game\Runtime\UI\Skills\SkillPresentationCatalog.cs" />
     <Compile Include="Assets\Game\Runtime\UI\Common\UIDragPayload.cs" />
     <Compile Include="Assets\Game\Runtime\UI\World\WorldInventoryPanelController.ViewState.cs" />
     <Compile Include="Assets\Game\Runtime\Network\Packets\ClientPacketTransportPolicy.cs" />

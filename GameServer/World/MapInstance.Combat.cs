@@ -40,6 +40,7 @@ public sealed partial class MapInstance
                 enemy.LastHitPlayerId,
                 enemy.CaptureContributionsSnapshot(),
                 utcNow));
+            _pendingEnemyMovementDecisions.Enqueue(new EnemyMovementDecisionRuntimeEvent(enemy));
 
             return result;
         }

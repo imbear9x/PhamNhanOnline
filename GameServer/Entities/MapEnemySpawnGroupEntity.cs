@@ -19,6 +19,8 @@ public sealed class MapEnemySpawnGroupEntity
     [Column("center_x"), NotNull] public float CenterX { get; set; }
     [Column("center_y"), NotNull] public float CenterY { get; set; }
     [Column("spawn_radius"), NotNull] public float SpawnRadius { get; set; }
+    [Column("patrol_radius"), NotNull] public float PatrolRadius { get; set; }
+    [Column("patrol_route_type"), NotNull] public int PatrolRouteType { get; set; }
     [Column("description")] public string? Description { get; set; }
     [Column("created_at"), NotNull] public DateTime CreatedAt { get; set; }
 }

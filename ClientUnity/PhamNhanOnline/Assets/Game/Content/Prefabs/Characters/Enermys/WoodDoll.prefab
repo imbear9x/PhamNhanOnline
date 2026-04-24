@@ -160,6 +160,8 @@ GameObject:
   - component: {fileID: 3727199274881311225}
   - component: {fileID: 7777000000000000001}
   - component: {fileID: 446166198379198939}
+  - component: {fileID: -5180030305340735855}
+  - component: {fileID: 1744475390257096414}
   m_Layer: 7
   m_Name: WoodDoll
   m_TagString: Untagged
@@ -231,10 +233,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 143bb60b5acb7094c98577db46710a6d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   visualRoot: {fileID: 7546681620866935169}
-  targetable: {fileID: 0}
+  targetable: {fileID: -5180030305340735855}
+  movementView: {fileID: 1744475390257096414}
+  skillPresenter: {fileID: 446166198379198939}
+  movementConfig: {fileID: 11400000, guid: 980196c983704fa4ae3861cbf5372c2c, type: 2}
   hideWhenDead: 1
   groundSnapBindings: {fileID: 7777000000000000001}
   snapToGround: 1
@@ -245,6 +250,7 @@ MonoBehaviour:
   groundProbeDistance: 12
   groundContactOffset: 0
   logGroundingDiagnostics: 0
+  movementSnapDistanceWorldUnits: 0.75
 --- !u!114 &7777000000000000001
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -255,8 +261,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dbc9dd514761e6340b3cbcb7314c4f30, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   groundContactAnchor: {fileID: 2259377953169244701}
 --- !u!114 &446166198379198939
 MonoBehaviour:
@@ -268,14 +274,44 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1d11201fa2d55b543866f277391acd3a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   playerView: {fileID: 0}
   visualRoot: {fileID: 7546681620866935169}
   animator: {fileID: 0}
   sockets: {fileID: 0}
-  worldTargetable: {fileID: 0}
+  worldTargetable: {fileID: -5180030305340735855}
   visualFacesLeftByDefault: 1
+--- !u!114 &-5180030305340735855
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6915535442127511761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bcb09f48f4fb4552ab5f353ce4a4d22e, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  targetKind: 0
+  targetId:
+  displayNameOverride:
+  interactionCollider: {fileID: 0}
+  autoCreateInteractionCollider: 1
+  autoColliderPadding: {x: 0.15, y: 0.15}
+--- !u!114 &1744475390257096414
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6915535442127511761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e50f72bb1a8c4c84ab0a7380ea26de9d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
 --- !u!1 &7607352987235677024
 GameObject:
   m_ObjectHideFlags: 0

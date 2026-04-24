@@ -1,6 +1,7 @@
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Combat.Presentation;
+using PhamNhanOnline.Client.Features.Character.Presentation;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using UnityEngine;
 
@@ -11,6 +12,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private Transform visualRoot;
         [SerializeField] private WorldTargetable targetable;
+        [SerializeField] private WorldEntityMovementView movementView;
+        [SerializeField] private CharacterSkillPresenter skillPresenter;
+        [SerializeField] private LocalCharacterActionConfig movementConfig;
         [SerializeField] private bool hideWhenDead;
         [SerializeField] private GroundSnapBindings groundSnapBindings;
         [Header("Grounding")]
@@ -20,49 +24,51 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private float groundProbeDistance = 12f;
         [SerializeField] private float groundContactOffset = 0f;
         [SerializeField] private bool logGroundingDiagnostics;
+        [Header("Movement")]
+        [SerializeField] private float movementSnapDistanceWorldUnits = 0.75f;
 
         private int runtimeId;
         private bool hasResolvedWorldPosition;
-        private CharacterSkillPresenter skillPresenter;
         private bool warnedMissingSkillPresenter;
+        private bool warnedMissingVisualRoot;
+        private bool warnedMissingTargetable;
+        private bool warnedMissingMovementView;
+        private bool warnedMissingGroundSnapBindings;
+        private bool warnedMissingGroundContactAnchor;
         private string enemyCode = string.Empty;
 
         public int RuntimeId { get { return runtimeId; } }
+
+        public void ConfigureMovementConfig(LocalCharacterActionConfig config)
+        {
+            if (config != null)
+                movementConfig = config;
+        }
 
         public void ApplySnapshot(EnemyRuntimeModel enemy, WorldMapPresenter worldMapPresenter)
         {
             runtimeId = enemy.RuntimeId;
             enemyCode = enemy.Code ?? string.Empty;
-            AutoWireReferences();
+            if (!ValidateRequiredReferences())
+                return;
+
             ConfigureTargetable(enemy);
-            UpdateWorldPosition(enemy, worldMapPresenter);
+            UpdateWorldPosition(enemy, worldMapPresenter, forceDecisionRefresh: false);
             UpdateLifeState(enemy);
         }
 
         private void Awake()
         {
-            AutoWireReferences();
-        }
-
-        private void AutoWireReferences()
-        {
-            if (visualRoot == null)
-                visualRoot = transform;
-
-            if (targetable == null)
-                targetable = GetComponent<WorldTargetable>();
-
-            if (skillPresenter == null)
-                skillPresenter = GetComponent<CharacterSkillPresenter>();
-
-            if (groundSnapBindings == null)
-                groundSnapBindings = GetComponentInChildren<GroundSnapBindings>(true);
+            ValidateRequiredReferences();
         }
 
         private void ConfigureTargetable(EnemyRuntimeModel enemy)
         {
             if (targetable == null)
-                targetable = gameObject.AddComponent<WorldTargetable>();
+            {
+                LogMissingTargetable();
+                return;
+            }
 
             var handle = WorldTargetHandle.CreateEnemy(enemy.RuntimeId, enemy.Kind == 3);
             targetable.Configure(handle);
@@ -72,7 +78,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 if (!warnedMissingSkillPresenter)
                 {
                     ClientLog.Error(
-                        $"EnemyPresenter requires CharacterSkillPresenter on enemy prefab '{gameObject.name}'. Add the component to the enemy prefab instead of relying on runtime AddComponent.");
+                        $"EnemyPresenter requires CharacterSkillPresenter on enemy prefab '{gameObject.name}'. Assign the reference on the prefab.");
                     warnedMissingSkillPresenter = true;
                 }
 
@@ -81,7 +87,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             skillPresenter.ConfigureTargetHandle(handle);
         }
-        private void UpdateWorldPosition(EnemyRuntimeModel enemy, WorldMapPresenter worldMapPresenter)
+        private void UpdateWorldPosition(EnemyRuntimeModel enemy, WorldMapPresenter worldMapPresenter, bool forceDecisionRefresh)
         {
             Vector2 worldPosition;
             var serverPosition = new Vector2(enemy.PosX, enemy.PosY);
@@ -91,7 +97,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 LogGrounding(
                     $"mapped serverPos={serverPosition} to worldPos={worldPosition} " +
                     $"mapReady={worldMapPresenter != null}");
-                ApplyWorldPosition(worldPosition);
+                ApplyWorldPosition(enemy, worldPosition, worldMapPresenter, forceDecisionRefresh);
                 hasResolvedWorldPosition = true;
                 return;
             }
@@ -103,22 +109,31 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
         }
 
-        private void ApplyWorldPosition(Vector2 worldPosition)
+        private void ApplyWorldPosition(
+            EnemyRuntimeModel enemy,
+            Vector2 worldPosition,
+            WorldMapPresenter worldMapPresenter,
+            bool forceDecisionRefresh)
         {
             var targetPosition = new Vector3(worldPosition.x, worldPosition.y, transform.position.z);
+            var presentationPosition = ResolveGroundedPresentationPosition(targetPosition);
+            ApplyMovementDecision(enemy, presentationPosition, worldMapPresenter, forceDecisionRefresh);
+            LogGrounding($"applied finalPos={transform.position}");
+        }
+
+        private Vector3 ResolveGroundedPresentationPosition(Vector3 targetPosition)
+        {
             if (!snapToGround)
             {
-                transform.position = targetPosition;
-                LogGrounding($"applied without snap finalPos={transform.position}");
-                return;
+                LogGrounding($"ground snap disabled position={targetPosition}");
+                return targetPosition;
             }
 
             float bottomOffset;
             if (!TryResolveBottomOffset(out bottomOffset))
             {
-                transform.position = targetPosition;
-                LogGrounding($"no bottom offset resolved. finalPos={transform.position}");
-                return;
+                LogGrounding($"no bottom offset resolved position={targetPosition}");
+                return targetPosition;
             }
 
             var rayOrigin = new Vector2(
@@ -129,18 +144,100 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             RaycastHit2D hit;
             if (!GroundSnapUtility.TryFindGroundHit(rayOrigin, rayDistance, layerMask, LogGrounding, out hit))
             {
-                transform.position = targetPosition;
                 LogGrounding(
                     $"ray miss origin={rayOrigin} distance={rayDistance} bottomOffset={bottomOffset} " +
-                    $"layerMask={layerMask} finalPos={transform.position}");
-                return;
+                    $"layerMask={layerMask} position={targetPosition}");
+                return targetPosition;
             }
 
             targetPosition.y = hit.point.y - bottomOffset + groundContactOffset;
-            transform.position = targetPosition;
             LogGrounding(
                 $"ray hit collider={hit.collider.name} point={hit.point} normal={hit.normal} " +
-                $"bottomOffset={bottomOffset} contactOffset={groundContactOffset} finalPos={transform.position}");
+                $"bottomOffset={bottomOffset} contactOffset={groundContactOffset} position={targetPosition}");
+            return targetPosition;
+        }
+
+        private void ApplyMovementDecision(
+            EnemyRuntimeModel enemy,
+            Vector3 authoritativeWorldPosition,
+            WorldMapPresenter worldMapPresenter,
+            bool forceDecisionRefresh)
+        {
+            if (movementView == null)
+            {
+                LogMissingMovementView();
+                return;
+            }
+
+            var isDuplicateMoveDecision =
+                enemy.MovementMode == 1 &&
+                enemy.MovementSpeed > 0f &&
+                !forceDecisionRefresh &&
+                movementView.IsCurrentMoveDecision(enemy.MovementDecisionVersion);
+            var distanceToAuthoritative = Vector3.Distance(transform.position, authoritativeWorldPosition);
+            if (!isDuplicateMoveDecision &&
+                (!hasResolvedWorldPosition || distanceToAuthoritative >= movementSnapDistanceWorldUnits))
+            {
+                movementView.SnapTo(authoritativeWorldPosition);
+            }
+
+            if (enemy.MovementMode != 1 || enemy.MovementSpeed <= 0f)
+            {
+                movementView.StopAt(authoritativeWorldPosition);
+                return;
+            }
+
+            Vector2 targetWorldPosition2D;
+            var targetServerPosition = new Vector2(enemy.MovementTargetPosX, enemy.MovementTargetPosY);
+            if (worldMapPresenter == null || !worldMapPresenter.TryMapServerPositionToWorld(targetServerPosition, out targetWorldPosition2D))
+            {
+                movementView.StopAt(authoritativeWorldPosition);
+                return;
+            }
+
+            var serverDistance = Vector2.Distance(
+                new Vector2(enemy.PosX, enemy.PosY),
+                targetServerPosition);
+            if (serverDistance <= 0.001f)
+            {
+                movementView.StopAt(authoritativeWorldPosition);
+                return;
+            }
+
+            var targetWorldPosition = ResolveGroundedPresentationPosition(
+                new Vector3(targetWorldPosition2D.x, targetWorldPosition2D.y, transform.position.z));
+            var movementDurationSeconds = ResolveMovementDurationSeconds(
+                authoritativeWorldPosition,
+                targetWorldPosition,
+                serverDistance,
+                enemy.MovementSpeed);
+            movementView.ApplyMoveDecision(
+                enemy.MovementDecisionVersion,
+                authoritativeWorldPosition,
+                targetWorldPosition,
+                movementDurationSeconds,
+                movementSnapDistanceWorldUnits,
+                forceDecisionRefresh);
+        }
+
+        private float ResolveMovementDurationSeconds(
+            Vector3 authoritativeWorldPosition,
+            Vector3 targetWorldPosition,
+            float serverDistance,
+            float serverMoveSpeed)
+        {
+            if (serverMoveSpeed <= 0f)
+                return 0f;
+
+            if (movementConfig == null)
+                return serverDistance / serverMoveSpeed;
+
+            var worldMoveSpeed = movementConfig.ConvertServerUnitsToWorldUnits(serverMoveSpeed);
+            if (worldMoveSpeed <= 0f)
+                return serverDistance / serverMoveSpeed;
+
+            var worldDistance = Vector3.Distance(authoritativeWorldPosition, targetWorldPosition);
+            return worldDistance / worldMoveSpeed;
         }
 
         private bool TryResolveBottomOffset(out float bottomOffset)
@@ -154,50 +251,102 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return true;
             }
 
-            Bounds bounds;
-            if (TryGetLocalPresentationBounds(out bounds))
-            {
-                bottomOffset = bounds.min.y - transform.position.y;
-                return true;
-            }
-
             return false;
         }
 
         private Transform ResolveGroundContactAnchor()
         {
-            if (groundSnapBindings != null && groundSnapBindings.GroundContactAnchor != null)
+            if (groundSnapBindings == null)
+            {
+                if (snapToGround && !warnedMissingGroundSnapBindings)
+                {
+                    ClientLog.Error($"EnemyPresenter on '{gameObject.name}' requires GroundSnapBindings because snapToGround is enabled.");
+                    warnedMissingGroundSnapBindings = true;
+                }
+
+                return null;
+            }
+
+            if (groundSnapBindings.GroundContactAnchor != null)
                 return groundSnapBindings.GroundContactAnchor;
 
-            return transform.Find("GroundContactAnchor");
+            if (snapToGround && !warnedMissingGroundContactAnchor)
+            {
+                ClientLog.Error($"EnemyPresenter on '{gameObject.name}' requires GroundSnapBindings.GroundContactAnchor.");
+                warnedMissingGroundContactAnchor = true;
+            }
+
+            return null;
         }
 
-        private bool TryGetLocalPresentationBounds(out Bounds bounds)
+        private bool ValidateRequiredReferences()
         {
-            var colliders = GetComponentsInChildren<Collider2D>(true);
-            for (var i = 0; i < colliders.Length; i++)
+            var valid = true;
+            if (visualRoot == null)
             {
-                var collider = colliders[i];
-                if (collider == null || !collider.enabled)
-                    continue;
+                if (!warnedMissingVisualRoot)
+                {
+                    ClientLog.Error($"EnemyPresenter on '{gameObject.name}' requires Visual Root reference.");
+                    warnedMissingVisualRoot = true;
+                }
 
-                bounds = collider.bounds;
-                return true;
+                valid = false;
             }
 
-            var renderers = GetComponentsInChildren<Renderer>(true);
-            for (var i = 0; i < renderers.Length; i++)
+            if (targetable == null)
             {
-                var renderer = renderers[i];
-                if (renderer == null || !renderer.enabled)
-                    continue;
-
-                bounds = renderer.bounds;
-                return true;
+                LogMissingTargetable();
+                valid = false;
             }
 
-            bounds = default;
-            return false;
+            if (movementView == null)
+            {
+                LogMissingMovementView();
+                valid = false;
+            }
+
+            if (skillPresenter == null)
+            {
+                if (!warnedMissingSkillPresenter)
+                {
+                    ClientLog.Error(
+                        $"EnemyPresenter requires CharacterSkillPresenter on enemy prefab '{gameObject.name}'. Add the component to the enemy prefab and assign the reference.");
+                    warnedMissingSkillPresenter = true;
+                }
+
+                valid = false;
+            }
+
+            if (snapToGround && groundSnapBindings == null)
+            {
+                if (!warnedMissingGroundSnapBindings)
+                {
+                    ClientLog.Error($"EnemyPresenter on '{gameObject.name}' requires GroundSnapBindings because snapToGround is enabled.");
+                    warnedMissingGroundSnapBindings = true;
+                }
+
+                valid = false;
+            }
+
+            return valid;
+        }
+
+        private void LogMissingTargetable()
+        {
+            if (warnedMissingTargetable)
+                return;
+
+            ClientLog.Error($"EnemyPresenter on '{gameObject.name}' requires WorldTargetable reference.");
+            warnedMissingTargetable = true;
+        }
+
+        private void LogMissingMovementView()
+        {
+            if (warnedMissingMovementView)
+                return;
+
+            ClientLog.Error($"EnemyPresenter on '{gameObject.name}' requires WorldEntityMovementView reference.");
+            warnedMissingMovementView = true;
         }
 
         private void LogGrounding(string message)

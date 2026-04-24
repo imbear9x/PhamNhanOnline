@@ -149,7 +149,6 @@ insert into public.enemy_templates (
     max_hp,
     base_attack,
     base_move_speed,
-    patrol_radius,
     detection_radius,
     combat_radius,
     minimum_skill_interval_ms,
@@ -167,7 +166,6 @@ values
         100,
         10,
         100,
-        0,
         2000,
         2000,
         2000,
@@ -184,7 +182,6 @@ values
         150,
         15,
         100,
-        0,
         2000,
         2000,
         2000,
@@ -201,7 +198,6 @@ set
     max_hp = excluded.max_hp,
     base_attack = excluded.base_attack,
     base_move_speed = excluded.base_move_speed,
-    patrol_radius = excluded.patrol_radius,
     detection_radius = excluded.detection_radius,
     combat_radius = excluded.combat_radius,
     minimum_skill_interval_ms = excluded.minimum_skill_interval_ms,
@@ -302,6 +298,9 @@ values
     (1001, 1, 1, 1001, 1, 30, 30, 0, 1, timezone('utc', now())),
     (1002, 1, 1, 1002, 1, 30, 30, 0, 1, timezone('utc', now()));
 
+alter table public.map_enemy_spawn_groups
+    add column if not exists patrol_radius real not null default 0;
+
 insert into public.map_enemy_spawn_groups (
     id,
     code,
@@ -317,6 +316,7 @@ insert into public.map_enemy_spawn_groups (
     center_x,
     center_y,
     spawn_radius,
+    patrol_radius,
     description,
     created_at
 )
@@ -336,6 +336,7 @@ values
         500,
         500,
         0,
+        0,
         'Spawn 1 Sói lang băng ở giữa map 03.',
         timezone('utc', now())
     ),
@@ -353,6 +354,7 @@ values
         0,
         700,
         500,
+        0,
         0,
         'Spawn 1 Gấu nâu tinh lệch 1/5 chiều ngang map 03 so với Sói lang băng.',
         timezone('utc', now())
@@ -372,6 +374,7 @@ set
     center_x = excluded.center_x,
     center_y = excluded.center_y,
     spawn_radius = excluded.spawn_radius,
+    patrol_radius = excluded.patrol_radius,
     description = excluded.description;
 
 insert into public.map_enemy_spawn_entries (

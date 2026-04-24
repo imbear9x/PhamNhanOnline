@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
+using PhamNhanOnline.Client.Features.Character.Presentation;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -10,10 +11,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private EnemyPresentationCatalog presentationCatalog;
         [SerializeField] private Transform enemiesRoot;
-        private WorldMapPresenter worldMapPresenter;
+        [SerializeField] private LocalCharacterActionConfig movementConfig;
 
         private readonly Dictionary<int, EnemyPresenter> enemyPresenters = new Dictionary<int, EnemyPresenter>();
         private bool warnedMissingCatalog;
+        private bool warnedMissingMovementConfig;
         private bool runtimeEventsBound;
         private bool hasReportedReadyForCurrentCycle;
 
@@ -25,7 +27,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
             }
 
-            AutoWireReferences();
             LogMissingCriticalWorldSceneDependenciesIfNeeded();
             ActivateWorldSceneReadiness();
             TryBindRuntimeEvents();
@@ -34,7 +35,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void OnEnable()
         {
-            AutoWireReferences();
             ActivateWorldSceneReadiness();
             TryBindRuntimeEvents();
             TrySyncIfReady();
@@ -193,11 +193,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             runtimeEventsBound = false;
         }
 
-        private void AutoWireReferences()
-        {
-            InitializeWorldSceneBehaviour(ref worldMapPresenter);
-        }
-
         private EnemyPresenter CreatePresenter(EnemyRuntimeModel enemy)
         {
             GameObject prefab;
@@ -213,8 +208,19 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var presenter = instance.GetComponent<EnemyPresenter>();
             if (presenter == null)
-                presenter = instance.AddComponent<EnemyPresenter>();
+            {
+                ClientLog.Error($"Enemy prefab '{prefab.name}' must include EnemyPresenter. Runtime AddComponent fallback is disabled.");
+                Destroy(instance);
+                return null;
+            }
 
+            if (movementConfig == null && !warnedMissingMovementConfig)
+            {
+                ClientLog.Warn("WorldEnemiesPresenter has no movement config assigned. Enemy movement will fall back to server duration instead of shared LocalCharacterActionConfig scaling.");
+                warnedMissingMovementConfig = true;
+            }
+
+            presenter.ConfigureMovementConfig(movementConfig);
             return presenter;
         }
 
@@ -230,7 +236,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 enemyPresenters[enemy.RuntimeId] = presenter;
             }
 
-            presenter.ApplySnapshot(enemy, worldMapPresenter);
+            presenter.ConfigureMovementConfig(movementConfig);
+            presenter.ApplySnapshot(enemy, MapPresenter);
         }
 
         private void RemovePresenter(int runtimeId)

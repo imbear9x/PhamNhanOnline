@@ -300,7 +300,12 @@ public static class NetworkModelMapper
             MaxHp = enemy.MaxHp,
             PosX = enemy.Position.X,
             PosY = enemy.Position.Y,
-            SpawnGroupId = enemy.SpawnGroupId
+            SpawnGroupId = enemy.SpawnGroupId,
+            MovementDecisionVersion = enemy.MovementDecisionVersion,
+            MovementMode = (int)enemy.MovementMode,
+            MovementTargetPosX = enemy.MovementTargetPosition.X,
+            MovementTargetPosY = enemy.MovementTargetPosition.Y,
+            MovementSpeed = enemy.MovementSpeed
         };
     }
 

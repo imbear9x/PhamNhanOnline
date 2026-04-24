@@ -11,7 +11,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private GameObject playerPrefab;
         [SerializeField] private Transform remotePlayersRoot;
-        private WorldMapPresenter worldMapPresenter;
         [SerializeField] private float remoteMoveSmoothing = 14f;
         [SerializeField] private float remoteTeleportSnapDistance = 3f;
 
@@ -28,7 +27,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
             }
 
-            AutoWireReferences();
             LogMissingCriticalWorldSceneDependenciesIfNeeded();
             ActivateWorldSceneReadiness();
             TryBindRuntimeEvents();
@@ -37,7 +35,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void OnEnable()
         {
-            AutoWireReferences();
             ActivateWorldSceneReadiness();
             TryBindRuntimeEvents();
             TrySyncIfReady();
@@ -217,11 +214,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             runtimeEventsBound = false;
         }
 
-        private void AutoWireReferences()
-        {
-            InitializeWorldSceneBehaviour(ref worldMapPresenter);
-        }
-
         private RemoteCharacterPresenter CreatePresenter(ObservedCharacterModel observedCharacter)
         {
             var parent = remotePlayersRoot != null ? remotePlayersRoot : transform;
@@ -230,7 +222,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var presenter = instance.GetComponent<RemoteCharacterPresenter>();
             if (presenter == null)
-                presenter = instance.AddComponent<RemoteCharacterPresenter>();
+            {
+                ClientLog.Error($"Remote player prefab '{playerPrefab.name}' must include RemoteCharacterPresenter. Runtime AddComponent fallback is disabled.");
+                Destroy(instance);
+                return null;
+            }
 
             presenter.Initialize(remoteMoveSmoothing, remoteTeleportSnapDistance);
             ClientLog.Info($"Spawned remote player presenter for {observedCharacter.Character.Name}.");
@@ -248,11 +244,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                     return;
 
                 remotePresenters[characterId] = presenter;
-                presenter.ApplySnapshot(observedCharacter, worldMapPresenter, snap: true);
+                presenter.ApplySnapshot(observedCharacter, MapPresenter, snap: true);
                 return;
             }
 
-            presenter.ApplySnapshot(observedCharacter, worldMapPresenter, snap);
+            presenter.ApplySnapshot(observedCharacter, MapPresenter, snap);
         }
 
         private void RemovePresenter(Guid characterId)
