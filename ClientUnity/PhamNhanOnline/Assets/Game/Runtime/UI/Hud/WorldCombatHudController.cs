@@ -5,6 +5,7 @@ using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Combat.Application;
+using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.Features.Character.Application;
 using PhamNhanOnline.Client.Features.Skills.Application;
 using PhamNhanOnline.Client.Features.Targeting.Application;
@@ -22,7 +23,7 @@ namespace PhamNhanOnline.Client.UI.Hud
         private const int SelfSkillTargetType = 1;
 
         [Header("References")]
-        [SerializeField] private SkillPresentationCatalog presentationCatalog;
+        [SerializeField] private SkillWorldPresentationCatalog presentationCatalog;
         [SerializeField] private CombatSkillButtonView basicSkillButton;
         [SerializeField] private Transform additionalSkillButtonsRoot;
         [SerializeField] private CombatSkillButtonView additionalSkillButtonTemplate;
@@ -116,7 +117,8 @@ namespace PhamNhanOnline.Client.UI.Hud
             var utcNow = DateTime.UtcNow;
             ClientRuntime.Combat.IsLocalCastActive(utcNow);
             EnsureAdditionalButtonCount(skillState.MaxLoadoutSlotCount);
-            ApplyButtonState(basicSkillButton, BasicSkillSlotIndex, skillState, utcNow);
+            var targetInteractionMode = ResolveSelectedTargetInteractionMode();
+            ApplyButtonState(basicSkillButton, BasicSkillSlotIndex, skillState, utcNow, targetInteractionMode);
 
             for (var i = 0; i < spawnedAdditionalSkillButtons.Count; i++)
             {
@@ -126,7 +128,7 @@ namespace PhamNhanOnline.Client.UI.Hud
 
                 var slotIndex = i + 2;
                 if (slotIndex <= skillState.MaxLoadoutSlotCount)
-                    ApplyButtonState(button, slotIndex, skillState, utcNow);
+                    ApplyButtonState(button, slotIndex, skillState, utcNow, WorldTargetInteractionMode.None);
                 else
                     button.Hide();
             }
@@ -192,10 +194,17 @@ namespace PhamNhanOnline.Client.UI.Hud
             CombatSkillButtonView buttonView,
             int slotIndex,
             ClientSkillState skillState,
-            DateTime utcNow)
+            DateTime utcNow,
+            WorldTargetInteractionMode targetInteractionMode)
         {
             if (buttonView == null)
                 return;
+
+            if (slotIndex == BasicSkillSlotIndex)
+            {
+                ApplyBasicButtonState(buttonView, skillState, utcNow, targetInteractionMode);
+                return;
+            }
 
             PlayerSkillModel skill;
             if (!skillState.TryGetLoadoutSkill(slotIndex, out skill))
@@ -209,7 +218,7 @@ namespace PhamNhanOnline.Client.UI.Hud
                         true,
                         false,
                         default(PlayerSkillModel),
-                        default(SkillPresentation),
+                        default(SkillUIPresentation),
                         interactableWithoutSkill,
                         0f,
                         string.Empty,
@@ -241,8 +250,8 @@ namespace PhamNhanOnline.Client.UI.Hud
 
             var cooldownLabel = hasCooldown ? FormatCooldownLabel(remainingMs) : string.Empty;
             var presentation = presentationCatalog != null
-                ? presentationCatalog.Resolve(skill)
-                : default(SkillPresentation);
+                ? new SkillUIPresentation(presentationCatalog.ResolveIcon(skill))
+                : default(SkillUIPresentation);
 
             buttonView.ApplyState(
                 true,
@@ -253,6 +262,95 @@ namespace PhamNhanOnline.Client.UI.Hud
                 cooldownFillAmount,
                 cooldownLabel,
                 hasCooldown);
+        }
+
+        private void ApplyBasicButtonState(
+            CombatSkillButtonView buttonView,
+            ClientSkillState skillState,
+            DateTime utcNow,
+            WorldTargetInteractionMode targetInteractionMode)
+        {
+            PlayerSkillModel skill;
+            var hasSkill = skillState.TryGetLoadoutSkill(BasicSkillSlotIndex, out skill);
+
+            switch (targetInteractionMode)
+            {
+                case WorldTargetInteractionMode.HostileAttack:
+                    if (!hasSkill)
+                    {
+                        var interactableWithoutAssignedSkill = !IsLocalCharacterDead() &&
+                                                              !ClientRuntime.Combat.HasPendingAttackRequest &&
+                                                              !ClientRuntime.Combat.IsLocalCastActive(utcNow);
+                        buttonView.ApplyState(
+                            true,
+                            true,
+                            default(PlayerSkillModel),
+                            default(SkillUIPresentation),
+                            interactableWithoutAssignedSkill,
+                            0f,
+                            string.Empty,
+                            false,
+                            allowFallbackIcon: true);
+                        return;
+                    }
+
+                    float cooldownFillAmount;
+                    int remainingMs;
+                    int durationMs;
+                    var hasCooldown = ClientRuntime.Combat.TryGetCooldownForSlot(
+                        BasicSkillSlotIndex,
+                        skill.PlayerSkillId,
+                        utcNow,
+                        out cooldownFillAmount,
+                        out remainingMs,
+                        out durationMs);
+
+                    var interactable = !IsLocalCharacterDead() &&
+                                       !hasCooldown &&
+                                       !ClientRuntime.Combat.HasPendingAttackRequest &&
+                                       !ClientRuntime.Combat.IsLocalCastActive(utcNow);
+
+                    var cooldownLabel = hasCooldown ? FormatCooldownLabel(remainingMs) : string.Empty;
+                    var presentation = presentationCatalog != null
+                        ? new SkillUIPresentation(presentationCatalog.ResolveIcon(skill))
+                        : default(SkillUIPresentation);
+
+                    buttonView.ApplyState(
+                        true,
+                        true,
+                        skill,
+                        presentation,
+                        interactable,
+                        cooldownFillAmount,
+                        cooldownLabel,
+                        hasCooldown,
+                        allowFallbackIcon: true);
+                    return;
+
+                case WorldTargetInteractionMode.ContextOnly:
+                    buttonView.ApplyState(
+                        true,
+                        false,
+                        default(PlayerSkillModel),
+                        default(SkillUIPresentation),
+                        true,
+                        0f,
+                        string.Empty,
+                        false);
+                    return;
+
+                default:
+                    buttonView.ApplyState(
+                        true,
+                        false,
+                        default(PlayerSkillModel),
+                        default(SkillUIPresentation),
+                        true,
+                        0f,
+                        string.Empty,
+                        false);
+                    return;
+            }
         }
 
         private void HandleSkillButtonClicked(int slotIndex)
@@ -368,6 +466,18 @@ namespace PhamNhanOnline.Client.UI.Hud
                 default:
                     return false;
             }
+        }
+
+        private WorldTargetInteractionMode ResolveSelectedTargetInteractionMode()
+        {
+            if (!ClientRuntime.IsInitialized)
+                return WorldTargetInteractionMode.None;
+
+            WorldTargetHandle targetHandle;
+            if (!TryResolveSelectedTarget(out targetHandle))
+                return WorldTargetInteractionMode.None;
+
+            return WorldTargetInteractionRules.Resolve(targetHandle);
         }
 
         private void RefreshCastBar(DateTime utcNow, bool force)

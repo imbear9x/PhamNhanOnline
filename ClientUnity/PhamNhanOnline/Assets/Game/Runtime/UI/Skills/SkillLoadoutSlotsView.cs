@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Models;
+using PhamNhanOnline.Client.Features.Combat.Presentation;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.UI.Skills
@@ -36,7 +37,7 @@ namespace PhamNhanOnline.Client.UI.Skills
 
         public void SetSlots(
             IReadOnlyList<SkillLoadoutSlotModel> slots,
-            SkillPresentationCatalog presentationCatalog,
+            SkillWorldPresentationCatalog presentationCatalog,
             bool dragEnabled,
             bool force = false)
         {
@@ -78,8 +79,8 @@ namespace PhamNhanOnline.Client.UI.Skills
                 if (slot.HasSkill && slot.Skill.HasValue)
                 {
                     var presentation = presentationCatalog != null
-                        ? presentationCatalog.Resolve(slot.Skill.Value)
-                        : new SkillPresentation(null);
+                        ? new SkillUIPresentation(presentationCatalog.ResolveIcon(slot.Skill.Value))
+                        : new SkillUIPresentation(null);
                     slotView.SetItem(slot.Skill.Value, presentation, force: true);
                 }
                 else

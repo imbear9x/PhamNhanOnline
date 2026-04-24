@@ -37,13 +37,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             public int Compare(Candidate left, Candidate right)
             {
-                var priorityCompare = left.Priority.CompareTo(right.Priority);
-                if (priorityCompare != 0)
-                    return priorityCompare;
-
                 var distanceCompare = left.DistanceSquared.CompareTo(right.DistanceSquared);
                 if (distanceCompare != 0)
                     return distanceCompare;
+
+                var priorityCompare = left.Priority.CompareTo(right.Priority);
+                if (priorityCompare != 0)
+                    return priorityCompare;
 
                 return System.StringComparer.Ordinal.Compare(left.SortKey, right.SortKey);
             }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Models;
+using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.UI.Common;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -39,7 +40,7 @@ namespace PhamNhanOnline.Client.UI.Skills
         public void SetItems(
             IReadOnlyList<PlayerSkillModel> items,
             long? selectedSkillId,
-            SkillPresentationCatalog presentationCatalog,
+            SkillWorldPresentationCatalog presentationCatalog,
             bool force = false)
         {
             items ??= Array.Empty<PlayerSkillModel>();
@@ -77,8 +78,8 @@ namespace PhamNhanOnline.Client.UI.Skills
                 }
 
                 var presentation = presentationCatalog != null
-                    ? presentationCatalog.Resolve(items[i])
-                    : new SkillPresentation(null);
+                    ? new SkillUIPresentation(presentationCatalog.ResolveIcon(items[i]))
+                    : new SkillUIPresentation(null);
                 itemView.SetItem(items[i], presentation, force: true);
                 itemView.SetSelected(
                     selectedPlayerSkillId.HasValue && items[i].PlayerSkillId == selectedPlayerSkillId.Value,

@@ -17,6 +17,7 @@ namespace PhamNhanOnline.Client.UI.Hud
         [Header("References")]
         [SerializeField] private GameObject contentRoot;
         [SerializeField] private Image iconImage;
+        [SerializeField] private Sprite fallbackIconSprite;
         [SerializeField] private GameObject emptyStateRoot;
         [SerializeField] private GameObject disabledStateRoot;
         [SerializeField] private Image cooldownFillImage;
@@ -27,6 +28,8 @@ namespace PhamNhanOnline.Client.UI.Hud
         private bool isInteractable;
         private Sprite currentIconSprite;
         private string currentCooldownLabel = string.Empty;
+        private bool cachedInitialIconSprite;
+        private Sprite initialIconSprite;
 
         public new event Action<int> Clicked;
 
@@ -44,11 +47,12 @@ namespace PhamNhanOnline.Client.UI.Hud
             bool visible,
             bool hasAssignedSkill,
             PlayerSkillModel skill,
-            SkillPresentation presentation,
+            SkillUIPresentation presentation,
             bool interactable,
             float cooldownFillAmount,
             string cooldownLabel,
-            bool showCooldown)
+            bool showCooldown,
+            bool allowFallbackIcon = false)
         {
             var canShowWithoutSkill = alwaysVisible || skillSlotIndex == 1;
             var resolvedVisible = visible && (hasAssignedSkill || canShowWithoutSkill);
@@ -68,7 +72,13 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (disabledStateRoot != null)
                 disabledStateRoot.SetActive(resolvedVisible && !interactable);
 
-            var nextIcon = hasAssignedSkill ? presentation.IconSprite : null;
+            var nextIcon = hasAssignedSkill
+                ? presentation.IconSprite != null
+                    ? presentation.IconSprite
+                    : allowFallbackIcon
+                        ? ResolveFallbackIconSprite()
+                        : null
+                : null;
             if (iconImage != null)
             {
                 if (currentIconSprite != nextIcon)
@@ -101,7 +111,7 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         public void Hide()
         {
-            ApplyState(false, false, default(PlayerSkillModel), default(SkillPresentation), false, 0f, string.Empty, false);
+            ApplyState(false, false, default(PlayerSkillModel), default(SkillUIPresentation), false, 0f, string.Empty, false);
         }
 
         protected override void InvokeLeftClick()
@@ -112,6 +122,20 @@ namespace PhamNhanOnline.Client.UI.Hud
 
             base.InvokeLeftClick();
             Clicked?.Invoke(skillSlotIndex);
+        }
+
+        private Sprite ResolveFallbackIconSprite()
+        {
+            if (fallbackIconSprite != null)
+                return fallbackIconSprite;
+
+            if (!cachedInitialIconSprite)
+            {
+                initialIconSprite = iconImage != null ? iconImage.sprite : null;
+                cachedInitialIconSprite = true;
+            }
+
+            return initialIconSprite;
         }
     }
 }

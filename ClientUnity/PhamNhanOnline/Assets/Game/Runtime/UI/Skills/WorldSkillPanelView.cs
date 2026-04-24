@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using GameShared.Models;
+using PhamNhanOnline.Client.Features.Combat.Presentation;
 using PhamNhanOnline.Client.UI.Inventory;
 using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
@@ -12,7 +13,7 @@ namespace PhamNhanOnline.Client.UI.Skills
         [Header("References")]
         [SerializeField] private SkillLoadoutSlotsView loadoutSlotsView;
         [SerializeField] private SkillListView skillListView;
-        [SerializeField] private SkillPresentationCatalog presentationCatalog;
+        [SerializeField] private SkillWorldPresentationCatalog presentationCatalog;
 
         private SkillLoadoutSlotModel[] loadoutSlots = Array.Empty<SkillLoadoutSlotModel>();
         private int maxLoadoutSlotCount;

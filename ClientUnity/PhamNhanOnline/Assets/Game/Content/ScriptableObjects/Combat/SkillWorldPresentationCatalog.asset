@@ -13,10 +13,38 @@ MonoBehaviour:
   m_Name: SkillWorldPresentationCatalog
   m_EditorClassIdentifier: 
   defaultArchetype: 2
-  skillOverrides:
-  - skillId: 0
-    skillCode: "hoa_\u0111an_thuat"
-    skillGroupCode: "hoa_\u0111an_thuat"
+  defaultIconSprite: {fileID: 21300000, guid: 116340b138458764fa95ff41790baaf8, type: 3}
+  skillGroupPresets:
+  - skillGroupCode: bang_chuy_thuat
+    skillGroupName: "B\u0103ng Ch\xF9y Thu\u1EADt"
+    archetype: 2
+    castStateName: 
+    releaseStateName: 
+    targetImpactStateName: 
+    sourceSocket: 1
+    impactSocket: 9
+    castFxPrefab: {fileID: 0}
+    releaseFxPrefab: {fileID: 8171441243783990914, guid: 1f7e5b85ad2ff61408a118c789622bfc, type: 3}
+    impactFxPrefab: {fileID: 0}
+    fxLifetimeSeconds: 1.5
+    faceTargetOnCast: 1
+    iconSprite: {fileID: 21300000, guid: 906a98bc37990654a87ed4f8a583dc33, type: 3}
+  - skillGroupCode: bang_liet_tram
+    skillGroupName: "B\u0103ng Li\u1EC7t Tr\u1EA3m"
+    archetype: 2
+    castStateName: 
+    releaseStateName: 
+    targetImpactStateName: 
+    sourceSocket: 1
+    impactSocket: 9
+    castFxPrefab: {fileID: 0}
+    releaseFxPrefab: {fileID: 8171441243783990914, guid: 1f7e5b85ad2ff61408a118c789622bfc, type: 3}
+    impactFxPrefab: {fileID: 0}
+    fxLifetimeSeconds: 1.5
+    faceTargetOnCast: 1
+    iconSprite: {fileID: 21300000, guid: ac313f09b79801f4c8dd05d940ed30b7, type: 3}
+  - skillGroupCode: dam_xa
+    skillGroupName: "\u0110\u1EA5m xa"
     archetype: 2
     castStateName: 
     releaseStateName: 
@@ -28,9 +56,9 @@ MonoBehaviour:
     impactFxPrefab: {fileID: 0}
     fxLifetimeSeconds: 0
     faceTargetOnCast: 1
-  - skillId: 0
-    skillCode: hoa_dan_soi
-    skillGroupCode: hoa_dan_soi
+    iconSprite: {fileID: 21300000, guid: 7a0b3890d1aedf645a57ef85f11d6339, type: 3}
+  - skillGroupCode: hoa_dan_soi
+    skillGroupName: "H\u1ECFa \u0111\u1EA1n S\xF3i"
     archetype: 2
     castStateName: 
     releaseStateName: 
@@ -42,18 +70,47 @@ MonoBehaviour:
     impactFxPrefab: {fileID: 0}
     fxLifetimeSeconds: 0
     faceTargetOnCast: 1
-  - skillId: 0
-    skillCode: dam_xa
-    skillGroupCode: dam_xa
+    iconSprite: {fileID: 21300000, guid: ac313f09b79801f4c8dd05d940ed30b7, type: 3}
+  - skillGroupCode: hoa_dan_thuat
+    skillGroupName: "H\u1ECFa \u0110\u1EA1n Thu\u1EADt"
     archetype: 2
     castStateName: 
     releaseStateName: 
     targetImpactStateName: 
-    sourceSocket: 0
-    impactSocket: 0
+    sourceSocket: 1
+    impactSocket: 9
     castFxPrefab: {fileID: 0}
     releaseFxPrefab: {fileID: 8171441243783990914, guid: 1f7e5b85ad2ff61408a118c789622bfc, type: 3}
     impactFxPrefab: {fileID: 0}
-    fxLifetimeSeconds: 0
+    fxLifetimeSeconds: 1.5
     faceTargetOnCast: 1
-  skillGroupPresets: []
+    iconSprite: {fileID: 21300000, guid: ac313f09b79801f4c8dd05d940ed30b7, type: 3}
+  - skillGroupCode: moc_mien_chuong
+    skillGroupName: "M\u1ED9c Mi\xEAn ch\u01B0\u1EDFng"
+    archetype: 2
+    castStateName: 
+    releaseStateName: 
+    targetImpactStateName: 
+    sourceSocket: 1
+    impactSocket: 9
+    castFxPrefab: {fileID: 0}
+    releaseFxPrefab: {fileID: 8171441243783990914, guid: 1f7e5b85ad2ff61408a118c789622bfc, type: 3}
+    impactFxPrefab: {fileID: 0}
+    fxLifetimeSeconds: 1.5
+    faceTargetOnCast: 1
+    iconSprite: {fileID: 21300000, guid: 906a98bc37990654a87ed4f8a583dc33, type: 3}
+  - skillGroupCode: xich_hoa_kiem_tram
+    skillGroupName: "X\xEDch H\u1ECFa Ki\u1EBFm Tr\u1EA3m"
+    archetype: 2
+    castStateName: 
+    releaseStateName: 
+    targetImpactStateName: 
+    sourceSocket: 1
+    impactSocket: 9
+    castFxPrefab: {fileID: 0}
+    releaseFxPrefab: {fileID: 8171441243783990914, guid: 1f7e5b85ad2ff61408a118c789622bfc, type: 3}
+    impactFxPrefab: {fileID: 0}
+    fxLifetimeSeconds: 1.5
+    faceTargetOnCast: 1
+    iconSprite: {fileID: 21300000, guid: 525cd5f06d1effc4e98a785e2683fdbc, type: 3}
+  skillOverrides: []

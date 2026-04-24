@@ -55,7 +55,7 @@ namespace PhamNhanOnline.Client.UI.Skills
                 canvasGroup = gameObject.AddComponent<CanvasGroup>();
         }
 
-        public void SetItem(PlayerSkillModel value, SkillPresentation presentation, bool force = false)
+        public void SetItem(PlayerSkillModel value, SkillUIPresentation presentation, bool force = false)
         {
             hasItem = true;
             item = value;
@@ -249,7 +249,7 @@ namespace PhamNhanOnline.Client.UI.Skills
             }
         }
 
-        private void ApplyPresentation(SkillPresentation presentation)
+        private void ApplyPresentation(SkillUIPresentation presentation)
         {
             currentIconSprite = presentation.IconSprite;
             if (iconImage == null)

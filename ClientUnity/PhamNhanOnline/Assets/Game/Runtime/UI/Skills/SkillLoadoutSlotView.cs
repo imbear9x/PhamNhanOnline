@@ -40,7 +40,7 @@ namespace PhamNhanOnline.Client.UI.Skills
         private CanvasGroup canvasGroup;
         private SkillDragGhost dragGhost;
         private Sprite currentIconSprite;
-        private SkillPresentation currentPresentation;
+        private SkillUIPresentation currentPresentation;
 
         public event Action<int, PlayerSkillModel, int?> SkillDropped;
         public event Action<SkillLoadoutSlotView> Clicked;
@@ -65,7 +65,7 @@ namespace PhamNhanOnline.Client.UI.Skills
                 slotLabelText.text = slotIndex.ToString();
         }
 
-        public void SetItem(PlayerSkillModel value, SkillPresentation presentation, bool force = false)
+        public void SetItem(PlayerSkillModel value, SkillUIPresentation presentation, bool force = false)
         {
             hasItem = true;
             item = value;
@@ -258,7 +258,7 @@ namespace PhamNhanOnline.Client.UI.Skills
                 iconImage.gameObject.SetActive(visible);
         }
 
-        private void ApplyPresentation(SkillPresentation presentation)
+        private void ApplyPresentation(SkillUIPresentation presentation)
         {
             currentPresentation = presentation;
             currentIconSprite = presentation.IconSprite;

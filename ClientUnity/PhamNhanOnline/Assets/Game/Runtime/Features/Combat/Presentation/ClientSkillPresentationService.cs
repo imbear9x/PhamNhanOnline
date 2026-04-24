@@ -253,6 +253,10 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
                 string.Empty,
                 CharacterPresentationSocketType.Root,
                 CharacterPresentationSocketType.TargetCenter,
+                null,
+                null,
+                null,
+                1.5f,
                 true);
         }
 
