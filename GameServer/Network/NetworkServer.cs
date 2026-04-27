@@ -271,7 +271,36 @@ public sealed class NetworkServer : INetEventListener, INetworkSender
         var bytes = reader.GetRemainingBytes();
         reader.Recycle();
 
-        var packet = PacketSerializer.Deserialize(bytes);
+        IPacket? packet;
+        try
+        {
+            packet = PacketSerializer.Deserialize(bytes);
+        }
+        catch (Exception ex)
+        {
+            _metrics.RecordInboundPacketProcessingException();
+            Logger.Error(ex, $"Failed to deserialize inbound packet: ConnectionId={session.ConnectionId}, Bytes={bytes.Length}");
+            PacketIncidentCapture.Log(new PacketIncidentRecord
+            {
+                CapturedAtUtc = DateTime.UtcNow,
+                Source = "Server",
+                IncidentType = "ServerInboundPacketDeserializeException",
+                ConnectionId = session.ConnectionId,
+                RemoteEndPoint = $"{session.Peer.Address}:{session.Peer.Port}",
+                IsAuthenticated = session.IsAuthenticated,
+                PlayerId = session.PlayerId == Guid.Empty ? null : session.PlayerId,
+                ChannelNumber = channelNumber,
+                DeliveryMethod = deliveryMethod.ToString(),
+                PacketType = "<deserialize_failed>",
+                PacketJson = string.Empty,
+                PacketPayloadBase64 = Convert.ToBase64String(bytes),
+                ExceptionType = ex.GetType().FullName ?? ex.GetType().Name,
+                ExceptionMessage = ex.Message,
+                ExceptionStackTrace = ex.StackTrace
+            });
+            return;
+        }
+
         if (packet is null)
             return;
 

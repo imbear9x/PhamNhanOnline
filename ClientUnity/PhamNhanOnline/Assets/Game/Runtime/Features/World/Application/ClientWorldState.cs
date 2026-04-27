@@ -44,6 +44,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public int? CurrentEntryPortalId { get; private set; }
         public int? CurrentEntrySpawnPointId { get; private set; }
         public Vector2 LocalPlayerPosition { get; private set; }
+        public int LocalPlayerForceSnapRevision { get; private set; }
         public int ObservedCharacterCount { get { return observedCharacters.Count; } }
         public IEnumerable<ObservedCharacterModel> ObservedCharacters { get { return observedCharacters.Values; } }
         public int EnemyCount { get { return enemies.Count; } }
@@ -108,6 +109,11 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public void ApplyLocalPlayerPosition(Vector2 localPlayerPosition)
         {
             LocalPlayerPosition = localPlayerPosition;
+        }
+
+        public void RequestLocalPlayerForceSnap()
+        {
+            LocalPlayerForceSnapRevision++;
         }
 
         public void UpsertObservedCharacter(ObservedCharacterModel observedCharacter)
@@ -334,6 +340,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
             CurrentEntryPortalId = null;
             CurrentEntrySpawnPointId = null;
             LocalPlayerPosition = Vector2.zero;
+            LocalPlayerForceSnapRevision = 0;
             currentAdjacentMapIds.Clear();
             observedCharacters.Clear();
             enemies.Clear();

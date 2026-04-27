@@ -113,6 +113,9 @@ public static partial class ServiceCollectionExtensions
         {
             NetworkReconnectResumeWindowSeconds = GetInt(configsByKey, GameConfigKeys.NetworkReconnectResumeWindowSeconds, 3),
             WorldPortalValidationBufferServerUnits = GetFloat(configsByKey, GameConfigKeys.WorldPortalValidationBufferServerUnits, 4f),
+            CharacterPositionSyncGraceServerUnits = GetFloat(configsByKey, GameConfigKeys.CharacterPositionSyncGraceServerUnits, 45f),
+            CharacterPositionSyncMaxElapsedSeconds = GetFloat(configsByKey, GameConfigKeys.CharacterPositionSyncMaxElapsedSeconds, 1.5f),
+            CharacterPositionSyncMaxSpeedMultiplier = GetFloat(configsByKey, GameConfigKeys.CharacterPositionSyncMaxSpeedMultiplier, 1.25f),
             CombatSkillRangeGraceBufferUnits = GetFloat(configsByKey, GameConfigKeys.CombatSkillRangeGraceBufferUnits, 12f),
             CombatDeathReturnHomeRecoveryRatio = GetDouble(configsByKey, GameConfigKeys.CombatDeathReturnHomeRecoveryRatio, 0.80d),
             ItemDropPlayerOwnershipSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropPlayerOwnershipSeconds, 10),
@@ -120,6 +123,7 @@ public static partial class ServiceCollectionExtensions
             ItemDropEnemyDefaultOwnershipSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropEnemyDefaultOwnershipSeconds, 30),
             ItemDropEnemyDefaultFreeForAllSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropEnemyDefaultFreeForAllSeconds, 30),
             ItemDropGroundSpawnOffsetServerUnits = GetFloat(configsByKey, GameConfigKeys.ItemDropGroundSpawnOffsetServerUnits, 30f),
+            GroundRewardPickupRadiusServerUnits = GetFloat(configsByKey, GameConfigKeys.GroundRewardPickupRadiusServerUnits, 120f),
             WorldEmptyPublicInstanceLifetimeSeconds = GetInt(configsByKey, GameConfigKeys.WorldEmptyPublicInstanceLifetimeSeconds, 120),
             CultivationPotentialPerCultivationPoint = GetInt(configsByKey, GameConfigKeys.CultivationPotentialPerCultivationPoint, 1),
             CultivationSettlementIntervalSeconds = GetInt(configsByKey, GameConfigKeys.CultivationSettlementIntervalSeconds, 300),

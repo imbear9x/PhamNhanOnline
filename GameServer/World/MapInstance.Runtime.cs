@@ -1,5 +1,6 @@
 using System.Numerics;
 using GameServer.Runtime;
+using GameShared.Logging;
 
 namespace GameServer.World;
 
@@ -77,10 +78,13 @@ public sealed partial class MapInstance
                         }
                         else
                         {
-                            _pendingPlayerDamages.Enqueue(new PlayerDamageRuntimeEvent(
-                                targetPlayer.PlayerId,
-                                monster.Id,
-                                Math.Max(1, monster.GetEffectiveAttack(utcNow))));
+                            if (monster.TryMarkMissingAttackSkillLogged())
+                            {
+                                Logger.Info(
+                                    $"Enemy cannot attack because no skill/basic attack is configured. " +
+                                    $"MapId={MapId}, InstanceId={InstanceId}, EnemyRuntimeId={monster.Id}, " +
+                                    $"EnemyTemplateId={monster.Definition.Id}, EnemyCode={monster.Definition.Code}.");
+                            }
                         }
                     }
                 }

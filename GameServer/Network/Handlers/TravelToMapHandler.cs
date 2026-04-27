@@ -72,7 +72,7 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
         return HandleLegacyMapTravelAsync(session, player, packet);
     }
 
-    private Task HandlePortalTravelAsync(ConnectionSession session, PlayerSession player, TravelToMapPacket packet)
+    private async Task HandlePortalTravelAsync(ConnectionSession session, PlayerSession player, TravelToMapPacket packet)
     {
         var portalId = packet.PortalId!.Value;
         Logger.Info($"[PortalTravel] request conn={session.ConnectionId} player={player.CharacterData.Name} characterId={player.CharacterData.CharacterId} map={player.MapId} zone={player.ZoneIndex} portal={portalId} packetPos=({packet.CurrentPosX?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"},{packet.CurrentPosY?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"}) playerPos=({player.Position.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{player.Position.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}).");
@@ -80,29 +80,43 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
         {
             Logger.Info($"[PortalTravel] reject invalid portal conn={session.ConnectionId} player={player.CharacterData.Name} map={player.MapId} portal={portalId}.");
             SendFailure(session, packet, MessageCode.MapPortalInvalid, null, null);
-            return Task.CompletedTask;
+            return;
         }
 
         if (!_mapCatalog.TryGet(portal.TargetMapId, out var targetDefinition))
         {
             SendFailure(session, packet, MessageCode.MapIdInvalid, portal.TargetMapId, portal.TargetSpawnPointId);
-            return Task.CompletedTask;
+            return;
         }
 
         if (!targetDefinition.TryGetSpawnPoint(portal.TargetSpawnPointId, out var targetSpawnPoint))
         {
             SendFailure(session, packet, MessageCode.MapPortalInvalid, portal.TargetMapId, portal.TargetSpawnPointId);
-            return Task.CompletedTask;
+            return;
         }
 
-        var validationPosition = ResolvePortalValidationPosition(player, packet);
+        var validationPosition = player.CapturePositionSyncAnchor().Position;
         var maxDistance = MathF.Max(0f, portal.InteractionRadius) + MathF.Max(0f, _gameConfig.WorldPortalValidationBufferServerUnits);
         var distanceSquared = Vector2.DistanceSquared(validationPosition, portal.SourcePosition);
         if (distanceSquared > maxDistance * maxDistance)
         {
-            Logger.Info($"[PortalTravel] reject out-of-range conn={session.ConnectionId} player={player.CharacterData.Name} portal={portal.Id} validationPos=({validationPosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{validationPosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) portalPos=({portal.SourcePosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{portal.SourcePosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) distance={MathF.Sqrt(distanceSquared).ToString(System.Globalization.CultureInfo.InvariantCulture)} maxDistance={maxDistance.ToString(System.Globalization.CultureInfo.InvariantCulture)} packetPos=({packet.CurrentPosX?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"},{packet.CurrentPosY?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"}).");
-            SendFailure(session, packet, MessageCode.MapTravelNotAllowed, portal.TargetMapId, portal.TargetSpawnPointId);
-            return Task.CompletedTask;
+            Logger.Info($"[PortalTravel] wait server-position conn={session.ConnectionId} player={player.CharacterData.Name} portal={portal.Id} validationPos=({validationPosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{validationPosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) portalPos=({portal.SourcePosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{portal.SourcePosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) distance={MathF.Sqrt(distanceSquared).ToString(System.Globalization.CultureInfo.InvariantCulture)} maxDistance={maxDistance.ToString(System.Globalization.CultureInfo.InvariantCulture)} packetPos=({packet.CurrentPosX?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"},{packet.CurrentPosY?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"}).");
+            var waitResult = await PlayerInteractionMovementWait.WaitUntilWithinRangeAsync(
+                player,
+                portal.SourcePosition,
+                maxDistance,
+                DateTime.UtcNow);
+            validationPosition = player.CapturePositionSyncAnchor().Position;
+            distanceSquared = Vector2.DistanceSquared(validationPosition, portal.SourcePosition);
+            if (waitResult != InteractionMovementWaitResult.Reached || distanceSquared > maxDistance * maxDistance)
+            {
+                if (waitResult == InteractionMovementWaitResult.CharacterDefeated)
+                    return;
+
+                Logger.Info($"[PortalTravel] reject out-of-range after wait conn={session.ConnectionId} player={player.CharacterData.Name} portal={portal.Id} validationPos=({validationPosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{validationPosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) portalPos=({portal.SourcePosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{portal.SourcePosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) distance={MathF.Sqrt(distanceSquared).ToString(System.Globalization.CultureInfo.InvariantCulture)} maxDistance={maxDistance.ToString(System.Globalization.CultureInfo.InvariantCulture)}.");
+                SendFailure(session, packet, MessageCode.MapTravelNotAllowed, portal.TargetMapId, portal.TargetSpawnPointId);
+                return;
+            }
         }
 
         var targetZoneIndex = targetDefinition.IsPrivatePerPlayer
@@ -128,17 +142,6 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
             PortalId = portal.Id,
             TargetSpawnPointId = targetSpawnPoint.Id
         });
-        return Task.CompletedTask;
-    }
-
-    private Vector2 ResolvePortalValidationPosition(PlayerSession player, TravelToMapPacket packet)
-    {
-        if (packet.CurrentPosX.HasValue && packet.CurrentPosY.HasValue && _mapCatalog.TryGet(player.MapId, out var currentMap))
-        {
-            return currentMap.ClampPosition(new Vector2(packet.CurrentPosX.Value, packet.CurrentPosY.Value));
-        }
-
-        return player.Position;
     }
 
     private Task HandleLegacyMapTravelAsync(ConnectionSession session, PlayerSession player, TravelToMapPacket packet)

@@ -18,6 +18,9 @@ Bảng `public.game_configs` dùng để chứa các giá trị gameplay có th�
 |---|---|---:|---|---:|
 | `network.reconnect_resume_window_seconds` | `GameConfigValues.NetworkReconnectResumeWindowSeconds` | `int` | Số giây server giữ resume token/session sau khi mất kết nối để reconnect. | `3` |
 | `world.portal_validation_buffer_server_units` | `GameConfigValues.WorldPortalValidationBufferServerUnits` | `float` | Buffer cộng thêm vào `interaction_radius` khi server validate dùng portal. | `4` |
+| `character.position_sync_grace_server_units` | `GameConfigValues.CharacterPositionSyncGraceServerUnits` | `float` | Khoảng dung sai dùng khi log nghi vấn speed hack. Server position vẫn chỉ tiến theo tốc độ hợp lệ, không dùng giá trị này để tăng tốc thực tế. | `45` |
+| `character.position_sync_max_elapsed_seconds` | `GameConfigValues.CharacterPositionSyncMaxElapsedSeconds` | `float` | Số giây tối đa mỗi tick được tính khi server tự tiến vị trí player tới movement target, tránh server nhảy quá xa sau stall/lag. | `1.5` |
+| `character.position_sync_max_speed_multiplier` | `GameConfigValues.CharacterPositionSyncMaxSpeedMultiplier` | `float` | Hệ số dung sai dùng khi log nghi vấn speed hack trên intent client gửi lên. Server position vẫn clamp theo base/effective move speed thật. | `1.25` |
 | `combat.skill_range_grace_buffer_units` | `GameConfigValues.CombatSkillRangeGraceBufferUnits` | `float` | Buffer cộng thêm vào `CastRange` khi server validate target combat. | `12` |
 | `combat_death.return_home_recovery_ratio` | `GameConfigValues.CombatDeathReturnHomeRecoveryRatio` | `double` | Tỷ lệ HP/MP hồi lại khi player combat dead và được đưa về home. | `0.8` |
 | `item_drop.player_drop_ownership_seconds` | `GameConfigValues.ItemDropPlayerOwnershipSeconds` | `int` | Số giây item vứt từ inventory còn ownership riêng cho người vứt. | `10` |
@@ -25,6 +28,7 @@ Bảng `public.game_configs` dùng để chứa các giá trị gameplay có th�
 | `item_drop.enemy_drop_default_ownership_seconds` | `GameConfigValues.ItemDropEnemyDefaultOwnershipSeconds` | `int` | Ownership mặc định cho item rơi từ enemy nếu reward rule không cấu hình riêng. | `30` |
 | `item_drop.enemy_drop_default_free_for_all_seconds` | `GameConfigValues.ItemDropEnemyDefaultFreeForAllSeconds` | `int` | Free-for-all mặc định cho item rơi từ enemy nếu reward rule không cấu hình riêng. | `30` |
 | `item_drop.ground_spawn_offset_server_units` | `GameConfigValues.ItemDropGroundSpawnOffsetServerUnits` | `float` | Khoảng lệch spawn item trên mặt đất tính theo đơn vị server khi văng reward ra map. | `30` |
+| `ground_reward.pickup_radius_server_units` | `GameConfigValues.GroundRewardPickupRadiusServerUnits` | `float` | Bán kính tối đa để player nhặt ground reward tính từ vị trí server-authoritative. | `120` |
 | `world.empty_public_instance_lifetime_seconds` | `GameConfigValues.WorldEmptyPublicInstanceLifetimeSeconds` | `int` | Số giây một public instance rỗng được giữ trước khi bị hủy. | `120` |
 | `cultivation.potential_per_cultivation_point` | `GameConfigValues.CultivationPotentialPerCultivationPoint` | `int` | Số potential quy đổi trên mỗi cultivation point khi settle cultivation. | `1` |
 | `cultivation.settlement_interval_seconds` | `GameConfigValues.CultivationSettlementIntervalSeconds` | `int` | Chu kỳ settle cultivation theo giây. | `300` |

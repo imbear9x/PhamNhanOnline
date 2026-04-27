@@ -68,14 +68,6 @@ public sealed partial class MapInstance
         }
     }
 
-    public IReadOnlyCollection<PlayerDamageRuntimeEvent> DequeuePendingPlayerDamages()
-    {
-        lock (_sync)
-        {
-            return DrainQueueUnsafe(_pendingPlayerDamages);
-        }
-    }
-
     public IReadOnlyCollection<EnemySkillCastRequestRuntimeEvent> DequeuePendingEnemySkillCastRequests()
     {
         lock (_sync)
@@ -146,11 +138,6 @@ public readonly record struct GroundRewardDespawnRuntimeEvent(
     int RewardId,
     IReadOnlyList<long> PlayerItemIds,
     bool DestroyItems);
-
-public readonly record struct PlayerDamageRuntimeEvent(
-    Guid TargetPlayerId,
-    int EnemyRuntimeId,
-    int Damage);
 
 public readonly record struct EnemySkillCastRequestRuntimeEvent(
     int EnemyRuntimeId,

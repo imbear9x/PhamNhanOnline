@@ -43564,6 +43564,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   presentationCatalog: {fileID: 11400000, guid: 62c6a8bbf87835f499e3f263e9dd55d5, type: 2}
   enemiesRoot: {fileID: 1022997049}
+  movementConfig: {fileID: 11400000, guid: 980196c983704fa4ae3861cbf5372c2c, type: 2}
 --- !u!114 &1783644311
 MonoBehaviour:
   m_ObjectHideFlags: 0

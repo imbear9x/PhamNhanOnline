@@ -78,6 +78,7 @@ public sealed class CharacterRuntimeService
             current => _calculator.ApplyDamage(baseStats, current, remainingDamage));
 
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
+        ClearMovementTargetIfDefeated(player, snapshot.CurrentState);
         SyncCharacterActionRestriction(player, snapshot.CurrentState);
         _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);
         _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
@@ -98,6 +99,7 @@ public sealed class CharacterRuntimeService
             current => _calculator.ApplyResourceDelta(baseStats, current, hpDelta, mpDelta, staminaDelta));
 
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
+        ClearMovementTargetIfDefeated(player, snapshot.CurrentState);
         SyncCharacterActionRestriction(player, snapshot.CurrentState);
         _notifier.NotifyCurrentStateChanged(player, snapshot.CurrentState);
         _interestService.NotifyCurrentStateChanged(player, snapshot.CurrentState);
@@ -114,6 +116,7 @@ public sealed class CharacterRuntimeService
             current => _calculator.ClampCurrentStateToBaseStats(baseStatsSnapshot.BaseStats, current));
 
         player.SynchronizeFromCurrentState(currentStateSnapshot.CurrentState);
+        ClearMovementTargetIfDefeated(player, currentStateSnapshot.CurrentState);
         SyncCharacterActionRestriction(player, currentStateSnapshot.CurrentState);
         _notifier.NotifyBaseStatsChanged(player, baseStatsSnapshot.BaseStats);
         _notifier.NotifyCurrentStateChanged(player, currentStateSnapshot.CurrentState);
@@ -131,6 +134,7 @@ public sealed class CharacterRuntimeService
         var previousState = player.RuntimeState.CaptureSnapshot().CurrentState;
         var snapshot = player.RuntimeState.UpdateCurrentState(mutation, markDirty: persist);
         player.SynchronizeFromCurrentState(snapshot.CurrentState);
+        ClearMovementTargetIfDefeated(player, snapshot.CurrentState);
         SyncCharacterActionRestriction(player, snapshot.CurrentState);
 
         if (notifySelf)
@@ -186,6 +190,12 @@ public sealed class CharacterRuntimeService
             currentState.CurrentState == CharacterRuntimeStateCodes.CombatDead ||
             currentState.IsExpired;
         player.SetCharacterActionsRestricted(restricted);
+    }
+
+    private static void ClearMovementTargetIfDefeated(PlayerSession player, CharacterCurrentStateDto currentState)
+    {
+        if (CharacterRuntimeStateCodes.IsDefeated(currentState))
+            player.ClearDesiredMovementTarget();
     }
 
     private void NotifyDeathTransitionIfNeeded(

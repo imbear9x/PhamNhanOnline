@@ -1,3 +1,4 @@
+using System.Numerics;
 using GameShared.Messages;
 
 namespace GameServer.World;
@@ -24,6 +25,8 @@ public sealed partial class MapInstance
     public bool TryClaimGroundReward(
         Guid pickerCharacterId,
         int rewardId,
+        Vector2 pickerPosition,
+        float maxPickupDistance,
         DateTime utcNow,
         out GroundRewardEntity reward,
         out MessageCode failureCode)
@@ -59,12 +62,63 @@ public sealed partial class MapInstance
                 return false;
             }
 
+            var resolvedPickupDistance = MathF.Max(0f, maxPickupDistance);
+            if (Vector2.DistanceSquared(pickerPosition, resolvedReward.Position) >
+                resolvedPickupDistance * resolvedPickupDistance)
+            {
+                failureCode = MessageCode.GroundRewardOutOfRange;
+                return false;
+            }
+
             GroundRewards.Remove(resolvedReward);
             _pendingGroundRewardDespawns.Enqueue(new GroundRewardDespawnRuntimeEvent(
                 resolvedReward.Id,
                 resolvedReward.GetPlayerItemIds(),
                 DestroyItems: false));
             reward = resolvedReward;
+            return true;
+        }
+    }
+
+    public bool TryGetGroundRewardPickupPosition(
+        Guid pickerCharacterId,
+        int rewardId,
+        DateTime utcNow,
+        out Vector2 rewardPosition,
+        out MessageCode failureCode)
+    {
+        lock (_sync)
+        {
+            rewardPosition = default;
+            failureCode = MessageCode.None;
+
+            var resolvedReward = GroundRewards.FirstOrDefault(x => x.Id == rewardId);
+            if (resolvedReward is null)
+            {
+                failureCode = MessageCode.GroundRewardNotFound;
+                return false;
+            }
+
+            resolvedReward.Update(utcNow);
+            if (resolvedReward.IsDestroyed)
+            {
+                GroundRewards.Remove(resolvedReward);
+                _pendingGroundRewardDespawns.Enqueue(new GroundRewardDespawnRuntimeEvent(
+                    resolvedReward.Id,
+                    resolvedReward.GetPlayerItemIds(),
+                    DestroyItems: true));
+                failureCode = MessageCode.GroundRewardExpired;
+                return false;
+            }
+
+            if (resolvedReward.OwnerCharacterId.HasValue &&
+                resolvedReward.OwnerCharacterId.Value != pickerCharacterId)
+            {
+                failureCode = MessageCode.GroundRewardNotOwnedYet;
+                return false;
+            }
+
+            rewardPosition = resolvedReward.Position;
             return true;
         }
     }

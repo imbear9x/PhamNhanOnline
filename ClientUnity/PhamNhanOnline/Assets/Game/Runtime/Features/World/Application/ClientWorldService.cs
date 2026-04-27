@@ -12,6 +12,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
         private readonly ClientWorldState worldState;
         private readonly ClientCharacterState characterState;
         private readonly ClientTargetState targetState;
+        private bool localPlayerWasDefeated;
 
         public ClientWorldService(
             ClientConnectionService connection,
@@ -22,6 +23,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
             this.worldState = worldState;
             this.characterState = characterState;
             this.targetState = targetState;
+            localPlayerWasDefeated = ClientCharacterRuntimeStateCodes.IsDefeated(characterState.CurrentState);
 
             connection.Packets.Subscribe<MapJoinedPacket>(HandleMapJoined);
             connection.Packets.Subscribe<WorldRuntimeSnapshotPacket>(HandleWorldRuntimeSnapshot);
@@ -166,6 +168,11 @@ namespace PhamNhanOnline.Client.Features.World.Application
 
             var currentState = packet.CurrentState.Value;
             worldState.ApplyLocalPlayerPosition(new Vector2(currentState.CurrentPosX, currentState.CurrentPosY));
+            var isDefeated = ClientCharacterRuntimeStateCodes.IsDefeated(currentState);
+            if (isDefeated && !localPlayerWasDefeated)
+                worldState.RequestLocalPlayerForceSnap();
+
+            localPlayerWasDefeated = isDefeated;
         }
 
         private void HandleConnectionStateChanged(ClientConnectionState state)
@@ -174,6 +181,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 return;
 
             targetState.Clear();
+            localPlayerWasDefeated = false;
 
             if (ClientRuntime.ConnectionRecovery != null &&
                 ClientRuntime.ConnectionRecovery.ShouldPreserveRuntimeStateOnDisconnect)

@@ -677,6 +677,9 @@ CREATE TABLE IF NOT EXISTS public.player_items (
         FOREIGN KEY (item_template_id) REFERENCES public.item_templates(id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_player_items_player_location_template
+    ON public.player_items(player_id, location_type, item_template_id);
+
 CREATE TABLE IF NOT EXISTS public.equipment_templates (
     item_template_id integer NOT NULL,
     equipment_type integer NOT NULL,
@@ -1415,12 +1418,16 @@ INSERT INTO public.game_configs (config_key, config_value, description)
 VALUES
     ('network.reconnect_resume_window_seconds', '3', 'So giay server giu resume token/session sau khi mat ket noi de reconnect.'),
     ('world.portal_validation_buffer_server_units', '4', 'Buffer them vao interaction radius khi server validate di qua portal.'),
+    ('character.position_sync_grace_server_units', '45', 'Khoang dung sai khi log nghi van speed hack. Server position van chi tien theo toc do hop le.'),
+    ('character.position_sync_max_elapsed_seconds', '1.5', 'So giay toi da moi tick duoc tinh khi server tien vi tri player toi movement target.'),
+    ('character.position_sync_max_speed_multiplier', '1.25', 'He so dung sai khi log nghi van speed hack tren intent client gui len. Khong tang toc server position.'),
     ('combat.skill_range_grace_buffer_units', '12', 'Buffer them vao tam cast skill khi server validate attack target.'),
     ('combat_death.return_home_recovery_ratio', '0.8', 'Ti le HP/MP hoi lai khi player combat dead va duoc dua ve home.'),
     ('item_drop.player_drop_ownership_seconds', '10', 'So giay item vut tu inventory con ownership rieng cho nguoi vut.'),
     ('item_drop.player_drop_free_for_all_seconds', '50', 'So giay sau giai doan ownership de item vut tu inventory ton tai o free-for-all.'),
     ('item_drop.enemy_drop_default_ownership_seconds', '30', 'So giay ownership mac dinh cho ground reward roi tu enemy khi reward rule khong chi dinh.'),
     ('item_drop.enemy_drop_default_free_for_all_seconds', '30', 'So giay free-for-all mac dinh cho ground reward roi tu enemy khi reward rule khong chi dinh.'),
+    ('ground_reward.pickup_radius_server_units', '120', 'Ban kinh toi da de player nhat ground reward tinh tu vi tri server-authoritative.'),
     ('world.empty_public_instance_lifetime_seconds', '120', 'So giay mot public instance rong duoc giu truoc khi bi huy.'),
     ('cultivation.potential_per_cultivation_point', '1', 'So potential duoc quy doi tu moi cultivation point khi settle cultivation.'),
     ('cultivation.settlement_interval_seconds', '300', 'Chu ky settle cultivation theo giay.'),

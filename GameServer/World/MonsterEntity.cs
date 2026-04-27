@@ -18,6 +18,7 @@ public sealed class MonsterEntity
     private int _nextSkillIndex;
     private int _movementDecisionVersion;
     private bool _nextHorizontalTargetIsRight;
+    private bool _missingAttackSkillLogged;
     private DateTime? _waitUntilUtc;
     private DateTime _lastMovementUpdateUtc;
     private Guid? _pendingAggroOverridePlayerId;
@@ -351,6 +352,18 @@ public sealed class MonsterEntity
                 _nextSkillIndex = (_nextSkillIndex + 1) % Definition.Skills.Count;
             }
 
+            return true;
+        }
+    }
+
+    public bool TryMarkMissingAttackSkillLogged()
+    {
+        lock (_sync)
+        {
+            if (_missingAttackSkillLogged)
+                return false;
+
+            _missingAttackSkillLogged = true;
             return true;
         }
     }

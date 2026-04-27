@@ -14,6 +14,9 @@ public sealed class PlayerSession
     private bool _characterActionsRestricted;
     private (int ExecutionId, long PlayerSkillId, DateTime CastCompletedAtUtc)? _activeSkillCast;
     private MapEntryContext _lastMapEntryContext = new(MapEntryReason.Unknown, null, null, Vector2.Zero);
+    private DateTime _lastPositionSyncUtc;
+    private DateTime _lastMovementClampLoggedUtc;
+    private Vector2? _desiredMovementTarget;
 
     public Guid PlayerId { get; }
     public int ConnectionId { get; private set; }
@@ -83,6 +86,7 @@ public sealed class PlayerSession
         RuntimeState = runtimeState;
         IsConnected = true;
         Position = Vector2.Zero;
+        _lastPositionSyncUtc = DateTime.UtcNow;
         SynchronizeFromCurrentState(runtimeState.CaptureSnapshot().CurrentState);
     }
 
@@ -124,6 +128,7 @@ public sealed class PlayerSession
         lock (_sync)
         {
             Position += direction;
+            _lastPositionSyncUtc = DateTime.UtcNow;
         }
     }
 
@@ -132,6 +137,61 @@ public sealed class PlayerSession
         lock (_sync)
         {
             Position = position;
+            _lastPositionSyncUtc = DateTime.UtcNow;
+        }
+    }
+
+    public PlayerPositionSyncAnchor CapturePositionSyncAnchor()
+    {
+        lock (_sync)
+        {
+            return new PlayerPositionSyncAnchor(Position, _lastPositionSyncUtc);
+        }
+    }
+
+    public void SetDesiredMovementTarget(Vector2 targetPosition, DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            if (!_desiredMovementTarget.HasValue)
+                _lastPositionSyncUtc = utcNow;
+
+            _desiredMovementTarget = targetPosition;
+        }
+    }
+
+    public bool TryGetDesiredMovementTarget(out Vector2 targetPosition)
+    {
+        lock (_sync)
+        {
+            if (_desiredMovementTarget.HasValue)
+            {
+                targetPosition = _desiredMovementTarget.Value;
+                return true;
+            }
+
+            targetPosition = default;
+            return false;
+        }
+    }
+
+    public void ClearDesiredMovementTarget()
+    {
+        lock (_sync)
+        {
+            _desiredMovementTarget = null;
+        }
+    }
+
+    public bool TryMarkMovementClampLogged(DateTime utcNow, TimeSpan minInterval)
+    {
+        lock (_sync)
+        {
+            if (utcNow - _lastMovementClampLoggedUtc < minInterval)
+                return false;
+
+            _lastMovementClampLoggedUtc = utcNow;
+            return true;
         }
     }
 
@@ -139,9 +199,21 @@ public sealed class PlayerSession
     {
         lock (_sync)
         {
-            MapId = currentState.CurrentMapId ?? 0;
-            ZoneIndex = currentState.CurrentZoneIndex;
-            Position = new Vector2(currentState.CurrentPosX, currentState.CurrentPosY);
+            var nextMapId = currentState.CurrentMapId ?? 0;
+            var nextZoneIndex = currentState.CurrentZoneIndex;
+            var nextPosition = new Vector2(currentState.CurrentPosX, currentState.CurrentPosY);
+            var locationChanged = MapId != nextMapId || ZoneIndex != nextZoneIndex;
+            var positionChanged = Position != nextPosition;
+
+            MapId = nextMapId;
+            ZoneIndex = nextZoneIndex;
+            Position = nextPosition;
+
+            if (locationChanged)
+                _desiredMovementTarget = null;
+
+            if (locationChanged || positionChanged)
+                _lastPositionSyncUtc = DateTime.UtcNow;
         }
     }
 
@@ -269,3 +341,5 @@ public sealed class PlayerSession
         }
     }
 }
+
+public readonly record struct PlayerPositionSyncAnchor(Vector2 Position, DateTime LastSyncUtc);

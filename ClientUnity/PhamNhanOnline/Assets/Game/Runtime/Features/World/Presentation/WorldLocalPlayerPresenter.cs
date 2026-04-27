@@ -24,6 +24,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private LocalCharacterActionController localActionController;
         private Guid? activeCharacterId;
         private Vector2 lastAppliedServerPosition;
+        private int lastAppliedForceSnapRevision = -1;
         private bool warnedMissingPrefab;
         private bool warnedPositionMapping;
         private bool hasReportedLocalPlayerReadyForCurrentCycle;
@@ -151,6 +152,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             activeCharacterId = characterId;
             localActionController = ConfigureLocalActionController(playerInstance);
             lastAppliedServerPosition = new Vector2(float.NaN, float.NaN);
+            lastAppliedForceSnapRevision = -1;
             ClientLog.Info(string.Format("Spawned local player presenter for {0}.", selectedCharacter.Value.Name));
         }
 
@@ -160,8 +162,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
 
             var serverPosition = ClientRuntime.World.LocalPlayerPosition;
-            if (!force && serverPosition == lastAppliedServerPosition)
+            var forceSnapRevision = ClientRuntime.World.LocalPlayerForceSnapRevision;
+            var forceAuthoritativeApply = force || forceSnapRevision != lastAppliedForceSnapRevision;
+            if (!forceAuthoritativeApply && serverPosition == lastAppliedServerPosition)
             {
+                RefreshLocalActionSpeed();
+                return;
+            }
+
+            if (!forceAuthoritativeApply && localActionController != null)
+            {
+                lastAppliedServerPosition = serverPosition;
+                lastAppliedForceSnapRevision = forceSnapRevision;
                 RefreshLocalActionSpeed();
                 return;
             }
@@ -173,8 +185,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return;
             }
 
-            ApplyAuthoritativeWorldPosition(worldPosition, force);
+            ApplyAuthoritativeWorldPosition(worldPosition, forceAuthoritativeApply);
             lastAppliedServerPosition = serverPosition;
+            lastAppliedForceSnapRevision = forceSnapRevision;
             RefreshLocalActionSpeed();
         }
 
@@ -280,6 +293,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             localActionController = null;
             activeCharacterId = null;
             lastAppliedServerPosition = new Vector2(float.NaN, float.NaN);
+            lastAppliedForceSnapRevision = -1;
         }
 
         private void TryInitializeForReadyState(bool forcePosition)
@@ -319,6 +333,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         {
             hasReportedLocalPlayerReadyForCurrentCycle = false;
             lastAppliedServerPosition = new Vector2(float.NaN, float.NaN);
+            lastAppliedForceSnapRevision = -1;
         }
 
         private void HandleMapVisualReady()

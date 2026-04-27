@@ -212,23 +212,42 @@ public sealed class AttackEnemyHandler : IPacketHandler<AttackEnemyPacket>
                     var effectiveRange = castRange > 0f
                         ? castRange + rangeGrace
                         : 0f;
+                    var validationPosition = player.CapturePositionSyncAnchor().Position;
                     if (effectiveRange > 0f &&
-                        Vector2.DistanceSquared(player.Position, targetSnapshot.Position) > effectiveRange * effectiveRange)
+                        Vector2.DistanceSquared(validationPosition, targetSnapshot.Position) > effectiveRange * effectiveRange)
                     {
-                        _network.Send(session.ConnectionId, new AttackEnemyResultPacket
+                        var waitResult = await PlayerInteractionMovementWait.WaitUntilWithinRangeAsync(
+                            player,
+                            targetSnapshot.Position,
+                            effectiveRange,
+                            DateTime.UtcNow);
+
+                        if (waitResult != InteractionMovementWaitResult.Reached ||
+                            !instance.TryGetCombatTargetSnapshot(requestedTarget, out targetSnapshot) ||
+                            !targetSnapshot.IsAlive ||
+                            !IsTargetCompatible(player, castContext.Skill.TargetType, requestedTarget, targetSnapshot) ||
+                            Vector2.DistanceSquared(player.CapturePositionSyncAnchor().Position, targetSnapshot.Position) > effectiveRange * effectiveRange)
                         {
-                            Success = false,
-                            Code = MessageCode.SkillTargetOutOfRange,
-                            Target = packet.Target,
-                            SkillSlotIndex = packet.SkillSlotIndex,
-                            PlayerSkillId = castContext.PlayerSkillId,
-                            SkillId = castContext.SkillId
-                        });
-                        return;
+                            if (waitResult == InteractionMovementWaitResult.CharacterDefeated)
+                                return;
+
+                            _network.Send(session.ConnectionId, new AttackEnemyResultPacket
+                            {
+                                Success = false,
+                                Code = MessageCode.SkillTargetOutOfRange,
+                                Target = packet.Target,
+                                SkillSlotIndex = packet.SkillSlotIndex,
+                                PlayerSkillId = castContext.PlayerSkillId,
+                                SkillId = castContext.SkillId
+                            });
+                            return;
+                        }
                     }
                     break;
             }
 
+            player.ClearDesiredMovementTarget();
+            utcNow = DateTime.UtcNow;
             var cooldownEndsAtUtc = utcNow.AddMilliseconds(Math.Max(0, castContext.Skill.CooldownMs));
             var execution = instance.EnqueueSkillExecution(
                 new CombatTargetReference(

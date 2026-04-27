@@ -1,14 +1,19 @@
 using System.Diagnostics;
+using System.Numerics;
+using GameServer.Config;
 using GameServer.Diagnostics;
 using GameServer.DTO;
 using GameServer.World;
 using GameShared.Enums;
+using GameShared.Logging;
 
 namespace GameServer.Runtime;
 
 public sealed class GameLoop
 {
     private static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(50);
+    private static readonly TimeSpan MovementClampLogMinInterval = TimeSpan.FromMilliseconds(2000);
+    private const float DesiredMovementArriveDistance = 0.01f;
 
     private readonly WorldManager _worldManager;
     private readonly EnemyRewardRuntimeService _enemyRewardRuntimeService;
@@ -18,6 +23,8 @@ public sealed class GameLoop
     private readonly WorldInterestService _interestService;
     private readonly MapInstanceLifecycleService _instanceLifecycleService;
     private readonly ServerMetricsService _metrics;
+    private readonly GameConfigValues _gameConfig;
+    private readonly MapCatalog _mapCatalog;
 
     private readonly CancellationTokenSource _cts = new();
     private Thread? _thread;
@@ -30,7 +37,9 @@ public sealed class GameLoop
         GroundItemRuntimeService groundItemRuntimeService,
         WorldInterestService interestService,
         MapInstanceLifecycleService instanceLifecycleService,
-        ServerMetricsService metrics)
+        ServerMetricsService metrics,
+        GameConfigValues gameConfig,
+        MapCatalog mapCatalog)
     {
         _worldManager = worldManager;
         _enemyRewardRuntimeService = enemyRewardRuntimeService;
@@ -40,6 +49,8 @@ public sealed class GameLoop
         _interestService = interestService;
         _instanceLifecycleService = instanceLifecycleService;
         _metrics = metrics;
+        _gameConfig = gameConfig;
+        _mapCatalog = mapCatalog;
     }
 
     public void Start()
@@ -97,13 +108,14 @@ public sealed class GameLoop
         var instances = _worldManager.MapManager.GetAllInstancesSnapshot();
         var utcNow = DateTime.UtcNow;
 
+        ApplyDesiredPlayerMovement(utcNow);
+
         foreach (var instance in instances)
         {
             instance.Update(utcNow);
             ApplyPendingEnemySkillCastRequests(instance, utcNow);
             ApplyPendingSkillCastReleases(instance, utcNow);
             ApplyPendingSkillImpacts(instance, utcNow);
-            ApplyPendingPlayerDamage(instance);
             _enemyRewardRuntimeService.ProcessPendingEvents(instance, utcNow);
             PublishRuntimeEvents(instance);
             _instanceLifecycleService.HandleAfterWorldTick(instance, utcNow);
@@ -112,21 +124,113 @@ public sealed class GameLoop
         return instances.Count;
     }
 
-    private void ApplyPendingPlayerDamage(MapInstance instance)
+    private void ApplyDesiredPlayerMovement(DateTime utcNow)
     {
-        foreach (var damageEvent in instance.DequeuePendingPlayerDamages())
+        foreach (var player in _worldManager.GetOnlinePlayersSnapshot())
         {
-            if (!_worldManager.TryGetPlayer(damageEvent.TargetPlayerId, out var targetPlayer))
+            if (!player.IsConnected)
                 continue;
 
-            if (targetPlayer.InstanceId != instance.InstanceId || targetPlayer.MapId != instance.MapId)
+            if (!player.TryGetDesiredMovementTarget(out var desiredPosition))
                 continue;
 
-            if (CharacterRuntimeStateCodes.IsDefeated(targetPlayer.RuntimeState.CaptureSnapshot().CurrentState))
+            var runtimeSnapshot = player.RuntimeState.CaptureSnapshot();
+            if (CharacterRuntimeStateCodes.IsDefeated(runtimeSnapshot.CurrentState))
+            {
+                player.ClearDesiredMovementTarget();
+                continue;
+            }
+
+            if (runtimeSnapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.Cultivating ||
+                runtimeSnapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.Practicing ||
+                runtimeSnapshot.CurrentState.CurrentState == CharacterRuntimeStateCodes.Casting ||
+                player.IsStunned(utcNow))
+            {
+                continue;
+            }
+
+            if (!_mapCatalog.TryGet(player.MapId, out var mapDefinition))
+            {
+                player.ClearDesiredMovementTarget();
+                continue;
+            }
+
+            desiredPosition = mapDefinition.ClampPosition(desiredPosition);
+            var anchor = player.CapturePositionSyncAnchor();
+            var delta = desiredPosition - anchor.Position;
+            var distance = delta.Length();
+            if (distance <= DesiredMovementArriveDistance)
+            {
+                player.ClearDesiredMovementTarget();
+                continue;
+            }
+
+            var effectiveMoveSpeed = ResolveEffectiveMoveSpeed(player, runtimeSnapshot.BaseStats, utcNow);
+            if (effectiveMoveSpeed <= 0d)
                 continue;
 
-            _characterRuntimeService.ApplyDamage(targetPlayer, damageEvent.Damage);
+            var elapsedSeconds = Math.Max(0d, (utcNow - anchor.LastSyncUtc).TotalSeconds);
+            var cappedElapsedSeconds = Math.Min(
+                elapsedSeconds,
+                Math.Max(0d, _gameConfig.CharacterPositionSyncMaxElapsedSeconds));
+            var maxStep = (float)Math.Max(0d, effectiveMoveSpeed * cappedElapsedSeconds);
+            if (maxStep <= 0f)
+                continue;
+
+            var nextPosition = distance <= maxStep
+                ? desiredPosition
+                : anchor.Position + delta / distance * maxStep;
+
+            _characterRuntimeService.UpdatePosition(player, player.MapId, player.ZoneIndex, nextPosition, notifySelf: false);
+
+            if (distance <= maxStep)
+                player.ClearDesiredMovementTarget();
+
+            LogSuspiciousMovementIfNeeded(
+                player,
+                anchor.Position,
+                desiredPosition,
+                distance,
+                effectiveMoveSpeed,
+                cappedElapsedSeconds,
+                utcNow);
         }
+    }
+
+    private double ResolveEffectiveMoveSpeed(PlayerSession player, CharacterBaseStatsDto baseStats, DateTime utcNow)
+    {
+        var baseMoveSpeed = Math.Max(0d, baseStats.GetEffectiveMoveSpeed());
+        return CombatStatMath.ApplyModifiers(
+            baseMoveSpeed,
+            player.CombatStatuses.GetStatModifierAggregate(CharacterStatType.Speed, utcNow));
+    }
+
+    private void LogSuspiciousMovementIfNeeded(
+        PlayerSession player,
+        Vector2 fromPosition,
+        Vector2 desiredPosition,
+        float desiredDistance,
+        double effectiveMoveSpeed,
+        double elapsedSeconds,
+        DateTime utcNow)
+    {
+        var suspiciousDistance =
+            effectiveMoveSpeed *
+            Math.Max(1d, _gameConfig.CharacterPositionSyncMaxSpeedMultiplier) *
+            elapsedSeconds +
+            Math.Max(0d, _gameConfig.CharacterPositionSyncGraceServerUnits);
+        if (desiredDistance <= suspiciousDistance)
+            return;
+
+        if (!player.TryMarkMovementClampLogged(utcNow, MovementClampLogMinInterval))
+            return;
+
+        Logger.Info(
+            $"[PositionSync] clamp movement player={player.CharacterData.Name} " +
+            $"characterId={player.CharacterData.CharacterId} map={player.MapId} zone={player.ZoneIndex} " +
+            $"from=({fromPosition.X},{fromPosition.Y}) desired=({desiredPosition.X},{desiredPosition.Y}) " +
+            $"distance={desiredDistance:0.###} allowedLogDistance={suspiciousDistance:0.###} " +
+            $"speed={effectiveMoveSpeed:0.###} elapsed={elapsedSeconds:0.###}.");
     }
 
     private void ApplyPendingEnemySkillCastRequests(MapInstance instance, DateTime utcNow)

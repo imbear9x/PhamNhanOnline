@@ -20,19 +20,31 @@ public sealed class PacketValidationMiddleware : IPacketMiddleware
 
     public async Task InvokeAsync(ConnectionSession session, IPacket packet, Func<Task> next)
     {
-        if (_validators.TryGetValue(packet.GetType(), out var validator) &&
-            !validator.TryValidate(packet, out var errorPacket))
+        if (_validators.TryGetValue(packet.GetType(), out var validator))
         {
-            if (errorPacket is not null)
+            if (!validator.TryValidate(packet, out var errorPacket))
             {
-                var profile = PacketTransportPolicy.Resolve(errorPacket);
-                var data = PacketSerializer.Serialize(errorPacket);
-                _metrics.RecordOutboundPacketSent(errorPacket.GetType().Name, data.Length);
-                session.Peer.Send(data, profile.DeliveryMethod);
+                SendValidationError(session, errorPacket);
+                return;
             }
+        }
+        else if (!PacketAnnotationValidation.TryValidate(packet, out var errorPacket))
+        {
+            SendValidationError(session, errorPacket);
             return;
         }
 
         await next();
+    }
+
+    private void SendValidationError(ConnectionSession session, IPacket? errorPacket)
+    {
+        if (errorPacket is null)
+            return;
+
+        var profile = PacketTransportPolicy.Resolve(errorPacket);
+        var data = PacketSerializer.Serialize(errorPacket);
+        _metrics.RecordOutboundPacketSent(errorPacket.GetType().Name, data.Length);
+        session.Peer.Send(data, profile.DeliveryMethod);
     }
 }
