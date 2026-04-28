@@ -10,11 +10,19 @@ public sealed partial class MapInstance
     {
         lock (_sync)
         {
-            UpdateSkillExecutionsUnsafe(utcNow);
+            QueueDueSkillExecutionEventsUnsafe(utcNow);
             UpdateEnemyStatesUnsafe(utcNow);
             UpdateSpawnGroupsUnsafe(utcNow);
             UpdateGroundRewardsUnsafe(utcNow);
             UpdateCompletionStateUnsafe(utcNow);
+        }
+    }
+
+    public void QueueDueSkillExecutionEvents(DateTime utcNow)
+    {
+        lock (_sync)
+        {
+            QueueDueSkillExecutionEventsUnsafe(utcNow);
         }
     }
 
@@ -292,8 +300,11 @@ public sealed partial class MapInstance
         return Definition.ClampPosition(position);
     }
 
-    private void UpdateSkillExecutionsUnsafe(DateTime utcNow)
+    private void QueueDueSkillExecutionEventsUnsafe(DateTime utcNow)
     {
+        List<PendingSkillExecution>? dueReleases = null;
+        List<PendingSkillExecution>? dueImpacts = null;
+
         for (var index = _pendingSkillExecutions.Count - 1; index >= 0; index--)
         {
             var execution = _pendingSkillExecutions[index];
@@ -301,14 +312,36 @@ public sealed partial class MapInstance
             if (!execution.CastReleased && utcNow >= execution.CastCompletedAtUtc)
             {
                 execution.MarkCastReleased();
-                _pendingSkillCastReleases.Enqueue(new SkillCastReleaseRuntimeEvent(execution));
+                dueReleases ??= new List<PendingSkillExecution>();
+                dueReleases.Add(execution);
             }
 
             if (utcNow < execution.ImpactAtUtc)
                 continue;
 
-            _pendingSkillImpactDues.Enqueue(new SkillImpactDueRuntimeEvent(execution));
+            dueImpacts ??= new List<PendingSkillExecution>();
+            dueImpacts.Add(execution);
             _pendingSkillExecutions.RemoveAt(index);
+        }
+
+        if (dueReleases is not null)
+        {
+            foreach (var execution in dueReleases
+                         .OrderBy(x => x.CastCompletedAtUtc)
+                         .ThenBy(x => x.ExecutionId))
+            {
+                _pendingSkillCastReleases.Enqueue(new SkillCastReleaseRuntimeEvent(execution));
+            }
+        }
+
+        if (dueImpacts is not null)
+        {
+            foreach (var execution in dueImpacts
+                         .OrderBy(x => x.ImpactAtUtc)
+                         .ThenBy(x => x.ExecutionId))
+            {
+                _pendingSkillImpactDues.Enqueue(new SkillImpactDueRuntimeEvent(execution));
+            }
         }
     }
 

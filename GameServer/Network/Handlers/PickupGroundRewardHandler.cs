@@ -1,6 +1,7 @@
 using GameServer.Config;
 using GameServer.DTO;
 using GameServer.Network.Interface;
+using GameServer.Runtime;
 using GameServer.Services;
 using GameServer.World;
 using GameShared.Messages;
@@ -14,17 +15,20 @@ public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewar
     private readonly GameConfigValues _gameConfig;
     private readonly INetworkSender _network;
     private readonly WorldManager _worldManager;
+    private readonly WorldInteractionGate _interactionGate;
 
     public PickupGroundRewardHandler(
         ItemService itemService,
         GameConfigValues gameConfig,
         INetworkSender network,
-        WorldManager worldManager)
+        WorldManager worldManager,
+        WorldInteractionGate interactionGate)
     {
         _itemService = itemService;
         _gameConfig = gameConfig;
         _network = network;
         _worldManager = worldManager;
+        _interactionGate = interactionGate;
     }
 
     public async Task HandleAsync(ConnectionSession session, PickupGroundRewardPacket packet)
@@ -41,6 +45,25 @@ public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewar
         }
 
         var player = session.Player;
+        var startGateResult = _interactionGate.CheckPlayerCanStartAction(
+            player,
+            WorldInteractionActionKind.GroundRewardPickup,
+            "PickupGroundReward",
+            DateTime.UtcNow);
+        if (!startGateResult.Success)
+        {
+            if (startGateResult.SuppressFailure)
+                return;
+
+            _network.Send(session.ConnectionId, new PickupGroundRewardResultPacket
+            {
+                Success = false,
+                Code = startGateResult.Code,
+                RewardId = packet.RewardId
+            });
+            return;
+        }
+
         if (!_worldManager.MapManager.TryGetInstance(player.MapId, player.InstanceId, out var instance))
         {
             _network.Send(session.ConnectionId, new PickupGroundRewardResultPacket
@@ -63,46 +86,27 @@ public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewar
             return;
         }
 
-        var utcNow = DateTime.UtcNow;
-        if (!instance.TryGetGroundRewardPickupPosition(
-                player.CharacterData.CharacterId,
-                packet.RewardId.Value,
-                utcNow,
-                out var rewardPosition,
-                out var lookupFailureCode))
+        var maxPickupDistance = MathF.Max(0f, _gameConfig.GroundRewardPickupRadiusServerUnits);
+        var gateResult = await _interactionGate.PrepareAsync(new WorldInteractionGateRequest(
+            player,
+            instance,
+            WorldTargetRef.GroundReward(packet.RewardId.Value),
+            maxPickupDistance,
+            WorldInteractionActionKind.GroundRewardPickup,
+            "PickupGroundReward",
+            MessageCode.GroundRewardOutOfRange));
+        if (!gateResult.Success)
         {
+            if (gateResult.SuppressFailure)
+                return;
+
             _network.Send(session.ConnectionId, new PickupGroundRewardResultPacket
             {
                 Success = false,
-                Code = lookupFailureCode,
+                Code = gateResult.Code,
                 RewardId = packet.RewardId
             });
             return;
-        }
-
-        var maxPickupDistance = MathF.Max(0f, _gameConfig.GroundRewardPickupRadiusServerUnits);
-        var pickerPosition = player.CapturePositionSyncAnchor().Position;
-        if (System.Numerics.Vector2.DistanceSquared(pickerPosition, rewardPosition) >
-            maxPickupDistance * maxPickupDistance)
-        {
-            var waitResult = await PlayerInteractionMovementWait.WaitUntilWithinRangeAsync(
-                player,
-                rewardPosition,
-                maxPickupDistance,
-                DateTime.UtcNow);
-            if (waitResult != InteractionMovementWaitResult.Reached)
-            {
-                if (waitResult == InteractionMovementWaitResult.CharacterDefeated)
-                    return;
-
-                _network.Send(session.ConnectionId, new PickupGroundRewardResultPacket
-                {
-                    Success = false,
-                    Code = MessageCode.GroundRewardOutOfRange,
-                    RewardId = packet.RewardId
-                });
-                return;
-            }
         }
 
         if (!instance.TryClaimGroundReward(

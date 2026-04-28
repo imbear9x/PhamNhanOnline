@@ -7,6 +7,8 @@ public sealed class GameConfigValues
     public float CharacterPositionSyncGraceServerUnits { get; init; } = 45f;
     public float CharacterPositionSyncMaxElapsedSeconds { get; init; } = 1.5f;
     public float CharacterPositionSyncMaxSpeedMultiplier { get; init; } = 1.25f;
+    public float CharacterPositionSyncCatchupMultiplier { get; init; } = 1.3f;
+    public float CharacterPositionSyncCatchupMaxSeconds { get; init; } = 0.75f;
     public float CombatSkillRangeGraceBufferUnits { get; init; } = 12f;
     public double CombatDeathReturnHomeRecoveryRatio { get; init; } = 0.80d;
     public int ItemDropPlayerOwnershipSeconds { get; init; } = 10;

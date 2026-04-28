@@ -181,6 +181,9 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<CharacterLifecycleService>();
         services.AddSingleton<CharacterCultivationService>();
         services.AddSingleton<EnemyRewardRuntimeService>();
+        services.AddSingleton<WorldRuntimeSettlementService>();
+        services.AddSingleton<WorldTargetResolver>();
+        services.AddSingleton<WorldInteractionGate>();
         services.AddSingleton<MapInstanceLifecycleService>();
         services.AddSingleton<GameLoop>();
         services.AddSingleton<RuntimeMaintenanceService>();

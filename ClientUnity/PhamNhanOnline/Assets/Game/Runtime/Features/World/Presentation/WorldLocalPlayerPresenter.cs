@@ -359,6 +359,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 localCharacterActionConfig,
                 ResolveBaseSpeedPercent(),
                 ResolveBaseMoveSpeedUnitsPerSecond());
+            controller.SetServerUnitsToWorldScale(ResolveServerUnitsToWorldScale());
 
             ConfigureSkillPresenter(target);
             return controller;
@@ -396,6 +397,19 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             localActionController.SetSpeedStatPercent(ResolveBaseSpeedPercent());
             localActionController.SetMovementProfile(ResolveBaseMoveSpeedUnitsPerSecond());
+            localActionController.SetServerUnitsToWorldScale(ResolveServerUnitsToWorldScale());
+        }
+
+        private Vector2? ResolveServerUnitsToWorldScale()
+        {
+            if (worldMapPresenter == null)
+                return null;
+
+            Vector2 worldUnitsPerServerUnit;
+            if (!worldMapPresenter.TryGetWorldUnitsPerServerUnit(out worldUnitsPerServerUnit))
+                return null;
+
+            return worldUnitsPerServerUnit;
         }
 
         private void SyncInputBlockState()

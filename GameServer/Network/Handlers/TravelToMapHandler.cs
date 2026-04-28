@@ -1,4 +1,3 @@
-using System.Numerics;
 using GameServer.Config;
 using GameServer.Network.Interface;
 using GameServer.Runtime;
@@ -12,29 +11,29 @@ namespace GameServer.Network.Handlers;
 public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
 {
     private readonly CharacterRuntimeService _runtimeService;
-    private readonly CharacterCultivationService _cultivationService;
     private readonly GameConfigValues _gameConfig;
     private readonly WorldInterestService _interestService;
     private readonly INetworkSender _server;
     private readonly MapCatalog _mapCatalog;
     private readonly MapManager _mapManager;
+    private readonly WorldInteractionGate _interactionGate;
 
     public TravelToMapHandler(
         CharacterRuntimeService runtimeService,
-        CharacterCultivationService cultivationService,
         GameConfigValues gameConfig,
         WorldInterestService interestService,
         INetworkSender server,
         MapCatalog mapCatalog,
-        MapManager mapManager)
+        MapManager mapManager,
+        WorldInteractionGate interactionGate)
     {
         _runtimeService = runtimeService;
-        _cultivationService = cultivationService;
         _gameConfig = gameConfig;
         _interestService = interestService;
         _server = server;
         _mapCatalog = mapCatalog;
         _mapManager = mapManager;
+        _interactionGate = interactionGate;
     }
 
     public Task HandleAsync(ConnectionSession session, TravelToMapPacket packet)
@@ -46,23 +45,17 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
         }
 
         var player = session.Player;
-        var currentState = player.RuntimeState.CaptureSnapshot().CurrentState.CurrentState;
-        if (player.IsStunned(DateTime.UtcNow))
+        var startGateResult = _interactionGate.CheckPlayerCanStartAction(
+            player,
+            WorldInteractionActionKind.PortalTravel,
+            "TravelToMap",
+            DateTime.UtcNow);
+        if (!startGateResult.Success)
         {
-            SendFailure(session, packet, MessageCode.CharacterCannotActWhileStunned, null, null);
-            return Task.CompletedTask;
-        }
+            if (startGateResult.SuppressFailure)
+                return Task.CompletedTask;
 
-        if (_cultivationService.IsCultivating(player) ||
-            currentState == CharacterRuntimeStateCodes.Practicing)
-        {
-            SendFailure(session, packet, MessageCode.PracticeAlreadyActive, null, null);
-            return Task.CompletedTask;
-        }
-
-        if (currentState == CharacterRuntimeStateCodes.Casting)
-        {
-            SendFailure(session, packet, MessageCode.CharacterCannotActWhileCasting, null, null);
+            SendFailure(session, packet, startGateResult.Code, null, null);
             return Task.CompletedTask;
         }
 
@@ -95,28 +88,31 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
             return;
         }
 
-        var validationPosition = player.CapturePositionSyncAnchor().Position;
-        var maxDistance = MathF.Max(0f, portal.InteractionRadius) + MathF.Max(0f, _gameConfig.WorldPortalValidationBufferServerUnits);
-        var distanceSquared = Vector2.DistanceSquared(validationPosition, portal.SourcePosition);
-        if (distanceSquared > maxDistance * maxDistance)
+        if (!_mapManager.TryGetInstance(player.MapId, player.InstanceId, out var instance))
         {
-            Logger.Info($"[PortalTravel] wait server-position conn={session.ConnectionId} player={player.CharacterData.Name} portal={portal.Id} validationPos=({validationPosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{validationPosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) portalPos=({portal.SourcePosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{portal.SourcePosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) distance={MathF.Sqrt(distanceSquared).ToString(System.Globalization.CultureInfo.InvariantCulture)} maxDistance={maxDistance.ToString(System.Globalization.CultureInfo.InvariantCulture)} packetPos=({packet.CurrentPosX?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"},{packet.CurrentPosY?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>"}).");
-            var waitResult = await PlayerInteractionMovementWait.WaitUntilWithinRangeAsync(
-                player,
-                portal.SourcePosition,
-                maxDistance,
-                DateTime.UtcNow);
-            validationPosition = player.CapturePositionSyncAnchor().Position;
-            distanceSquared = Vector2.DistanceSquared(validationPosition, portal.SourcePosition);
-            if (waitResult != InteractionMovementWaitResult.Reached || distanceSquared > maxDistance * maxDistance)
-            {
-                if (waitResult == InteractionMovementWaitResult.CharacterDefeated)
-                    return;
+            SendFailure(session, packet, MessageCode.CharacterNotInWorldInstance, portal.TargetMapId, portal.TargetSpawnPointId);
+            return;
+        }
 
-                Logger.Info($"[PortalTravel] reject out-of-range after wait conn={session.ConnectionId} player={player.CharacterData.Name} portal={portal.Id} validationPos=({validationPosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{validationPosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) portalPos=({portal.SourcePosition.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{portal.SourcePosition.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}) distance={MathF.Sqrt(distanceSquared).ToString(System.Globalization.CultureInfo.InvariantCulture)} maxDistance={maxDistance.ToString(System.Globalization.CultureInfo.InvariantCulture)}.");
-                SendFailure(session, packet, MessageCode.MapTravelNotAllowed, portal.TargetMapId, portal.TargetSpawnPointId);
+        var maxDistance = MathF.Max(0f, portal.InteractionRadius) + MathF.Max(0f, _gameConfig.WorldPortalValidationBufferServerUnits);
+        var gateResult = await _interactionGate.PrepareAsync(new WorldInteractionGateRequest(
+            player,
+            instance,
+            WorldTargetRef.Portal(portal.Id),
+            maxDistance,
+            WorldInteractionActionKind.PortalTravel,
+            "PortalTravel",
+            MessageCode.MapTravelNotAllowed));
+        if (!gateResult.Success)
+        {
+            if (gateResult.SuppressFailure)
                 return;
-            }
+
+            Logger.Info(
+                $"[PortalTravel] reject by interaction gate conn={session.ConnectionId} " +
+                $"player={player.CharacterData.Name} portal={portal.Id} code={gateResult.Code}.");
+            SendFailure(session, packet, gateResult.Code, portal.TargetMapId, portal.TargetSpawnPointId);
+            return;
         }
 
         var targetZoneIndex = targetDefinition.IsPrivatePerPlayer
@@ -206,4 +202,5 @@ public sealed class TravelToMapHandler : IPacketHandler<TravelToMapPacket>
             TargetSpawnPointId = resolvedTargetSpawnPointId
         });
     }
+
 }

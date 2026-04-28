@@ -7,6 +7,8 @@ public static class GameConfigKeys
     public const string CharacterPositionSyncGraceServerUnits = "character.position_sync_grace_server_units";
     public const string CharacterPositionSyncMaxElapsedSeconds = "character.position_sync_max_elapsed_seconds";
     public const string CharacterPositionSyncMaxSpeedMultiplier = "character.position_sync_max_speed_multiplier";
+    public const string CharacterPositionSyncCatchupMultiplier = "character.position_sync_catchup_multiplier";
+    public const string CharacterPositionSyncCatchupMaxSeconds = "character.position_sync_catchup_max_seconds";
     public const string CombatSkillRangeGraceBufferUnits = "combat.skill_range_grace_buffer_units";
     public const string CombatDeathReturnHomeRecoveryRatio = "combat_death.return_home_recovery_ratio";
     public const string ItemDropPlayerOwnershipSeconds = "item_drop.player_drop_ownership_seconds";

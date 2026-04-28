@@ -727,6 +727,8 @@ BEGIN
             ('character.position_sync_grace_server_units', '45', 'Khoang dung sai khi log nghi van speed hack. Server position van chi tien theo toc do hop le.'),
             ('character.position_sync_max_elapsed_seconds', '1.5', 'So giay toi da moi tick duoc tinh khi server tien vi tri player toi movement target.'),
             ('character.position_sync_max_speed_multiplier', '1.25', 'He so dung sai khi log nghi van speed hack tren intent client gui len. Khong tang toc server position.'),
+            ('character.position_sync_catchup_multiplier', '1.3', 'He so bu tru movement sync khi xu ly interaction. Chi dung de server advance hop le ve phia target, khong doi toc do gameplay chinh.'),
+            ('character.position_sync_catchup_max_seconds', '0.75', 'So giay toi da duoc dung cho bu tru movement sync khi xu ly interaction.'),
             ('ground_reward.pickup_radius_server_units', '120', 'Ban kinh toi da de player nhat ground reward tinh tu vi tri server-authoritative.')
         ON CONFLICT (config_key) DO UPDATE
         SET

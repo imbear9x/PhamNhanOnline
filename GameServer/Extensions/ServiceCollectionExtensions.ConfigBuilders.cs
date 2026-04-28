@@ -116,6 +116,8 @@ public static partial class ServiceCollectionExtensions
             CharacterPositionSyncGraceServerUnits = GetFloat(configsByKey, GameConfigKeys.CharacterPositionSyncGraceServerUnits, 45f),
             CharacterPositionSyncMaxElapsedSeconds = GetFloat(configsByKey, GameConfigKeys.CharacterPositionSyncMaxElapsedSeconds, 1.5f),
             CharacterPositionSyncMaxSpeedMultiplier = GetFloat(configsByKey, GameConfigKeys.CharacterPositionSyncMaxSpeedMultiplier, 1.25f),
+            CharacterPositionSyncCatchupMultiplier = GetFloat(configsByKey, GameConfigKeys.CharacterPositionSyncCatchupMultiplier, 1.3f),
+            CharacterPositionSyncCatchupMaxSeconds = GetFloat(configsByKey, GameConfigKeys.CharacterPositionSyncCatchupMaxSeconds, 0.75f),
             CombatSkillRangeGraceBufferUnits = GetFloat(configsByKey, GameConfigKeys.CombatSkillRangeGraceBufferUnits, 12f),
             CombatDeathReturnHomeRecoveryRatio = GetDouble(configsByKey, GameConfigKeys.CombatDeathReturnHomeRecoveryRatio, 0.80d),
             ItemDropPlayerOwnershipSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropPlayerOwnershipSeconds, 10),

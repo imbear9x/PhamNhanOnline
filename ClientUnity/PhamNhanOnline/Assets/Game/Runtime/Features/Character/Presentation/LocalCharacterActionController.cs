@@ -50,6 +50,8 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         private int speedStatPercent = 100;
         private bool hasServerBaseMoveSpeed;
         private float serverBaseMoveSpeed;
+        private bool hasServerUnitsToWorldScale;
+        private Vector2 serverUnitsToWorldScale = Vector2.one;
         private float horizontalInput;
         private float verticalInput;
         private bool isGrounded;
@@ -156,6 +158,23 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             }
         }
 
+        public void SetServerUnitsToWorldScale(Vector2? worldUnitsPerServerUnit)
+        {
+            if (worldUnitsPerServerUnit.HasValue &&
+                IsFinite(worldUnitsPerServerUnit.Value.x) &&
+                IsFinite(worldUnitsPerServerUnit.Value.y) &&
+                worldUnitsPerServerUnit.Value.x > 0f &&
+                worldUnitsPerServerUnit.Value.y > 0f)
+            {
+                hasServerUnitsToWorldScale = true;
+                serverUnitsToWorldScale = worldUnitsPerServerUnit.Value;
+                return;
+            }
+
+            hasServerUnitsToWorldScale = false;
+            serverUnitsToWorldScale = Vector2.one;
+        }
+
         public void SetInputBlocked(bool blocked)
         {
             isInputBlockedExternally = blocked;
@@ -258,15 +277,16 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             HandleGroundedTransitions();
 
             var speedMultiplier = Mathf.Max(0.01f, speedStatPercent / Mathf.Max(1f, actionConfig.SpeedStatBaseline));
-            var baseWorldMoveSpeed = ResolveBaseWorldMoveSpeed();
+            var baseHorizontalWorldMoveSpeed = ResolveBaseHorizontalWorldMoveSpeed();
+            var baseVerticalWorldMoveSpeed = ResolveBaseVerticalWorldMoveSpeed();
 
             UpdateAirborneState();
 
             var velocity = body.velocity;
-            velocity.x = horizontalInput * ResolveHorizontalMoveSpeed(baseWorldMoveSpeed, speedMultiplier);
+            velocity.x = horizontalInput * ResolveHorizontalMoveSpeed(baseHorizontalWorldMoveSpeed, speedMultiplier);
 
-            var targetVerticalVelocity = ResolveVerticalVelocity(baseWorldMoveSpeed, speedMultiplier);
-            var verticalChangeRate = ResolveVerticalChangeRate(baseWorldMoveSpeed, speedMultiplier);
+            var targetVerticalVelocity = ResolveVerticalVelocity(baseVerticalWorldMoveSpeed, speedMultiplier);
+            var verticalChangeRate = ResolveVerticalChangeRate(baseVerticalWorldMoveSpeed, speedMultiplier);
             velocity.y = Mathf.MoveTowards(velocity.y, targetVerticalVelocity, verticalChangeRate * Time.fixedDeltaTime);
 
             body.gravityScale = 0f;
@@ -409,13 +429,24 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             return Mathf.Max(0.01f, baseWorldMoveSpeed * actionConfig.VerticalVelocityChangeRateMultiplier * speedMultiplier);
         }
 
-        private float ResolveBaseWorldMoveSpeed()
+        private float ResolveBaseHorizontalWorldMoveSpeed()
         {
             if (actionConfig == null)
                 return 0f;
 
             if (hasServerBaseMoveSpeed)
-                return ResolveServerUnitsToWorldUnits(serverBaseMoveSpeed);
+                return ResolveServerUnitsToWorldUnitsX(serverBaseMoveSpeed);
+
+            return Mathf.Max(0f, actionConfig.BaseMoveSpeed);
+        }
+
+        private float ResolveBaseVerticalWorldMoveSpeed()
+        {
+            if (actionConfig == null)
+                return 0f;
+
+            if (hasServerBaseMoveSpeed)
+                return ResolveServerUnitsToWorldUnitsY(serverBaseMoveSpeed);
 
             return Mathf.Max(0f, actionConfig.BaseMoveSpeed);
         }
@@ -425,15 +456,34 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             if (actionConfig == null)
                 return 0f;
 
-            return ResolveServerUnitsToWorldUnits(actionConfig.HoverActivationHeight);
+            return ResolveServerUnitsToWorldUnitsY(actionConfig.HoverActivationHeight);
         }
 
-        private float ResolveServerUnitsToWorldUnits(float serverUnits)
+        private float ResolveServerUnitsToWorldUnitsX(float serverUnits)
         {
+            if (hasServerUnitsToWorldScale)
+                return Mathf.Max(0f, serverUnits) * serverUnitsToWorldScale.x;
+
             if (actionConfig == null)
                 return Mathf.Max(0f, serverUnits);
 
             return actionConfig.ConvertServerUnitsToWorldUnits(serverUnits);
+        }
+
+        private float ResolveServerUnitsToWorldUnitsY(float serverUnits)
+        {
+            if (hasServerUnitsToWorldScale)
+                return Mathf.Max(0f, serverUnits) * serverUnitsToWorldScale.y;
+
+            if (actionConfig == null)
+                return Mathf.Max(0f, serverUnits);
+
+            return actionConfig.ConvertServerUnitsToWorldUnits(serverUnits);
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
         }
 
         private bool CanUseFlight()

@@ -1,9 +1,9 @@
 using System.Numerics;
+using GameServer.Config;
 using GameServer.DTO;
-using GameServer.Runtime;
 using GameServer.World;
 
-namespace GameServer.Network.Handlers;
+namespace GameServer.Runtime;
 
 internal static class PlayerInteractionMovementWait
 {
@@ -17,6 +17,8 @@ internal static class PlayerInteractionMovementWait
         Vector2 targetPosition,
         float maxDistance,
         DateTime utcNow,
+        CharacterRuntimeService runtimeService,
+        GameConfigValues gameConfig,
         CancellationToken cancellationToken = default)
     {
         var sourceMapId = player.MapId;
@@ -25,6 +27,18 @@ internal static class PlayerInteractionMovementWait
         var resolvedMaxDistance = MathF.Max(0f, maxDistance);
         var resolvedMaxDistanceSquared = resolvedMaxDistance * resolvedMaxDistance;
         var anchor = player.CapturePositionSyncAnchor();
+        if (Vector2.DistanceSquared(anchor.Position, targetPosition) <= resolvedMaxDistanceSquared)
+            return InteractionMovementWaitResult.Reached;
+
+        TryApplyInteractionCatchup(
+            player,
+            targetPosition,
+            resolvedMaxDistance,
+            utcNow,
+            runtimeService,
+            gameConfig);
+
+        anchor = player.CapturePositionSyncAnchor();
         if (Vector2.DistanceSquared(anchor.Position, targetPosition) <= resolvedMaxDistanceSquared)
             return InteractionMovementWaitResult.Reached;
 
@@ -65,6 +79,42 @@ internal static class PlayerInteractionMovementWait
         var distance = Math.Sqrt(Vector2.DistanceSquared(fromPosition, targetPosition));
         var seconds = distance / speed + ExtraWaitSeconds;
         return TimeSpan.FromSeconds(Math.Clamp(seconds, MinimumWait.TotalSeconds, MaximumWait.TotalSeconds));
+    }
+
+    private static void TryApplyInteractionCatchup(
+        PlayerSession player,
+        Vector2 targetPosition,
+        float maxDistance,
+        DateTime utcNow,
+        CharacterRuntimeService runtimeService,
+        GameConfigValues gameConfig)
+    {
+        if (runtimeService == null || gameConfig == null)
+            return;
+
+        var speed = ResolveEffectiveMoveSpeed(player, utcNow);
+        if (speed <= 0d)
+            return;
+
+        var catchupMultiplier = Math.Max(1d, gameConfig.CharacterPositionSyncCatchupMultiplier);
+        var catchupSeconds = Math.Max(0d, gameConfig.CharacterPositionSyncCatchupMaxSeconds);
+        var maxCatchupDistance = (float)Math.Max(0d, speed * catchupMultiplier * catchupSeconds);
+        if (maxCatchupDistance <= 0f)
+            return;
+
+        var anchor = player.CapturePositionSyncAnchor();
+        var delta = targetPosition - anchor.Position;
+        var distance = delta.Length();
+        var missingDistanceToRange = distance - MathF.Max(0f, maxDistance);
+        if (missingDistanceToRange <= 0f || distance <= 0f)
+            return;
+
+        var advanceDistance = MathF.Min(missingDistanceToRange, maxCatchupDistance);
+        if (advanceDistance <= 0f)
+            return;
+
+        var nextPosition = anchor.Position + delta / distance * advanceDistance;
+        runtimeService.UpdatePosition(player, player.MapId, player.ZoneIndex, nextPosition, notifySelf: false);
     }
 
     private static double ResolveEffectiveMoveSpeed(PlayerSession player, DateTime utcNow)
@@ -108,7 +158,7 @@ internal static class PlayerInteractionMovementWait
     }
 }
 
-internal enum InteractionMovementWaitResult
+public enum InteractionMovementWaitResult
 {
     Reached = 1,
     Timeout = 2,
