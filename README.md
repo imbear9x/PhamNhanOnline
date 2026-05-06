@@ -41,3 +41,5 @@ code .
 - Run only client in separate window:
   - `code -n .\CientTest\TestClient`
   - Press `F5` with `TestClient: Launch`
+
+This is project of HanLi
