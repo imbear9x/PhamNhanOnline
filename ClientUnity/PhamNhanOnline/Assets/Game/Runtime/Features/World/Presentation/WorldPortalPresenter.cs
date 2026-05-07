@@ -13,7 +13,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         private const int TouchInteractionMode = 1;
         private const int InteractInteractionMode = 2;
-        private const string DefaultPortalVisualResourcePath = "World/Portals/PortalVisual_Default";
 
         private sealed class PortalRuntime
         {
@@ -33,7 +32,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private GameObject portalVisualPrefab;
 
         [Header("Visuals")]
-        [SerializeField] private int labelSortingOrder = 25;
         [SerializeField] private float edgePortalThresholdNormalized = 0.15f;
         [SerializeField] private Vector2 labelTargetPaddingWorldUnits = new Vector2(0.4f, 0.25f);
         [SerializeField] private Vector2 minLabelTargetSizeWorldUnits = new Vector2(2.2f, 0.9f);
@@ -53,7 +51,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private float touchPortalSuppressedUntilTime;
         private bool rebuildRetryPending;
         private float nextRebuildRetryTime;
-        private GameObject resolvedPortalVisualPrefab;
         private bool loggedMissingWorldMapPresenter;
         private bool loggedMissingTargetActionController;
 

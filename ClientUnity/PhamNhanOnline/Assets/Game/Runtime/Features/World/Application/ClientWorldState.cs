@@ -40,6 +40,9 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public float CurrentMapWidth { get; private set; }
         public float CurrentMapHeight { get; private set; }
         public bool CurrentMapIsPrivatePerPlayer { get; private set; }
+        public int CurrentMapMaxPublicZoneCount { get; private set; }
+        public int CurrentMapMaxPlayersPerZone { get; private set; }
+        public bool CurrentMapSupportsCavePlacement { get; private set; }
         public int? CurrentEntryReason { get; private set; }
         public int? CurrentEntryPortalId { get; private set; }
         public int? CurrentEntrySpawnPointId { get; private set; }
@@ -54,6 +57,10 @@ namespace PhamNhanOnline.Client.Features.World.Application
         public IReadOnlyList<int> CurrentAdjacentMapIds { get { return currentAdjacentMapIds; } }
         public IEnumerable<MapSpawnPointModel> CurrentSpawnPoints { get { return spawnPoints.Values; } }
         public IEnumerable<MapPortalModel> CurrentPortals { get { return portals.Values; } }
+        public bool CurrentMapSupportsZoneSwitching
+        {
+            get { return !CurrentMapIsPrivatePerPlayer && CurrentMapMaxPublicZoneCount > 1; }
+        }
 
         public void ApplyMapJoin(
             MapDefinitionModel map,
@@ -74,6 +81,9 @@ namespace PhamNhanOnline.Client.Features.World.Application
             CurrentMapWidth = map.Width;
             CurrentMapHeight = map.Height;
             CurrentMapIsPrivatePerPlayer = map.IsPrivatePerPlayer;
+            CurrentMapMaxPublicZoneCount = map.MaxPublicZoneCount;
+            CurrentMapMaxPlayersPerZone = map.MaxPlayersPerZone;
+            CurrentMapSupportsCavePlacement = map.SupportsCavePlacement;
             CurrentEntryReason = entryReason;
             CurrentEntryPortalId = entryPortalId;
             CurrentEntrySpawnPointId = entrySpawnPointId;
@@ -336,6 +346,9 @@ namespace PhamNhanOnline.Client.Features.World.Application
             CurrentMapWidth = 0f;
             CurrentMapHeight = 0f;
             CurrentMapIsPrivatePerPlayer = false;
+            CurrentMapMaxPublicZoneCount = 0;
+            CurrentMapMaxPlayersPerZone = 0;
+            CurrentMapSupportsCavePlacement = false;
             CurrentEntryReason = null;
             CurrentEntryPortalId = null;
             CurrentEntrySpawnPointId = null;

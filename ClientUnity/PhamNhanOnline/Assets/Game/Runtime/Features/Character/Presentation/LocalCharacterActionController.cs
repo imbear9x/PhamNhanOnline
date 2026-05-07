@@ -45,7 +45,6 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         private readonly Collider2D[] groundHits = new Collider2D[8];
 
         private LocalCharacterActionConfig actionConfig;
-        private PlayerView playerView;
         private float visualDefaultScaleX = 1f;
         private int speedStatPercent = 100;
         private bool hasServerBaseMoveSpeed;
@@ -83,6 +82,7 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
         private bool hasExternalMoveOverride;
         private Vector2 externalMoveOverride;
         private CharacterActionInputState manualInputState;
+        private bool loggedMissingRequiredReferences;
 
         public bool IsFacingLeft => facingLeft;
         public Vector2 CurrentManualMoveInput => new Vector2(manualInputState.Horizontal, manualInputState.Vertical);
@@ -126,9 +126,11 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
                 ? baseSpeedPercent
                 : actionConfig.SpeedStatBaseline;
             SetMovementProfile(baseMoveSpeedUnitsPerSecond);
-            AutoWireMissingReferences();
-            ConfigureBodyForLocalSimulation();
-            CacheAnimatorStatesIfNeeded(force: true);
+            if (ValidateRequiredReferences())
+            {
+                ConfigureBodyForLocalSimulation();
+                CacheAnimatorStatesIfNeeded(force: true);
+            }
 
             if (visualRoot != null)
                 visualDefaultScaleX = visualRoot.localScale.x;
@@ -232,9 +234,11 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
 
         private void Awake()
         {
-            AutoWireMissingReferences();
-            ConfigureBodyForLocalSimulation();
-            CacheAnimatorStatesIfNeeded(force: true);
+            if (ValidateRequiredReferences())
+            {
+                ConfigureBodyForLocalSimulation();
+                CacheAnimatorStatesIfNeeded(force: true);
+            }
 
             if (visualRoot != null)
                 visualDefaultScaleX = visualRoot.localScale.x;
@@ -461,24 +465,18 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
 
         private float ResolveServerUnitsToWorldUnitsX(float serverUnits)
         {
-            if (hasServerUnitsToWorldScale)
-                return Mathf.Max(0f, serverUnits) * serverUnitsToWorldScale.x;
-
-            if (actionConfig == null)
-                return Mathf.Max(0f, serverUnits);
-
-            return actionConfig.ConvertServerUnitsToWorldUnits(serverUnits);
+            return EntityMovementPresentationPolicy.ConvertServerUnitsToWorldUnits(
+                serverUnits,
+                hasServerUnitsToWorldScale ? serverUnitsToWorldScale.x : null,
+                actionConfig);
         }
 
         private float ResolveServerUnitsToWorldUnitsY(float serverUnits)
         {
-            if (hasServerUnitsToWorldScale)
-                return Mathf.Max(0f, serverUnits) * serverUnitsToWorldScale.y;
-
-            if (actionConfig == null)
-                return Mathf.Max(0f, serverUnits);
-
-            return actionConfig.ConvertServerUnitsToWorldUnits(serverUnits);
+            return EntityMovementPresentationPolicy.ConvertServerUnitsToWorldUnits(
+                serverUnits,
+                hasServerUnitsToWorldScale ? serverUnitsToWorldScale.y : null,
+                actionConfig);
         }
 
         private static bool IsFinite(float value)
@@ -762,57 +760,39 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             if (actionConfig == null)
                 actionConfig = LocalCharacterActionConfig.CreateRuntimeDefaults();
 
-            AutoWireMissingReferences();
+            if (!ValidateRequiredReferences())
+                return;
+
             ConfigureBodyForLocalSimulation();
             CacheAnimatorStatesIfNeeded();
         }
 
-        private void AutoWireMissingReferences()
+        private bool ValidateRequiredReferences()
         {
-            if (playerView == null)
-                playerView = GetComponent<PlayerView>();
+            var isValid =
+                body != null &&
+                bodyCollider != null &&
+                visualRoot != null &&
+                groundCheck != null &&
+                inputSource != null;
 
-            if (playerView != null)
+            if (isValid)
             {
-                if (body == null)
-                    body = playerView.Body;
-                if (bodyCollider == null)
-                    bodyCollider = playerView.BodyCollider;
-                if (visualRoot == null)
-                    visualRoot = playerView.VisualRoot;
-                if (groundCheck == null)
-                    groundCheck = playerView.GroundCheck;
-                if (animator == null)
-                    animator = playerView.Animator;
+                loggedMissingRequiredReferences = false;
+                return true;
             }
 
-            if (body == null)
-                body = GetComponent<Rigidbody2D>();
-
-            if (bodyCollider == null)
-                bodyCollider = GetComponent<Collider2D>();
-
-            if (visualRoot == null)
+            if (!loggedMissingRequiredReferences)
             {
-                var child = transform.Find("VisualRoot");
-                visualRoot = child != null ? child : transform;
+                ClientLog.Error(
+                    $"LocalCharacterActionController on '{name}' is missing required prefab references. " +
+                    $"body={body != null}, bodyCollider={bodyCollider != null}, visualRoot={visualRoot != null}, " +
+                    $"groundCheck={groundCheck != null}, inputSource={inputSource != null}. " +
+                    "Assign these on the prefab; client project rule forbids runtime auto-wire/AddComponent.");
+                loggedMissingRequiredReferences = true;
             }
 
-            if (groundCheck == null)
-            {
-                var child = transform.Find("GroundCheck");
-                if (child != null)
-                    groundCheck = child;
-            }
-
-            if (animator == null)
-                animator = GetComponentInChildren<Animator>(true);
-
-            if (inputSource == null)
-                inputSource = GetComponent<CharacterActionInputSource>();
-
-            if (inputSource == null)
-                inputSource = gameObject.AddComponent<KeyboardCharacterActionInputSource>();
+            return false;
         }
 
         private void ResetAirborneState()

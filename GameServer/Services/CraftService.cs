@@ -7,30 +7,30 @@ namespace GameServer.Services;
 
 public sealed class CraftService
 {
-    private readonly GameDb _db;
     private readonly ItemDefinitionCatalog _definitions;
     private readonly PlayerItemRepository _playerItems;
     private readonly PlayerEquipmentRepository _playerEquipments;
     private readonly PlayerEquipmentStatBonusRepository _playerEquipmentBonuses;
     private readonly ItemService _itemService;
     private readonly IGameRandomService _randomService;
+    private readonly PlayerInventoryTransactionService _inventoryTransactions;
 
     public CraftService(
-        GameDb db,
         ItemDefinitionCatalog definitions,
         PlayerItemRepository playerItems,
         PlayerEquipmentRepository playerEquipments,
         PlayerEquipmentStatBonusRepository playerEquipmentBonuses,
         ItemService itemService,
-        IGameRandomService randomService)
+        IGameRandomService randomService,
+        PlayerInventoryTransactionService inventoryTransactions)
     {
-        _db = db;
         _definitions = definitions;
         _playerItems = playerItems;
         _playerEquipments = playerEquipments;
         _playerEquipmentBonuses = playerEquipmentBonuses;
         _itemService = itemService;
         _randomService = randomService;
+        _inventoryTransactions = inventoryTransactions;
     }
 
     public async Task<CraftValidationResult> ValidateCraftAsync(
@@ -128,6 +128,19 @@ public sealed class CraftService
         IReadOnlyCollection<int>? selectedOptionalRequirementIds = null,
         CancellationToken cancellationToken = default)
     {
+        return await _inventoryTransactions.ExecuteAsync(
+            playerId,
+            ct => ExecuteCraftCoreAsync(playerId, recipeId, selectedPlayerItemIds, selectedOptionalRequirementIds, ct),
+            cancellationToken);
+    }
+
+    private async Task<CraftExecutionResult> ExecuteCraftCoreAsync(
+        Guid playerId,
+        int recipeId,
+        IReadOnlyCollection<long>? selectedPlayerItemIds,
+        IReadOnlyCollection<int>? selectedOptionalRequirementIds,
+        CancellationToken cancellationToken)
+    {
         var validation = await ValidateCraftAsync(playerId, recipeId, selectedPlayerItemIds, selectedOptionalRequirementIds, cancellationToken);
         if (!validation.Success)
         {
@@ -143,7 +156,6 @@ public sealed class CraftService
         }
 
         var recipe = validation.Recipe ?? throw new InvalidOperationException("Validated craft recipe is missing.");
-        await using var tx = await _db.BeginTransactionAsync(cancellationToken);
         foreach (var playerItemId in validation.ConsumedPlayerItemIds)
         {
             await _itemService.RemovePlayerItemAsync(playerId, playerItemId, cancellationToken);
@@ -171,7 +183,6 @@ public sealed class CraftService
         var successCheck = _randomService.CheckChance(ToPartsPerMillion(recipe.SuccessRate));
         if (!successCheck.Success)
         {
-            await tx.CommitAsync(cancellationToken);
             return new CraftExecutionResult(
                 false,
                 "Che tao that bai.",
@@ -218,8 +229,6 @@ public sealed class CraftService
                 }
             }
         }
-
-        await tx.CommitAsync(cancellationToken);
 
         var createdViews = (await _itemService.GetInventoryAsync(playerId, cancellationToken))
             .Where(x => createdItems.Any(created => created.Id == x.PlayerItemId))

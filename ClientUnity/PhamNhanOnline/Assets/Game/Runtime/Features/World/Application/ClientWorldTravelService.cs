@@ -1,3 +1,5 @@
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 using GameShared.Messages;
 using GameShared.Models;
@@ -11,14 +13,19 @@ namespace PhamNhanOnline.Client.Features.World.Application
 {
     public sealed class ClientWorldTravelService
     {
+        private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
+
         private readonly ClientConnectionService connection;
-        private TaskCompletionSource<WorldTravelResult> travelCompletionSource;
-        private TaskCompletionSource<MapZonesQueryResult> mapZonesCompletionSource;
-        private TaskCompletionSource<MapZoneSwitchResult> switchZoneCompletionSource;
+        private readonly ClientRequestTracker<WorldTravelResult> travelRequests;
+        private readonly ClientRequestTracker<MapZonesQueryResult> mapZoneRequests;
+        private readonly ClientRequestTracker<MapZoneSwitchResult> switchZoneRequests;
 
         public ClientWorldTravelService(ClientConnectionService connection)
         {
             this.connection = connection;
+            travelRequests = new ClientRequestTracker<WorldTravelResult>("world travel", RequestTimeout);
+            mapZoneRequests = new ClientRequestTracker<MapZonesQueryResult>("map zones query", RequestTimeout);
+            switchZoneRequests = new ClientRequestTracker<MapZoneSwitchResult>("map zone switch", RequestTimeout);
             connection.Packets.Subscribe<TravelToMapResultPacket>(HandleTravelToMapResult);
             connection.Packets.Subscribe<GetMapZonesResultPacket>(HandleGetMapZonesResult);
             connection.Packets.Subscribe<SwitchMapZoneResultPacket>(HandleSwitchMapZoneResult);
@@ -30,12 +37,21 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (connection.State != ClientConnectionState.Connected)
                 return Task.FromResult(new WorldTravelResult(false, null, targetMapId, null, null, "Not connected to server."));
 
-            travelCompletionSource = new TaskCompletionSource<WorldTravelResult>();
-            connection.Send(new TravelToMapPacket
+            var task = travelRequests.Start(
+                message => new WorldTravelResult(false, null, targetMapId, null, null, message));
+            try
             {
-                TargetMapId = targetMapId
-            });
-            return travelCompletionSource.Task;
+                connection.Send(new TravelToMapPacket
+                {
+                    TargetMapId = targetMapId
+                });
+            }
+            catch (Exception ex)
+            {
+                travelRequests.FailActive($"Failed to send travel request to map {targetMapId}: {ex.Message}");
+            }
+
+            return task;
         }
 
         public Task<WorldTravelResult> UsePortalAsync(int portalId, Vector2? currentServerPosition = null)
@@ -43,7 +59,8 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (connection.State != ClientConnectionState.Connected)
                 return Task.FromResult(new WorldTravelResult(false, null, null, portalId, null, "Not connected to server."));
 
-            travelCompletionSource = new TaskCompletionSource<WorldTravelResult>();
+            var task = travelRequests.Start(
+                message => new WorldTravelResult(false, null, null, portalId, null, message));
             var packet = new TravelToMapPacket
             {
                 PortalId = portalId
@@ -54,8 +71,16 @@ namespace PhamNhanOnline.Client.Features.World.Application
                 packet.CurrentPosY = currentServerPosition.Value.y;
             }
 
-            connection.Send(packet);
-            return travelCompletionSource.Task;
+            try
+            {
+                connection.Send(packet);
+            }
+            catch (Exception ex)
+            {
+                travelRequests.FailActive($"Failed to send portal request {portalId}: {ex.Message}");
+            }
+
+            return task;
         }
 
         public Task<MapZonesQueryResult> GetMapZonesAsync(int mapId)
@@ -63,12 +88,21 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (connection.State != ClientConnectionState.Connected)
                 return Task.FromResult(new MapZonesQueryResult(false, null, mapId, null, null, false, null, "Not connected to server."));
 
-            mapZonesCompletionSource = new TaskCompletionSource<MapZonesQueryResult>();
-            connection.Send(new GetMapZonesPacket
+            var task = mapZoneRequests.Start(
+                message => new MapZonesQueryResult(false, null, mapId, null, null, false, null, message));
+            try
             {
-                MapId = mapId
-            });
-            return mapZonesCompletionSource.Task;
+                connection.Send(new GetMapZonesPacket
+                {
+                    MapId = mapId
+                });
+            }
+            catch (Exception ex)
+            {
+                mapZoneRequests.FailActive($"Failed to send map zones request for map {mapId}: {ex.Message}");
+            }
+
+            return task;
         }
 
         public Task<MapZoneSwitchResult> SwitchMapZoneAsync(int mapId, int zoneIndex)
@@ -76,13 +110,22 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (connection.State != ClientConnectionState.Connected)
                 return Task.FromResult(new MapZoneSwitchResult(false, null, mapId, zoneIndex, null, "Not connected to server."));
 
-            switchZoneCompletionSource = new TaskCompletionSource<MapZoneSwitchResult>();
-            connection.Send(new SwitchMapZonePacket
+            var task = switchZoneRequests.Start(
+                message => new MapZoneSwitchResult(false, null, mapId, zoneIndex, null, message));
+            try
             {
-                MapId = mapId,
-                TargetZoneIndex = zoneIndex
-            });
-            return switchZoneCompletionSource.Task;
+                connection.Send(new SwitchMapZonePacket
+                {
+                    MapId = mapId,
+                    TargetZoneIndex = zoneIndex
+                });
+            }
+            catch (Exception ex)
+            {
+                switchZoneRequests.FailActive($"Failed to send map zone switch request for map {mapId}, zone {zoneIndex}: {ex.Message}");
+            }
+
+            return task;
         }
 
         private void HandleTravelToMapResult(TravelToMapResultPacket packet)
@@ -106,7 +149,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
             else
                 ClientLog.Warn(result.Message);
 
-            CompletePending(ref travelCompletionSource, result);
+            travelRequests.Complete(result);
         }
 
         private void HandleGetMapZonesResult(GetMapZonesResultPacket packet)
@@ -126,11 +169,15 @@ namespace PhamNhanOnline.Client.Features.World.Application
                     : $"Failed to load zones for map {mapId}: {packet.Code ?? MessageCode.UnknownError}");
 
             if (packet.Success == true)
+            {
                 ClientLog.Info(result.Message);
-            else
+            }
+            else if (packet.Code != MessageCode.MapZoneSelectionNotSupported)
+            {
                 ClientLog.Warn(result.Message);
+            }
 
-            CompletePending(ref mapZonesCompletionSource, result);
+            mapZoneRequests.Complete(result);
         }
 
         private void HandleSwitchMapZoneResult(SwitchMapZoneResultPacket packet)
@@ -150,7 +197,7 @@ namespace PhamNhanOnline.Client.Features.World.Application
             else
                 ClientLog.Warn(result.Message);
 
-            CompletePending(ref switchZoneCompletionSource, result);
+            switchZoneRequests.Complete(result);
         }
 
         private void HandleConnectionStateChanged(ClientConnectionState state)
@@ -158,33 +205,80 @@ namespace PhamNhanOnline.Client.Features.World.Application
             if (state != ClientConnectionState.Disconnected)
                 return;
 
-            CompletePending(ref travelCompletionSource, new WorldTravelResult(false, null, null, null, null, "Connection closed."));
-            CompletePending(ref mapZonesCompletionSource, new MapZonesQueryResult(false, null, null, null, null, false, null, "Connection closed."));
-            CompletePending(ref switchZoneCompletionSource, new MapZoneSwitchResult(false, null, null, null, null, "Connection closed."));
+            travelRequests.FailActive("Connection closed.");
+            mapZoneRequests.FailActive("Connection closed.");
+            switchZoneRequests.FailActive("Connection closed.");
         }
 
-        private static void CompletePending(ref TaskCompletionSource<WorldTravelResult> completionSource, WorldTravelResult result)
+        private sealed class ClientRequestTracker<TResult>
         {
-            var pending = completionSource;
-            completionSource = null;
-            if (pending != null)
-                pending.TrySetResult(result);
-        }
+            private readonly string operationName;
+            private readonly TimeSpan timeout;
+            private TaskCompletionSource<TResult> completionSource;
+            private CancellationTokenSource timeoutCancellation;
+            private Func<string, TResult> activeFailureFactory;
+            private int requestVersion;
 
-        private static void CompletePending(ref TaskCompletionSource<MapZonesQueryResult> completionSource, MapZonesQueryResult result)
-        {
-            var pending = completionSource;
-            completionSource = null;
-            if (pending != null)
-                pending.TrySetResult(result);
-        }
+            public ClientRequestTracker(string operationName, TimeSpan timeout)
+            {
+                this.operationName = operationName;
+                this.timeout = timeout;
+            }
 
-        private static void CompletePending(ref TaskCompletionSource<MapZoneSwitchResult> completionSource, MapZoneSwitchResult result)
-        {
-            var pending = completionSource;
-            completionSource = null;
-            if (pending != null)
-                pending.TrySetResult(result);
+            public Task<TResult> Start(Func<string, TResult> failureFactory)
+            {
+                if (failureFactory == null)
+                    throw new ArgumentNullException(nameof(failureFactory));
+
+                if (completionSource != null && activeFailureFactory != null)
+                    Complete(activeFailureFactory($"Cancelled {operationName}: superseded by a newer request."));
+
+                requestVersion++;
+                activeFailureFactory = failureFactory;
+                timeoutCancellation = new CancellationTokenSource();
+                completionSource = new TaskCompletionSource<TResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _ = CompleteAfterTimeoutAsync(requestVersion, timeoutCancellation.Token);
+                return completionSource.Task;
+            }
+
+            public void Complete(TResult result)
+            {
+                var pending = completionSource;
+                var cancellation = timeoutCancellation;
+                completionSource = null;
+                timeoutCancellation = null;
+                activeFailureFactory = null;
+                cancellation?.Cancel();
+                cancellation?.Dispose();
+                pending?.TrySetResult(result);
+            }
+
+            public void FailActive(string message)
+            {
+                if (completionSource == null || activeFailureFactory == null)
+                    return;
+
+                Complete(activeFailureFactory(message));
+            }
+
+            private async Task CompleteAfterTimeoutAsync(int version, CancellationToken cancellationToken)
+            {
+                try
+                {
+                    await Task.Delay(timeout, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+
+                if (version != requestVersion || completionSource == null || activeFailureFactory == null)
+                    return;
+
+                var message = $"Timed out waiting for {operationName} response after {timeout.TotalSeconds:0.#}s.";
+                ClientLog.Warn(message);
+                Complete(activeFailureFactory(message));
+            }
         }
     }
 }

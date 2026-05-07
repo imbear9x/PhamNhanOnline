@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using GameShared.Models;
+using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Crafting;
 using PhamNhanOnline.Client.UI.Inventory;
@@ -469,6 +470,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void HandleRecipeListClicked(LearnedPillRecipeModel recipe)
         {
+            ClientLog.Info($"[CraftRecipeSelect] panel-view-forward-list-click recipe={DescribeRecipe(recipe)}.");
             RecipeListClicked?.Invoke(recipe);
         }
 
@@ -484,6 +486,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void HandleSelectedRecipeDropped(LearnedPillRecipeModel recipe)
         {
+            ClientLog.Info($"[CraftRecipeSelect] panel-view-forward-selected-drop recipe={DescribeRecipe(recipe)}.");
             SelectedRecipeDropped?.Invoke(recipe);
         }
 
@@ -571,6 +574,17 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             text.text = value ?? string.Empty;
+        }
+
+        private static string DescribeRecipe(LearnedPillRecipeModel recipe)
+        {
+            return string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "id={0} code='{1}' name='{2}' resultItem={3}",
+                recipe.PillRecipeTemplateId,
+                recipe.Code ?? string.Empty,
+                recipe.Name ?? string.Empty,
+                recipe.ResultPill.ItemTemplateId);
         }
 
         private void ThrowIfMissing(UnityEngine.Object value, string fieldName)

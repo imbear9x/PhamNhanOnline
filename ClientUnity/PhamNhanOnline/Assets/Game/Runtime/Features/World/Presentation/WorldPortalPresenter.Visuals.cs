@@ -3,7 +3,6 @@ using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Features.World.Application;
-using TMPro;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -36,6 +35,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 }
 
                 var portalRuntime = BuildPortalObject(parent, portal, worldPosition);
+                if (portalRuntime == null)
+                    continue;
+
                 spawnedPortals[portal.Id] = portalRuntime;
             }
 
@@ -84,18 +86,20 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private PortalRuntime BuildPortalObject(Transform parent, MapPortalModel portal, Vector2 worldPosition)
         {
             var portalObject = CreatePortalVisualRoot(parent, portal, worldPosition);
+            if (portalObject == null)
+                return null;
 
             var visualInstance = portalObject.GetComponent<PortalVisualInstance>();
-            if (visualInstance != null)
+            if (visualInstance == null)
             {
-                visualInstance.Apply(ResolvePortalLabel(portal));
-                ApplyPortalVisualLayout(visualInstance, portal);
+                ClientLog.Error($"Portal visual prefab '{portalObject.name}' is missing PortalVisualInstance.");
+                Destroy(portalObject);
+                return null;
             }
 
-            var labelObject = visualInstance != null
-                ? visualInstance.LabelObject
-                : CreateFallbackLabelChild(portalObject.transform, portal);
-            ConfigureInteractiveLabel(labelObject, portal);
+            visualInstance.Apply(ResolvePortalLabel(portal));
+            ApplyPortalVisualLayout(visualInstance, portal);
+            ConfigureInteractiveLabel(visualInstance, portal);
             var collider = ConfigureTouchTrigger(visualInstance, portal);
 
             if (logTouchPortalDiagnostics)
@@ -130,18 +134,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private GameObject CreatePortalVisualRoot(Transform parent, MapPortalModel portal, Vector2 worldPosition)
         {
             var prefab = ResolvePortalVisualPrefab();
-            GameObject portalObject;
-            if (prefab != null)
+            if (prefab == null)
             {
-                portalObject = Instantiate(prefab, parent, false);
-            }
-            else
-            {
-                portalObject = new GameObject("PortalVisual");
-                portalObject.transform.SetParent(parent, false);
-                portalObject.AddComponent<PortalVisualInstance>();
+                ClientLog.Error("WorldPortalPresenter is missing portalVisualPrefab. Assign a portal prefab in the World scene.");
+                return null;
             }
 
+            var portalObject = Instantiate(prefab, parent, false);
             portalObject.name = string.IsNullOrWhiteSpace(portal.Name) ? "Portal_" + portal.Id : portal.Name;
             portalObject.transform.position = new Vector3(worldPosition.x, worldPosition.y, 0f);
             return portalObject;
@@ -149,63 +148,30 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private GameObject ResolvePortalVisualPrefab()
         {
-            if (portalVisualPrefab != null)
-                return portalVisualPrefab;
-
-            if (resolvedPortalVisualPrefab == null)
-                resolvedPortalVisualPrefab = Resources.Load<GameObject>(DefaultPortalVisualResourcePath);
-
-            return resolvedPortalVisualPrefab;
+            return portalVisualPrefab;
         }
 
-        private GameObject CreateFallbackLabelChild(Transform parent, MapPortalModel portal)
+        private void ConfigureInteractiveLabel(PortalVisualInstance visualInstance, MapPortalModel portal)
         {
-            var labelObject = new GameObject("Label");
-            labelObject.transform.SetParent(parent, false);
-            labelObject.transform.localPosition = new Vector3(0f, 0.7f, 0f);
-            labelObject.transform.localScale = Vector3.one * 0.12f;
-
-            var text = labelObject.AddComponent<TextMeshPro>();
-            text.text = ResolvePortalLabel(portal);
-            text.fontSize = 5f;
-            text.alignment = TextAlignmentOptions.Center;
-            text.enableWordWrapping = false;
-            text.color = Color.white;
-            text.outlineWidth = 0.18f;
-            text.raycastTarget = false;
-            text.ForceMeshUpdate();
-
-            var renderer = labelObject.GetComponent<MeshRenderer>();
-            if (renderer != null)
-                renderer.sortingOrder = labelSortingOrder;
-
-            return labelObject;
-        }
-
-        private void ConfigureInteractiveLabel(GameObject labelObject, MapPortalModel portal)
-        {
-            if (labelObject == null)
+            if (visualInstance == null)
                 return;
 
-            var text = labelObject.GetComponentInChildren<TextMeshPro>(true);
+            var text = visualInstance.LabelText;
             if (text == null)
+            {
+                ClientLog.Error($"Portal '{portal.Id}' is missing labelText on its PortalVisualInstance.");
                 return;
+            }
 
             text.ForceMeshUpdate();
-            var labelCollider = labelObject.GetComponent<Collider2D>();
+            var labelCollider = visualInstance.InteractionCollider;
             if (labelCollider == null)
             {
-                labelCollider = labelObject.GetComponentInChildren<Collider2D>(true);
-                if (labelCollider != null)
-                    labelObject = labelCollider.gameObject;
-            }
-
-            if (labelCollider == null)
-            {
-                ClientLog.Warn($"Portal '{portal.Id}' is missing an interaction collider on its label prefab object.");
+                ClientLog.Error($"Portal '{portal.Id}' is missing interactionCollider on its PortalVisualInstance.");
                 return;
             }
 
+            var labelObject = labelCollider.gameObject;
             labelCollider.isTrigger = true;
 
             Bounds rendererBounds;
@@ -235,14 +201,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 }
             }
 
-            var targetable = labelObject.GetComponent<WorldTargetable>();
+            var targetable = visualInstance.WorldTargetable;
             if (targetable == null)
-                targetable = labelObject.AddComponent<WorldTargetable>();
+            {
+                ClientLog.Error($"Portal '{portal.Id}' is missing WorldTargetable on its PortalVisualInstance prefab binding.");
+                return;
+            }
+
             targetable.Configure(new WorldTargetHandle(
                 WorldTargetKind.Npc,
                 ClientWorldState.BuildPortalTargetId(portal.Id)));
 
-            SetLayerRecursively(labelObject, ResolveTargetableLayer());
+            SetLayerRecursively(targetable.gameObject, ResolveTargetableLayer());
         }
 
         private Collider2D ConfigureTouchTrigger(PortalVisualInstance visualInstance, MapPortalModel portal)

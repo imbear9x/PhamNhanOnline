@@ -6,6 +6,7 @@ using PhamNhanOnline.Client.Features.World.Application;
 using PhamNhanOnline.Client.Features.World.Presentation;
 using PhamNhanOnline.Client.Infrastructure.Pooling;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace PhamNhanOnline.Client.UI.Hud
 {
@@ -15,14 +16,12 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         [Header("References")]
         [SerializeField] private WorldLocalPlayerPresenter localPlayerPresenter;
-        [SerializeField] private Transform popupRoot;
+        [SerializeField] private Canvas popupCanvas;
+        [SerializeField] private RectTransform popupRoot;
 
-        [Header("Popup Prefabs")]
-        [SerializeField] private CombatValuePopupView defaultPopupPrefab;
-        [SerializeField] private CombatValuePopupView hpDamagePopupPrefab;
-        [SerializeField] private CombatValuePopupView hpHealPopupPrefab;
-        [SerializeField] private CombatValuePopupView mpDamagePopupPrefab;
-        [SerializeField] private CombatValuePopupView mpRestorePopupPrefab;
+        [Header("Popup Prefab")]
+        [FormerlySerializedAs("defaultPopupPrefab")]
+        [SerializeField] private CombatValuePopupView combatValuePopupPrefab;
 
         [Header("Behavior")]
         [SerializeField] private int prewarmPerAssignedPrefab = 6;
@@ -35,6 +34,10 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         private bool runtimeEventsBound;
         private bool prefabsPrewarmed;
+        private bool loggedMissingPopupRoot;
+        private bool loggedMissingSceneController;
+        private bool loggedMissingWorldCamera;
+        private bool loggedMissingPopupCanvas;
 
         private static WorldSceneController SceneController => WorldSceneController.Instance;
 
@@ -145,7 +148,6 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (deltaHp < 0)
             {
                 ShowPopup(
-                    ResolvePrefab(CombatValuePopupKind.HpDamage),
                     FormatSignedValue(deltaHp, includePlusSign: false, suffix: string.Empty),
                     fallbackDamageColor,
                     anchorPosition);
@@ -153,7 +155,6 @@ namespace PhamNhanOnline.Client.UI.Hud
             else
             {
                 ShowPopup(
-                    ResolvePrefab(CombatValuePopupKind.HpHeal),
                     FormatSignedValue(deltaHp, includePlusSign: true, suffix: string.Empty),
                     fallbackHealColor,
                     anchorPosition);
@@ -168,7 +169,6 @@ namespace PhamNhanOnline.Client.UI.Hud
                 if (hpDelta < 0)
                 {
                     ShowPopup(
-                        ResolvePrefab(CombatValuePopupKind.HpDamage),
                         FormatSignedValue(hpDelta, includePlusSign: false, suffix: string.Empty),
                         fallbackDamageColor,
                         anchorPosition);
@@ -176,7 +176,6 @@ namespace PhamNhanOnline.Client.UI.Hud
                 else
                 {
                     ShowPopup(
-                        ResolvePrefab(CombatValuePopupKind.HpHeal),
                         FormatSignedValue(hpDelta, includePlusSign: true, suffix: string.Empty),
                         fallbackHealColor,
                         anchorPosition);
@@ -189,7 +188,6 @@ namespace PhamNhanOnline.Client.UI.Hud
                 if (mpDelta < 0)
                 {
                     ShowPopup(
-                        ResolvePrefab(CombatValuePopupKind.MpDamage),
                         FormatSignedValue(mpDelta, includePlusSign: false, suffix: mpSuffix),
                         fallbackManaDamageColor,
                         anchorPosition);
@@ -197,7 +195,6 @@ namespace PhamNhanOnline.Client.UI.Hud
                 else
                 {
                     ShowPopup(
-                        ResolvePrefab(CombatValuePopupKind.MpRestore),
                         FormatSignedValue(mpDelta, includePlusSign: true, suffix: mpSuffix),
                         fallbackManaRestoreColor,
                         anchorPosition);
@@ -205,9 +202,17 @@ namespace PhamNhanOnline.Client.UI.Hud
             }
         }
 
-        private void ShowPopup(CombatValuePopupView prefab, string text, Color color, Vector2 anchorPosition)
+        public void ShowAtWorldPosition(string text, Color color, Vector2 anchorPosition)
         {
-            if (prefab == null)
+            if (string.IsNullOrWhiteSpace(text))
+                return;
+
+            ShowPopup(text, color, anchorPosition);
+        }
+
+        private void ShowPopup(string text, Color color, Vector2 anchorPosition)
+        {
+            if (combatValuePopupPrefab == null)
                 return;
 
             AutoWireReferences();
@@ -215,12 +220,15 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (poolService == null)
                 return;
 
-            var parent = popupRoot != null ? popupRoot : transform;
-            var popup = poolService.Spawn(prefab, parent, worldPositionStays: false);
+            Vector2 popupAnchoredPosition;
+            if (!TryConvertWorldAnchorToPopupPosition(anchorPosition, out popupAnchoredPosition))
+                return;
+
+            var popup = poolService.Spawn(combatValuePopupPrefab, popupRoot, worldPositionStays: false);
             if (popup == null)
                 return;
 
-            popup.Play(text, color, anchorPosition);
+            popup.Play(text, color, popupAnchoredPosition);
         }
 
         private void PrewarmPrefabs()
@@ -233,11 +241,7 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (poolService == null)
                 return;
 
-            WarmPrefab(poolService, defaultPopupPrefab);
-            WarmPrefab(poolService, hpDamagePopupPrefab);
-            WarmPrefab(poolService, hpHealPopupPrefab);
-            WarmPrefab(poolService, mpDamagePopupPrefab);
-            WarmPrefab(poolService, mpRestorePopupPrefab);
+            WarmPrefab(poolService, combatValuePopupPrefab);
             prefabsPrewarmed = true;
         }
 
@@ -247,23 +251,6 @@ namespace PhamNhanOnline.Client.UI.Hud
                 return;
 
             poolService.Warm(prefab.gameObject, prewarmPerAssignedPrefab);
-        }
-
-        private CombatValuePopupView ResolvePrefab(CombatValuePopupKind kind)
-        {
-            switch (kind)
-            {
-                case CombatValuePopupKind.HpDamage:
-                    return hpDamagePopupPrefab != null ? hpDamagePopupPrefab : defaultPopupPrefab;
-                case CombatValuePopupKind.HpHeal:
-                    return hpHealPopupPrefab != null ? hpHealPopupPrefab : defaultPopupPrefab;
-                case CombatValuePopupKind.MpDamage:
-                    return mpDamagePopupPrefab != null ? mpDamagePopupPrefab : defaultPopupPrefab;
-                case CombatValuePopupKind.MpRestore:
-                    return mpRestorePopupPrefab != null ? mpRestorePopupPrefab : defaultPopupPrefab;
-                default:
-                    return defaultPopupPrefab;
-            }
         }
 
         private bool TryGetLocalPlayerAnchorPosition(out Vector2 anchorPosition)
@@ -296,8 +283,66 @@ namespace PhamNhanOnline.Client.UI.Hud
             if (localPlayerPresenter == null && worldSceneController != null)
                 localPlayerPresenter = worldSceneController.WorldLocalPlayerPresenter;
 
-            if (popupRoot == null && worldSceneController != null)
-                popupRoot = worldSceneController.WorldUIRoot != null ? worldSceneController.WorldUIRoot : transform;
+            if (worldSceneController == null && !loggedMissingSceneController)
+            {
+                Debug.LogWarning($"{nameof(WorldCombatValuePopupController)} could not resolve {nameof(WorldSceneController)}.");
+                loggedMissingSceneController = true;
+            }
+        }
+
+        private bool TryConvertWorldAnchorToPopupPosition(Vector2 worldAnchorPosition, out Vector2 popupAnchoredPosition)
+        {
+            popupAnchoredPosition = default;
+            AutoWireReferences();
+
+            if (popupRoot == null)
+            {
+                if (!loggedMissingPopupRoot)
+                {
+                    Debug.LogWarning($"{nameof(WorldCombatValuePopupController)} is missing Popup Root. Assign a RectTransform under the combat popup overlay canvas.");
+                    loggedMissingPopupRoot = true;
+                }
+
+                return false;
+            }
+
+            var worldSceneController = SceneController;
+            var activeWorldCamera = worldSceneController != null ? worldSceneController.WorldCamera : null;
+            if (activeWorldCamera == null)
+            {
+                if (!loggedMissingWorldCamera)
+                {
+                    Debug.LogWarning($"{nameof(WorldCombatValuePopupController)} could not resolve World Camera from {nameof(WorldSceneController)}.");
+                    loggedMissingWorldCamera = true;
+                }
+
+                return false;
+            }
+
+            if (popupCanvas == null)
+            {
+                if (!loggedMissingPopupCanvas)
+                {
+                    Debug.LogWarning($"{nameof(WorldCombatValuePopupController)} is missing Popup Canvas. Popup Root must be under a Canvas.");
+                    loggedMissingPopupCanvas = true;
+                }
+
+                return false;
+            }
+
+            var screenPoint = activeWorldCamera.WorldToScreenPoint(worldAnchorPosition);
+            if (screenPoint.z < 0f)
+                return false;
+
+            var eventCamera = popupCanvas.renderMode == RenderMode.ScreenSpaceOverlay
+                ? null
+                : popupCanvas.worldCamera;
+
+            return RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                popupRoot,
+                screenPoint,
+                eventCamera,
+                out popupAnchoredPosition);
         }
 
         private static string FormatSignedValue(int delta, bool includePlusSign, string suffix)
@@ -309,14 +354,6 @@ namespace PhamNhanOnline.Client.UI.Hud
                 return includePlusSign ? "+" + delta + suffix : delta + suffix;
 
             return delta + suffix;
-        }
-
-        private enum CombatValuePopupKind
-        {
-            HpDamage = 1,
-            HpHeal = 2,
-            MpDamage = 3,
-            MpRestore = 4
         }
     }
 }

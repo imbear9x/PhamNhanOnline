@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using GameServer.Network.Interface;
+using GameShared.Attributes;
 using GameShared.Packets;
 
 namespace GameServer.Network.Middleware;
@@ -11,7 +12,7 @@ public sealed class RateLimitMiddleware : IPacketMiddleware
     public async Task InvokeAsync(ConnectionSession session, IPacket packet, Func<Task> next)
     {
         var profile = PacketTransportPolicy.Resolve(packet);
-        if (profile.MinIntervalMs <= 0)
+        if (profile.MinIntervalMs <= 0 || profile.TrafficClass != PacketTrafficClass.RealtimeState)
         {
             await next();
             return;

@@ -57,6 +57,9 @@ namespace PhamNhanOnline.Client.UI.World
         [SerializeField] private bool hideOnAwake = true;
         [SerializeField] private KeyCode closeKey = KeyCode.Escape;
 
+        [Header("Diagnostics")]
+        [SerializeField] private bool logRecipeSelectionDiagnostics = true;
+
         [Header("Display Text")]
         [SerializeField] private string alchemyPanelTitle = "Luyen dan that";
         [SerializeField] private string smithingPanelTitle = "Luyen khi that";
@@ -384,6 +387,9 @@ namespace PhamNhanOnline.Client.UI.World
             ApplyPanelTitle(force);
             var recipes = ClientRuntime.Alchemy.Recipes ?? Array.Empty<LearnedPillRecipeModel>();
             var selectedDetail = TryGetSelectedRecipeDetail(out var detail) ? detail : (PillRecipeDetailModel?)null;
+            var selectedRecipe = selectedRecipeId.HasValue && TryGetLearnedRecipe(selectedRecipeId.Value, out var learnedRecipe)
+                ? learnedRecipe
+                : (LearnedPillRecipeModel?)null;
             var displaySession = GetDisplayAlchemySession();
             var preview = selectedRecipeId.HasValue && ClientRuntime.Alchemy.LastPreview.HasValue &&
                           ClientRuntime.Alchemy.LastPreview.Value.PillRecipeTemplateId == selectedRecipeId.Value
@@ -397,7 +403,7 @@ namespace PhamNhanOnline.Client.UI.World
             panelView?.SetCloseButtonVisible(!IsCloseLockedBecauseCultivating());
 
             ApplyInventory(force);
-            ApplySelectedRecipe(selectedDetail, displaySession, preview, force);
+            ApplySelectedRecipe(selectedDetail, selectedRecipe, displaySession, preview, force);
             ApplyInputs(selectedDetail, displaySession, force);
             ApplyCraftingResultPreview(selectedDetail, displaySession, preview);
             ApplyButtonsFromState(selectedDetail, displaySession, preview);
@@ -497,6 +503,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void ApplySelectedRecipe(
             PillRecipeDetailModel? detail,
+            LearnedPillRecipeModel? selectedRecipe,
             PracticeSessionModel? activeSession,
             AlchemyCraftPreviewModel? preview,
             bool force)
@@ -506,7 +513,16 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (!detail.HasValue)
             {
-                panelView.ClearSelectedRecipe();
+                if (!selectedRecipe.HasValue)
+                {
+                    panelView.ClearSelectedRecipe();
+                    return;
+                }
+
+                panelView.SetSelectedRecipe(
+                    selectedRecipe.Value,
+                    selectedRecipe.Value.ResultPill,
+                    activeSession.HasValue);
                 return;
             }
 
@@ -623,8 +639,12 @@ namespace PhamNhanOnline.Client.UI.World
         private void HandleRecipeListClicked(LearnedPillRecipeModel recipe)
         {
             if (HasBlockingAlchemySession())
+            {
+                LogRecipeSelection($"recipe-list-click ignored because practice session is blocking recipe={DescribeRecipe(recipe)}.");
                 return;
+            }
 
+            LogRecipeSelection($"recipe-list-click received recipe={DescribeRecipe(recipe)}.");
             ShowRecipeOptions(recipe);
         }
 
@@ -636,9 +656,13 @@ namespace PhamNhanOnline.Client.UI.World
         private void HandleSelectedRecipeDropped(LearnedPillRecipeModel recipe)
         {
             if (HasBlockingAlchemySession())
+            {
+                LogRecipeSelection($"selected-slot-drop ignored because practice session is blocking recipe={DescribeRecipe(recipe)}.");
                 return;
+            }
 
-            SetSelectedRecipe(recipe.PillRecipeTemplateId);
+            LogRecipeSelection($"selected-slot-drop received recipe={DescribeRecipe(recipe)}.");
+            _ = SetSelectedRecipeAsync(recipe.PillRecipeTemplateId);
         }
 
         private void HandleSelectedRecipeClicked()
@@ -744,14 +768,19 @@ namespace PhamNhanOnline.Client.UI.World
         private void ShowRecipeOptions(LearnedPillRecipeModel recipe)
         {
             if (recipe.PillRecipeTemplateId <= 0)
+            {
+                LogRecipeSelection($"show-recipe-options ignored invalid recipe={DescribeRecipe(recipe)}.");
                 return;
+            }
 
+            LogRecipeSelection($"show-recipe-options recipe={DescribeRecipe(recipe)}.");
             var options = new List<ItemOptionEntry>(1)
             {
                 new ItemOptionEntry(selectRecipeOptionText, () =>
                 {
+                    LogRecipeSelection($"recipe-option-select clicked recipe={DescribeRecipe(recipe)}.");
                     HideItemOptionsPopup(force: true);
-                    SetSelectedRecipe(recipe.PillRecipeTemplateId);
+                    _ = SetSelectedRecipeAsync(recipe.PillRecipeTemplateId);
                 })
             };
 
@@ -1056,13 +1085,45 @@ namespace PhamNhanOnline.Client.UI.World
         private async Task<PillRecipeDetailModel?> EnsureRecipeDetailLoadedAsync(int recipeId, bool forceRefresh)
         {
             if (ClientRuntime.Alchemy.TryGetRecipeDetail(recipeId, out var cached) && !forceRefresh)
+            {
+                LogRecipeSelection($"recipe-detail cache-hit recipeId={recipeId}.");
                 return cached;
+            }
 
             try
             {
+                LogRecipeSelection($"recipe-detail load-start recipeId={recipeId} forceRefresh={forceRefresh}.");
                 var result = await ClientRuntime.AlchemyService.LoadRecipeDetailAsync(recipeId, forceRefresh);
                 if (!result.Success || !result.Recipe.HasValue)
+                {
+                    ClientLog.Warn(
+                        $"WorldCraftingPanelController failed to load recipe detail recipeId={recipeId} " +
+                        $"code={result.Code?.ToString() ?? "None"} reason='{result.FailureReason}'.");
                     return null;
+                }
+
+                LogRecipeSelection(
+                    $"recipe-detail load-success recipeId={recipeId} received={result.Recipe.Value.PillRecipeTemplateId} " +
+                    $"inputCount={(result.Recipe.Value.Inputs != null ? result.Recipe.Value.Inputs.Count : 0)}.");
+
+                if (result.Recipe.Value.PillRecipeTemplateId != recipeId)
+                {
+                    ClientLog.Warn(
+                        $"WorldCraftingPanelController received mismatched recipe detail. " +
+                        $"requested={recipeId} received={result.Recipe.Value.PillRecipeTemplateId}. Retrying once.");
+
+                    result = await ClientRuntime.AlchemyService.LoadRecipeDetailAsync(recipeId, forceRefresh: true);
+                    if (!result.Success ||
+                        !result.Recipe.HasValue ||
+                        result.Recipe.Value.PillRecipeTemplateId != recipeId)
+                    {
+                        ClientLog.Warn(
+                            $"WorldCraftingPanelController failed to load matching recipe detail after retry. " +
+                            $"requested={recipeId} received={(result.Recipe.HasValue ? result.Recipe.Value.PillRecipeTemplateId.ToString(CultureInfo.InvariantCulture) : "None")} " +
+                            $"code={result.Code?.ToString() ?? "None"} reason='{result.FailureReason}'.");
+                        return null;
+                    }
+                }
 
                 return result.Recipe.Value;
             }
@@ -1101,16 +1162,50 @@ namespace PhamNhanOnline.Client.UI.World
             return draftState.ResolvePreviewRequestedCraftCount(detail, GetInventoryItems());
         }
 
-        private void SetSelectedRecipe(int recipeId)
+        private async Task SetSelectedRecipeAsync(int recipeId)
         {
-            if (selectedRecipeId == recipeId)
+            if (recipeId <= 0 || !ClientRuntime.IsInitialized)
+            {
+                LogRecipeSelection($"set-selected ignored recipeId={recipeId} runtimeInitialized={ClientRuntime.IsInitialized}.");
                 return;
+            }
 
+            LogRecipeSelection($"set-selected start recipeId={recipeId} previous={selectedRecipeId?.ToString(CultureInfo.InvariantCulture) ?? "None"}.");
+            var selectionChanged = selectedRecipeId != recipeId;
             selectedRecipeId = recipeId;
-            draftState.Clear();
-            _ = EnsureRecipeDetailLoadedAsync(recipeId, forceRefresh: false);
-            _ = RefreshPreviewAsync();
+            if (selectionChanged)
+            {
+                draftState.Clear();
+                LogRecipeSelection($"set-selected cleared draft for recipeId={recipeId}.");
+            }
+
             Refresh(force: true);
+            LogRecipeSelection($"set-selected refreshed immediate state recipeId={recipeId}.");
+
+            var detail = await EnsureRecipeDetailLoadedAsync(recipeId, forceRefresh: false);
+            if (!detail.HasValue)
+            {
+                LogRecipeSelection($"set-selected missing detail recipeId={recipeId} stillSelected={selectedRecipeId == recipeId}.");
+                if (selectedRecipeId == recipeId)
+                    Refresh(force: true);
+                return;
+            }
+
+            if (selectedRecipeId != recipeId)
+            {
+                LogRecipeSelection($"set-selected aborted because selection changed while loading requested={recipeId} current={selectedRecipeId?.ToString(CultureInfo.InvariantCulture) ?? "None"}.");
+                return;
+            }
+
+            LogRecipeSelection(
+                $"set-selected detail-ready recipeId={recipeId} name='{detail.Value.Name}' " +
+                $"inputCount={(detail.Value.Inputs != null ? detail.Value.Inputs.Count : 0)}.");
+            await RefreshPreviewAsync();
+            if (selectedRecipeId == recipeId)
+            {
+                Refresh(force: true);
+                LogRecipeSelection($"set-selected complete recipeId={recipeId}.");
+            }
         }
 
         private void AlignSelectionWithPracticeState()
@@ -1178,15 +1273,8 @@ namespace PhamNhanOnline.Client.UI.World
 
         private LearnedPillRecipeModel ResolveLearnedRecipe(int recipeId, PillRecipeDetailModel detail)
         {
-            var recipes = ClientRuntime.Alchemy.Recipes;
-            if (recipes != null)
-            {
-                for (var i = 0; i < recipes.Length; i++)
-                {
-                    if (recipes[i].PillRecipeTemplateId == recipeId)
-                        return recipes[i];
-                }
-            }
+            if (TryGetLearnedRecipe(recipeId, out var learnedRecipe))
+                return learnedRecipe;
 
             return new LearnedPillRecipeModel
             {
@@ -1204,6 +1292,25 @@ namespace PhamNhanOnline.Client.UI.World
                 CurrentSuccessRateBonus = detail.CurrentSuccessRateBonus,
                 LearnedUnixMs = detail.LearnedUnixMs
             };
+        }
+
+        private static bool TryGetLearnedRecipe(int recipeId, out LearnedPillRecipeModel recipe)
+        {
+            var recipes = ClientRuntime.Alchemy.Recipes;
+            if (recipes != null)
+            {
+                for (var i = 0; i < recipes.Length; i++)
+                {
+                    if (recipes[i].PillRecipeTemplateId == recipeId)
+                    {
+                        recipe = recipes[i];
+                        return true;
+                    }
+                }
+            }
+
+            recipe = default;
+            return false;
         }
 
         private int ResolveAssignedQuantity(PillRecipeInputModel input, PracticeSessionModel? activeSession)
@@ -1832,6 +1939,25 @@ namespace PhamNhanOnline.Client.UI.World
                 default:
                     return "San sang luyen che";
             }
+        }
+
+        private void LogRecipeSelection(string message)
+        {
+            if (!logRecipeSelectionDiagnostics)
+                return;
+
+            ClientLog.Info($"[CraftRecipeSelect] {message}");
+        }
+
+        private static string DescribeRecipe(LearnedPillRecipeModel recipe)
+        {
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "id={0} code='{1}' name='{2}' resultItem={3}",
+                recipe.PillRecipeTemplateId,
+                recipe.Code ?? string.Empty,
+                recipe.Name ?? string.Empty,
+                recipe.ResultPill.ItemTemplateId);
         }
 
         private void DetachFromMainMenuRoot()

@@ -353,7 +353,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var controller = target.GetComponent<LocalCharacterActionController>();
             if (controller == null)
-                controller = target.AddComponent<LocalCharacterActionController>();
+            {
+                ClientLog.Error(
+                    $"WorldLocalPlayerPresenter requires LocalCharacterActionController on local player prefab '{playerPrefab?.name ?? "<null>"}'. " +
+                    $"Spawned object='{target.name}'. Add the component and required refs to the prefab; runtime AddComponent is forbidden.");
+                return null;
+            }
 
             controller.Initialize(
                 localCharacterActionConfig,
@@ -373,7 +378,12 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var handle = WorldTargetHandle.CreateObservedCharacter(activeCharacterId.Value);
             var targetable = target.GetComponent<WorldTargetable>();
             if (targetable == null)
-                targetable = target.AddComponent<WorldTargetable>();
+            {
+                ClientLog.Error(
+                    $"WorldLocalPlayerPresenter requires WorldTargetable on local player prefab '{playerPrefab?.name ?? "<null>"}'. " +
+                    $"Spawned object='{target.name}'. Add the component and assign interactionCollider on the prefab.");
+                return;
+            }
 
             targetable.Configure(handle);
 

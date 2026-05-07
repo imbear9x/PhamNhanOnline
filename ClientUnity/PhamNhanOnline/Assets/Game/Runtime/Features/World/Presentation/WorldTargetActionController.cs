@@ -1,5 +1,6 @@
 using System;
 using PhamNhanOnline.Client.Core.Application;
+using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using UnityEngine;
 
@@ -31,10 +32,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private bool pinTargetWhileApproaching = true;
         [SerializeField] private bool logInteractionPlaceholder = true;
 
+        [Header("Diagnostics")]
+        [SerializeField] private bool logTargetActionDiagnostics = true;
+        [SerializeField] private float targetActionDiagnosticIntervalSeconds = 0.75f;
+
         private PendingTargetAction? pendingAction;
         private bool autoPinApplied;
         private bool loggedMissingWorldMapPresenter;
         private bool loggedMissingLocalPlayerPresenter;
+        private float nextTargetActionDiagnosticTime;
 
         public event Action<WorldTargetHandle> InteractionRequested;
 
@@ -89,10 +95,18 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var localActionController = ResolveLocalActionController();
             if (localActionController == null || worldMapPresenter == null)
+            {
+                LogTargetActionDiagnostic(
+                    $"waiting-dependencies target={DescribeTarget(action.Target)} localAction={(localActionController != null)} worldMap={(worldMapPresenter != null)}",
+                    throttle: true);
                 return;
+            }
 
             if (ClientRuntime.Combat.HasPendingAttackRequest || ClientRuntime.Combat.IsLocalCastActive(DateTime.UtcNow))
             {
+                LogTargetActionDiagnostic(
+                    $"waiting-combat target={DescribeTarget(action.Target)} pendingAttack={ClientRuntime.Combat.HasPendingAttackRequest}",
+                    throttle: true);
                 localActionController.ClearExternalMoveOverride();
                 return;
             }
@@ -105,22 +119,42 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             Vector2 playerWorldPosition;
             if (!TryResolveLocalPlayerWorldPosition(out playerWorldPosition))
+            {
+                LogTargetActionDiagnostic($"waiting-player-position target={DescribeTarget(action.Target)}", throttle: true);
                 return;
+            }
 
             Vector2 targetWorldPosition;
             if (!TryResolveTargetWorldPosition(action.Target, out targetWorldPosition))
             {
+                LogTargetActionDiagnostic(
+                    $"cancel-no-target-position target={DescribeTarget(action.Target)} mode={action.Mode}",
+                    throttle: false);
                 CancelPendingAction(clearPin: true);
                 return;
             }
 
+            var requiredRange = ResolveRequiredRangeServerUnits(action);
+            var rangeBuffer = ResolveRangeBufferServerUnits(action);
+            Vector2 deltaServer;
             float distanceServerUnits;
-            if (TryResolveDistanceServerUnits(playerWorldPosition, targetWorldPosition, out distanceServerUnits))
+            float horizontalRangeServerUnits;
+            float verticalRangeServerUnits;
+            if (TryResolveTargetRangeServerUnits(
+                    playerWorldPosition,
+                    targetWorldPosition,
+                    requiredRange,
+                    rangeBuffer,
+                    out deltaServer,
+                    out distanceServerUnits,
+                    out horizontalRangeServerUnits,
+                    out verticalRangeServerUnits))
             {
-                var requiredRange = ResolveRequiredRangeServerUnits(action);
-                var rangeBuffer = ResolveRangeBufferServerUnits(action);
-                if (distanceServerUnits <= requiredRange + rangeBuffer)
+                if (IsWithinActionRange(deltaServer, horizontalRangeServerUnits, verticalRangeServerUnits))
                 {
+                    LogTargetActionDiagnostic(
+                        $"execute-in-range target={DescribeTarget(action.Target)} mode={action.Mode} distanceServer={distanceServerUnits:0.##} deltaServer={FormatVector(deltaServer)} rangeX={horizontalRangeServerUnits:0.##} rangeY={verticalRangeServerUnits:0.##}",
+                        throttle: false);
                     localActionController.ClearExternalMoveOverride();
                     ExecutePendingAction(action);
                     return;
@@ -128,12 +162,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
                 Vector2 preferredMoveOverride;
                 if (TryResolvePreferredApproachMoveOverride(
-                        action,
-                        playerWorldPosition,
-                        targetWorldPosition,
-                        requiredRange,
+                        deltaServer,
+                        horizontalRangeServerUnits,
+                        verticalRangeServerUnits,
                         out preferredMoveOverride))
                 {
+                    LogTargetActionDiagnostic(
+                        $"move-to-range target={DescribeTarget(action.Target)} mode={action.Mode} playerWorld={FormatVector(playerWorldPosition)} targetWorld={FormatVector(targetWorldPosition)} distanceServer={distanceServerUnits:0.##} deltaServer={FormatVector(deltaServer)} rangeX={horizontalRangeServerUnits:0.##} rangeY={verticalRangeServerUnits:0.##} move={FormatVector(preferredMoveOverride)}",
+                        throttle: true);
                     localActionController.SetExternalMoveOverride(preferredMoveOverride);
                     return;
                 }
@@ -142,11 +178,17 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var delta = targetWorldPosition - playerWorldPosition;
             if (delta.sqrMagnitude <= arrivalDeadZoneWorldUnits * arrivalDeadZoneWorldUnits)
             {
+                LogTargetActionDiagnostic(
+                    $"execute-world-deadzone target={DescribeTarget(action.Target)} mode={action.Mode} playerWorld={FormatVector(playerWorldPosition)} targetWorld={FormatVector(targetWorldPosition)}",
+                    throttle: false);
                 localActionController.ClearExternalMoveOverride();
                 ExecutePendingAction(action);
                 return;
             }
 
+            LogTargetActionDiagnostic(
+                $"move-world-direct target={DescribeTarget(action.Target)} mode={action.Mode} playerWorld={FormatVector(playerWorldPosition)} targetWorld={FormatVector(targetWorldPosition)} delta={FormatVector(delta)}",
+                throttle: true);
             localActionController.SetExternalMoveOverride(delta.normalized);
         }
 
@@ -179,11 +221,43 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 Mode = mode
             };
 
+            LogTargetActionDiagnostic(
+                $"request target={DescribeTarget(target)} mode={mode}",
+                throttle: false);
+
             autoPinApplied = false;
             if (pinTargetWhileApproaching && ClientRuntime.Target.PinMode == TargetPinMode.None)
                 autoPinApplied = ClientRuntime.Target.PinCurrent(TargetPinMode.Manual);
 
             return true;
+        }
+
+        private void LogTargetActionDiagnostic(string message, bool throttle)
+        {
+            if (!logTargetActionDiagnostics)
+                return;
+
+            if (throttle)
+            {
+                var now = Time.unscaledTime;
+                if (now < nextTargetActionDiagnosticTime)
+                    return;
+
+                nextTargetActionDiagnosticTime = now + Mathf.Max(0.1f, targetActionDiagnosticIntervalSeconds);
+            }
+
+            ClientLog.Info("[TargetAction] " + message);
+            WorldTravelDebugController.SetExternalCharacterStatsDebugLine("[TargetAction] " + message);
+        }
+
+        private static string DescribeTarget(WorldTargetHandle target)
+        {
+            return target.Kind + "/" + target.TargetId;
+        }
+
+        private static string FormatVector(Vector2 value)
+        {
+            return value.x.ToString("0.##") + "," + value.y.ToString("0.##");
         }
     }
 }

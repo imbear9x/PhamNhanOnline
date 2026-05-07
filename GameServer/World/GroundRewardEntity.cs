@@ -13,6 +13,8 @@ public sealed class GroundRewardEntity
     public DateTime? FreeAtUtc { get; }
     public DateTime DestroyAtUtc { get; }
     public bool IsDestroyed { get; private set; }
+    public Guid? ClaimingCharacterId { get; private set; }
+    public bool IsClaiming => ClaimingCharacterId.HasValue;
 
     public GroundRewardEntity(
         int id,
@@ -40,8 +42,42 @@ public sealed class GroundRewardEntity
         if (OwnerCharacterId.HasValue && FreeAtUtc.HasValue && utcNow >= FreeAtUtc.Value)
             OwnerCharacterId = null;
 
+        if (IsClaiming)
+            return;
+
         if (utcNow >= DestroyAtUtc)
             IsDestroyed = true;
+    }
+
+    public bool TryBeginClaim(Guid characterId)
+    {
+        if (IsDestroyed || ClaimingCharacterId.HasValue)
+            return false;
+
+        ClaimingCharacterId = characterId;
+        return true;
+    }
+
+    public bool IsClaimingBy(Guid characterId)
+    {
+        return ClaimingCharacterId == characterId;
+    }
+
+    public void CompleteClaim(Guid characterId)
+    {
+        if (!IsClaimingBy(characterId))
+            return;
+
+        ClaimingCharacterId = null;
+        IsDestroyed = true;
+    }
+
+    public void CancelClaim(Guid characterId)
+    {
+        if (!IsClaimingBy(characterId))
+            return;
+
+        ClaimingCharacterId = null;
     }
 
     public IReadOnlyList<long> GetPlayerItemIds()

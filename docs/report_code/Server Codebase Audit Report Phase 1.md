@@ -178,7 +178,10 @@ Acceptance criteria:
 | Phase 1: Quick Wins | Completed | No | `3d58b62` | Đã vá portal/pickup/combat target/movement theo hướng server-authoritative desired movement: client speed hack không làm server position chạy nhanh, portal/pickup/attack sẽ chờ server position vào range thay vì snap/reject im lặng. Death sẽ clear movement target, wait bị hủy bởi death không spam failure action, client chỉ force-snap khi chuyển sang defeated. Enemy/boss không còn gây damage im lặng nếu thiếu skill/basic attack. Đã thêm deserialize guard, fallback DataAnnotations validation, thêm/apply `database/migrate_20260427_1200_server_phase1_security_guards.sql`, thêm migration cập nhật mô tả config movement. Build server pass qua output tạm vì DLL runtime đang bị debugger lock; cần user test runtime. Inventory/craft row lock chuyển Phase 2 |
 | Phase 1.2: Pending Movement Hazard / Action Ordering | Completed | Yes | - | User đã test khá ngon. Đã thêm `WorldRuntimeSettlementService`, game loop và pre-action portal/pickup/attack dùng chung settlement để drain enemy cast/release/impact/death/reward trước executor. Skill due events được sort theo thời điểm rồi `ExecutionId` để action mới không chen trước action cũ cùng tick. Đã thêm interaction movement catch-up có giới hạn qua `character.position_sync_catchup_multiplier=1.3` và `character.position_sync_catchup_max_seconds=0.75`, chỉ dùng khi wait target interaction, không đổi tốc độ gameplay chính |
 | Phase 1.5: World Interaction Pipeline | Completed | Yes | - | User đã test khá ổn. Đã thêm `WorldTargetRef`, `WorldTargetSnapshot`, `WorldTargetResolver`, `WorldInteractionGate`; chuyển `PlayerInteractionMovementWait` sang runtime helper dùng bởi gate. Portal/GroundReward/CombatTarget đều đi qua gate chung cho player state/death/stun/cultivating/practicing/casting, target resolve, range/catch-up/wait, pre-action settlement và recheck trước executor. Handler chỉ còn parse packet, xử lý rule riêng và executor. Build server pass |
-| Phase 2: Structural Improvements | Not Started | No | - | Chỉ làm sau khi Phase 1 đã chạy ổn |
+| Phase 2.1: Inventory/Equipment Transaction Safety | Completed | No | - | Đã thêm `PlayerInventoryTransactionService` dùng PostgreSQL transaction-level advisory lock theo `playerId`. `ItemService` mutation chính (`add/remove/consume/split/drop/move ground item`) và `EquipmentActionService`/`ItemUseService` đã đi qua gate chung. Build server pass. User chưa test. Lưu ý: ground reward idempotency/cross-player claim recovery vẫn để Phase 2.3 |
+| Phase 2.2: Craft Transaction Safety | Completed | No | - | Đã đưa `CraftService.ExecuteCraftAsync`, alchemy practice start, practice cancel refund, alchemy practice completion grant vào `PlayerInventoryTransactionService`. Validation craft/alchemy start nay chạy trong cùng lock/transaction với consume input. Completion re-read active session trong transaction trước khi grant output để tránh double completion. Build server pass. User chưa test |
+| Phase 2.3: Reward/Currency/Exp Safety | Completed | No | - | Đã đổi ground reward pickup thành reserve -> DB grant transaction -> complete/cancel, tránh mất reward khỏi runtime nếu DB grant lỗi. Direct enemy item grant được group trong inventory transaction theo player. Enemy cultivation/potential reward flush DB ngay sau khi apply runtime. Build server pass. User chưa test. Chưa thêm durable reward ledger cross-restart; để long-term nếu cần idempotency tuyệt đối |
+| Phase 2.4: Repository Cleanup / Transaction Boundary | Completed | No | - | Đã rà transaction owner sau Phase 2.1-2.3, dọn dependency thừa ở `AlchemyService`, ghi rõ transaction ownership matrix. Inventory/equipment/craft/reward item mutation nay đi qua `PlayerInventoryTransactionService`; account/character/skill/herb vẫn là feature-local transaction owner có ghi chú. Build server pass. User chưa test |
 | Phase 3: Long-term Scalability | Not Started | No | - | Chỉ làm sau khi gameplay core và architecture chính ổn |
 | Phase 4: Abuse Resistance / Queue Hardening | Not Started | No | - | Thiết kế chống client cheat speed x50 rồi spam loạn packet: bounded inbound queue, single-flight interaction wait, per-packet/per-action rate limit, abuse score, disconnect/cooldown policy, metric/log queue depth |
 
@@ -256,7 +259,111 @@ Rule đã chốt cho combat presentation và server authority:
 
 Lý do: tránh case player bị trừ máu hoặc chết mà client không có presentation trước đó để giải thích vì sao bị đánh.
 
-## 9.4. Phase 4 Scope: Abuse Resistance / Queue Hardening
+## 9.4. Phase 2 Scope: Structural Transaction Safety
+
+Phase 2 không phải refactor lớn toàn server. Mục tiêu là đóng các lỗ read-modify-write trước, rồi mới dọn module. Nếu bị gián đoạn, session sau làm tiếp theo đúng thứ tự trong `Progress Tracking`.
+
+### Phase 2.1: Inventory/Equipment Transaction Safety
+
+Mục tiêu:
+
+1. Thêm một transaction/gate chung theo `playerId` cho mutation inventory/equipment.
+2. `equip`, `unequip`, `drop inventory item`, `use item`, `add/remove/consume item`, `split stack`, `move ground item to inventory` phải đi qua gate này hoặc được ghi rõ vì sao chưa thể.
+3. Transaction boundary nằm ở action/service layer, không để handler tự chắp nhiều repository call.
+4. Re-check item owner/location/quantity/equipped state bên trong transaction/gate, không chỉ validate trước transaction.
+5. Không đổi packet protocol và không refactor UI/client.
+
+Acceptance criteria:
+
+- Hai request song song cùng player không thể consume/drop cùng một stack vượt quá số lượng thật.
+- Không thể equip một item vừa bị drop/remove/consume bởi request khác.
+- Equip/unequip không để nhiều item cùng chiếm một slot do race trong cùng player.
+- Build server pass.
+- Nếu còn flow item chưa đưa vào gate, phải ghi rõ ở note Phase 2.1.
+
+Kết quả đã làm:
+
+- Thêm `PlayerInventoryTransactionService` để mở transaction khi cần và gọi `pg_advisory_xact_lock` theo `playerId`.
+- `ItemService` public mutation chính đã wrap qua transaction/gate: add, remove, consume, split stack, move inventory item to ground, move ground item to inventory.
+- `EquipmentActionService` không tự mở transaction rời rạc nữa; equip/unequip/equip-first-available đi qua gate chung.
+- `ItemUseService.UseAsync` wrap toàn bộ use item vào gate để martial art book, pill recipe book, consumable và use-equipment không validate/consume rời rạc.
+- Chưa xử lý triệt để idempotency reward/currency/exp và recovery nếu runtime ground reward đã claim nhưng DB grant lỗi; phần đó thuộc Phase 2.3.
+
+### Phase 2.2: Craft Transaction Safety
+
+Mục tiêu:
+
+1. Rà `CraftService`, `AlchemyCraftActionService`, `AlchemyPracticeService`, `PracticeService`.
+2. Validation craft chỉ là preview; khi execute phải re-check item quantity/owner/location/equipped state trong transaction/gate.
+3. Consume input, roll success/mutation, create output, update mastery/progress phải có transaction owner rõ.
+4. Không để craft validate xong rồi item bị drop/use trước khi consume.
+
+Acceptance criteria:
+
+- Spam craft/use/drop cùng lúc không tạo output nếu input đã bị consume.
+- Craft fail vẫn consume đúng input theo rule, không mất/cộng thừa item.
+- Log lỗi đủ recipeId/playerId/input item để debug.
+
+Kết quả đã làm:
+
+- `CraftService.ExecuteCraftAsync` wrap validation, consume input, roll success/mutation, create output và build result trong cùng `PlayerInventoryTransactionService`.
+- `AlchemyCraftActionService.StartCraftAsync` wrap recipe detail, blocking-session recheck, validate input, consume input và create practice session trong cùng inventory transaction theo player.
+- `PracticeService.CancelAsync` wrap cancel session và refund consumed input trong cùng inventory transaction.
+- `AlchemyPracticeService.CompleteSessionIfDueAsync` re-read active session trong inventory transaction trước khi roll/grant/update session/notification, tránh hai completion song song grant item hai lần.
+- Phần reward/currency/exp idempotency tổng quát, recovery khi DB lỗi giữa runtime reward và DB grant vẫn thuộc Phase 2.3.
+
+### Phase 2.3: Reward/Currency/Exp Safety
+
+Mục tiêu:
+
+1. Rà enemy reward, ground reward pickup, item reward, currency/exp/stat delta.
+2. Gom reward grant vào service có idempotency hoặc transaction owner rõ.
+3. Tránh retry hoặc packet duplicate làm nhận reward hai lần.
+4. Đồng bộ runtime reward và DB item/currency theo thứ tự recover được nếu lỗi giữa chừng.
+
+Acceptance criteria:
+
+- Một reward chỉ claim được một lần.
+- Nếu DB grant lỗi, runtime không mất reward im lặng hoặc có log/recovery rõ.
+- Currency/exp/item reward không bị update rời rạc dẫn tới nửa thành công nửa thất bại.
+
+Kết quả đã làm:
+
+- Ground reward pickup chuyển từ `TryClaimGroundReward` remove-ngay sang 2 bước: `TryBeginGroundRewardClaim` reserve runtime, DB move item vào inventory trong `PlayerInventoryTransactionService`, rồi `CompleteGroundRewardClaim`.
+- Nếu DB grant pickup lỗi, handler gọi `CancelGroundRewardClaim`, log lỗi và reward vẫn còn trong runtime để retry hoặc despawn theo timer; không bị mất im lặng.
+- Thêm trạng thái claim in-progress trên `GroundRewardEntity` và `MessageCode.GroundRewardClaimInProgress` để packet trùng/claim song song không nhận reward hai lần.
+- Direct enemy item reward được gom theo item/bound và grant trong một inventory transaction theo player thay vì mỗi roll là một transaction rời.
+- Cultivation/potential reward từ enemy death sau khi apply runtime sẽ gọi `CharacterRuntimeSaveService.FlushPlayerAsync` ngay để giảm nguy cơ mất tiến độ nếu server crash trước kỳ periodic save.
+- Chưa thêm durable reward ledger/idempotency key cross-restart cho enemy death runtime event. Nếu sau này cần chống duplicate tuyệt đối qua crash/retry nhiều process, đưa vào Phase 3/4 bằng reward ledger hoặc Redis/idempotency store.
+
+### Phase 2.4: Repository Cleanup / Transaction Boundary
+
+Mục tiêu:
+
+1. Repository chỉ còn query/insert/update/delete, không chứa nghiệp vụ.
+2. Action service/application service là nơi sở hữu transaction.
+3. Giảm service gọi chéo tạo transaction lồng nhau khó hiểu.
+4. Đặt naming rõ: `QueryService` cho đọc, `ActionService` cho mutation.
+
+Acceptance criteria:
+
+- Nhìn một packet handler biết transaction owner nằm ở service nào.
+- Không có mutation flow quan trọng mở transaction ở nhiều tầng nếu không có lý do rõ.
+- Những flow còn nợ phải có TODO/docs cụ thể, không để mơ hồ.
+
+Kết quả đã làm:
+
+- Dọn dependency thừa ở `AlchemyService`: service này chỉ còn query/validation recipe input, không nhận `GameDb`, `ItemService`, `IGameRandomService` khi không dùng.
+- Sau Phase 2.1-2.3, transaction owner hiện tại:
+  - `PlayerInventoryTransactionService`: inventory/equipment/use item/craft/alchemy input/refund/completion item grant/ground reward pickup/direct enemy item reward.
+  - `AccountService`: transaction account + credential khi register/link credential. Đây là account-domain owner, không liên quan runtime game.
+  - `CharacterService`: transaction character create và update runtime snapshot; đây là character-domain owner.
+  - `SkillService`: skill/loadout/equipment-granted-skill sync. Có check ambient transaction (`_db.Transaction`) để khi gọi từ equipment flow thì không mở transaction lồng thêm.
+  - `HerbService`: garden/herb flow vẫn là feature-local transaction owner. Các điểm gọi `ItemService` sẽ dùng ambient DB transaction + inventory advisory lock. Chưa tách thành `HerbActionService` trong Phase 2 vì ngoài phạm vi inventory/craft/reward test hiện tại.
+- Repository hiện tại vẫn chỉ làm data access trực tiếp qua `GameDb`; chưa thấy repository chứa business rule lớn cần tách ngay trong Phase 2.
+- Nợ sau Phase 2 nếu muốn dọn tiếp: tách `HerbService` thành query/action, tách `SkillService` query/action, và tạo base transaction helper chung nếu ngoài inventory cũng bắt đầu cần advisory lock/domain lock.
+
+## 9.5. Phase 4 Scope: Abuse Resistance / Queue Hardening
 
 Phase 4 xử lý nhóm vấn đề không phải correctness gameplay đơn lẻ, mà là client cố tình phá server bằng cheat speed, spam packet, đổi target liên tục, hoặc tạo hàng đợi dài để tiêu tốn RAM/CPU.
 

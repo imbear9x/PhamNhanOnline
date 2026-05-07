@@ -2,6 +2,7 @@ using DG.Tweening;
 using TMPro;
 using PhamNhanOnline.Client.Infrastructure.Pooling;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace PhamNhanOnline.Client.UI.Hud
 {
@@ -15,13 +16,15 @@ namespace PhamNhanOnline.Client.UI.Hud
 
         [Header("Animation")]
         [SerializeField] private float lifetimeSeconds = 0.8f;
-        [SerializeField] private float riseDistanceWorldUnits = 0.7f;
-        [SerializeField] private float startScale = 1f;
-        [SerializeField] private float endScale = 0.82f;
+        [FormerlySerializedAs("riseDistanceWorldUnits")]
+        [SerializeField] private float riseDistanceUiUnits = 56f;
+        [SerializeField] private float startFontSize = 60f;
+        [SerializeField] private float endFontSize = 42f;
         [SerializeField] private float fadeStartNormalized = 0.1f;
-        [SerializeField] private Vector2 randomHorizontalOffsetRange = new Vector2(-0.12f, 0.12f);
+        [FormerlySerializedAs("randomHorizontalOffsetRange")]
+        [SerializeField] private Vector2 randomHorizontalOffsetUiUnits = new Vector2(-18f, 18f);
 
-        private Vector3 startWorldPosition;
+        private Vector2 startAnchoredPosition;
         private PooledInstance pooledInstance;
         private Sequence playSequence;
 
@@ -35,34 +38,39 @@ namespace PhamNhanOnline.Client.UI.Hud
             AutoWireReferences();
         }
 
-        public void Play(string text, Color color, Vector3 worldPosition)
+        public void Play(string text, Color color, Vector2 anchoredPosition)
         {
             AutoWireReferences();
             KillTween();
 
-            startWorldPosition = worldPosition + new Vector3(
-                Random.Range(randomHorizontalOffsetRange.x, randomHorizontalOffsetRange.y),
-                0f,
+            startAnchoredPosition = anchoredPosition + new Vector2(
+                Random.Range(randomHorizontalOffsetUiUnits.x, randomHorizontalOffsetUiUnits.y),
                 0f);
 
             if (rectTransform != null)
             {
-                rectTransform.position = startWorldPosition;
-                rectTransform.localScale = Vector3.one * startScale;
+                rectTransform.anchoredPosition = startAnchoredPosition;
+                rectTransform.localScale = Vector3.one;
             }
             else
             {
-                transform.position = startWorldPosition;
-                transform.localScale = Vector3.one * startScale;
+                transform.localPosition = startAnchoredPosition;
+                transform.localScale = Vector3.one;
             }
 
             if (canvasGroup != null)
+            {
                 canvasGroup.alpha = 1f;
+                canvasGroup.interactable = false;
+                canvasGroup.blocksRaycasts = false;
+            }
 
             if (valueText != null)
             {
                 valueText.text = text ?? string.Empty;
                 valueText.color = color;
+                valueText.enableAutoSizing = false;
+                valueText.fontSize = ResolveStartFontSize();
             }
 
             var duration = Mathf.Max(0.01f, lifetimeSeconds);
@@ -72,13 +80,26 @@ namespace PhamNhanOnline.Client.UI.Hud
             playSequence = DOTween.Sequence().SetUpdate(false);
             if (rectTransform != null)
             {
-                playSequence.Join(rectTransform.DOMoveY(startWorldPosition.y + riseDistanceWorldUnits, duration).SetEase(Ease.Linear));
-                playSequence.Join(rectTransform.DOScale(endScale, duration).SetEase(Ease.OutQuad));
+                playSequence.Join(rectTransform.DOAnchorPosY(startAnchoredPosition.y + riseDistanceUiUnits, duration).SetEase(Ease.Linear));
             }
             else
             {
-                playSequence.Join(transform.DOMoveY(startWorldPosition.y + riseDistanceWorldUnits, duration).SetEase(Ease.Linear));
-                playSequence.Join(transform.DOScale(endScale, duration).SetEase(Ease.OutQuad));
+                playSequence.Join(transform.DOLocalMoveY(startAnchoredPosition.y + riseDistanceUiUnits, duration).SetEase(Ease.Linear));
+            }
+
+            if (valueText != null)
+            {
+                var targetFontSize = ResolveEndFontSize(valueText.fontSize);
+                if (!Mathf.Approximately(valueText.fontSize, targetFontSize))
+                {
+                    playSequence.Join(DOTween
+                        .To(
+                            () => valueText.fontSize,
+                            value => valueText.fontSize = value,
+                            targetFontSize,
+                            duration)
+                        .SetEase(Ease.OutQuad));
+                }
             }
 
             if (canvasGroup != null)
@@ -132,6 +153,24 @@ namespace PhamNhanOnline.Client.UI.Hud
                 playSequence.Kill();
                 playSequence = null;
             }
+        }
+
+        private float ResolveStartFontSize()
+        {
+            if (startFontSize > 0f)
+                return startFontSize;
+
+            return valueText != null && valueText.fontSize > 0f
+                ? valueText.fontSize
+                : 60f;
+        }
+
+        private float ResolveEndFontSize(float fallback)
+        {
+            if (endFontSize > 0f)
+                return endFontSize;
+
+            return fallback > 0f ? fallback : ResolveStartFontSize();
         }
     }
 }

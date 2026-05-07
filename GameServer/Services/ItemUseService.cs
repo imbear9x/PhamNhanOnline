@@ -9,7 +9,6 @@ namespace GameServer.Services;
 
 public sealed class ItemUseService
 {
-    private readonly GameDb _db;
     private readonly PlayerItemRepository _playerItems;
     private readonly ItemDefinitionCatalog _itemDefinitions;
     private readonly AlchemyDefinitionCatalog _alchemyDefinitions;
@@ -21,9 +20,9 @@ public sealed class ItemUseService
     private readonly CharacterService _characterService;
     private readonly CharacterCultivationService _cultivationService;
     private readonly CharacterRuntimeNotifier _notifier;
+    private readonly PlayerInventoryTransactionService _inventoryTransactions;
 
     public ItemUseService(
-        GameDb db,
         PlayerItemRepository playerItems,
         ItemDefinitionCatalog itemDefinitions,
         AlchemyDefinitionCatalog alchemyDefinitions,
@@ -34,9 +33,9 @@ public sealed class ItemUseService
         CharacterRuntimeService characterRuntimeService,
         CharacterService characterService,
         CharacterCultivationService cultivationService,
-        CharacterRuntimeNotifier notifier)
+        CharacterRuntimeNotifier notifier,
+        PlayerInventoryTransactionService inventoryTransactions)
     {
-        _db = db;
         _playerItems = playerItems;
         _itemDefinitions = itemDefinitions;
         _alchemyDefinitions = alchemyDefinitions;
@@ -48,6 +47,7 @@ public sealed class ItemUseService
         _characterService = characterService;
         _cultivationService = cultivationService;
         _notifier = notifier;
+        _inventoryTransactions = inventoryTransactions;
     }
 
     public async Task<UseItemExecutionResult> UseAsync(
@@ -55,6 +55,18 @@ public sealed class ItemUseService
         long playerItemId,
         int quantity,
         CancellationToken cancellationToken = default)
+    {
+        return await _inventoryTransactions.ExecuteAsync(
+            player.CharacterData.CharacterId,
+            ct => UseCoreAsync(player, playerItemId, quantity, ct),
+            cancellationToken);
+    }
+
+    private async Task<UseItemExecutionResult> UseCoreAsync(
+        PlayerSession player,
+        long playerItemId,
+        int quantity,
+        CancellationToken cancellationToken)
     {
         if (quantity <= 0)
             throw new GameException(MessageCode.InventoryItemQuantityInvalid);

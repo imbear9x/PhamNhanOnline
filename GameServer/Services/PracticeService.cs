@@ -304,9 +304,9 @@ public sealed class PracticeService
             return PracticeMutationResult.Failed(MessageCode.CharacterMustEnterWorld);
 
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<GameDb>();
         var repository = scope.ServiceProvider.GetRequiredService<PlayerPracticeSessionRepository>();
         var itemService = scope.ServiceProvider.GetRequiredService<ItemService>();
+        var inventoryTransactions = scope.ServiceProvider.GetRequiredService<PlayerInventoryTransactionService>();
         var entity = await ResolveOwnedSessionAsync(repository, session.Player.CharacterData.CharacterId, practiceSessionId, cancellationToken);
         if (entity is null ||
             (entity.PracticeState != (int)PracticeSessionState.Active && entity.PracticeState != (int)PracticeSessionState.Paused))
@@ -321,18 +321,20 @@ public sealed class PracticeService
         var shouldRefundConsumedItems = CalculateProgress(entity, utcNow) < GetCancelRefundProgressThreshold();
         var requestPayload = DeserializeRequestPayload(entity);
 
-        await using var tx = await db.BeginTransactionAsync(cancellationToken);
+        await inventoryTransactions.ExecuteAsync(
+            session.Player.CharacterData.CharacterId,
+            async ct =>
+            {
+                entity.PracticeState = (int)PracticeSessionState.Cancelled;
+                entity.LastResumedAtUtc = null;
+                entity.PausedAtUtc = utcNow;
+                entity.UpdatedAtUtc = utcNow;
+                await repository.UpdateAsync(entity, ct);
 
-        entity.PracticeState = (int)PracticeSessionState.Cancelled;
-        entity.LastResumedAtUtc = null;
-        entity.PausedAtUtc = utcNow;
-        entity.UpdatedAtUtc = utcNow;
-        await repository.UpdateAsync(entity, cancellationToken);
-
-        if (shouldRefundConsumedItems && requestPayload?.ConsumedEntries is { Count: > 0 })
-            await RestoreConsumedItemsAsync(itemService, session.Player.CharacterData.CharacterId, requestPayload.ConsumedEntries, cancellationToken);
-
-        await tx.CommitAsync(cancellationToken);
+                if (shouldRefundConsumedItems && requestPayload?.ConsumedEntries is { Count: > 0 })
+                    await RestoreConsumedItemsAsync(itemService, session.Player.CharacterData.CharacterId, requestPayload.ConsumedEntries, ct);
+            },
+            cancellationToken);
 
         SyncOnlinePlayerState(session.Player, null);
         return PracticeMutationResult.Succeeded(entity);

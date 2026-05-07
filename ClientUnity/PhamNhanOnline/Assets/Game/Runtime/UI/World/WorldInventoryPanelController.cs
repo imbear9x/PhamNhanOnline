@@ -41,6 +41,8 @@ namespace PhamNhanOnline.Client.UI.World
         private bool inventoryActionInFlight;
         private long? quantityPopupPlayerItemId;
         private QuantityPopupAction quantityPopupAction;
+        private bool runtimeEventsBound;
+        private bool inventoryDirty = true;
 
         private void Awake()
         {
@@ -53,6 +55,8 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void OnEnable()
         {
+            TryBindRuntimeEvents();
+            inventoryDirty = true;
             RefreshInventory(force: true);
         }
 
@@ -61,7 +65,9 @@ namespace PhamNhanOnline.Client.UI.World
             if (!isActiveAndEnabled)
                 return;
 
-            RefreshInventory(force: false);
+            TryBindRuntimeEvents();
+            if (inventoryDirty || popupPlayerItemId.HasValue)
+                RefreshInventory(force: false);
             // Deliberately disabled for now.
             // We only want to close the quantity popup from explicit action flows,
             // not from a polling check that might mis-detect state and hide it early.
@@ -71,6 +77,7 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void OnDisable()
         {
+            UnbindRuntimeEvents();
             HideItemOptionsPopup(force: true);
             HideQuantityPopup(force: true);
         }
@@ -80,6 +87,33 @@ namespace PhamNhanOnline.Client.UI.World
             if (inventoryGridView != null)
                 inventoryGridView.ItemClicked -= HandleInventoryItemClicked;
 
+            UnbindRuntimeEvents();
+        }
+
+        private void TryBindRuntimeEvents()
+        {
+            if (runtimeEventsBound || !ClientRuntime.IsInitialized)
+                return;
+
+            ClientRuntime.Inventory.Changed += HandleInventoryChanged;
+            runtimeEventsBound = true;
+            inventoryDirty = true;
+        }
+
+        private void UnbindRuntimeEvents()
+        {
+            if (!runtimeEventsBound)
+                return;
+
+            if (ClientRuntime.IsInitialized)
+                ClientRuntime.Inventory.Changed -= HandleInventoryChanged;
+
+            runtimeEventsBound = false;
+        }
+
+        private void HandleInventoryChanged()
+        {
+            inventoryDirty = true;
         }
 
         private void RefreshInventory(bool force)
@@ -109,9 +143,11 @@ namespace PhamNhanOnline.Client.UI.World
                 string.Equals(lastInventorySnapshot, snapshot, StringComparison.Ordinal) &&
                 string.Equals(lastInventoryStatus, status, StringComparison.Ordinal))
             {
+                inventoryDirty = false;
                 return;
             }
 
+            inventoryDirty = false;
             lastInventorySnapshot = snapshot;
             ApplyInventoryStatus(status, force: true);
 

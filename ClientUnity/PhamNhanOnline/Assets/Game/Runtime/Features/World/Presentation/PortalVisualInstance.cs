@@ -1,4 +1,5 @@
 using TMPro;
+using PhamNhanOnline.Client.Core.Logging;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -8,6 +9,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private TMP_Text labelText;
         [SerializeField] private Transform visualRoot;
+        [SerializeField] private WorldTargetable worldTargetable;
         [SerializeField] private Collider2D interactionCollider;
         [SerializeField] private Collider2D touchTriggerLeftCollider;
         [SerializeField] private Collider2D touchTriggerRightCollider;
@@ -16,6 +18,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private bool visualRootDefaultCaptured;
         private Vector3 visualRootDefaultLocalPosition;
+        private bool loggedMissingRequiredReferences;
 
         public TMP_Text LabelText
         {
@@ -25,6 +28,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         public Transform VisualRoot
         {
             get { return visualRoot; }
+        }
+
+        public WorldTargetable WorldTargetable
+        {
+            get { return worldTargetable; }
         }
 
         public Collider2D InteractionCollider
@@ -60,24 +68,28 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         private void Awake()
         {
-            AutoResolveReferences();
+            ValidateReferences();
+            CaptureDefaultVisualRootLocalPosition();
         }
 
+#if UNITY_EDITOR
         private void OnValidate()
         {
-            AutoResolveReferences();
+            ValidateReferences();
+            CaptureDefaultVisualRootLocalPosition();
         }
+#endif
 
         public void Apply(string label)
         {
-            AutoResolveReferences();
+            ValidateReferences();
             if (labelText != null)
                 labelText.text = label ?? string.Empty;
         }
 
         public void ApplyEdgeVisualOffset(float signedOffsetXWorldUnits)
         {
-            AutoResolveReferences();
+            ValidateReferences();
             if (visualRoot == null)
                 return;
 
@@ -106,28 +118,20 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 selectedHighlightRoot.SetActive(selected);
         }
 
-        private void AutoResolveReferences()
+        private void ValidateReferences()
         {
-            if (labelText == null)
-                labelText = GetComponentInChildren<TMP_Text>(true);
+            if (labelText != null && visualRoot != null && worldTargetable != null && interactionCollider != null)
+                return;
 
-            if (visualRoot == null)
-            {
-                var rootTransform = transform.Find("Root");
-                if (rootTransform != null)
-                    visualRoot = rootTransform;
-            }
+            if (loggedMissingRequiredReferences)
+                return;
 
-            if (interactionCollider == null)
-            {
-                if (labelText != null)
-                    interactionCollider = labelText.GetComponent<Collider2D>();
-
-                if (interactionCollider == null)
-                    interactionCollider = GetComponentInChildren<Collider2D>(true);
-            }
-
-            CaptureDefaultVisualRootLocalPosition();
+            ClientLog.Error(
+                $"PortalVisualInstance on '{name}' is missing serialized references. " +
+                $"labelText={(labelText != null)}, visualRoot={(visualRoot != null)}, " +
+                $"worldTargetable={(worldTargetable != null)}, interactionCollider={(interactionCollider != null)}. " +
+                "Assign these on the portal prefab; client presentation must not auto-wire prefab-owned references.");
+            loggedMissingRequiredReferences = true;
         }
 
         private void CaptureDefaultVisualRootLocalPosition()

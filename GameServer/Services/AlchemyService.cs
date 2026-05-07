@@ -15,15 +15,12 @@ public sealed class AlchemyService
     private readonly PlayerSoilRepository _playerSoils;
 
     public AlchemyService(
-        GameDb db,
         AlchemyDefinitionCatalog definitions,
         ItemDefinitionCatalog itemDefinitions,
         PlayerPillRecipeRepository playerPillRecipes,
         PlayerItemRepository playerItems,
         PlayerEquipmentRepository playerEquipments,
-        PlayerSoilRepository playerSoils,
-        ItemService itemService,
-        GameServer.Randomness.IGameRandomService randomService)
+        PlayerSoilRepository playerSoils)
     {
         _definitions = definitions;
         _itemDefinitions = itemDefinitions;

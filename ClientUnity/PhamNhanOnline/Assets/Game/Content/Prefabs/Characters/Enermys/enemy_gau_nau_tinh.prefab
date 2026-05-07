@@ -252,7 +252,6 @@ MonoBehaviour:
   targetable: {fileID: 5322800695587582694}
   movementView: {fileID: 7466736670320346382}
   skillPresenter: {fileID: 275417931468559828}
-  movementConfig: {fileID: 11400000, guid: 980196c983704fa4ae3861cbf5372c2c, type: 2}
   hideWhenDead: 1
   groundSnapBindings: {fileID: 7777000000000000003}
   snapToGround: 1
@@ -298,7 +297,7 @@ MonoBehaviour:
   targetId:
   displayNameOverride:
   interactionCollider: {fileID: 4321474490210473762}
-  autoCreateInteractionCollider: 1
+  autoCreateInteractionCollider: 0
   autoColliderPadding: {x: 0.15, y: 0.15}
 --- !u!114 &7466736670320346382
 MonoBehaviour:

@@ -778,16 +778,97 @@ Acceptance criteria:
 - Travel request timeout hoặc disconnect trả result thất bại, không treo task.
 - UI inventory/menu không rebuild toàn bộ mỗi frame khi state không đổi.
 
-## 10. Progress Tracking
+## 10. Phase 1.5: Character Actor Cleanup Bridge
+
+Mục tiêu Phase 1.5 là làm rõ lại tư tưởng cho local player, remote player, enemy/boss trước khi đi sâu vào Phase 2. Phase này xử lý đúng vấn đề Phase 2 đã nêu ở nhóm `Character Controller`, `Character State/Action System`, `Duplication & Coupling Map`: local/remote/enemy đang có presentation giống nhau nhưng bị tách thành nhiều controller riêng, dẫn tới ref kéo nhiều, logic move/facing/animation bị lặp và khó debug.
+
+Tư tưởng chốt:
+
+- Local player và remote player không nên là hai thế giới presentation khác nhau.
+- Chúng đều là `CharacterActor` có visual, movement view, animation, skill presenter, targetable, collider/anchor.
+- Điểm khác nhau chỉ nằm ở `driver/source of command`:
+  - Local player nhận lệnh từ bàn phím/input và gửi sync lên server.
+  - Remote player nhận snapshot/packet từ server và interpolate.
+  - Enemy/boss nhận movement/combat decision từ server.
+- Visual/presentation không nên biết lệnh đến từ bàn phím hay server; nó chỉ nhận command/state đã chuẩn hóa.
+
+Target architecture nhỏ cho Phase 1.5:
+
+```text
+CharacterActorView
+  - PlayerView/EntityView refs
+  - VisualRoot
+  - Animator
+  - WorldTargetable
+  - CharacterSkillPresenter
+  - WorldEntityMovementView
+  - Body/Collider refs nếu actor cần physics/click/anchor
+
+CharacterDriver
+  - LocalCharacterDriver/InputDriver: đọc input, điều khiển local movement, sync server
+  - RemoteCharacterDriver: nhận server snapshot, gọi movement/interpolation
+  - EnemyCharacterDriver: nhận enemy movement decision packet
+
+CharacterPresentation
+  - CharacterFacingDriver
+  - CharacterAnimationDriver
+  - CharacterSkillPresenter
+  - Target binding
+```
+
+Việc cần làm trong Phase 1.5:
+
+1. Audit lại `LocalCharacterActionController`, `RemoteCharacterPresenter`, `EnemyPresenter`, `WorldEntityMovementView`, `CharacterSkillPresenter` để tách phần nào là common actor/presentation và phần nào là driver.
+2. Tạo lớp/common component nhỏ trước, không đập đi xây lại:
+   - `CharacterActorView` hoặc `WorldCharacterActorView`: gom refs prefab-owned.
+   - `CharacterFacingDriver`: xử lý quay mặt theo delta/input.
+   - `CharacterAnimationDriver`: xử lý `MoveSpeed` và state animation chung.
+3. Giữ `LocalCharacterActionController` và `RemoteCharacterPresenter` làm coordinator tạm thời, nhưng giảm dần ref trực tiếp của chúng bằng cách đi qua `CharacterActorView`.
+4. Remote player không nên cần ref kiểu `Local Action Controller`/`Local Input Sources To Disable` về lâu dài. Nếu còn cần, đó là dấu hiệu prefab local/remote đang trộn trách nhiệm.
+5. Chỉ sau khi common actor ổn mới tách prefab rõ hơn:
+   - `Player_Local.prefab`: actor common + local driver/input/sync.
+   - `Player_Remote.prefab`: actor common + remote driver/interpolation, không có local input.
+6. Không đổi gameplay/network contract trong Phase 1.5. Chỉ dọn boundary presentation/driver để Phase 2 dễ làm tiếp.
+
+Acceptance criteria Phase 1.5:
+
+- Local player, remote player, enemy/boss dùng chung ít nhất một common actor/presentation component cho refs/facing/animation hoặc movement view.
+- Remote player không phải tự ôm quá nhiều ref chỉ để disable local-only behavior.
+- Không còn tư tưởng “local script làm một kiểu, remote script làm lại một kiểu” ở phần visual/facing/animation cơ bản.
+- Runtime test tối thiểu: local player move/cast được, remote player nhìn thấy visual và move được, enemy patrol/move vẫn hiển thị đúng.
+
+Session handoff ngày 2026-04-29:
+
+Đang dở/chưa chốt, cần đọc lại trước khi code tiếp:
+
+1. `WorldCombatValuePopupController` đã được chuyển code sang hướng UI overlay: world anchor được convert qua `WorldSceneController.WorldCamera.WorldToScreenPoint` rồi sang anchored position trong `popupRoot`; `CombatValuePopupView` dùng `RectTransform.anchoredPosition`/`DOAnchorPosY`, `riseDistanceUiUnits`, `randomHorizontalOffsetUiUnits`. 5 prefab popup HP/MP hiện có dùng `TextMeshProUGUI` (`f4688fdb...`) nên dùng được dưới overlay canvas; đã đổi animation sang UI units và tắt raycast block. Việc còn lại trong Unity: tạo/kéo `CombatPopupCanvas` và `CombatPopupRoot` overlay cao hơn HUD, rồi gán `WorldCombatValuePopupController.Popup Canvas`, `Popup Root`. Không kéo camera vào controller; camera phải lấy từ `WorldSceneController`.
+2. Popup `+tu vi`, `+tiềm năng` khi đánh quái chưa được xác nhận là đã có presentation riêng. Server có grant reward khi enemy death, nhưng client cần kiểm tra event/state nào đang nhận và có cần thêm floating reward popup giống HP/MP không.
+3. Đan dược hiện cần kiểm tra lại scope effect. HP/MP đang đi qua current state nên có thể hiện popup resource delta. Tiềm năng/tu vi từ item nếu có thì chưa chắc đã có effect type/server packet/client popup tương ứng.
+4. Remote player đang có bug online: hai player nhìn thấy target arrow/click được nhau nhưng không thấy visual. Cần kiểm tra `WorldRemotePlayersPresenter`, prefab remote đang spawn, `RemoteCharacterPresenter`, `PlayerView`, `VisualRoot`, animator/model activation và pooling/reuse state. Không nên vá riêng bằng bật object thủ công; nên đưa vào Phase 1.5 actor common vì local/remote đang khác nhau quá nhiều.
+5. Tư tưởng cần chốt: local player, remote player, enemy/boss đều là `CharacterActor` có common visual/movement/animation/skill/targetable. Chỉ khác driver: local nhận input, remote nhận server snapshot, enemy nhận server decision. Phase 1.5 nên tạo bridge nhỏ thay vì để `RemoteCharacterPresenter` kéo quá nhiều ref riêng.
+6. Local portal interaction đang được polish: `WorldTargetActionController` đã chuyển hướng tiếp cận sang ưu tiên đi ngang trước, chỉ chỉnh Y khi chưa đủ range; range Y hiệu dụng gấp 2 range X. Cần test lại Luyện Đan Thất/Mật Thất/local portal sau thay đổi này, nhất là case target bay cao làm player nhảy lò cò hoặc kẹt `move-to-range`.
+7. Build Windows trước đó còn lỗi/warning UI runtime. `RadialLayoutGroup` đã được xử lý một phần để không dùng override sai với `OnValidate`/`Reset`, nhưng user nói build còn khá nhiều lỗi và muốn polish client xong rồi fix một lượt. Khi quay lại build, cần lấy log mới trước, không dựa vào log cũ.
+8. Enemy attack timing trên server hiện dùng `enemy_templates.minimum_skill_interval_ms` làm global attack interval, không dùng `skill.cooldown_ms` trực tiếp cho enemy. Nếu cần UX/logic “quái đánh và nghỉ theo skill cooldown”, đó là việc server/design riêng, không thuộc Phase 1.5 client trừ phần presentation packet/animation.
+9. `DropZoneView` đang ôm logic vượt quá trách nhiệm view/common drop zone. Hiện nó vừa resolve payload/phát event, vừa gọi `WorldModalUIManager.Instance.HideAllViews`, vừa tự xử lý gameplay action như unequip equipment và clear active martial art qua `WorldCharacterEquipController`/`ClientRuntime.MartialArtService`. Cần đưa vào Phase 1.5 hoặc Phase 2: `DropZoneView` chỉ emit `PayloadDropped`/`Clicked`; owner/controller như crafting/equipment/martial art hoặc một `WorldDragDropActionController` mới quyết định policy. Mục tiêu là tránh common UI view gọi chéo service/gameplay và tránh bug drag/drop khó trace.
+
+Ưu tiên phiên sau:
+
+1. Không code rộng ngay. Đầu tiên test/đọc lại bug remote visual và portal interaction.
+2. Nếu remote visual đúng là do prefab/presenter local-remote lệch nhau, bắt đầu Phase 1.5 bằng `CharacterActorView` nhỏ gom refs common.
+3. Dọn `DropZoneView` khỏi gameplay side effects trước hoặc trong Phase 2 UI cleanup, vì đây là điểm coupling rõ ràng và ít phụ thuộc server.
+4. Sau khi actor bridge ổn, mới xử lý overlay popup HP/MP/tu vi/tiềm năng để tránh phải sửa cùng logic nhiều nơi.
+
+## 11. Progress Tracking
 
 | Phase | Status | Verified By User | Commit | Notes |
 |---|---|---|---|---|
-| Phase 1: Quick Wins | Not Started | No | - | Ưu tiên no auto-wire, movement config chung, packet guard, request timeout, UI dirty refresh |
+| Phase 1: Quick Wins | Completed | No | - | Đã hoàn tất no auto-wire core presentation: `Player_Default.prefab` có explicit `LocalCharacterActionController`, `KeyboardCharacterActionInputSource`, `WorldTargetable`; enemy prefab bỏ movement config cũ; `WorldLocalPlayerPresenter` không runtime `AddComponent` local controller/targetable; `CharacterSkillPresenter` không tự add sockets/projectile/lifetime; `WorldTargetable` không auto-create collider. Portal prefab nay có explicit `WorldTargetable`; `WorldPortalPresenter` bỏ `Resources.Load` fallback, bỏ fallback label và không tự `AddComponent<WorldTargetable>`. Ground reward là runtime-owned object nên `WorldGroundRewardPresenter` tạo/bind `WorldTargetable` + collider rõ ràng; `GroundRewardPresenter` không tự add targetable ngầm. Đã gom conversion/duration cơ bản vào `EntityMovementPresentationPolicy`: local dùng cùng conversion helper, enemy timed move dùng duration authoritative `serverDistance/serverMoveSpeed`, không còn phụ thuộc `LocalCharacterActionConfig` riêng trong enemy prefab/scene. Đã thêm deserialize guard trong `ClientConnectionService.HandlePayloadReceived`, log incident payload ngắn khi lỗi và tắt packet sent/received info log mặc định qua `LogPacketTraffic=false`. Đã thêm request tracker nhỏ trong `ClientWorldTravelService`: travel/map-zone request timeout 10s, disconnect fail, request mới cancel request cũ. Đã giảm polling UI tối thiểu: `WorldInventoryPanelController` dùng `ClientInventoryState.Changed` dirty flag; `WorldMenuController` refresh content theo dirty events thay vì mỗi frame. `Assembly-CSharp.csproj` build pass 0 warning/0 error; `git diff --check` sạch. User chưa test runtime và chưa build Windows lại sau Phase 1 |
+| Phase 1.5: Character Actor Cleanup Bridge | Not Started | No | - | Làm cùng hướng với Phase 2 nhưng scope hẹp hơn: thống nhất tư tưởng local/remote/enemy là cùng actor presentation, khác driver/input source. Mục tiêu là tạo common `CharacterActorView`/facing/animation/movement presentation bridge trước khi dọn rộng UI & Character Phase 2 |
 | Phase 2: UI & Character Cleanup | Not Started | No | - | Chỉ làm sau khi Phase 1 chạy ổn |
 | Phase 3: Client Architecture Stabilization | Not Started | No | - | Chỉ làm sau khi UI/character core đã rõ boundary |
 | Phase 4: Long-term Scalability | Not Started | No | - | Chuẩn bị cho quest/dungeon/boss/shop/dialog/AOI content |
 
-## 11. Session Handoff Rule
+## 12. Session Handoff Rule
 
 Khi một session sau bắt đầu làm theo report này, trước tiên phải đọc mục `Progress Tracking` để biết phase nào đã xong và phase tiếp theo là gì.
 

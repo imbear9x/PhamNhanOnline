@@ -110,5 +110,6 @@ public enum MessageCode : int
     CharacterNotInWorldInstance = 5007,
     MapInstanceClosed = 5008,
     SkillTargetOutOfRange = 5009,
-    GroundRewardOutOfRange = 5010
+    GroundRewardOutOfRange = 5010,
+    GroundRewardClaimInProgress = 5011
 }

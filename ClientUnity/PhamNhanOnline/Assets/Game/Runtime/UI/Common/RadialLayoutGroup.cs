@@ -106,12 +106,19 @@ namespace PhamNhanOnline.Client.UI.Common
             SetDirty();
         }
 
+#if UNITY_EDITOR
         protected override void OnValidate()
         {
             base.OnValidate();
+            ClampSerializedValues();
+            SetDirty();
+        }
+#endif
+
+        private void ClampSerializedValues()
+        {
             radius = Mathf.Max(0f, radius);
             itemSpacing = Mathf.Max(0f, itemSpacing);
-            SetDirty();
         }
 
         private void ArrangeChildren()
@@ -210,11 +217,13 @@ namespace PhamNhanOnline.Client.UI.Common
             }
         }
 
+#if UNITY_EDITOR
         protected override void Reset()
         {
             base.Reset();
             childAlignment = TextAnchor.MiddleCenter;
         }
+#endif
 
         protected override void OnDisable()
         {

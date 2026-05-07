@@ -959,6 +959,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5931409884785377244, guid: feb58d8c5aa4aab4ea8de1119d111b56, type: 3}
+      propertyPath: targetId
+      value: local-home-cultivation-portal
+      objectReference: {fileID: 0}
+    - target: {fileID: 5931409884785377244, guid: feb58d8c5aa4aab4ea8de1119d111b56, type: 3}
+      propertyPath: displayNameOverride
+      value: "M\u1EADt Th\u1EA5t"
+      objectReference: {fileID: 0}
     - target: {fileID: 7393184990863204136, guid: feb58d8c5aa4aab4ea8de1119d111b56, type: 3}
       propertyPath: m_text
       value: "M\u1EADt Th\u1EA5t"

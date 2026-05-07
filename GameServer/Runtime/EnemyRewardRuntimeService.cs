@@ -19,6 +19,7 @@ public sealed class EnemyRewardRuntimeService
     private readonly ItemDefinitionCatalog _itemDefinitions;
     private readonly WorldManager _worldManager;
     private readonly CharacterRuntimeService _runtimeService;
+    private readonly CharacterRuntimeSaveService _runtimeSaveService;
     private readonly CharacterCultivationService _cultivationService;
     private readonly PotentialStatCatalog _potentialStatCatalog;
     private readonly IReadOnlyDictionary<int, RealmTemplate> _realmsById;
@@ -30,6 +31,7 @@ public sealed class EnemyRewardRuntimeService
         ItemDefinitionCatalog itemDefinitions,
         WorldManager worldManager,
         CharacterRuntimeService runtimeService,
+        CharacterRuntimeSaveService runtimeSaveService,
         CharacterCultivationService cultivationService,
         PotentialStatCatalog potentialStatCatalog)
     {
@@ -39,6 +41,7 @@ public sealed class EnemyRewardRuntimeService
         _itemDefinitions = itemDefinitions;
         _worldManager = worldManager;
         _runtimeService = runtimeService;
+        _runtimeSaveService = runtimeSaveService;
         _cultivationService = cultivationService;
         _potentialStatCatalog = potentialStatCatalog;
 
@@ -80,10 +83,13 @@ public sealed class EnemyRewardRuntimeService
 
         await using var scope = _scopeFactory.CreateAsyncScope();
         var itemService = scope.ServiceProvider.GetRequiredService<ItemService>();
+        var inventoryTransactions = scope.ServiceProvider.GetRequiredService<PlayerInventoryTransactionService>();
 
         foreach (var death in deaths)
         {
-            ApplyProgressionRewards(death);
+            var progressionRewardPlayers = ApplyProgressionRewards(death);
+            foreach (var rewardedPlayer in progressionRewardPlayers)
+                await _runtimeSaveService.FlushPlayerAsync(rewardedPlayer.PlayerId, cancellationToken);
 
             foreach (var rewardRule in death.Definition.RewardRules)
             {
@@ -93,7 +99,8 @@ public sealed class EnemyRewardRuntimeService
 
                 foreach (var target in targets)
                 {
-                    var rolledItems = new List<RewardItemSeed>();
+                    var directGrantItems = new List<RewardItemSeed>();
+                    var groundDropItems = new List<RewardItemSeed>();
                     for (var rollIndex = 0; rollIndex < rewardRule.RollCount; rollIndex++)
                     {
                         var luck = target.Player.RuntimeState.CaptureSnapshot().BaseStats.GetEffectiveLuck();
@@ -122,23 +129,28 @@ public sealed class EnemyRewardRuntimeService
 
                         if (rewardRule.DeliveryType == RewardDeliveryType.DirectGrant)
                         {
-                            await itemService.AddItemAsync(
-                                target.Player.CharacterData.CharacterId,
-                                rewardItem.ItemTemplateId,
-                                rewardItem.Quantity,
-                                rewardItem.IsBound,
-                                cancellationToken: cancellationToken);
+                            directGrantItems.Add(rewardItem);
                         }
                         else
                         {
-                            rolledItems.Add(rewardItem);
+                            groundDropItems.Add(rewardItem);
                         }
                     }
 
-                    if (rewardRule.DeliveryType != RewardDeliveryType.GroundDrop || rolledItems.Count == 0)
+                    if (directGrantItems.Count > 0)
+                    {
+                        await GrantDirectRewardItemsAsync(
+                            inventoryTransactions,
+                            itemService,
+                            target.Player,
+                            directGrantItems,
+                            cancellationToken);
+                    }
+
+                    if (rewardRule.DeliveryType != RewardDeliveryType.GroundDrop || groundDropItems.Count == 0)
                         continue;
 
-                    var createdGroundItems = await CreateGroundRewardItemsAsync(itemService, rolledItems, cancellationToken);
+                    var createdGroundItems = await CreateGroundRewardItemsAsync(itemService, groundDropItems, cancellationToken);
 
                     var ownerCharacterId = rewardRule.OwnershipDurationSeconds is > 0
                         ? target.Player.CharacterData.CharacterId
@@ -164,14 +176,15 @@ public sealed class EnemyRewardRuntimeService
         }
     }
 
-    private void ApplyProgressionRewards(EnemyDeathRuntimeEvent death)
+    private IReadOnlyList<PlayerSession> ApplyProgressionRewards(EnemyDeathRuntimeEvent death)
     {
         var targets = ResolveContributionTargets(death.Targets);
         if (targets.Count == 0)
-            return;
+            return Array.Empty<PlayerSession>();
 
         var cultivationShares = AllocateLongByDamage(targets, death.Definition.CultivationRewardTotal);
         var potentialShares = AllocateIntByDamage(targets, death.Definition.PotentialRewardTotal);
+        var rewardedPlayers = new List<PlayerSession>(targets.Count);
 
         foreach (var target in targets)
         {
@@ -209,7 +222,10 @@ public sealed class EnemyRewardRuntimeService
 
             var effectiveBaseStats = _potentialStatCatalog.AttachPreviews(updatedBaseStats);
             _runtimeService.ApplyBaseStatsMutation(target.Player, _ => effectiveBaseStats);
+            rewardedPlayers.Add(target.Player);
         }
+
+        return rewardedPlayers;
     }
 
     private List<ResolvedRewardTarget> ResolveRewardTargets(
@@ -329,6 +345,32 @@ public sealed class EnemyRewardRuntimeService
         }
 
         return false;
+    }
+
+    private static async Task GrantDirectRewardItemsAsync(
+        PlayerInventoryTransactionService inventoryTransactions,
+        ItemService itemService,
+        PlayerSession player,
+        IReadOnlyList<RewardItemSeed> rolledItems,
+        CancellationToken cancellationToken)
+    {
+        await inventoryTransactions.ExecuteAsync(
+            player.CharacterData.CharacterId,
+            async ct =>
+            {
+                foreach (var group in rolledItems
+                             .GroupBy(static x => new { x.ItemTemplateId, x.IsBound })
+                             .OrderBy(static x => x.Key.ItemTemplateId))
+                {
+                    await itemService.AddItemAsync(
+                        player.CharacterData.CharacterId,
+                        group.Key.ItemTemplateId,
+                        group.Sum(static x => x.Quantity),
+                        group.Key.IsBound,
+                        cancellationToken: ct);
+                }
+            },
+            cancellationToken);
     }
 
     private async Task<IReadOnlyList<GroundRewardItem>> CreateGroundRewardItemsAsync(

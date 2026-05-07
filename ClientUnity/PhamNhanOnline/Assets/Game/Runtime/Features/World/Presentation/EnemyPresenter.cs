@@ -14,7 +14,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private WorldTargetable targetable;
         [SerializeField] private WorldEntityMovementView movementView;
         [SerializeField] private CharacterSkillPresenter skillPresenter;
-        [SerializeField] private LocalCharacterActionConfig movementConfig;
         [SerializeField] private bool hideWhenDead;
         [SerializeField] private GroundSnapBindings groundSnapBindings;
         [Header("Grounding")]
@@ -38,12 +37,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private string enemyCode = string.Empty;
 
         public int RuntimeId { get { return runtimeId; } }
-
-        public void ConfigureMovementConfig(LocalCharacterActionConfig config)
-        {
-            if (config != null)
-                movementConfig = config;
-        }
 
         public void ApplySnapshot(EnemyRuntimeModel enemy, WorldMapPresenter worldMapPresenter)
         {
@@ -207,8 +200,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             var targetWorldPosition = ResolveGroundedPresentationPosition(
                 new Vector3(targetWorldPosition2D.x, targetWorldPosition2D.y, transform.position.z));
             var movementDurationSeconds = ResolveMovementDurationSeconds(
-                authoritativeWorldPosition,
-                targetWorldPosition,
                 serverDistance,
                 enemy.MovementSpeed);
             movementView.ApplyMoveDecision(
@@ -220,24 +211,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 forceDecisionRefresh);
         }
 
-        private float ResolveMovementDurationSeconds(
-            Vector3 authoritativeWorldPosition,
-            Vector3 targetWorldPosition,
-            float serverDistance,
-            float serverMoveSpeed)
+        private static float ResolveMovementDurationSeconds(float serverDistance, float serverMoveSpeed)
         {
-            if (serverMoveSpeed <= 0f)
-                return 0f;
-
-            if (movementConfig == null)
-                return serverDistance / serverMoveSpeed;
-
-            var worldMoveSpeed = movementConfig.ConvertServerUnitsToWorldUnits(serverMoveSpeed);
-            if (worldMoveSpeed <= 0f)
-                return serverDistance / serverMoveSpeed;
-
-            var worldDistance = Vector3.Distance(authoritativeWorldPosition, targetWorldPosition);
-            return worldDistance / worldMoveSpeed;
+            return EntityMovementPresentationPolicy.ResolveAuthoritativeMoveDurationSeconds(
+                serverDistance,
+                serverMoveSpeed);
         }
 
         private bool TryResolveBottomOffset(out float bottomOffset)

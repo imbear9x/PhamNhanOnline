@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Features.Character.Application;
-using PhamNhanOnline.Client.Features.World.Application;
 using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
@@ -68,9 +66,8 @@ namespace PhamNhanOnline.Client.UI.World
         private bool isRegistered;
         private bool isInitialized;
         private string activeTabId = string.Empty;
-        private int? zoneSupportMapId;
-        private bool zoneSwitchSupported;
-        private bool zoneSupportQueryInFlight;
+        private bool runtimeEventsBound;
+        private bool contentDirty = true;
         public static bool IsAnyMenuOpen
         {
             get
@@ -111,7 +108,8 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (IsMenuVisible)
             {
-                RefreshAllTabContent();
+                if (contentDirty)
+                    RefreshAllTabContent();
 
                 if (Input.GetKeyDown(closeKey))
                     HideMenu();
@@ -171,6 +169,7 @@ namespace PhamNhanOnline.Client.UI.World
                 return;
 
             activeTabId = tabId;
+            contentDirty = true;
             if (!IsMenuVisible)
                 SetMenuVisible(true);
 
@@ -256,35 +255,58 @@ namespace PhamNhanOnline.Client.UI.World
 
         private void TryBindRuntimeEvents()
         {
-            if (!ClientRuntime.IsInitialized)
+            if (runtimeEventsBound || !ClientRuntime.IsInitialized)
                 return;
 
-            ClientRuntime.Connection.StateChanged -= HandleConnectionStateChanged;
             ClientRuntime.Connection.StateChanged += HandleConnectionStateChanged;
-            ClientRuntime.Character.CurrentStateChanged -= HandleCharacterCurrentStateChanged;
+            ClientRuntime.Character.SelectedCharacterChanged += HandleSelectedCharacterChanged;
+            ClientRuntime.Character.BaseStatsChanged += HandleCharacterBaseStatsChanged;
             ClientRuntime.Character.CurrentStateChanged += HandleCharacterCurrentStateChanged;
+            ClientRuntime.World.MapChanged += HandleWorldMapChanged;
+            runtimeEventsBound = true;
+            contentDirty = true;
         }
 
         private void UnbindRuntimeEvents()
         {
-            if (!ClientRuntime.IsInitialized)
+            if (!runtimeEventsBound)
                 return;
 
-            ClientRuntime.Connection.StateChanged -= HandleConnectionStateChanged;
-            ClientRuntime.Character.CurrentStateChanged -= HandleCharacterCurrentStateChanged;
+            if (ClientRuntime.IsInitialized)
+            {
+                ClientRuntime.Connection.StateChanged -= HandleConnectionStateChanged;
+                ClientRuntime.Character.SelectedCharacterChanged -= HandleSelectedCharacterChanged;
+                ClientRuntime.Character.BaseStatsChanged -= HandleCharacterBaseStatsChanged;
+                ClientRuntime.Character.CurrentStateChanged -= HandleCharacterCurrentStateChanged;
+                ClientRuntime.World.MapChanged -= HandleWorldMapChanged;
+            }
+
+            runtimeEventsBound = false;
         }
 
         private void HandleConnectionStateChanged(PhamNhanOnline.Client.Network.Session.ClientConnectionState state)
         {
+            contentDirty = true;
             if (state == PhamNhanOnline.Client.Network.Session.ClientConnectionState.Disconnected)
             {
-                ResetZoneAvailability();
+                ApplyZoneButtonVisibility(false);
                 HideMenu();
             }
         }
 
+        private void HandleSelectedCharacterChanged()
+        {
+            contentDirty = true;
+        }
+
+        private void HandleCharacterBaseStatsChanged(CharacterBaseStatsChangeNotice notice)
+        {
+            contentDirty = true;
+        }
+
         private void HandleCharacterCurrentStateChanged(CharacterCurrentStateChangeNotice notice)
         {
+            contentDirty = true;
             var currentState = notice.CurrentState;
             if (!currentState.HasValue)
                 return;
@@ -295,6 +317,12 @@ namespace PhamNhanOnline.Client.UI.World
             }
         }
 
+        private void HandleWorldMapChanged()
+        {
+            ApplyZoneButtonVisibility(false);
+            contentDirty = true;
+        }
+
         private void SetMenuVisible(bool visible)
         {
             if (visible)
@@ -303,7 +331,10 @@ namespace PhamNhanOnline.Client.UI.World
                 SetViewVisible(false);
 
             if (visible)
+            {
+                contentDirty = true;
                 RefreshAllTabContent();
+            }
         }
 
         private void RefreshAllTabContent()
@@ -316,6 +347,8 @@ namespace PhamNhanOnline.Client.UI.World
 
                 tab.ContentText.text = BuildTabContent(tab.TabId);
             }
+
+            contentDirty = false;
         }
 
         private string BuildTabContent(string tabId)
@@ -350,65 +383,11 @@ namespace PhamNhanOnline.Client.UI.World
 
             if (!ClientRuntime.IsInitialized || !ClientRuntime.World.CurrentMapId.HasValue)
             {
-                ResetZoneAvailability();
                 ApplyZoneButtonVisibility(false);
                 return;
             }
 
-            var currentMapId = ClientRuntime.World.CurrentMapId.Value;
-            if (zoneSupportMapId.HasValue && zoneSupportMapId.Value == currentMapId)
-            {
-                ApplyZoneButtonVisibility(zoneSwitchSupported);
-                return;
-            }
-
-            ApplyZoneButtonVisibility(false);
-            if (!zoneSupportQueryInFlight)
-                _ = RefreshZoneSupportAsync(currentMapId);
-        }
-
-        private async System.Threading.Tasks.Task RefreshZoneSupportAsync(int mapId)
-        {
-            if (zoneSupportQueryInFlight || !ClientRuntime.IsInitialized)
-                return;
-
-            zoneSupportQueryInFlight = true;
-            try
-            {
-                var result = await ClientRuntime.WorldTravelService.GetMapZonesAsync(mapId);
-                if (!ClientRuntime.IsInitialized ||
-                    !ClientRuntime.World.CurrentMapId.HasValue ||
-                    ClientRuntime.World.CurrentMapId.Value != mapId)
-                {
-                    return;
-                }
-
-                zoneSupportMapId = mapId;
-                zoneSwitchSupported = SupportsZoneSwitching(result);
-                ApplyZoneButtonVisibility(zoneSwitchSupported);
-            }
-            finally
-            {
-                zoneSupportQueryInFlight = false;
-            }
-        }
-
-        private static bool SupportsZoneSwitching(MapZonesQueryResult result)
-        {
-            if (!result.Success)
-                return false;
-
-            if (result.MaxZoneCount.HasValue)
-                return result.MaxZoneCount.Value > 1;
-
-            return result.Zones != null && result.Zones.Count(zone => zone.IsActive) > 1;
-        }
-
-        private void ResetZoneAvailability()
-        {
-            zoneSupportMapId = null;
-            zoneSwitchSupported = false;
-            zoneSupportQueryInFlight = false;
+            ApplyZoneButtonVisibility(ClientRuntime.World.CurrentMapSupportsZoneSwitching);
         }
 
         private void ApplyZoneButtonVisibility(bool visible)

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Character.Presentation;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.Features.World.Presentation;
@@ -23,6 +24,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
 
         private ClientPoolService poolService;
         private float visualDefaultScaleX = 1f;
+        private bool loggedMissingRequiredReferences;
 
         public Guid? CharacterId { get; private set; }
         public WorldTargetHandle? TargetHandle { get; private set; }
@@ -46,7 +48,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             SkillWorldPresentationDefinition definition,
             Vector2? targetWorldPosition)
         {
-            AutoWireReferences();
+            ValidateRequiredReferences();
             if (definition == null)
                 return;
 
@@ -62,7 +64,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             SkillWorldPresentationDefinition definition,
             Vector2? targetWorldPosition)
         {
-            AutoWireReferences();
+            ValidateRequiredReferences();
             if (definition == null)
                 return;
 
@@ -92,7 +94,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             SkillWorldPresentationDefinition definition,
             Vector2? impactWorldPosition)
         {
-            AutoWireReferences();
+            ValidateRequiredReferences();
             if (definition == null)
                 return;
 
@@ -112,12 +114,12 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
         }
         private void Awake()
         {
-            AutoWireReferences();
+            ValidateRequiredReferences();
         }
 
         private void OnEnable()
         {
-            AutoWireReferences();
+            ValidateRequiredReferences();
             CharacterSkillPresenterRegistry.Register(this);
         }
 
@@ -133,42 +135,36 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             ClearAllFx();
         }
 
-        private void AutoWireReferences()
+        private bool ValidateRequiredReferences()
         {
-            if (playerView == null)
-                playerView = GetComponent<PlayerView>();
-
             if (playerView != null)
             {
-                if (visualRoot == null)
-                    visualRoot = playerView.VisualRoot;
-                if (animator == null)
-                    animator = playerView.Animator;
+                if (visualRoot != null && visualRoot != playerView.VisualRoot)
+                {
+                    ClientLog.Warn(
+                        $"CharacterSkillPresenter on '{name}' has both playerView and visualRoot assigned, " +
+                        "but they point to different transforms. Keeping explicit visualRoot.");
+                }
             }
 
             if (visualRoot == null)
             {
-                var child = transform.Find("VisualRoot");
-                visualRoot = child != null ? child : transform;
+                if (!loggedMissingRequiredReferences)
+                {
+                    ClientLog.Error(
+                        $"CharacterSkillPresenter on '{name}' is missing visualRoot. " +
+                        "Assign prefab refs explicitly; client project rule forbids runtime auto-wire/AddComponent.");
+                    loggedMissingRequiredReferences = true;
+                }
+
+                return false;
             }
-
-            if (animator == null)
-                animator = GetComponentInChildren<Animator>(true);
-
-            if (sockets == null)
-                sockets = GetComponent<CharacterPresentationSockets>();
-
-            if (sockets == null)
-                sockets = gameObject.AddComponent<CharacterPresentationSockets>();
-
-            if (worldTargetable == null)
-                worldTargetable = GetComponent<WorldTargetable>();
-
-            if (poolService == null)
-                poolService = ClientPoolService.Instance;
 
             if (!Mathf.Approximately(visualRoot.localScale.x, 0f))
                 visualDefaultScaleX = visualRoot.localScale.x;
+
+            loggedMissingRequiredReferences = false;
+            return true;
         }
 
         private void FaceTowards(Vector2 targetWorldPosition)
@@ -209,7 +205,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             if (definition.ReleaseFxPrefab == null)
                 return;
 
-            AutoWireReferences();
+            ValidateRequiredReferences();
 
             Transform sourceAnchor;
             if (sockets == null || !sockets.TryGetSocket(definition.SourceSocket, out sourceAnchor) || sourceAnchor == null)
@@ -228,7 +224,13 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
 
             var projectilePresenter = projectileObject.GetComponent<SkillProjectilePresenter>();
             if (projectilePresenter == null)
-                projectilePresenter = projectileObject.AddComponent<SkillProjectilePresenter>();
+            {
+                ClientLog.Error(
+                    $"Skill projectile prefab '{definition.ReleaseFxPrefab.name}' is missing SkillProjectilePresenter. " +
+                    "Add it to the prefab; runtime AddComponent is forbidden.");
+                ReleaseSpawnedObject(projectileObject);
+                return;
+            }
 
             projectilePresenter.Initialize(
                 sourceWorldPosition,
@@ -251,7 +253,7 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
             if (prefab == null)
                 return;
 
-            AutoWireReferences();
+            ValidateRequiredReferences();
 
             Transform parent;
             Vector3 spawnPosition;
@@ -365,7 +367,13 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
 
             var lifetime = instance.GetComponent<SkillPooledEffectLifetime>();
             if (lifetime == null)
-                lifetime = instance.AddComponent<SkillPooledEffectLifetime>();
+            {
+                ClientLog.Error(
+                    $"Skill FX prefab instance '{instance.name}' is missing SkillPooledEffectLifetime. " +
+                    "Add it to the prefab; runtime AddComponent is forbidden.");
+                GetOrCreatePoolService().Release(instance);
+                return;
+            }
 
             lifetime.Begin(lifetimeSeconds);
         }

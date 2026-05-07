@@ -14,6 +14,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
         [SerializeField] private WorldTargetable targetable;
 
+        private Collider2D interactionCollider;
         private Transform visualRoot;
         private Transform scaleRoot;
         private SpriteRenderer iconRenderer;
@@ -44,6 +45,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private float groundProbeDistance = 12f;
         private float groundContactOffset;
         private bool logGroundingDiagnostics;
+        private bool loggedMissingTargetable;
 
         public int RewardId { get; private set; }
         public bool IsCollecting { get { return isCollecting; } }
@@ -51,7 +53,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void Awake()
         {
             EnsureVisualHierarchy(null);
-            EnsureTargetable();
         }
 
         private void Update()
@@ -105,7 +106,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             logGroundingDiagnostics = configuredLogGroundingDiagnostics;
 
             EnsureVisualHierarchy(visualPrefab);
-            EnsureTargetable();
+            ConfigureInteractionCollider();
             ConfigureTargetable(reward.RewardId);
             ApplyLayers();
             ApplySprite(ResolveSprite(reward, itemPresentationCatalog));
@@ -127,7 +128,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             StopSpawnAnimation();
 
-            EnsureTargetable();
             if (targetable != null)
                 targetable.enabled = false;
 
@@ -186,6 +186,15 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             }
 
             gameObject.SetActive(false);
+        }
+
+        public void BindRuntimeTargetable(WorldTargetable runtimeTargetable, Collider2D runtimeInteractionCollider)
+        {
+            targetable = runtimeTargetable;
+            interactionCollider = runtimeInteractionCollider;
+            if (targetable != null)
+                targetable.BindInteractionCollider(interactionCollider);
+            loggedMissingTargetable = false;
         }
 
         public void BeginSpawnAnimation(float durationSeconds, float arcHeightWorldUnits, float horizontalOffsetWorldUnits)
@@ -364,13 +373,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return true;
             }
 
-            if (visualInstance != null)
-            {
-                groundContactAnchor = visualInstance.transform.Find("GroundContactAnchor");
-                if (groundContactAnchor != null)
-                    return true;
-            }
-
             return false;
         }
 
@@ -401,20 +403,48 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void ConfigureTargetable(int rewardId)
         {
             if (targetable == null)
+            {
+                LogMissingTargetableIfNeeded();
                 return;
+            }
 
             targetable.Configure(new WorldTargetHandle(
                 WorldTargetKind.GroundReward,
                 PhamNhanOnline.Client.Features.World.Application.ClientWorldState.BuildGroundRewardTargetId(rewardId)));
         }
 
-        private void EnsureTargetable()
+        private void ConfigureInteractionCollider()
         {
-            if (targetable == null)
-                targetable = GetComponent<WorldTargetable>();
+            if (interactionCollider == null)
+                return;
 
-            if (targetable == null)
-                targetable = gameObject.AddComponent<WorldTargetable>();
+            interactionCollider.isTrigger = true;
+
+            var radius = Mathf.Max(0.2f, iconWorldSize * 0.5f);
+            if (interactionCollider is CircleCollider2D circleCollider)
+            {
+                circleCollider.radius = radius;
+                circleCollider.offset = Vector2.zero;
+                return;
+            }
+
+            if (interactionCollider is BoxCollider2D boxCollider)
+            {
+                var size = radius * 2f;
+                boxCollider.size = new Vector2(size, size);
+                boxCollider.offset = Vector2.zero;
+            }
+        }
+
+        private void LogMissingTargetableIfNeeded()
+        {
+            if (loggedMissingTargetable)
+                return;
+
+            PhamNhanOnline.Client.Core.Logging.ClientLog.Error(
+                $"GroundRewardPresenter on '{name}' is missing runtime-bound WorldTargetable. " +
+                "WorldGroundRewardPresenter must create and bind the targetable when constructing the runtime-owned reward object.");
+            loggedMissingTargetable = true;
         }
 
         private void EnsureVisualHierarchy(GameObject visualPrefab)
@@ -494,9 +524,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             var bindings = visualInstance.GetComponent<GroundRewardVisualBindings>();
             visualBindings = bindings;
-            groundSnapBindings = visualInstance.GetComponentInChildren<GroundSnapBindings>(true);
             if (bindings != null)
             {
+                groundSnapBindings = bindings.GroundSnapBindings;
                 scaleRoot = bindings.ScaleRoot != null ? bindings.ScaleRoot : visualInstance.transform;
                 iconRenderer = bindings.IconRenderer;
                 var boundOutlineRenderers = bindings.OutlineRenderers;

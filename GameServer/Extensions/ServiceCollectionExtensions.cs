@@ -33,6 +33,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<AccountActionService>();
         services.AddScoped<CharacterService>();
         services.AddScoped<CharacterCreationActionService>();
+        services.AddScoped<PlayerInventoryTransactionService>();
         services.AddScoped<ItemService>();
         services.AddScoped<MartialArtService>();
         services.AddScoped<SkillService>();

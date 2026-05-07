@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using PhamNhanOnline.Client.Core.Logging;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.Combat.Presentation
@@ -19,10 +20,11 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
 
         [SerializeField] private Transform visualRoot;
         [SerializeField] private List<SocketEntry> sockets = new List<SocketEntry>();
+        private bool loggedMissingVisualRoot;
 
         public bool TryGetSocket(CharacterPresentationSocketType socketType, out Transform anchor)
         {
-            AutoWireReferences();
+            ValidateReferences();
 
             for (var i = 0; i < sockets.Count; i++)
             {
@@ -42,13 +44,21 @@ namespace PhamNhanOnline.Client.Features.Combat.Presentation
                    socketType == CharacterPresentationSocketType.None;
         }
 
-        private void AutoWireReferences()
+        private void ValidateReferences()
         {
-            if (visualRoot == null)
+            if (visualRoot != null)
             {
-                var child = transform.Find("VisualRoot");
-                visualRoot = child != null ? child : transform;
+                loggedMissingVisualRoot = false;
+                return;
             }
+
+            if (loggedMissingVisualRoot)
+                return;
+
+            ClientLog.Warn(
+                $"CharacterPresentationSockets on '{name}' is missing visualRoot. " +
+                "Assign prefab refs explicitly; socket fallback will use object root.");
+            loggedMissingVisualRoot = true;
         }
 
         private bool TryResolveFallbackSocket(CharacterPresentationSocketType socketType, out Transform anchor)

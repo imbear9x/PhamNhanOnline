@@ -13,6 +13,7 @@ public sealed class ItemService
     private readonly PlayerEquipmentStatBonusRepository _playerEquipmentBonuses;
     private readonly PlayerSoilRepository _playerSoils;
     private readonly GameplayDescriptionService _descriptions;
+    private readonly PlayerInventoryTransactionService _inventoryTransactions;
 
     public ItemService(
         ItemDefinitionCatalog definitions,
@@ -20,7 +21,8 @@ public sealed class ItemService
         PlayerEquipmentRepository playerEquipments,
         PlayerEquipmentStatBonusRepository playerEquipmentBonuses,
         PlayerSoilRepository playerSoils,
-        GameplayDescriptionService descriptions)
+        GameplayDescriptionService descriptions,
+        PlayerInventoryTransactionService inventoryTransactions)
     {
         _definitions = definitions;
         _playerItems = playerItems;
@@ -28,6 +30,7 @@ public sealed class ItemService
         _playerEquipmentBonuses = playerEquipmentBonuses;
         _playerSoils = playerSoils;
         _descriptions = descriptions;
+        _inventoryTransactions = inventoryTransactions;
     }
 
     public async Task<IReadOnlyList<PlayerItemEntity>> AddItemAsync(
@@ -37,6 +40,20 @@ public sealed class ItemService
         bool isBound = false,
         DateTime? expireAtUtc = null,
         CancellationToken cancellationToken = default)
+    {
+        return await _inventoryTransactions.ExecuteAsync(
+            playerId,
+            ct => AddItemCoreAsync(playerId, itemTemplateId, quantity, isBound, expireAtUtc, ct),
+            cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<PlayerItemEntity>> AddItemCoreAsync(
+        Guid playerId,
+        int itemTemplateId,
+        int quantity,
+        bool isBound,
+        DateTime? expireAtUtc,
+        CancellationToken cancellationToken)
     {
         var definition = GetDefinition(itemTemplateId);
         if (quantity <= 0)
@@ -114,6 +131,18 @@ public sealed class ItemService
         int quantity,
         CancellationToken cancellationToken = default)
     {
+        return await _inventoryTransactions.ExecuteAsync(
+            playerId,
+            ct => MoveItemToGroundCoreAsync(playerId, playerItemId, quantity, ct),
+            cancellationToken);
+    }
+
+    private async Task<PlayerItemEntity> MoveItemToGroundCoreAsync(
+        Guid playerId,
+        long playerItemId,
+        int quantity,
+        CancellationToken cancellationToken)
+    {
         if (quantity <= 0)
             throw new ArgumentOutOfRangeException(nameof(quantity));
 
@@ -151,7 +180,7 @@ public sealed class ItemService
             return playerItem;
         }
 
-        var split = await SplitItemStackAsync(playerId, playerItemId, quantity, cancellationToken);
+        var split = await SplitItemStackCoreAsync(playerId, playerItemId, quantity, cancellationToken);
         split.PlayerId = null;
         split.LocationType = (int)ItemLocationType.Ground;
         split.UpdatedAt = DateTime.UtcNow;
@@ -164,6 +193,18 @@ public sealed class ItemService
         long playerItemId,
         int quantityToSplit,
         CancellationToken cancellationToken = default)
+    {
+        return await _inventoryTransactions.ExecuteAsync(
+            playerId,
+            ct => SplitItemStackCoreAsync(playerId, playerItemId, quantityToSplit, ct),
+            cancellationToken);
+    }
+
+    private async Task<PlayerItemEntity> SplitItemStackCoreAsync(
+        Guid playerId,
+        long playerItemId,
+        int quantityToSplit,
+        CancellationToken cancellationToken)
     {
         if (quantityToSplit <= 0)
             throw new ArgumentOutOfRangeException(nameof(quantityToSplit));
@@ -202,6 +243,17 @@ public sealed class ItemService
         Guid playerId,
         long playerItemId,
         CancellationToken cancellationToken = default)
+    {
+        await _inventoryTransactions.ExecuteAsync(
+            playerId,
+            ct => MoveGroundItemToInventoryCoreAsync(playerId, playerItemId, ct),
+            cancellationToken);
+    }
+
+    private async Task MoveGroundItemToInventoryCoreAsync(
+        Guid playerId,
+        long playerItemId,
+        CancellationToken cancellationToken)
     {
         var playerItem = await _playerItems.GetByIdAsync(playerItemId, cancellationToken)
                          ?? throw new InvalidOperationException($"Ground item {playerItemId} was not found.");
@@ -281,6 +333,18 @@ public sealed class ItemService
         int quantity,
         CancellationToken cancellationToken = default)
     {
+        await _inventoryTransactions.ExecuteAsync(
+            playerId,
+            ct => RemoveItemCoreAsync(playerId, itemTemplateId, quantity, ct),
+            cancellationToken);
+    }
+
+    private async Task RemoveItemCoreAsync(
+        Guid playerId,
+        int itemTemplateId,
+        int quantity,
+        CancellationToken cancellationToken)
+    {
         var definition = GetDefinition(itemTemplateId);
         if (quantity <= 0)
             throw new ArgumentOutOfRangeException(nameof(quantity));
@@ -300,7 +364,7 @@ public sealed class ItemService
                 throw new InvalidOperationException($"Player does not have enough removable items for template {itemTemplateId}.");
 
             for (var i = 0; i < removable.Length; i++)
-                await RemovePlayerItemAsync(playerId, removable[i].Id, cancellationToken);
+                await RemovePlayerItemCoreAsync(playerId, removable[i].Id, cancellationToken);
 
             return;
         }
@@ -330,6 +394,17 @@ public sealed class ItemService
         long playerItemId,
         CancellationToken cancellationToken = default)
     {
+        await _inventoryTransactions.ExecuteAsync(
+            playerId,
+            ct => RemovePlayerItemCoreAsync(playerId, playerItemId, ct),
+            cancellationToken);
+    }
+
+    private async Task RemovePlayerItemCoreAsync(
+        Guid playerId,
+        long playerItemId,
+        CancellationToken cancellationToken)
+    {
         var playerItem = await _playerItems.GetByIdAsync(playerItemId, cancellationToken)
                          ?? throw new InvalidOperationException($"Player item {playerItemId} was not found.");
         if (playerItem.PlayerId != playerId || playerItem.LocationType != (int)ItemLocationType.Inventory)
@@ -344,6 +419,18 @@ public sealed class ItemService
         long playerItemId,
         int quantity,
         CancellationToken cancellationToken = default)
+    {
+        await _inventoryTransactions.ExecuteAsync(
+            playerId,
+            ct => ConsumePlayerItemCoreAsync(playerId, playerItemId, quantity, ct),
+            cancellationToken);
+    }
+
+    private async Task ConsumePlayerItemCoreAsync(
+        Guid playerId,
+        long playerItemId,
+        int quantity,
+        CancellationToken cancellationToken)
     {
         if (quantity <= 0)
             throw new ArgumentOutOfRangeException(nameof(quantity));
@@ -362,7 +449,7 @@ public sealed class ItemService
             if (quantity != 1)
                 throw new InvalidOperationException($"Non-stackable item {playerItemId} can only be consumed one at a time.");
 
-            await RemovePlayerItemAsync(playerId, playerItemId, cancellationToken);
+            await RemovePlayerItemCoreAsync(playerId, playerItemId, cancellationToken);
             return;
         }
 

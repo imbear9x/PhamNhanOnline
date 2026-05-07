@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using GameShared.Models;
+using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Inventory;
 using UnityEngine;
@@ -193,8 +194,12 @@ namespace PhamNhanOnline.Client.UI.Crafting
         private void HandleItemClicked(CraftRecipeListItemView itemView)
         {
             if (itemView == null || !itemView.HasRecipe)
+            {
+                ClientLog.Info("[CraftRecipeSelect] list-forward-click ignored because itemView is null or has no recipe.");
                 return;
+            }
 
+            ClientLog.Info($"[CraftRecipeSelect] list-forward-click recipe={DescribeRecipe(itemView.Recipe)}.");
             ItemClicked?.Invoke(itemView.Recipe);
         }
 
@@ -271,6 +276,17 @@ namespace PhamNhanOnline.Client.UI.Crafting
             }
 
             return string.Join("|", parts);
+        }
+
+        private static string DescribeRecipe(LearnedPillRecipeModel recipe)
+        {
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "id={0} code='{1}' name='{2}' resultItem={3}",
+                recipe.PillRecipeTemplateId,
+                recipe.Code ?? string.Empty,
+                recipe.Name ?? string.Empty,
+                recipe.ResultPill.ItemTemplateId);
         }
     }
 }

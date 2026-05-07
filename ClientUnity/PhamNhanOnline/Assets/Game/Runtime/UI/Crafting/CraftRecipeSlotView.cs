@@ -1,5 +1,6 @@
 using System;
 using GameShared.Models;
+using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.UI.Common;
 using PhamNhanOnline.Client.UI.Inventory;
 using TMPro;
@@ -116,10 +117,17 @@ namespace PhamNhanOnline.Client.UI.Crafting
 
         public void OnDrop(PointerEventData eventData)
         {
+            var resolvedPayload = UIDragPayloadResolver.TryResolve(eventData, out var payload);
+            ClientLog.Info(
+                $"[CraftRecipeSelect] selected-slot-drop-event object='{gameObject.name}' dropEnabled={dropEnabled} " +
+                $"payloadResolved={resolvedPayload} payloadKind={(resolvedPayload ? payload.Kind.ToString() : "None")} " +
+                $"source={(resolvedPayload ? payload.SourceKind.ToString() : "None")} hasRecipe={(resolvedPayload && payload.HasRecipe)} " +
+                $"recipe={(resolvedPayload && payload.HasRecipe ? DescribeRecipe(payload.Recipe) : "None")}.");
+
             if (!dropEnabled)
                 return;
 
-            if (!UIDragPayloadResolver.TryResolve(eventData, out var payload) ||
+            if (!resolvedPayload ||
                 payload.Kind != UIDragPayloadKind.Recipe ||
                 !payload.HasRecipe)
             {
@@ -232,6 +240,17 @@ namespace PhamNhanOnline.Client.UI.Crafting
         {
             if (value == null)
                 throw new InvalidOperationException($"{nameof(CraftRecipeSlotView)} on '{gameObject.name}' is missing required reference '{fieldName}'.");
+        }
+
+        private static string DescribeRecipe(LearnedPillRecipeModel value)
+        {
+            return string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "id={0} code='{1}' name='{2}' resultItem={3}",
+                value.PillRecipeTemplateId,
+                value.Code ?? string.Empty,
+                value.Name ?? string.Empty,
+                value.ResultPill.ItemTemplateId);
         }
     }
 }

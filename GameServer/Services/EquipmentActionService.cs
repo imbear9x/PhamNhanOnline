@@ -8,20 +8,20 @@ namespace GameServer.Services;
 
 public sealed class EquipmentActionService
 {
-    private readonly GameDb _db;
+    private readonly PlayerInventoryTransactionService _inventoryTransactions;
     private readonly EquipmentService _equipmentService;
     private readonly SkillService _skillService;
     private readonly CharacterFinalStatService _characterFinalStatService;
     private readonly ItemService _itemService;
 
     public EquipmentActionService(
-        GameDb db,
+        PlayerInventoryTransactionService inventoryTransactions,
         EquipmentService equipmentService,
         SkillService skillService,
         CharacterFinalStatService characterFinalStatService,
         ItemService itemService)
     {
-        _db = db;
+        _inventoryTransactions = inventoryTransactions;
         _equipmentService = equipmentService;
         _skillService = skillService;
         _characterFinalStatService = characterFinalStatService;
@@ -37,7 +37,10 @@ public sealed class EquipmentActionService
         if (slotIndex <= 0)
             throw new GameException(MessageCode.EquipmentSlotInvalid);
 
-        return await ExecuteEquipInternalAsync(player, playerItemId, slotIndex, cancellationToken);
+        return await _inventoryTransactions.ExecuteAsync(
+            player.CharacterData.CharacterId,
+            ct => ExecuteEquipInternalAsync(player, playerItemId, slotIndex, ct),
+            cancellationToken);
     }
 
     public async Task<EquipmentActionExecutionResult> EquipFirstAvailableAsync(
@@ -45,17 +48,19 @@ public sealed class EquipmentActionService
         long playerItemId,
         CancellationToken cancellationToken = default)
     {
-        await using var tx = await _db.BeginTransactionAsync(cancellationToken);
-
-        var slotIndex = await _equipmentService.GetFirstAvailableSlotIndexAsync(
+        return await _inventoryTransactions.ExecuteAsync(
             player.CharacterData.CharacterId,
-            cancellationToken);
-        if (!slotIndex.HasValue)
-            throw new GameException(MessageCode.EquipmentSlotInvalid);
+            async ct =>
+            {
+                var slotIndex = await _equipmentService.GetFirstAvailableSlotIndexAsync(
+                    player.CharacterData.CharacterId,
+                    ct);
+                if (!slotIndex.HasValue)
+                    throw new GameException(MessageCode.EquipmentSlotInvalid);
 
-        var result = await ExecuteEquipInternalAsync(player, playerItemId, slotIndex.Value, cancellationToken, ownsTransaction: true);
-        await tx.CommitAsync(cancellationToken);
-        return result;
+                return await ExecuteEquipInternalAsync(player, playerItemId, slotIndex.Value, ct);
+            },
+            cancellationToken);
     }
 
     public async Task<EquipmentActionExecutionResult> UnequipAsync(
@@ -66,55 +71,35 @@ public sealed class EquipmentActionService
         if (slotIndex <= 0)
             throw new GameException(MessageCode.EquipmentSlotInvalid);
 
-        await using var tx = await _db.BeginTransactionAsync(cancellationToken);
-
-        var changed = await _equipmentService.UnequipItemAsync(
+        return await _inventoryTransactions.ExecuteAsync(
             player.CharacterData.CharacterId,
-            slotIndex,
+            async ct =>
+            {
+                var changed = await _equipmentService.UnequipItemAsync(
+                    player.CharacterData.CharacterId,
+                    slotIndex,
+                    ct);
+                if (!changed)
+                    throw new GameException(MessageCode.EquipmentSlotEmpty);
+
+                var skillSync = await _skillService.SyncEquipmentGrantedSkillsAsync(player.CharacterData.CharacterId, ct);
+                var runtimeSnapshot = await _characterFinalStatService.ApplyAuthoritativeFinalStatsAsync(player, ct);
+                var items = await _itemService.GetInventoryAsync(player.CharacterData.CharacterId, ct);
+
+                return new EquipmentActionExecutionResult(
+                    items,
+                    runtimeSnapshot,
+                    skillSync.Changed ? skillSync.Snapshot : null);
+            },
             cancellationToken);
-        if (!changed)
-            throw new GameException(MessageCode.EquipmentSlotEmpty);
-
-        var skillSync = await _skillService.SyncEquipmentGrantedSkillsAsync(player.CharacterData.CharacterId, cancellationToken);
-        var runtimeSnapshot = await _characterFinalStatService.ApplyAuthoritativeFinalStatsAsync(player, cancellationToken);
-        var items = await _itemService.GetInventoryAsync(player.CharacterData.CharacterId, cancellationToken);
-
-        await tx.CommitAsync(cancellationToken);
-
-        return new EquipmentActionExecutionResult(
-            items,
-            runtimeSnapshot,
-            skillSync.Changed ? skillSync.Snapshot : null);
     }
 
     private async Task<EquipmentActionExecutionResult> ExecuteEquipInternalAsync(
         PlayerSession player,
         long playerItemId,
         int slotIndex,
-        CancellationToken cancellationToken,
-        bool ownsTransaction = false)
+        CancellationToken cancellationToken)
     {
-        if (!ownsTransaction)
-        {
-            await using var tx = await _db.BeginTransactionAsync(cancellationToken);
-            await _equipmentService.EquipItemAsync(
-                player.CharacterData.CharacterId,
-                playerItemId,
-                slotIndex,
-                cancellationToken);
-
-            var skillSync = await _skillService.SyncEquipmentGrantedSkillsAsync(player.CharacterData.CharacterId, cancellationToken);
-            var runtimeSnapshot = await _characterFinalStatService.ApplyAuthoritativeFinalStatsAsync(player, cancellationToken);
-            var items = await _itemService.GetInventoryAsync(player.CharacterData.CharacterId, cancellationToken);
-
-            await tx.CommitAsync(cancellationToken);
-
-            return new EquipmentActionExecutionResult(
-                items,
-                runtimeSnapshot,
-                skillSync.Changed ? skillSync.Snapshot : null);
-        }
-
         await _equipmentService.EquipItemAsync(
             player.CharacterData.CharacterId,
             playerItemId,

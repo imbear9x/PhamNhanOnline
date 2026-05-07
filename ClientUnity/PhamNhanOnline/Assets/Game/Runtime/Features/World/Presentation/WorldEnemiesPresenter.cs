@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using GameShared.Models;
 using PhamNhanOnline.Client.Core.Application;
 using PhamNhanOnline.Client.Core.Logging;
-using PhamNhanOnline.Client.Features.Character.Presentation;
 using UnityEngine;
 
 namespace PhamNhanOnline.Client.Features.World.Presentation
@@ -11,11 +10,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
     {
         [SerializeField] private EnemyPresentationCatalog presentationCatalog;
         [SerializeField] private Transform enemiesRoot;
-        [SerializeField] private LocalCharacterActionConfig movementConfig;
 
         private readonly Dictionary<int, EnemyPresenter> enemyPresenters = new Dictionary<int, EnemyPresenter>();
         private bool warnedMissingCatalog;
-        private bool warnedMissingMovementConfig;
         private bool runtimeEventsBound;
         private bool hasReportedReadyForCurrentCycle;
 
@@ -214,13 +211,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return null;
             }
 
-            if (movementConfig == null && !warnedMissingMovementConfig)
-            {
-                ClientLog.Warn("WorldEnemiesPresenter has no movement config assigned. Enemy movement will fall back to server duration instead of shared LocalCharacterActionConfig scaling.");
-                warnedMissingMovementConfig = true;
-            }
-
-            presenter.ConfigureMovementConfig(movementConfig);
             return presenter;
         }
 
@@ -236,7 +226,6 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 enemyPresenters[enemy.RuntimeId] = presenter;
             }
 
-            presenter.ConfigureMovementConfig(movementConfig);
             presenter.ApplySnapshot(enemy, MapPresenter);
         }
 

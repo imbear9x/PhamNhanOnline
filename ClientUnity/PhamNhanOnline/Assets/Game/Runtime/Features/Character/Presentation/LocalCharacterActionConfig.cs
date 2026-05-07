@@ -89,4 +89,40 @@ namespace PhamNhanOnline.Client.Features.Character.Presentation
             return config;
         }
     }
+
+    public static class EntityMovementPresentationPolicy
+    {
+        public static float ConvertServerUnitsToWorldUnits(
+            float serverUnits,
+            float? worldUnitsPerServerUnit,
+            LocalCharacterActionConfig fallbackConfig)
+        {
+            var safeServerUnits = Mathf.Max(0f, serverUnits);
+            if (worldUnitsPerServerUnit.HasValue &&
+                IsFinite(worldUnitsPerServerUnit.Value) &&
+                worldUnitsPerServerUnit.Value > 0f)
+            {
+                return safeServerUnits * worldUnitsPerServerUnit.Value;
+            }
+
+            return fallbackConfig != null
+                ? fallbackConfig.ConvertServerUnitsToWorldUnits(safeServerUnits)
+                : safeServerUnits;
+        }
+
+        public static float ResolveAuthoritativeMoveDurationSeconds(
+            float serverDistance,
+            float serverMoveSpeed)
+        {
+            if (serverMoveSpeed <= 0f)
+                return 0f;
+
+            return Mathf.Max(0f, serverDistance) / serverMoveSpeed;
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+    }
 }

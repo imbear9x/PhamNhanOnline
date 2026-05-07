@@ -11,6 +11,8 @@ namespace PhamNhanOnline.Client.Network.Session
 {
     public sealed class ClientConnectionService
     {
+        private const int PayloadPreviewBytes = 16;
+
         private readonly IClientTransport transport;
         private readonly ClientPacketDispatcher packetDispatcher;
 
@@ -27,6 +29,7 @@ namespace PhamNhanOnline.Client.Network.Session
         public ClientConnectionState State { get; private set; } = ClientConnectionState.Disconnected;
         public string LastStatusMessage { get; private set; } = "Not connected.";
         public ClientPacketDispatcher Packets { get { return packetDispatcher; } }
+        public bool LogPacketTraffic { get; set; }
 
         public event Action<ClientConnectionState> StateChanged;
 
@@ -64,7 +67,8 @@ namespace PhamNhanOnline.Client.Network.Session
             var payload = PacketSerializer.Serialize(packet);
             var deliveryMethod = ClientPacketTransportPolicy.Resolve(packet);
             transport.Send(new ArraySegment<byte>(payload), deliveryMethod);
-            ClientLog.Info(string.Format("Sent packet {0} ({1} bytes, {2}).", packet.GetType().Name, payload.Length, deliveryMethod));
+            if (LogPacketTraffic)
+                ClientLog.Info(string.Format("Sent packet {0} ({1} bytes, {2}).", packet.GetType().Name, payload.Length, deliveryMethod));
         }
 
         public bool SupportsDebugNetworkControl
@@ -122,15 +126,47 @@ namespace PhamNhanOnline.Client.Network.Session
         private void HandlePayloadReceived(ArraySegment<byte> payload)
         {
             var buffer = ToArray(payload);
-            var packet = PacketSerializer.Deserialize(buffer);
-            if (packet == null)
+            IPacket packet;
+            try
             {
-                ClientLog.Warn(string.Format("Dropped inbound payload with {0} bytes because PacketSerializer returned null.", buffer.Length));
+                packet = PacketSerializer.Deserialize(buffer);
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Error(
+                    string.Format(
+                        "Dropped malformed inbound payload ({0} bytes, head={1}). Deserialize failed: {2}: {3}",
+                        buffer.Length,
+                        FormatPayloadPreview(buffer),
+                        ex.GetType().Name,
+                        ex.Message),
+                    persistToLogger: true);
                 return;
             }
 
-            ClientLog.Info(string.Format("Received packet {0}.", packet.GetType().Name));
+            if (packet == null)
+            {
+                ClientLog.Warn(
+                    string.Format(
+                        "Dropped inbound payload with {0} bytes because PacketSerializer returned null. head={1}",
+                        buffer.Length,
+                        FormatPayloadPreview(buffer)),
+                    persistToLogger: true);
+                return;
+            }
+
+            if (LogPacketTraffic)
+                ClientLog.Info(string.Format("Received packet {0}.", packet.GetType().Name));
             packetDispatcher.Dispatch(packet);
+        }
+
+        private static string FormatPayloadPreview(byte[] buffer)
+        {
+            if (buffer == null || buffer.Length == 0)
+                return "<empty>";
+
+            var previewLength = Math.Min(buffer.Length, PayloadPreviewBytes);
+            return BitConverter.ToString(buffer, 0, previewLength);
         }
 
         private static byte[] ToArray(ArraySegment<byte> payload)

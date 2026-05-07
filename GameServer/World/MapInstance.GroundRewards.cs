@@ -22,7 +22,7 @@ public sealed partial class MapInstance
         }
     }
 
-    public bool TryClaimGroundReward(
+    public bool TryBeginGroundRewardClaim(
         Guid pickerCharacterId,
         int rewardId,
         Vector2 pickerPosition,
@@ -55,6 +55,12 @@ public sealed partial class MapInstance
                 return false;
             }
 
+            if (resolvedReward.IsClaiming)
+            {
+                failureCode = MessageCode.GroundRewardClaimInProgress;
+                return false;
+            }
+
             if (resolvedReward.OwnerCharacterId.HasValue &&
                 resolvedReward.OwnerCharacterId.Value != pickerCharacterId)
             {
@@ -70,13 +76,41 @@ public sealed partial class MapInstance
                 return false;
             }
 
+            if (!resolvedReward.TryBeginClaim(pickerCharacterId))
+            {
+                failureCode = MessageCode.GroundRewardClaimInProgress;
+                return false;
+            }
+
+            reward = resolvedReward;
+            return true;
+        }
+    }
+
+    public bool CompleteGroundRewardClaim(Guid pickerCharacterId, int rewardId)
+    {
+        lock (_sync)
+        {
+            var resolvedReward = GroundRewards.FirstOrDefault(x => x.Id == rewardId);
+            if (resolvedReward is null || !resolvedReward.IsClaimingBy(pickerCharacterId))
+                return false;
+
             GroundRewards.Remove(resolvedReward);
+            resolvedReward.CompleteClaim(pickerCharacterId);
             _pendingGroundRewardDespawns.Enqueue(new GroundRewardDespawnRuntimeEvent(
                 resolvedReward.Id,
                 resolvedReward.GetPlayerItemIds(),
                 DestroyItems: false));
-            reward = resolvedReward;
             return true;
+        }
+    }
+
+    public void CancelGroundRewardClaim(Guid pickerCharacterId, int rewardId)
+    {
+        lock (_sync)
+        {
+            var resolvedReward = GroundRewards.FirstOrDefault(x => x.Id == rewardId);
+            resolvedReward?.CancelClaim(pickerCharacterId);
         }
     }
 
@@ -108,6 +142,12 @@ public sealed partial class MapInstance
                     resolvedReward.GetPlayerItemIds(),
                     DestroyItems: true));
                 failureCode = MessageCode.GroundRewardExpired;
+                return false;
+            }
+
+            if (resolvedReward.IsClaiming)
+            {
+                failureCode = MessageCode.GroundRewardClaimInProgress;
                 return false;
             }
 

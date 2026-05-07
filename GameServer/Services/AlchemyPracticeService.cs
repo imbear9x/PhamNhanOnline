@@ -109,7 +109,6 @@ public sealed class AlchemyPracticeService
     private async Task CompleteSessionIfDueAsync(long practiceSessionId, CancellationToken cancellationToken)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<GameDb>();
         var repository = scope.ServiceProvider.GetRequiredService<PlayerPracticeSessionRepository>();
         var session = await repository.GetByIdAsync(practiceSessionId, cancellationToken);
         if (session is null || session.PracticeType != (int)PracticeType.Alchemy || session.PracticeState != (int)PracticeSessionState.Active)
@@ -123,6 +122,7 @@ public sealed class AlchemyPracticeService
         if (requestPayload is null)
             return;
 
+        var inventoryTransactions = scope.ServiceProvider.GetRequiredService<PlayerInventoryTransactionService>();
         var pillRecipeService = scope.ServiceProvider.GetRequiredService<PillRecipeService>();
         var alchemyService = scope.ServiceProvider.GetRequiredService<AlchemyService>();
         var itemService = scope.ServiceProvider.GetRequiredService<ItemService>();
@@ -134,89 +134,115 @@ public sealed class AlchemyPracticeService
 
         try
         {
-            var detail = await pillRecipeService.GetRecipeDetailAsync(session.PlayerId, session.DefinitionId, cancellationToken);
-            var successRates = await alchemyService.BuildSuccessRollRatesAsync(
+            PlayerPracticeSessionEntity? completedSession = null;
+            PlayerNotificationEntity? notification = null;
+            var completed = await inventoryTransactions.ExecuteAsync(
                 session.PlayerId,
-                session.DefinitionId,
-                requestPayload.RequestedCraftCount,
-                requestPayload.SelectedOptionalInputs,
-                cancellationToken);
-            var successCount = 0;
-            for (var index = 0; index < successRates.Count; index++)
-            {
-                if (random.CheckChance(ToPartsPerMillion(successRates[index])).Success)
-                    successCount++;
-            }
-
-            var requestedCraftCount = Math.Max(1, requestPayload.RequestedCraftCount);
-            var failedCount = Math.Max(0, requestedCraftCount - successCount);
-            var success = successCount > 0;
-
-            await using var tx = await db.BeginTransactionAsync(cancellationToken);
-            var rewards = new List<PracticeRewardEntry>();
-            if (successCount > 0)
-            {
-                await itemService.AddItemAsync(
-                    session.PlayerId,
-                    detail.Definition.ResultPillItemTemplateId,
-                    successCount,
-                    false,
-                    null,
-                    cancellationToken);
-
-                var learned = await playerRecipes.GetByPlayerAndRecipeAsync(session.PlayerId, session.DefinitionId, cancellationToken);
-                if (learned is not null)
+                async ct =>
                 {
-                    learned.TotalCraftCount += successCount;
-                    learned.CurrentSuccessRateBonus = alchemyService.ResolveMasteryBonusForCurrentProgress(
-                        detail.Definition,
-                        learned.TotalCraftCount,
-                        learned.CurrentSuccessRateBonus);
-                    learned.UpdatedAt = utcNow;
-                    await playerRecipes.UpdateAsync(learned, cancellationToken);
-                }
+                    var activeSession = await repository.GetByIdAsync(practiceSessionId, ct);
+                    if (activeSession is null ||
+                        activeSession.PracticeType != (int)PracticeType.Alchemy ||
+                        activeSession.PracticeState != (int)PracticeSessionState.Active)
+                    {
+                        return false;
+                    }
 
-                rewards.Add(new PracticeRewardEntry(detail.Definition.ResultPillItemTemplateId, successCount));
-            }
+                    var lockedUtcNow = DateTime.UtcNow;
+                    if (_practiceService.CalculateRemainingDurationSeconds(activeSession, lockedUtcNow) > 0L)
+                        return false;
 
-            var completionPayload = new PracticeCompletionPayload(
-                success,
-                requestedCraftCount,
-                successCount,
-                failedCount,
-                success ? "Luyen che thanh cong" : "Luyen che that bai",
-                successCount > 0
-                    ? $"Nhan duoc {successCount} {detail.Definition.Name}."
-                    : $"Khong nhan duoc {detail.Definition.Name}.",
-                detail.Definition.ResultPillItemTemplateId,
-                rewards);
+                    var lockedPayload = _practiceService.DeserializeRequestPayload(activeSession);
+                    if (lockedPayload is null)
+                        return false;
 
-            session.AccumulatedActiveSeconds = Math.Max(session.TotalDurationSeconds, _practiceService.CalculateAccumulatedActiveSeconds(session, utcNow));
-            session.PracticeState = (int)PracticeSessionState.Completed;
-            session.LastResumedAtUtc = null;
-            session.PausedAtUtc = null;
-            session.CompletedAtUtc = utcNow;
-            session.ResultAcknowledgedAtUtc = utcNow;
-            session.UpdatedAtUtc = utcNow;
-            session.ResultPayloadJson = _practiceService.SerializePayload(completionPayload);
-            await repository.UpdateAsync(session, cancellationToken);
+                    var detail = await pillRecipeService.GetRecipeDetailAsync(activeSession.PlayerId, activeSession.DefinitionId, ct);
+                    var successRates = await alchemyService.BuildSuccessRollRatesAsync(
+                        activeSession.PlayerId,
+                        activeSession.DefinitionId,
+                        lockedPayload.RequestedCraftCount,
+                        lockedPayload.SelectedOptionalInputs,
+                        ct);
+                    var successCount = 0;
+                    for (var index = 0; index < successRates.Count; index++)
+                    {
+                        if (random.CheckChance(ToPartsPerMillion(successRates[index])).Success)
+                            successCount++;
+                    }
 
-            var notification = new PlayerNotificationEntity
-            {
-                PlayerId = session.PlayerId,
-                NotificationType = (int)PlayerNotificationType.PracticeResult,
-                SourceType = (int)PlayerNotificationSourceType.PracticeSession,
-                SourceId = session.Id,
-                Title = completionPayload.Title,
-                Message = completionPayload.Message,
-                DisplayItemTemplateId = completionPayload.DisplayItemTemplateId,
-                PayloadJson = _practiceService.SerializePayload(completionPayload),
-                CreatedAtUtc = utcNow
-            };
-            notification.Id = await notificationRepository.CreateAsync(notification, cancellationToken);
-            await tx.CommitAsync(cancellationToken);
+                    var requestedCraftCount = Math.Max(1, lockedPayload.RequestedCraftCount);
+                    var failedCount = Math.Max(0, requestedCraftCount - successCount);
+                    var success = successCount > 0;
+                    var rewards = new List<PracticeRewardEntry>();
+                    if (successCount > 0)
+                    {
+                        await itemService.AddItemAsync(
+                            activeSession.PlayerId,
+                            detail.Definition.ResultPillItemTemplateId,
+                            successCount,
+                            false,
+                            null,
+                            ct);
 
-            if (_worldManager.TryGetPlayerByCharacterId(session.PlayerId, out var player))
+                        var learned = await playerRecipes.GetByPlayerAndRecipeAsync(activeSession.PlayerId, activeSession.DefinitionId, ct);
+                        if (learned is not null)
+                        {
+                            learned.TotalCraftCount += successCount;
+                            learned.CurrentSuccessRateBonus = alchemyService.ResolveMasteryBonusForCurrentProgress(
+                                detail.Definition,
+                                learned.TotalCraftCount,
+                                learned.CurrentSuccessRateBonus);
+                            learned.UpdatedAt = lockedUtcNow;
+                            await playerRecipes.UpdateAsync(learned, ct);
+                        }
+
+                        rewards.Add(new PracticeRewardEntry(detail.Definition.ResultPillItemTemplateId, successCount));
+                    }
+
+                    var completionPayload = new PracticeCompletionPayload(
+                        success,
+                        requestedCraftCount,
+                        successCount,
+                        failedCount,
+                        success ? "Luyen che thanh cong" : "Luyen che that bai",
+                        successCount > 0
+                            ? $"Nhan duoc {successCount} {detail.Definition.Name}."
+                            : $"Khong nhan duoc {detail.Definition.Name}.",
+                        detail.Definition.ResultPillItemTemplateId,
+                        rewards);
+
+                    activeSession.AccumulatedActiveSeconds = Math.Max(activeSession.TotalDurationSeconds, _practiceService.CalculateAccumulatedActiveSeconds(activeSession, lockedUtcNow));
+                    activeSession.PracticeState = (int)PracticeSessionState.Completed;
+                    activeSession.LastResumedAtUtc = null;
+                    activeSession.PausedAtUtc = null;
+                    activeSession.CompletedAtUtc = lockedUtcNow;
+                    activeSession.ResultAcknowledgedAtUtc = lockedUtcNow;
+                    activeSession.UpdatedAtUtc = lockedUtcNow;
+                    activeSession.ResultPayloadJson = _practiceService.SerializePayload(completionPayload);
+                    await repository.UpdateAsync(activeSession, ct);
+
+                    notification = new PlayerNotificationEntity
+                    {
+                        PlayerId = activeSession.PlayerId,
+                        NotificationType = (int)PlayerNotificationType.PracticeResult,
+                        SourceType = (int)PlayerNotificationSourceType.PracticeSession,
+                        SourceId = activeSession.Id,
+                        Title = completionPayload.Title,
+                        Message = completionPayload.Message,
+                        DisplayItemTemplateId = completionPayload.DisplayItemTemplateId,
+                        PayloadJson = _practiceService.SerializePayload(completionPayload),
+                        CreatedAtUtc = lockedUtcNow
+                    };
+                    notification.Id = await notificationRepository.CreateAsync(notification, ct);
+                    completedSession = activeSession;
+                    return true;
+                },
+                cancellationToken);
+
+            if (!completed || completedSession is null || notification is null)
+                return;
+
+            if (_worldManager.TryGetPlayerByCharacterId(completedSession.PlayerId, out var player))
             {
                 try
                 {
@@ -224,12 +250,12 @@ public sealed class AlchemyPracticeService
 
                     var completionPacket = new PracticeCompletedPacket
                     {
-                        Session = _practiceService.BuildSessionModel(session, utcNow),
-                        Result = completionPayload is not null ? modelBuilder.BuildPracticeCompletionResultModel(session) : null
+                        Session = _practiceService.BuildSessionModel(completedSession, completedSession.CompletedAtUtc ?? DateTime.UtcNow),
+                        Result = modelBuilder.BuildPracticeCompletionResultModel(completedSession)
                     };
                     _network.Send(player.ConnectionId, completionPacket);
 
-                    var inventoryItems = await itemService.GetInventoryAsync(session.PlayerId, cancellationToken);
+                    var inventoryItems = await itemService.GetInventoryAsync(completedSession.PlayerId, cancellationToken);
                     var inventoryPacket = new GetInventoryResultPacket
                     {
                         Success = true,
@@ -247,7 +273,7 @@ public sealed class AlchemyPracticeService
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error(ex, $"Failed to push alchemy completion packets for session {session.Id}.");
+                    Logger.Error(ex, $"Failed to push alchemy completion packets for session {completedSession.Id}.");
                 }
             }
         }

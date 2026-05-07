@@ -11,6 +11,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 {
     public sealed partial class WorldTargetActionController
     {
+        private const float VerticalActionRangeMultiplier = 2f;
+
         private void ExecutePendingAction(PendingTargetAction action)
         {
             CancelMovementOnly();
@@ -170,9 +172,21 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 out worldPosition);
         }
 
-        private bool TryResolveDistanceServerUnits(Vector2 playerWorldPosition, Vector2 targetWorldPosition, out float distanceServerUnits)
+        private bool TryResolveTargetRangeServerUnits(
+            Vector2 playerWorldPosition,
+            Vector2 targetWorldPosition,
+            float requiredRangeServerUnits,
+            float rangeBufferServerUnits,
+            out Vector2 deltaServer,
+            out float distanceServerUnits,
+            out float horizontalRangeServerUnits,
+            out float verticalRangeServerUnits)
         {
+            deltaServer = default;
             distanceServerUnits = 0f;
+            horizontalRangeServerUnits = 0f;
+            verticalRangeServerUnits = 0f;
+
             if (worldMapPresenter == null)
                 return false;
 
@@ -184,39 +198,37 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 return false;
             }
 
-            distanceServerUnits = Vector2.Distance(playerServerPosition, targetServerPosition);
+            deltaServer = targetServerPosition - playerServerPosition;
+            distanceServerUnits = deltaServer.magnitude;
+            horizontalRangeServerUnits = Mathf.Max(0f, requiredRangeServerUnits) + Mathf.Max(0f, rangeBufferServerUnits);
+            verticalRangeServerUnits = horizontalRangeServerUnits * VerticalActionRangeMultiplier;
             return true;
         }
 
         private bool TryResolvePreferredApproachMoveOverride(
-            PendingTargetAction action,
-            Vector2 playerWorldPosition,
-            Vector2 targetWorldPosition,
-            float requiredRangeServerUnits,
+            Vector2 deltaServer,
+            float horizontalRangeServerUnits,
+            float verticalRangeServerUnits,
             out Vector2 moveOverride)
         {
             moveOverride = default;
-            if (worldMapPresenter == null)
-                return false;
 
-            Vector2 playerServerPosition;
-            Vector2 targetServerPosition;
-            if (!worldMapPresenter.TryMapWorldPositionToServer(playerWorldPosition, out playerServerPosition) ||
-                !worldMapPresenter.TryMapWorldPositionToServer(targetWorldPosition, out targetServerPosition))
-            {
-                return false;
-            }
-
-            var stopRangeServerUnits = Mathf.Max(0f, requiredRangeServerUnits) + ResolveRangeBufferServerUnits(action);
-            var deltaServer = targetServerPosition - playerServerPosition;
-
-            if (Mathf.Abs(deltaServer.x) > stopRangeServerUnits)
+            if (Mathf.Abs(deltaServer.x) > horizontalRangeServerUnits)
                 return TryResolveWorldMoveOverrideFromServerDirection(new Vector2(Mathf.Sign(deltaServer.x), 0f), out moveOverride);
 
-            if (Mathf.Abs(deltaServer.y) > Mathf.Epsilon)
+            if (Mathf.Abs(deltaServer.y) > verticalRangeServerUnits)
                 return TryResolveWorldMoveOverrideFromServerDirection(new Vector2(0f, Mathf.Sign(deltaServer.y)), out moveOverride);
 
             return false;
+        }
+
+        private static bool IsWithinActionRange(
+            Vector2 deltaServer,
+            float horizontalRangeServerUnits,
+            float verticalRangeServerUnits)
+        {
+            return Mathf.Abs(deltaServer.x) <= horizontalRangeServerUnits &&
+                   Mathf.Abs(deltaServer.y) <= verticalRangeServerUnits;
         }
 
         private bool TryResolveWorldMoveOverrideFromServerDirection(Vector2 serverDirection, out Vector2 moveOverride)

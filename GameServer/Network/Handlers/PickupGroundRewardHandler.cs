@@ -4,6 +4,7 @@ using GameServer.Network.Interface;
 using GameServer.Runtime;
 using GameServer.Services;
 using GameServer.World;
+using GameShared.Logging;
 using GameShared.Messages;
 using GameShared.Packets;
 
@@ -16,19 +17,22 @@ public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewar
     private readonly INetworkSender _network;
     private readonly WorldManager _worldManager;
     private readonly WorldInteractionGate _interactionGate;
+    private readonly PlayerInventoryTransactionService _inventoryTransactions;
 
     public PickupGroundRewardHandler(
         ItemService itemService,
         GameConfigValues gameConfig,
         INetworkSender network,
         WorldManager worldManager,
-        WorldInteractionGate interactionGate)
+        WorldInteractionGate interactionGate,
+        PlayerInventoryTransactionService inventoryTransactions)
     {
         _itemService = itemService;
         _gameConfig = gameConfig;
         _network = network;
         _worldManager = worldManager;
         _interactionGate = interactionGate;
+        _inventoryTransactions = inventoryTransactions;
     }
 
     public async Task HandleAsync(ConnectionSession session, PickupGroundRewardPacket packet)
@@ -109,7 +113,7 @@ public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewar
             return;
         }
 
-        if (!instance.TryClaimGroundReward(
+        if (!instance.TryBeginGroundRewardClaim(
                 player.CharacterData.CharacterId,
                 packet.RewardId.Value,
                 player.CapturePositionSyncAnchor().Position,
@@ -129,8 +133,36 @@ public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewar
 
         player.ClearDesiredMovementTarget();
 
-        foreach (var item in reward.Items)
-            await _itemService.MoveGroundItemToInventoryAsync(player.CharacterData.CharacterId, item.PlayerItemId, CancellationToken.None);
+        try
+        {
+            await _inventoryTransactions.ExecuteAsync(
+                player.CharacterData.CharacterId,
+                async ct =>
+                {
+                    foreach (var item in reward.Items)
+                        await _itemService.MoveGroundItemToInventoryAsync(player.CharacterData.CharacterId, item.PlayerItemId, ct);
+                },
+                CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            instance.CancelGroundRewardClaim(player.CharacterData.CharacterId, reward.Id);
+            Logger.Error(ex, $"Failed to grant ground reward {reward.Id} to character {player.CharacterData.CharacterId}.");
+            _network.Send(session.ConnectionId, new PickupGroundRewardResultPacket
+            {
+                Success = false,
+                Code = ex is InvalidOperationException or ArgumentOutOfRangeException
+                    ? MessageCode.InventoryItemInvalid
+                    : MessageCode.UnknownError,
+                RewardId = packet.RewardId
+            });
+            return;
+        }
+
+        if (!instance.CompleteGroundRewardClaim(player.CharacterData.CharacterId, reward.Id))
+        {
+            Logger.Error($"Ground reward {reward.Id} grant committed but runtime claim could not be completed for character {player.CharacterData.CharacterId}.");
+        }
 
         _network.Send(session.ConnectionId, new PickupGroundRewardResultPacket
         {

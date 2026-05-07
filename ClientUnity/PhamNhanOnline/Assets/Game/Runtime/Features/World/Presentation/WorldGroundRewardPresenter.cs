@@ -258,7 +258,11 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 : (SceneController != null && SceneController.EntitiesRoot != null ? SceneController.EntitiesRoot : transform);
             var rewardObject = new GameObject("GroundReward_" + reward.RewardId);
             rewardObject.transform.SetParent(parent, false);
+            var targetable = rewardObject.AddComponent<WorldTargetable>();
+            var interactionCollider = rewardObject.AddComponent<CircleCollider2D>();
+            interactionCollider.isTrigger = true;
             var presenter = rewardObject.AddComponent<GroundRewardPresenter>();
+            presenter.BindRuntimeTargetable(targetable, interactionCollider);
             return presenter;
         }
 

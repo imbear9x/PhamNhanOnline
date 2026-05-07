@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.UI.Common;
 using TMPro;
 using UnityEngine;
@@ -16,12 +17,14 @@ namespace PhamNhanOnline.Client.UI.Inventory
             public UIButtonView Button;
             public TMP_Text Label;
             public Action ClickAction;
+            public string LabelText;
 
             public void Bind(string label, Action onClick, bool interactable)
             {
                 ClickAction = onClick;
+                LabelText = string.IsNullOrWhiteSpace(label) ? string.Empty : label.Trim();
                 if (Label != null)
-                    Label.text = string.IsNullOrWhiteSpace(label) ? string.Empty : label.Trim();
+                    Label.text = LabelText;
 
                 if (Button != null)
                     Button.SetInteractable(interactable, force: true);
@@ -33,6 +36,7 @@ namespace PhamNhanOnline.Client.UI.Inventory
             public void Clear()
             {
                 ClickAction = null;
+                LabelText = string.Empty;
                 if (Root != null && Root.activeSelf)
                     Root.SetActive(false);
             }
@@ -208,6 +212,9 @@ namespace PhamNhanOnline.Client.UI.Inventory
                     buttonView.Clicked += () =>
                     {
                         var action = runtimeButton.ClickAction;
+                        ClientLog.Info(
+                            $"[ItemOptionsPopup] option-click root='{runtimeButton.Root?.name ?? "None"}' " +
+                            $"label='{runtimeButton.LabelText ?? string.Empty}' hasAction={action != null}.");
                         action?.Invoke();
                     };
                 }
@@ -235,6 +242,9 @@ namespace PhamNhanOnline.Client.UI.Inventory
                 buttonView.Clicked += () =>
                 {
                     var action = templateButton.ClickAction;
+                    ClientLog.Info(
+                        $"[ItemOptionsPopup] option-click root='{templateButton.Root?.name ?? "None"}' " +
+                        $"label='{templateButton.LabelText ?? string.Empty}' hasAction={action != null}.");
                     action?.Invoke();
                 };
             }

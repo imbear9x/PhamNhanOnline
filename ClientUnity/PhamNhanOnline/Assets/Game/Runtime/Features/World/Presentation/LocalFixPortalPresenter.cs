@@ -1,4 +1,5 @@
 using PhamNhanOnline.Client.Core.Application;
+using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Targeting.Application;
 using PhamNhanOnline.Client.UI.World;
 using UnityEngine;
@@ -25,18 +26,23 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         [SerializeField] private CraftingStationType stationType = CraftingStationType.Alchemy;
         [SerializeField] private string panelTitleOverride;
 
+        [Header("Diagnostics")]
+        [SerializeField] private bool logLocalPortalDiagnostics = true;
+
+        private bool loggedMissingReferences;
+
         private WorldTargetHandle PortalHandle => new WorldTargetHandle(WorldTargetKind.Npc, ResolvePortalTargetId());
 
         private void Awake()
         {
-            AutoWireReferences();
+            ValidateReferences();
             ConfigureTargetable();
             ApplyTargetableLayer();
         }
 
         private void Start()
         {
-            AutoWireReferences();
+            ValidateReferences();
             ConfigureTargetable();
             ApplyTargetableLayer();
             InitializeWorldSceneBehaviour();
@@ -48,7 +54,7 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
         private void OnEnable()
         {
             Registered.Add(this);
-            AutoWireReferences();
+            ValidateReferences();
             ConfigureTargetable();
             ApplyTargetableLayer();
             InitializeWorldSceneBehaviour();
@@ -71,6 +77,14 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             UnbindRuntimeEvents();
             DeactivateWorldSceneReadiness();
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            ConfigureTargetable();
+            ApplyConfiguredLabel();
+        }
+#endif
 
         public static bool TryResolveActionWorldPosition(WorldTargetHandle handle, out Vector2 worldPosition)
         {
@@ -112,6 +126,9 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
 
             if (!ClientRuntime.IsInitialized)
                 return;
+
+            if (logLocalPortalDiagnostics)
+                ClientLog.Info($"[LocalFixPortal] interaction handle={handle.Kind}/{handle.TargetId} station={stationType} title='{ResolvePortalDisplayName()}'.");
 
             if (WorldUIController.Instance != null)
             {
@@ -171,16 +188,19 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 worldTargetActionController.InteractionRequested -= HandleInteractionRequested;
         }
 
-        private void AutoWireReferences()
+        private void ValidateReferences()
         {
-            if (worldTargetable == null)
-                worldTargetable = GetComponent<WorldTargetable>();
+            if (worldTargetable != null && interactionCollider != null && portalVisualInstance != null)
+                return;
 
-            if (interactionCollider == null)
-                interactionCollider = GetComponent<Collider2D>();
+            if (loggedMissingReferences)
+                return;
 
-            if (portalVisualInstance == null)
-                portalVisualInstance = GetComponent<PortalVisualInstance>();
+            ClientLog.Error(
+                $"LocalFixPortalPresenter on '{name}' is missing serialized references. " +
+                $"worldTargetable={(worldTargetable != null)}, interactionCollider={(interactionCollider != null)}, " +
+                $"portalVisualInstance={(portalVisualInstance != null)}. Assign them on the prefab.");
+            loggedMissingReferences = true;
         }
 
         private void ConfigureTargetable()
@@ -188,7 +208,8 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
             if (worldTargetable == null)
                 return;
 
-            worldTargetable.Configure(PortalHandle);
+            worldTargetable.Configure(PortalHandle, ResolvePortalDisplayName());
+            ApplyConfiguredLabel();
         }
 
         private void ApplyTargetableLayer()
@@ -217,6 +238,32 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 default:
                     return AlchemyPortalTargetId;
             }
+        }
+
+        private string ResolvePortalDisplayName()
+        {
+            if (!string.IsNullOrWhiteSpace(panelTitleOverride))
+                return panelTitleOverride;
+
+            switch (stationType)
+            {
+                case CraftingStationType.Smithing:
+                    return "Luyen Khi That";
+                case CraftingStationType.Talisman:
+                    return "Luyen Chu That";
+                case CraftingStationType.Cultivation:
+                    return "Mat That";
+                default:
+                    return "Luyen Dan That";
+            }
+        }
+
+        private void ApplyConfiguredLabel()
+        {
+            if (portalVisualInstance == null)
+                return;
+
+            portalVisualInstance.Apply(ResolvePortalDisplayName());
         }
 
         private void RefreshPortalAvailability()

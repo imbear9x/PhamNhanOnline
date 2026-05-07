@@ -35,8 +35,13 @@ namespace PhamNhanOnline.Client.Features.World.Presentation
                 if (groundSnapBindings != null && groundSnapBindings.GroundContactAnchor != null)
                     return groundSnapBindings.GroundContactAnchor;
 
-                return transform.Find("GroundContactAnchor");
+                return null;
             }
+        }
+
+        public GroundSnapBindings GroundSnapBindings
+        {
+            get { return groundSnapBindings; }
         }
 
         public SpriteRenderer[] OutlineRenderers

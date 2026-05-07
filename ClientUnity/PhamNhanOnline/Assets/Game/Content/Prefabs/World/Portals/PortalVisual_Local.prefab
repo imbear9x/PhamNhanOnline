@@ -303,7 +303,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetKind: 4
-  targetId: 1
+  targetId: local-home-crafting-portal
   displayNameOverride: "Luy\u1EC7n \u0111an th\u1EA5t"
   interactionCollider: {fileID: 2613311620606379685}
   autoCreateInteractionCollider: 0
@@ -339,6 +339,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   labelText: {fileID: 7393184990863204136}
   visualRoot: {fileID: 768609037619784176}
+  worldTargetable: {fileID: 5931409884785377244}
   interactionCollider: {fileID: 2613311620606379685}
   touchTriggerLeftCollider: {fileID: 0}
   touchTriggerRightCollider: {fileID: 0}

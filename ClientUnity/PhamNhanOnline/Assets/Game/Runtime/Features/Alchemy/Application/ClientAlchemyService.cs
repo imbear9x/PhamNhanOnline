@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using GameShared.Messages;
 using GameShared.Models;
 using GameShared.Packets;
+using PhamNhanOnline.Client.Core.Logging;
 using PhamNhanOnline.Client.Features.Inventory.Application;
 using PhamNhanOnline.Client.Network.Session;
 
@@ -11,12 +12,16 @@ namespace PhamNhanOnline.Client.Features.Alchemy.Application
 {
     public sealed class ClientAlchemyService
     {
+        private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
+
         private readonly ClientConnectionService connection;
         private readonly ClientInventoryState inventoryState;
         private readonly ClientAlchemyState alchemyState;
 
         private TaskCompletionSource<AlchemyRecipeListLoadResult> loadRecipesCompletionSource;
         private TaskCompletionSource<AlchemyRecipeDetailLoadResult> loadDetailCompletionSource;
+        private int? loadDetailRecipeId;
+        private int loadDetailRequestVersion;
         private TaskCompletionSource<AlchemyCraftPreviewResult> previewCompletionSource;
         private TaskCompletionSource<AlchemyCraftExecuteResult> craftCompletionSource;
         private TaskCompletionSource<AlchemyPracticeStatusLoadResult> practiceStatusCompletionSource;
@@ -94,6 +99,7 @@ namespace PhamNhanOnline.Client.Features.Alchemy.Application
             PillRecipeDetailModel cachedDetail;
             if (!forceRefresh && alchemyState.TryGetRecipeDetail(recipeId, out cachedDetail))
             {
+                ClientLog.Info($"[AlchemyService] recipe-detail cache-hit recipeId={recipeId}.");
                 return Task.FromResult(new AlchemyRecipeDetailLoadResult(
                     true,
                     alchemyState.LastResultCode ?? MessageCode.None,
@@ -104,13 +110,38 @@ namespace PhamNhanOnline.Client.Features.Alchemy.Application
             }
 
             if (loadDetailCompletionSource != null && !loadDetailCompletionSource.Task.IsCompleted)
-                return loadDetailCompletionSource.Task;
-
-            loadDetailCompletionSource = new TaskCompletionSource<AlchemyRecipeDetailLoadResult>();
-            connection.Send(new GetPillRecipeDetailPacket
             {
-                PillRecipeTemplateId = recipeId
-            });
+                ClientLog.Info(
+                    $"[AlchemyService] recipe-detail reuse pending requested={recipeId} " +
+                    $"active={loadDetailRecipeId?.ToString() ?? "None"}.");
+                return loadDetailCompletionSource.Task;
+            }
+
+            loadDetailRecipeId = recipeId;
+            loadDetailRequestVersion++;
+            loadDetailCompletionSource = new TaskCompletionSource<AlchemyRecipeDetailLoadResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _ = CompleteRecipeDetailAfterTimeoutAsync(loadDetailRequestVersion, recipeId);
+            try
+            {
+                ClientLog.Info($"[AlchemyService] recipe-detail send request recipeId={recipeId} forceRefresh={forceRefresh}.");
+                connection.Send(new GetPillRecipeDetailPacket
+                {
+                    PillRecipeTemplateId = recipeId
+                });
+            }
+            catch (Exception ex)
+            {
+                ClientLog.Warn($"[AlchemyService] recipe-detail send failed recipeId={recipeId}: {ex.Message}");
+                CompletePending(ref loadDetailCompletionSource, new AlchemyRecipeDetailLoadResult(
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    $"Failed to send recipe detail request: {ex.Message}",
+                    false));
+                loadDetailRecipeId = null;
+            }
+
             return loadDetailCompletionSource.Task;
         }
 
@@ -280,6 +311,13 @@ namespace PhamNhanOnline.Client.Features.Alchemy.Application
 
         private void HandleGetRecipeDetailResult(GetPillRecipeDetailResultPacket packet)
         {
+            ClientLog.Info(
+                $"[AlchemyService] recipe-detail result success={packet.Success == true} " +
+                $"code={(packet.Code.HasValue ? packet.Code.Value.ToString() : "None")} " +
+                $"hasRecipe={packet.Recipe.HasValue} " +
+                $"recipeId={(packet.Recipe.HasValue ? packet.Recipe.Value.PillRecipeTemplateId.ToString() : "None")} " +
+                $"active={loadDetailRecipeId?.ToString() ?? "None"}.");
+
             if (packet.Success == true && packet.Recipe.HasValue)
             {
                 alchemyState.ApplyRecipeDetail(
@@ -303,6 +341,7 @@ namespace PhamNhanOnline.Client.Features.Alchemy.Application
                     ? "Pill recipe detail loaded."
                     : string.Format("Failed to load pill recipe detail: {0}", packet.Code ?? MessageCode.UnknownError),
                 false));
+            loadDetailRecipeId = null;
         }
 
         private void HandlePreviewCraftResult(PreviewCraftPillResultPacket packet)
@@ -509,6 +548,7 @@ namespace PhamNhanOnline.Client.Features.Alchemy.Application
                 string.Empty,
                 "Connection closed.",
                 false));
+            loadDetailRecipeId = null;
             CompletePending(ref previewCompletionSource, new AlchemyCraftPreviewResult(
                 false,
                 null,
@@ -549,6 +589,30 @@ namespace PhamNhanOnline.Client.Features.Alchemy.Application
             completionSource = null;
             if (pending != null)
                 pending.TrySetResult(result);
+        }
+
+        private async Task CompleteRecipeDetailAfterTimeoutAsync(int requestVersion, int recipeId)
+        {
+            await Task.Delay(RequestTimeout).ConfigureAwait(false);
+            if (requestVersion != loadDetailRequestVersion ||
+                loadDetailCompletionSource == null ||
+                loadDetailCompletionSource.Task.IsCompleted ||
+                loadDetailRecipeId != recipeId)
+            {
+                return;
+            }
+
+            var message = $"Timed out waiting for recipe detail response recipeId={recipeId} after {RequestTimeout.TotalSeconds:0.#}s.";
+            ClientLog.Warn($"[AlchemyService] {message}");
+            alchemyState.ApplyFailure(MessageCode.UnknownError, message);
+            CompletePending(ref loadDetailCompletionSource, new AlchemyRecipeDetailLoadResult(
+                false,
+                MessageCode.UnknownError,
+                null,
+                string.Empty,
+                message,
+                false));
+            loadDetailRecipeId = null;
         }
 
         private static void CompletePending(ref TaskCompletionSource<AlchemyCraftPreviewResult> completionSource, AlchemyCraftPreviewResult result)
