@@ -23,10 +23,16 @@ Tài liệu trong `docs/` hiện được chia theo 4 nhóm để dễ đọc v�
 
 ## 2. Tài liệu quy ước làm việc và tooling
 
+- `../WORKFLOW_RULES.md`
+  - điểm vào workflow đầu phiên giữa user và các agent
 - `WORKING_CONTEXT.md`
   - các rule ngắn, quyết định kiến trúc và lưu ý dễ quên giữa các session
 - `UNITY_TOOLING_NOTES.md`
   - quy ước sync `GameShared`, build CLI và workflow Unity
+- `agent-handoffs/README.md`
+  - workflow giao việc giữa các agent bằng doc thay vì copy chat tay
+- `agent-handoffs/SESSION_STARTERS.md`
+  - câu mở đầu phiên cho `gamedesign` và `dev` để vào đúng workflow ngay
 
 ## 3. Tài liệu roadmap hoặc draft tương lai
 
