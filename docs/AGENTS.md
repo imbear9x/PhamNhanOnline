@@ -267,7 +267,7 @@ Phải:
 
 Tham khảo:
 
-- `docs/world-scene-readiness.md`
+- `docs/client-unity/world-scene-readiness.md`
 - `ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldSceneBehaviour.cs`
 
 ### Presentation replication
@@ -518,7 +518,7 @@ Khi thêm config mới:
 - thêm key trong DB
 - thêm constant/property typed tương ứng
 - cập nhật loader/repository/entity nếu cần
-- cập nhật `docs/GAME_CONFIGS.md`
+- cập nhật `docs/reference-and-specs/GAME_CONFIGS.md`
 
 ## Description template system
 
@@ -532,7 +532,7 @@ Rule đã chốt:
 
 Tham khảo:
 
-- `docs/DESCRIPTION_TEMPLATE_SYSTEM.md`
+- `docs/reference-and-specs/DESCRIPTION_TEMPLATE_SYSTEM.md`
 
 ## Item use flow
 
@@ -601,7 +601,7 @@ Script này build:
 
 Tham khảo:
 
-- `docs/UNITY_TOOLING_NOTES.md`
+- `docs/workflow-and-operations/UNITY_TOOLING_NOTES.md`
 
 ### Log và metrics server
 
@@ -647,60 +647,60 @@ Trong `docs/`, không phải file nào cũng là source of truth cho behavior hi
 
 Nhóm tài liệu tham chiếu cho hệ đang chạy:
 
-- `PHASE1_SYSTEM_REFERENCE.md`
-- `world-scene-readiness.md`
-- `SKILL_SYSTEM_COMBAT_FLOW.md`
-- `ITEM_USE_FLOW_SPEC.md`
-- `DESCRIPTION_TEMPLATE_SYSTEM.md`
-- `GAME_CONFIGS.md`
-- `HUONG_DAN_DOC_LOG_SERVER.md`
-- `UNITY_CLIENT_SCENE_SETUP.md`
+- `reference-and-specs/PHASE1_SYSTEM_REFERENCE.md`
+- `client-unity/world-scene-readiness.md`
+- `reference-and-specs/SKILL_SYSTEM_COMBAT_FLOW.md`
+- `reference-and-specs/ITEM_USE_FLOW_SPEC.md`
+- `reference-and-specs/DESCRIPTION_TEMPLATE_SYSTEM.md`
+- `reference-and-specs/GAME_CONFIGS.md`
+- `workflow-and-operations/HUONG_DAN_DOC_LOG_SERVER.md`
+- `client-unity/UNITY_CLIENT_SCENE_SETUP.md`
 
 Nhóm quy ước làm việc/tooling:
 
-- `WORKING_CONTEXT.md`
-- `UNITY_TOOLING_NOTES.md`
-- `client-state-sync-rules.md`
-- `server-transaction-rules.md`
+- `workflow-and-operations/WORKING_CONTEXT.md`
+- `workflow-and-operations/UNITY_TOOLING_NOTES.md`
+- `client-unity/client-state-sync-rules.md`
+- `workflow-and-operations/server-transaction-rules.md`
 
 Nhóm roadmap/draft tương lai, không được coi là trạng thái đã implement:
 
-- `SERVER_SCALING_ROADMAP.md`
-- `ENEMY_BOSS_INSTANCE_FLOW_DRAFT.md`
-- `docs/Skill Docs/SKILL_PRESENTATION_PHASE3_ROADMAP.md`
+- `architecture-and-roadmap/SERVER_SCALING_ROADMAP.md`
+- `architecture-and-roadmap/ENEMY_BOSS_INSTANCE_FLOW_DRAFT.md`
+- `client-unity/skill-presentation/SKILL_PRESENTATION_PHASE3_ROADMAP.md`
 
 Nhóm lịch sử/refactor:
 
-- `ARCHITECTURE_REFACTOR_20260403.md`
+- `architecture-and-roadmap/ARCHITECTURE_REFACTOR_20260403.md`
 
 ### Docs quan trọng nên đọc trước theo ngữ cảnh
 
 - bắt đầu session mới:
-  - `docs/WORKING_CONTEXT.md`
+- `docs/workflow-and-operations/WORKING_CONTEXT.md`
 - nếu sửa flow client state/panel reload:
-  - `docs/client-state-sync-rules.md`
+- `docs/client-unity/client-state-sync-rules.md`
 - nếu sửa flow server có ghi DB:
-  - `docs/server-transaction-rules.md`
+- `docs/workflow-and-operations/server-transaction-rules.md`
 - làm world scene:
-  - `docs/world-scene-readiness.md`
+- `docs/client-unity/world-scene-readiness.md`
 - nếu sửa login/world/movement/observer:
-  - `docs/PHASE1_SYSTEM_REFERENCE.md`
+- `docs/reference-and-specs/PHASE1_SYSTEM_REFERENCE.md`
 - nếu sửa combat skill server:
-  - `docs/SKILL_SYSTEM_COMBAT_FLOW.md`
+- `docs/reference-and-specs/SKILL_SYSTEM_COMBAT_FLOW.md`
 - nếu sửa skill presentation client:
-  - `docs/Skill Docs/SKILL_PRESENTATION_PHASE1_PHASE2_GUIDE.md`
+- `docs/client-unity/skill-presentation/SKILL_PRESENTATION_PHASE1_PHASE2_GUIDE.md`
 - nếu sửa item use/inventory action:
-  - `docs/ITEM_USE_FLOW_SPEC.md`
+- `docs/reference-and-specs/ITEM_USE_FLOW_SPEC.md`
 - nếu sửa/tune game config:
-  - `docs/GAME_CONFIGS.md`
+- `docs/reference-and-specs/GAME_CONFIGS.md`
 - nếu debug server lag/metrics:
-  - `docs/HUONG_DAN_DOC_LOG_SERVER.md`
+- `docs/workflow-and-operations/HUONG_DAN_DOC_LOG_SERVER.md`
 - làm shared/build Unity:
-  - `docs/UNITY_TOOLING_NOTES.md`
+- `docs/workflow-and-operations/UNITY_TOOLING_NOTES.md`
 - làm gameplay description:
-  - `docs/DESCRIPTION_TEMPLATE_SYSTEM.md`
+- `docs/reference-and-specs/DESCRIPTION_TEMPLATE_SYSTEM.md`
 - làm client scene setup:
-  - `docs/UNITY_CLIENT_SCENE_SETUP.md`
+- `docs/client-unity/UNITY_CLIENT_SCENE_SETUP.md`
 
 ## Quy tắc commit / patch
 
@@ -731,11 +731,11 @@ Nhóm lịch sử/refactor:
 
 ## Quy tắc khởi động session mới
 
-1. Đọc `docs/WORKING_CONTEXT.md`.
+1. Đọc `docs/workflow-and-operations/WORKING_CONTEXT.md`.
 2. Nếu sửa flow client state hoặc flow server ghi DB, đọc thêm:
-   - `docs/client-state-sync-rules.md`
-   - `docs/server-transaction-rules.md`
-3. Nếu làm world scene, đọc thêm `docs/world-scene-readiness.md`.
+- `docs/client-unity/client-state-sync-rules.md`
+- `docs/workflow-and-operations/server-transaction-rules.md`
+3. Nếu làm world scene, đọc thêm `docs/client-unity/world-scene-readiness.md`.
 4. Nếu có sửa `GameShared`, chạy sync sang Unity.
 5. Nếu làm feature presentation mới, kiểm tra trước xem có nên đi qua presentation replication hiện có hay không.
 6. Nếu làm skill presentation/world catalog, nhớ DB là source of truth và ưu tiên sync thay vì nhập tay.

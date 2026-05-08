@@ -55,7 +55,7 @@ Những gì có thể tự suy ra từ code hoặc đọc ở doc chuyên đề 
 - Base class để giảm lặp là:
   - [WorldSceneBehaviour.cs](/F:/PhamNhanOnline/ClientUnity/PhamNhanOnline/Assets/Game/Runtime/Features/World/Presentation/WorldSceneBehaviour.cs)
 - Doc chi tiết:
-  - [world-scene-readiness.md](/F:/PhamNhanOnline/docs/world-scene-readiness.md)
+  - [world-scene-readiness.md](/F:/PhamNhanOnline/docs/client-unity/world-scene-readiness.md)
 
 ## Quy ước presentation replication
 
@@ -75,7 +75,7 @@ Những gì có thể tự suy ra từ code hoặc đọc ở doc chuyên đề 
 - Client chỉ render `Description` cuối cùng bằng TMP rich text.
 - Không thiết kế syntax icon custom ở client nếu chưa có nhu cầu thật sự; ưu tiên dùng tag TMP gốc mà UI đang support.
 - Doc chi tiết:
-  - [DESCRIPTION_TEMPLATE_SYSTEM.md](/F:/PhamNhanOnline/docs/DESCRIPTION_TEMPLATE_SYSTEM.md)
+  - [DESCRIPTION_TEMPLATE_SYSTEM.md](/F:/PhamNhanOnline/docs/reference-and-specs/DESCRIPTION_TEMPLATE_SYSTEM.md)
 
 ## Quy ước GameShared và build
 
@@ -92,7 +92,7 @@ powershell -File .\scripts\sync-gameshared-to-unity.ps1
 - Script verify nhanh hiện có:
   - [verify-solution-build.ps1](/F:/PhamNhanOnline/scripts/verify-solution-build.ps1)
 - Doc thao tác chi tiết:
-  - [UNITY_TOOLING_NOTES.md](/F:/PhamNhanOnline/docs/UNITY_TOOLING_NOTES.md)
+  - [UNITY_TOOLING_NOTES.md](/F:/PhamNhanOnline/docs/workflow-and-operations/UNITY_TOOLING_NOTES.md)
 
 ## Quy ước tài liệu
 
@@ -116,6 +116,6 @@ powershell -File .\scripts\sync-gameshared-to-unity.ps1
 
 1. Đọc file này.
 2. Nếu làm phần world scene, đọc thêm:
-   - [world-scene-readiness.md](/F:/PhamNhanOnline/docs/world-scene-readiness.md)
+   - [world-scene-readiness.md](/F:/PhamNhanOnline/docs/client-unity/world-scene-readiness.md)
 3. Nếu có đổi `GameShared`, nhớ sync DLL sang Unity.
 4. Nếu làm feature presentation mới, kiểm tra trước xem có thể đi qua `presentation replication` hay chưa thay vì mở thêm một đường sync ad-hoc.

@@ -174,8 +174,8 @@ Phân rã trách nhiệm:
 #### Tooling và doc đi kèm pass UI
 
 - bổ sung script [verify-solution-build.ps1](/F:/PhamNhanOnline/scripts/verify-solution-build.ps1)
-- cập nhật lại [WORKING_CONTEXT.md](/F:/PhamNhanOnline/docs/WORKING_CONTEXT.md)
-- gom quy ước tooling Unity vào [UNITY_TOOLING_NOTES.md](/F:/PhamNhanOnline/docs/UNITY_TOOLING_NOTES.md)
+- cập nhật lại [WORKING_CONTEXT.md](/F:/PhamNhanOnline/docs/workflow-and-operations/WORKING_CONTEXT.md)
+- gom quy ước tooling Unity vào [UNITY_TOOLING_NOTES.md](/F:/PhamNhanOnline/docs/workflow-and-operations/UNITY_TOOLING_NOTES.md)
 
 ## Những gì cố ý chưa làm trong pass này
 

@@ -1,55 +1,103 @@
-# Mục Lục Docs Hiện Tại
+# Mục Lục Docs
 
-Tài liệu trong `docs/` hiện được chia theo 4 nhóm để dễ đọc và tránh trùng lặp.
+Tài liệu trong `docs/` đã được gom theo nhóm chức năng để dễ tìm nhanh theo ngữ cảnh làm việc.
 
-## 1. Tài liệu tham chiếu cho hệ đang chạy
+## 1. Gốc `docs/`
 
-- `PHASE1_SYSTEM_REFERENCE.md`
-  - luồng phase 1 đang chạy từ login tới world, movement và observer sync
-- `world-scene-readiness.md`
-  - cơ chế readiness trong scene `World`
-- `SKILL_SYSTEM_COMBAT_FLOW.md`
-  - combat skill system phía server và luồng runtime chính
-- `ITEM_USE_FLOW_SPEC.md`
-  - trạng thái và đặc tả hiện tại của luồng dùng vật phẩm
-- `DESCRIPTION_TEMPLATE_SYSTEM.md`
-  - contract mô tả cho `item`, `skill`, `martial art`: template, token, fallback và rule render TMP
-- `GAME_CONFIGS.md`
-  - danh sách `game_configs` đang có trong code
-- `HUONG_DAN_DOC_LOG_SERVER.md`
-  - cách đọc metrics/log server hiện tại
-- `UNITY_CLIENT_SCENE_SETUP.md`
-  - checklist dựng scene/hierarchy Unity theo client hiện tại
+- `AGENTS.md`
+  - working guide cho agent/developer khi thao tác trong repo
+- `DOCS_INDEX.md`
+  - mục lục điều hướng này
 
-## 2. Tài liệu quy ước làm việc và tooling
+## 2. Workflow Entry Points
 
 - `../WORKFLOW_RULES.md`
   - điểm vào workflow đầu phiên giữa user và các agent
-- `WORKING_CONTEXT.md`
-  - các rule ngắn, quyết định kiến trúc và lưu ý dễ quên giữa các session
-- `UNITY_TOOLING_NOTES.md`
-  - quy ước sync `GameShared`, build CLI và workflow Unity
 - `agent-handoffs/README.md`
-  - workflow giao việc giữa các agent bằng doc thay vì copy chat tay
+  - quy ước giao việc và handoff giữa các agent
+- `agent-handoffs/QUEUE.md`
+  - hàng chờ handoff/đầu việc đang mở
 - `agent-handoffs/SESSION_STARTERS.md`
-  - câu mở đầu phiên cho `gamedesign` và `dev` để vào đúng workflow ngay
+  - câu mở đầu phiên cho các workflow chính
+- `agent-handoffs/TEMPLATE.md`
+  - template ghi handoff chuẩn
 
-## 3. Tài liệu roadmap hoặc draft tương lai
+## 3. `game-design-wp/`
 
-- `SERVER_SCALING_ROADMAP.md`
-- `ENEMY_BOSS_INSTANCE_FLOW_DRAFT.md`
-- `Skill Docs/SKILL_PRESENTATION_PHASE3_ROADMAP.md`
+- `README.md`
+  - hướng dẫn workspace game design
+- `features/README.md`
+  - nơi gom mô tả feature
+- `requirements/README.md`
+  - nơi gom yêu cầu/constraint
+- `notes/README.md`
+  - quy ước ghi chú trong workspace
+- `notes/conversation-log.md`
+  - log trao đổi phục vụ game design workspace
 
-Các file trong nhóm này đều là định hướng tương lai, không phải danh sách tính năng đã hoàn thành.
-
-## 4. Tài liệu lịch sử refactor
+## 4. `architecture-and-roadmap/`
 
 - `ARCHITECTURE_REFACTOR_20260403.md`
-  - đã gộp cả nội dung refactor kiến trúc và refactor UI của ngày `2026-04-03`
+  - tổng hợp refactor kiến trúc và UI ngày `2026-04-03`
+- `ENEMY_BOSS_INSTANCE_FLOW_DRAFT.md`
+  - draft thiết kế flow enemy, boss, map instance và reward tương lai
+- `SERVER_SCALING_ROADMAP.md`
+  - lộ trình gia cố nền server cho các phase tiếp theo
 
-## Ghi chú dọn tài liệu
+## 5. `reference-and-specs/`
 
-- `CODEX_PERSISTENT_MEMORY.md` đã được gộp vào `WORKING_CONTEXT.md`
-- `UNITY_GAMESHARED_WORKFLOW.md` đã được gộp vào `UNITY_TOOLING_NOTES.md`
-- `UI_REFACTOR_20260403.md` đã được gộp vào `ARCHITECTURE_REFACTOR_20260403.md`
-- `Skill Docs/SKILL_PRESENTATION_DOC_INDEX.md` đã được gộp vào `Skill Docs/SKILL_PRESENTATION_PHASE1_PHASE2_GUIDE.md`
+- `PHASE1_SYSTEM_REFERENCE.md`
+  - luồng hệ thống phase 1 đang chạy từ login tới world, movement và observer sync
+- `SKILL_SYSTEM_COMBAT_FLOW.md`
+  - combat skill system phía server và runtime flow chính
+- `ITEM_USE_FLOW_SPEC.md`
+  - đặc tả luồng dùng vật phẩm
+- `DESCRIPTION_TEMPLATE_SYSTEM.md`
+  - contract description template cho `item`, `skill`, `martial art`
+- `GAME_CONFIGS.md`
+  - danh sách `game_configs` và mapping hiện có trong code
+- `game_design_luyen_dan.md`
+  - game design cho tính năng luyện đan
+
+## 6. `client-unity/`
+
+- `UNITY_CLIENT_SCENE_SETUP.md`
+  - checklist setup scene/hierarchy Unity
+- `world-scene-readiness.md`
+  - cơ chế readiness trong scene `World`
+- `client-state-sync-rules.md`
+  - quy tắc ownership và reload state phía client
+- `CLIENT_REF_WIRING_RULE.md`
+  - rule wiring reference trong scene/prefab
+- `skill-presentation/SKILL_PRESENTATION_PHASE1_PHASE2_GUIDE.md`
+  - trạng thái hệ thống skill presentation client đã chạy
+- `skill-presentation/SKILL_PRESENTATION_PHASE3_ROADMAP.md`
+  - roadmap mở rộng skill presentation cho phase sau
+
+## 7. `workflow-and-operations/`
+
+- `WORKING_CONTEXT.md`
+  - rule ngắn, quyết định kiến trúc và lưu ý dễ quên giữa các session
+- `UNITY_TOOLING_NOTES.md`
+  - quy ước sync `GameShared`, build CLI và workflow Unity
+- `server-transaction-rules.md`
+  - transaction boundary rule phía server
+- `HUONG_DAN_DOC_LOG_SERVER.md`
+  - cách đọc metrics/log server hiện tại
+
+## 8. `reports-and-testing/`
+
+- `audits/Server Codebase Audit Report Phase 1.md`
+  - audit server phase 1
+- `audits/Client Codebase Audit Phase 1.md`
+  - audit Unity client phase 1
+- `testing/Case test report Phase 1.md`
+  - checklist test theo phase và test run
+
+## Ghi chú
+
+- Các file trong `architecture-and-roadmap/` có thể là lịch sử refactor hoặc định hướng tương lai; không mặc định coi là trạng thái đã implement.
+- `CODEX_PERSISTENT_MEMORY.md` đã được gộp vào `workflow-and-operations/WORKING_CONTEXT.md`.
+- `UNITY_GAMESHARED_WORKFLOW.md` đã được gộp vào `workflow-and-operations/UNITY_TOOLING_NOTES.md`.
+- `UI_REFACTOR_20260403.md` đã được gộp vào `architecture-and-roadmap/ARCHITECTURE_REFACTOR_20260403.md`.
+- `Skill Docs/SKILL_PRESENTATION_DOC_INDEX.md` đã được gộp vào `client-unity/skill-presentation/SKILL_PRESENTATION_PHASE1_PHASE2_GUIDE.md`.
