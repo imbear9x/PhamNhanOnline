@@ -27,4 +27,4 @@ Chi tiết luôn nằm trong từng file ở `active/`.
 
 | Priority | Status | Handoff | Owner | Source Design Doc | Notes |
 |---|---|---|---|---|---|
-| - | - | - | - | - | - |
+| P2 | Ready | `docs/agent-handoffs/active/20260508-openclaw-telegram-token-command.md` | `dev` | - | Add `/token` Telegram command to show current token/context usage. |
