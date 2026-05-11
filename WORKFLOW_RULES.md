@@ -36,6 +36,10 @@ Nếu là `gamedesign`, đọc thêm:
 - chỉ khi user nói đã chốt / sẵn sàng làm thật mới tạo handoff
 - handoff là artifact giao việc, không phải bản chép lại toàn bộ chat
 - nếu có nhiều handoff `Ready`, agent thực thi phải hỏi lại user thứ tự ưu tiên
+- với knowledge/docs kỹ thuật dạng canonical, dùng second-brain layer trong `docs/` thay vì để tri thức quan trọng chỉ nằm trong chat
+- nếu docs và code lệch nhau, không tự sửa im lặng; tạo conflict report trong `docs/conflicts/`
+- với thay đổi đáng kể ở gameplay/system/code/config/db/docs/test, tạo Change Note vào `docs/change-notes/inbox/`
+- Change Note sẽ được Knowledge Manager xử lý theo workflow bán tự động
 
 ## Theo Vai Trò
 
@@ -68,6 +72,14 @@ Nếu là `gamedesign`, đọc thêm:
   - cách dùng handoff
 - `docs/agent-handoffs/QUEUE.md`
   - danh sách việc đã sẵn sàng để làm
+- `docs/agent-workflows/second-brain-workflow.md`
+  - workflow ghi và bảo trì project memory dạng AI-readable
+- `docs/agent-workflows/semi-automatic-knowledge-manager-workflow.md`
+  - workflow queue bán tự động cho Change Note và Knowledge Manager
+- `docs/rules/second-brain-governance.md`
+  - governance ngắn cho lớp second-brain
+- `docs/change-notes/README.md`
+  - quy ước inbox / processed / needs-review
 
 ## Quy Tắc Thực Dụng
 

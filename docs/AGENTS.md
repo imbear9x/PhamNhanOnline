@@ -15,6 +15,15 @@ Lưu ý:
 - nếu sau này muốn một AGENTS có hiệu lực repo-wide cho tooling/agent, cần đặt thêm một `AGENTS.md` ở root repo
 - dù vậy, nội dung dưới đây được viết như repo guide chuẩn cho toàn dự án
 
+## Second Brain Scope
+
+Within `docs/`, the second-brain layer is the canonical AI-readable memory structure.
+
+- Use the new topic folders (`systems/`, `combat/`, `skills/`, `data-design/`, `decisions/`, `change-notes/`, `implementation/`, `qa/`, `conflicts/`, `agent-workflows/`, `templates/`, `index/`) for durable project knowledge.
+- Preserve legacy folders and docs until they are deliberately reconciled.
+- Prefer status-based lifecycle (`draft`, `reviewed`, `verified`, `deprecated`) instead of destructive cleanup.
+- If a doc claim cannot be grounded in code/runtime, keep it below `verified` or file a conflict report.
+
 ## Tổng quan repo
 
 Các khối chính:

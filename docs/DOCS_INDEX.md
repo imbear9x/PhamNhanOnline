@@ -21,6 +21,16 @@ Tài liệu trong `docs/` đã được gom theo nhóm chức năng để dễ t
   - câu mở đầu phiên cho các workflow chính
 - `agent-handoffs/TEMPLATE.md`
   - template ghi handoff chuẩn
+- `agent-workflows/second-brain-workflow.md`
+  - workflow duy trì AI-readable project memory
+- `agent-workflows/semi-automatic-knowledge-manager-workflow.md`
+  - workflow bán tự động cho Change Note queue
+- `rules/second-brain-governance.md`
+  - governance ngắn cho lớp second-brain
+- `index/second-brain-index.md`
+  - mục lục của knowledge layer mới
+- `change-notes/README.md`
+  - hướng dẫn queue change note
 
 ## 3. `game-design-wp/`
 
@@ -93,6 +103,29 @@ Tài liệu trong `docs/` đã được gom theo nhóm chức năng để dễ t
   - audit Unity client phase 1
 - `testing/Case test report Phase 1.md`
   - checklist test theo phase và test run
+
+## 9. Second Brain Layer
+
+- `systems/`, `combat/`, `skills/`, `cultivation/`, `resource-mining/`, `inventory/`, `quests/`, `maps/`, `monsters/`, `npc/`, `economy/`, `rules/`
+  - vùng canonical docs theo domain
+- `data-design/config-contracts/`
+  - contract tài liệu hóa config/data-driven rules
+- `data-design/db-contracts/`
+  - contract tài liệu hóa DB-facing structures
+- `decisions/`
+  - ADR và các quyết định bền vững
+- `change-notes/`
+  - queue bán tự động cho change note gồm `inbox/`, `processed/`, `needs-review/`
+- `implementation/`
+  - implementation note và bootstrap/migration note
+- `qa/`
+  - checklist, audit process, retrieval smoke test
+- `conflicts/`
+  - doc/code/runtime conflict report
+- `templates/`
+  - template chuẩn để tạo doc mới
+- `index/`
+  - index, project map, migration ledger
 
 ## Ghi chú
 
