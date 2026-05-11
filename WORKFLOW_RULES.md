@@ -1,94 +1,20 @@
-# Workflow Rules
+# Workflow Rules Router
 
-Đây là file điểm vào ngắn gọn cho workflow làm việc giữa user và các agent trong repo `PhamNhanOnline`.
+This file is a router, not a second behavior policy source.
 
-Mục tiêu:
+If the user says `đọc rule làm việc của chúng ta`, `đọc workflow rồi bắt đầu`, or equivalent:
 
-- user không phải nhớ nhiều file
-- agent có một file chuẩn để đọc ở đầu phiên
-- mọi agent vào đúng mode trước khi bắt đầu làm việc
+1. Read `AGENTS.md`.
+2. Read the live per-agent rule file for the current agent.
+3. Read extra workflow docs only when the task triggers them.
 
-## Câu Mở Đầu Chuẩn
+Trigger map:
 
-Nếu user nói đại loại:
+- handoff or cross-agent execution: `docs/agent-handoffs/README.md`
+- significant durable change: `docs/agent-workflows/significant-change-threshold.md`
+- second-brain documentation work: `docs/agent-workflows/second-brain-workflow.md`
+- change-note details: `docs/agent-workflows/change-note-workflow.md`
+- retrieval scoping: `docs/agent-workflows/retrieval-depth-policy.md`
+- token-bloat troubleshooting: `docs/agent-workflows/token-efficiency-policy.md`
 
-- `đọc rule làm việc của chúng ta đi`
-- `đọc workflow làm việc rồi bắt đầu`
-- `đọc rule repo rồi làm việc`
-
-thì agent phải hiểu là cần đọc:
-
-1. `AGENTS.md`
-2. file này: `WORKFLOW_RULES.md`
-
-và nếu task liên quan handoff / bàn bạc / giao việc thì đọc thêm:
-
-3. `docs/agent-handoffs/README.md`
-
-Nếu là `gamedesign`, đọc thêm:
-
-4. `docs/game-design-wp/AGENTS.md`
-
-## Quy Ước Chung
-
-- đang bàn và hoàn thiện ý tưởng thì chưa tạo handoff sớm
-- phần đang khám phá sống trong `docs/game-design-wp/`
-- chỉ khi user nói đã chốt / sẵn sàng làm thật mới tạo handoff
-- handoff là artifact giao việc, không phải bản chép lại toàn bộ chat
-- nếu có nhiều handoff `Ready`, agent thực thi phải hỏi lại user thứ tự ưu tiên
-- với knowledge/docs kỹ thuật dạng canonical, dùng second-brain layer trong `docs/` thay vì để tri thức quan trọng chỉ nằm trong chat
-- nếu docs và code lệch nhau, không tự sửa im lặng; tạo conflict report trong `docs/conflicts/`
-- với thay đổi đáng kể ở gameplay/system/code/config/db/docs/test, tạo Change Note vào `docs/change-notes/inbox/`
-- Change Note sẽ được Knowledge Manager xử lý theo workflow bán tự động
-
-## Theo Vai Trò
-
-### GameDesign
-
-- dùng `docs/game-design-wp/notes/`, `features/`, `requirements/` để ghi nhớ và hoàn thiện dần
-- chưa chốt thì không đẩy sang execution handoff
-- khi user nói chốt, tạo hoặc cập nhật handoff trong `docs/agent-handoffs/active/`
-- cập nhật `docs/agent-handoffs/QUEUE.md`
-
-### Dev
-
-- ưu tiên đọc handoff doc nếu task đã được chốt
-- không yêu cầu user nhắc lại toàn bộ cuộc bàn bạc trước đó
-- nếu handoff chưa đủ chi tiết kỹ thuật, bổ sung lại vào doc trong lúc nhận việc
-- nếu có nhiều handoff `Ready` và chưa rõ ưu tiên, hỏi user trước khi bắt đầu
-
-### Manager Hoặc Agent Khác
-
-- nếu đang giúp user làm rõ việc, có thể làm ở mode thảo luận
-- khi task đủ rõ và user muốn giao tiếp cho agent khác, phải chuyển sang handoff doc thay vì tạo prompt tay cho user copy
-
-## File Chính Cần Biết
-
-- `AGENTS.md`
-  - rule repo-wide
-- `WORKFLOW_RULES.md`
-  - điểm vào workflow đầu phiên
-- `docs/agent-handoffs/README.md`
-  - cách dùng handoff
-- `docs/agent-handoffs/QUEUE.md`
-  - danh sách việc đã sẵn sàng để làm
-- `docs/agent-workflows/second-brain-workflow.md`
-  - workflow ghi và bảo trì project memory dạng AI-readable
-- `docs/agent-workflows/semi-automatic-knowledge-manager-workflow.md`
-  - workflow queue bán tự động cho Change Note và Knowledge Manager
-- `docs/rules/second-brain-governance.md`
-  - governance ngắn cho lớp second-brain
-- `docs/change-notes/README.md`
-  - quy ước inbox / processed / needs-review
-
-## Quy Tắc Thực Dụng
-
-User không cần nhớ path chi tiết mỗi lần.
-
-Chỉ cần nói:
-
-```text
-đọc rule làm việc của chúng ta đi. oke thì bắt đầu
-```
-
-Agent phải tự biết đọc đúng các file rule liên quan trước khi tiếp tục.
+Do not duplicate policy from `AGENTS.md` here.

@@ -11,6 +11,7 @@ source_of_truth:
 related_docs:
   - docs/agent-workflows/knowledge-manager-workflow.md
   - docs/agent-workflows/dev-documentation-workflow.md
+  - docs/agent-workflows/significant-change-threshold.md
 tags:
   - second-brain
   - rules
@@ -21,19 +22,22 @@ tags:
 
 ## Ownership
 
-- `dev` owns first-pass implementation truth and code-linked canonical updates after technical changes
-- `gamedesign` owns evolving design material in `docs/game-design-wp/` and may update related docs elsewhere under `docs/` when handoff or task coordination requires it
-- `knowledge-manager` owns stewardship, canonicalization support, audits, conflict capture, and retrieval hygiene
+- `dev` owns implementation changes and must create Change Notes for significant durable changes
+- `dev` may update small implementation notes or directly related technical docs for the task at hand
+- `gamedesign` owns evolving design material in `docs/game-design-wp/` and may update related docs elsewhere under `docs/` when handoff or coordination requires it
+- `knowledge-manager` owns canonical docs reconciliation from Change Notes, stewardship, audits, conflict capture, and retrieval hygiene
 - `devops` owns agent/runtime bootstrap and operational hardening of the knowledge system
+- `manager` resolves truth conflicts when implementation, docs, and intended design disagree materially
 
 ## Maintenance rule
 
 When code changes materially:
 
-- update the relevant canonical doc, or
-- create/update an implementation note when canonical placement is not stable yet, or
-- create/update a change note, or
-- create a conflict report if the implementation and doc are temporarily out of sync
+- `dev` should create a Change Note when `docs/agent-workflows/significant-change-threshold.md` says the change is significant and durable
+- `knowledge-manager` reconciles canonical docs from those Change Notes when asked
+- `dev` may add implementation notes or narrow technical doc updates tied directly to the task
+- `dev` must not silently rewrite canonical design truth just to match an implementation shortcut
+- if implementation and docs are temporarily out of sync, create a conflict report instead of silently choosing a side
 
 ## Anti-drift rule
 

@@ -4,10 +4,10 @@ Tài liệu trong `docs/` đã được gom theo nhóm chức năng để dễ t
 
 ## 1. Gốc `docs/`
 
-- `AGENTS.md`
-  - working guide cho agent/developer khi thao tác trong repo
 - `DOCS_INDEX.md`
   - mục lục điều hướng này
+- `archive/legacy-docs-agents-guide.md`
+  - legacy reference của guide mixed-scope cũ, không phải live behavior rule
 
 ## 2. Workflow Entry Points
 
@@ -25,8 +25,14 @@ Tài liệu trong `docs/` đã được gom theo nhóm chức năng để dễ t
   - workflow duy trì AI-readable project memory
 - `agent-workflows/semi-automatic-knowledge-manager-workflow.md`
   - workflow bán tự động cho Change Note queue
+- `agent-workflows/change-note-workflow.md`
+  - workflow tạo Change Note cho thay đổi có giá trị tri thức bền vững
+- `agent-workflows/dev-documentation-workflow.md`
+  - workflow documentation trước/sau implementation cho `dev`
 - `rules/second-brain-governance.md`
   - governance ngắn cho lớp second-brain
+- `rules/knowledge-ownership.md`
+  - ownership giữa `dev`, `gamedesign`, `knowledge-manager`, và `devops`
 - `index/second-brain-index.md`
   - mục lục của knowledge layer mới
 - `change-notes/README.md`
@@ -94,6 +100,8 @@ Tài liệu trong `docs/` đã được gom theo nhóm chức năng để dễ t
   - transaction boundary rule phía server
 - `HUONG_DAN_DOC_LOG_SERVER.md`
   - cách đọc metrics/log server hiện tại
+- `openclaw-local-architecture.md`
+  - bản đồ machine-specific cho OpenClaw local stack, workspace agent, session store, Telegram routing, và model routing
 
 ## 8. `reports-and-testing/`
 

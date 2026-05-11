@@ -2,6 +2,7 @@
 
 Create a change note for meaningful technical or design changes that future agents should be able to scan quickly.
 
+Use `docs/agent-workflows/significant-change-threshold.md` to decide whether the current task needs no Change Note, a short Change Note, or the full workflow.
 For implementation work, pair this with `docs/agent-workflows/dev-documentation-workflow.md` so `dev` knows when a Change Note is enough and when a canonical doc or implementation note must also be updated.
 
 ## Good candidates

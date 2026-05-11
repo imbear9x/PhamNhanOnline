@@ -4,7 +4,7 @@
 
 | File | Detected Type | Related Systems | Status Guess | Confidence | Notes |
 |---|---|---|---|---|---|
-| docs/AGENTS.md | repo-guide | repo, architecture, workflow | active | high | repo-wide working guide for agents |
+| docs/archive/legacy-docs-agents-guide.md | repo-guide | repo, architecture, workflow | legacy | high | archived mixed-scope guide kept only for reference |
 | docs/DOCS_INDEX.md | index | docs-navigation | active | high | existing docs navigation index |
 | docs/architecture-and-roadmap/ARCHITECTURE_REFACTOR_20260403.md | architecture | server, client, ui, refactor | mixed | medium | contains history and decisions; not always current canonical state |
 | docs/architecture-and-roadmap/ENEMY_BOSS_INSTANCE_FLOW_DRAFT.md | system-draft | combat, monsters, maps, rewards | draft | high | explicit draft by file naming |

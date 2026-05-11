@@ -11,6 +11,8 @@ This workflow defines how agents add and maintain AI-readable project memory ins
 - do not silently resolve doc/code drift
 - create a conflict report when docs and implementation disagree
 - prefer small focused updates over giant rewrites
+- trigger this workflow only when the current task actually needs second-brain updates under `docs/`
+- use `docs/agent-workflows/significant-change-threshold.md` before assuming a Change Note is required
 
 ## Canonical doc flow
 

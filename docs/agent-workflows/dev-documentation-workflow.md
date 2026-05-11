@@ -9,6 +9,7 @@ This workflow defines what the `dev` agent must document before and after meanin
 - `dev` owns first-pass implementation truth after code changes
 - `knowledge-manager` owns stewardship, cleanup, and canonicalization support
 - `gamedesign` owns intended design and handoff intent, not final implementation truth
+- `manager` resolves truth conflicts when intended design and implementation reality disagree materially
 
 ## Before Coding: `Implementation Spec` Trigger
 
@@ -36,7 +37,7 @@ After meaningful implementation work, `dev` must do at least one of the followin
 - create or update an implementation note when no stable canonical home exists yet
 - create a conflict report if code reality and current docs are temporarily out of sync
 
-For medium or large system changes, also create a Change Note in `docs/change-notes/inbox/`.
+For medium or large system changes, also create a Change Note in `docs/change-notes/inbox/` when `docs/agent-workflows/significant-change-threshold.md` says the change is significant and durable.
 
 ## Change Note Trigger
 

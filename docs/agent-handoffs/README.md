@@ -96,3 +96,20 @@ Ví dụ:
 - Handoff doc dùng để giao việc.
 - Nếu chat và handoff mâu thuẫn nhau, phải cập nhật handoff doc trước khi giao sang agent khác.
 - `QUEUE.md` là nơi nhìn nhanh xem hiện có việc nào thật sự sẵn sàng cho `dev`.
+
+## Truth-resolution handoffs
+
+Khi Knowledge Manager, GameDesign, Dev, hoặc Manager phát hiện một tri thức không thể tự chốt vì thiếu authority/evidence, không được để nó nằm im trong `partial`, `pending`, hoặc `needs-review`.
+
+Tạo handoff trong `active/` và cập nhật `QUEUE.md` khi cần người/agent khác xác minh.
+
+Handoff dạng này phải ghi rõ:
+
+- domain hoặc checklist row đang bị chặn
+- câu hỏi cần xác minh
+- file/code/doc cần đọc
+- expected output để Knowledge Manager cập nhật tri thức
+- suggested owner: `dev`, `gamedesign`, hoặc `manager`
+- nơi báo kết quả về: Manager trước, rồi Knowledge Manager re-check canonical docs/checklist
+
+Nếu không biết route cho ai, Manager phải báo blocker cho user thay vì để artifact kẹt vô thời hạn.

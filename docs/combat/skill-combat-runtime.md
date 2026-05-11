@@ -3,12 +3,13 @@ title: Skill combat runtime
 doc_type: system
 status: verified
 owner: devops
-code_status: partially-verified
-last_verified: 2026-05-11
+code_status: verified
+last_verified: 2026-05-12
 source_of_truth:
   - docs/reference-and-specs/SKILL_SYSTEM_COMBAT_FLOW.md
   - GameServer/Network/Handlers/AttackEnemyHandler.cs
   - GameServer/Runtime/SkillExecutionService.cs
+  - docs/implementation/extractions/combat-skill-execution-runtime-extraction.md
 related_docs:
   - docs/workflow-and-operations/server-transaction-rules.md
 related_code:
@@ -63,8 +64,10 @@ Tài liệu hóa canonical runtime flow cho combat skill data-driven phía serve
 2. Handler dùng `SkillService.ResolveEquippedSkillForCombatAsync(...)` để resolve skill đang equip.
 3. Handler validate cooldown, target type, target compatibility, range, interaction gate.
 4. Nếu hợp lệ, handler enqueue skill execution vào instance runtime.
-5. Khi tới cast release / impact, `SkillExecutionService` resolve effect theo `trigger_timing`.
-6. Effect được áp lên player hoặc enemy theo `target_scope` và `effect_type`.
+5. Khi tới cast release / impact, `SkillExecutionService` resolve effect theo `trigger_timing`: visible timings include `OnCastRelease` and `OnHit`.
+6. Effects pass chance checks, resolve caster/target from map-instance runtime state, then apply to self/caster, primary player target, or primary enemy runtime id.
+7. Player effects mutate resources/status through `CharacterRuntimeService`; enemy effects mutate map-instance enemy runtime state and can produce damage/kill summaries.
+8. Missing skill/caster/target branches generally return failure or no-op summaries rather than crashing the server.
 
 # Rules / Invariants
 
@@ -72,6 +75,8 @@ Tài liệu hóa canonical runtime flow cho combat skill data-driven phía serve
 - target area/map-wide hiện chưa được support trong flow này
 - trạng thái combat runtime không phải dữ liệu persist lâu dài
 - target `Self` đi theo đường apply-to-caster
+- broader AOE/map-wide target scopes are not code-evidenced in the inspected execution path
+- unsupported effect/target combinations may become no-op summaries rather than explicit domain errors
 
 # Data / Contracts
 
@@ -116,4 +121,4 @@ Nên kiểm tra thêm broadcast/runtime event path nếu cần audit sâu hơn p
 
 ## Gaps / drift
 
-- legacy doc nói rõ hơn về một số packet broadcast cuối luồng; phần broadcaster chưa verify trực tiếp ở lượt này
+- broader multi-target/AOE semantics remain not evidenced in the inspected execution path; do not infer them from data-model names alone

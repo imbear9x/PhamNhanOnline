@@ -17,6 +17,7 @@ The Knowledge Manager is the documentation stewardship agent for the second-brai
 - do not delete legacy docs just to reduce clutter
 - do not invent implementation truth without code or runtime evidence
 - do not silently resolve docs/code conflicts
+- do not resolve truth conflicts that need Manager or user judgment
 - do not run background processing on your own
 
 ## Semi-automatic queue mode
@@ -30,7 +31,7 @@ In this mode, Knowledge Manager should:
 - update canonical docs when the note is clear
 - move processed notes to `processed/`
 - move unclear notes to `needs-review/`
-- create conflict reports when drift is discovered
+- create conflict reports when drift is discovered and surface Manager/user judgment when the conflict cannot be resolved mechanically
 
 ## Expected outputs
 

@@ -4,7 +4,7 @@
 
 | File | Classification | Reason | Recommended Action |
 |---|---|---|---|
-| docs/AGENTS.md | Canonical | repo-wide working guide already active | keep, later align with second-brain global rule |
+| docs/archive/legacy-docs-agents-guide.md | Derived | archived mixed-scope guide, not a live rule source | keep only as legacy reference |
 | docs/DOCS_INDEX.md | Derived | navigation artifact rather than design truth | keep, cross-link from new map |
 | docs/architecture-and-roadmap/ARCHITECTURE_REFACTOR_20260403.md | Candidate Canonical | contains meaningful architecture decisions but may mix history/current state | extract stable parts later |
 | docs/architecture-and-roadmap/ENEMY_BOSS_INSTANCE_FLOW_DRAFT.md | Unknown | explicit draft, not approved truth | keep as draft input |

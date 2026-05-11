@@ -1,3 +1,10 @@
+# NON-LIVE LEGACY REFERENCE
+
+This file was previously used as a mixed-scope docs guide.
+It is not a live OpenClaw behavioral rule source.
+Live global behavior source: `AGENTS.md` at repo root.
+Workflow details: `docs/agent-workflows/`.
+
 # AGENTS.md
 
 ## Mục đích

@@ -75,6 +75,11 @@ Khi 3 lớp này lệch nhau, không được tự chọn im lặng. Phải tạ
 - [[config-and-contract-map]]
 - [[workflow-and-governance-map]]
 
+## Legacy knowledge backfill control points
+
+- [[legacy-knowledge-backfill-master-checklist]]
+- [[legacy-knowledge-backfill-runbook]]
+
 ## Canonical examples already established
 
 - `docs/combat/skill-combat-runtime.md`
