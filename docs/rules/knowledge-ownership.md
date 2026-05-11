@@ -10,6 +10,7 @@ source_of_truth:
   - docs/rules/second-brain-governance.md
 related_docs:
   - docs/agent-workflows/knowledge-manager-workflow.md
+  - docs/agent-workflows/dev-documentation-workflow.md
 tags:
   - second-brain
   - rules
@@ -20,8 +21,8 @@ tags:
 
 ## Ownership
 
-- `dev` owns implementation truth and code-linked canonical updates after technical changes
-- `gamedesign` owns evolving design material in `docs/game-design-wp/`
+- `dev` owns first-pass implementation truth and code-linked canonical updates after technical changes
+- `gamedesign` owns evolving design material in `docs/game-design-wp/` and may update related docs elsewhere under `docs/` when handoff or task coordination requires it
 - `knowledge-manager` owns stewardship, canonicalization support, audits, conflict capture, and retrieval hygiene
 - `devops` owns agent/runtime bootstrap and operational hardening of the knowledge system
 
@@ -30,6 +31,7 @@ tags:
 When code changes materially:
 
 - update the relevant canonical doc, or
+- create/update an implementation note when canonical placement is not stable yet, or
 - create/update a change note, or
 - create a conflict report if the implementation and doc are temporarily out of sync
 
