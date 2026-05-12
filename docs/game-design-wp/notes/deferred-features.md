@@ -11,10 +11,10 @@ Danh sách tính năng cần bàn riêng, chưa vào scope hiện tại.
 | Friend + Block | `player-interaction-group.md` |
 | PvP State System | `player-interaction-group.md` |
 | Chat | `player-interaction-group.md` |
-| Death Penalty + Thọ Nguyên | `death-penalty.md` |
-| Phù Lục + Trận Pháp | `crafting-talisman-formation.md` |
-| Hệ thống Thần Thức | `spirit-sense-system.md` |
-| Hệ thống Speed + Evasion | `speed-system.md` |
+| Death Penalty + Thọ Nguyên | `features/death-penalty.md` |
+| Phù Lục + Trận Pháp | `features/crafting-talisman-formation.md` |
+| Hệ thống Thần Thức | `features/spirit-sense.md` |
+| Hệ thống Speed + Evasion | `features/speed-system.md` |
 
 ---
 

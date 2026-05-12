@@ -42,6 +42,10 @@ Tài liệu trong `docs/` đã được gom theo nhóm chức năng để dễ t
 
 - `README.md`
   - hướng dẫn workspace game design
+- `DOC_LIFECYCLE.md`
+  - rule lifecycle, promotion, template, và chống duplicate primary docs cho `gamedesign`
+- `PROMPT_MIGRATE_EXISTING_DOCS.md`
+  - prompt để yêu cầu `gamedesign` migrate các docs hiện có sang chuẩn mới
 - `features/README.md`
   - nơi gom mô tả feature
 - `requirements/README.md`
@@ -50,6 +54,8 @@ Tài liệu trong `docs/` đã được gom theo nhóm chức năng để dễ t
   - quy ước ghi chú trong workspace
 - `notes/conversation-log.md`
   - log trao đổi phục vụ game design workspace
+- `templates/`
+  - template bắt buộc cho note, feature draft, requirement spec, và clarification trong game design workspace
 
 ## 4. `architecture-and-roadmap/`
 

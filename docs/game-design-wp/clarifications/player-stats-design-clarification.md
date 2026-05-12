@@ -35,8 +35,8 @@
 - Đột phá thành công → tăng cảnh giới. Đột phá thất bại → có penalty (hướng intent là penalty cultivation, chưa chốt chi tiết).
 - Phân bổ tiềm năng hoạt động theo **tier trong cảnh giới**: không thể phân bổ vượt tier đang mở, không thể nhảy tier.
 - Nhân vật có thể rơi vào trạng thái `CombatDead` hoặc `LifespanExpired` tùy theo nguồn gốc HP về 0 hoặc thọ nguyên cạn.
-- Thần Thức (`Sense`) là một trong các stat có `max` và `current` riêng, ảnh hưởng đến tầm nhìn/tàng hình theo note `spirit-sense-system.md`.
-- Speed ảnh hưởng đến movement và evasion theo note `speed-system.md`.
+- Thần Thức (`Sense`) là một trong các stat có `max` và `current` riêng, ảnh hưởng đến tầm nhìn/tàng hình theo `features/spirit-sense.md`.
+- Speed ảnh hưởng đến movement và evasion theo `features/speed-system.md`.
 - Luck (`Cơ Duyên`) là stat có kiểu `double`, ảnh hưởng tỉ lệ random outcomes (loot, crafting...).
 
 ## Acceptable current behavior
@@ -77,4 +77,4 @@
 - Canonicalize format percent modifier là `0..1` hoặc `0..100`, chọn một, ghi vào data-design contract.
 - Đánh dấu **breakthrough failure penalty** là `needs design decision` — không canonicalize chi tiết cho đến khi có quyết định design.
 - Ghi rõ trong canonical doc về Luck rằng đây là stat kiểu `double`, có ý nghĩa khác với stat `int` thông thường.
-- Nối sang `spirit-sense-system.md` và `speed-system.md` trong game-design-wp như referenced design notes khi canonicalize stat domain.
+- Nối sang `features/spirit-sense.md` và `features/speed-system.md` trong game-design-wp như referenced design docs khi canonicalize stat domain.

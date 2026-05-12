@@ -11,19 +11,19 @@ Các mục dưới đây đã có khung system design khá rõ. Có thể chưa 
 
 ### Đã khá hoàn chỉnh
 - **Động Phủ / Công Động Phủ / Cướp Bóc**
-  - Nguồn note gốc: `notes/home-cave-defense.md`
-  - Đã được đào sâu thêm thành feature draft: `features/home-cave-defense-system.md`
+  - Live primary doc: `features/home-cave-defense.md`
+  - Đã được đào sâu thêm thành feature draft
 
 - **Hệ thống Thần Thức**
-  - Note: `notes/spirit-sense-system.md`
+  - Live primary doc: `features/spirit-sense.md`
   - Đã chốt core rule nhìn thấy / tàng hình / lộ diện / phá ẩn
 
 - **Hệ thống Speed**
-  - Note: `notes/speed-system.md`
+  - Live primary doc: `features/speed-system.md`
   - Đã chốt core rule movement / fly / evasion theo relative speed
 
 - **Phù Lục & Trận Pháp**
-  - Note: `notes/crafting-talisman-formation.md`
+  - Live primary doc: `features/crafting-talisman-formation.md`
   - Core concept và material quality system đã khá rõ
 
 ---
@@ -34,7 +34,7 @@ Các mục này đã được bàn, nhưng vẫn còn mở nhiều quyết đị
 
 ### Cần hoàn tất note trước
 - **Death Penalty**
-  - Note: `notes/death-penalty.md`
+  - Live primary doc: `features/death-penalty.md`
   - Trạng thái hiện tại: đang bàn
   - Còn hở:
     - penalty Lôi Kiếp thất bại
@@ -42,7 +42,7 @@ Các mục này đã được bàn, nhưng vẫn còn mở nhiều quyết đị
     - cần rà chặt tương thích với PvP / động phủ / pet
 
 - **Linh Thú**
-  - Note: `notes/spirit-beast-system.md`
+  - Live primary doc: `features/spirit-beast.md`
   - Trạng thái hiện tại: chốt concept/gameplay core, nhưng chưa kín ở level note hoàn chỉnh
   - Còn hở:
     - ownership / trade threshold
@@ -80,10 +80,11 @@ Các mục này đang tồn tại dưới dạng backlog/pending, nhưng chưa c
 - **Khai Thác Linh Thạch**
 - **Ally System (Party / Tông Môn trong PvP)**
 - **Farming / Herb loop**
+- **NPC System**
 
 ### Có note liên quan nhưng chưa thành chủ đề bàn riêng
 - **Death Penalty Lôi Kiếp thất bại**
-  - Hiện mới là phần defer trong `notes/death-penalty.md`
+  - Hiện mới là phần defer trong `features/death-penalty.md`
 
 - **Pháp Khí (Smithing)**
   - Có nhắc trong note crafting, nhưng chưa thành một note player-facing riêng nếu muốn đào sâu loop
