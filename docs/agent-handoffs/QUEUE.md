@@ -30,3 +30,8 @@ Chi tiết luôn nằm trong từng file ở `active/`.
 
 | Priority | Status | Handoff | Owner | Source Design Doc | TechDesign Spec | Notes |
 |---|---|---|---|---|---|---|
+| 1 | Done | [herb-farming-system-techdesign](active/20260514-herb-farming-system-techdesign.md) | techdesign | `requirements/herb-farming-system.md` | `tech-design/herb-farming-system.md` | TD spec complete |
+| 2 | Ready | [herb-farming-system-dev](active/20260514-herb-farming-system-dev.md) | dev | `requirements/herb-farming-system.md` | `tech-design/herb-farming-system.md` | All slices in spec. Inventory cap + herb drop wiring out of scope. |
+| 3 | Done | [inventory-bag-system-techdesign](active/20260514-inventory-bag-system-techdesign.md) | techdesign | `requirements/inventory-bag-system.md` | `tech-design/inventory-bag-system.md` | TD spec complete |
+| 4 | Ready | [inventory-bag-system-dev](active/20260515-inventory-bag-system-dev.md) | dev | `requirements/inventory-bag-system.md` | `tech-design/inventory-bag-system.md` | Bag schema + capacity + upgrade action ready for implementation |
+| 5 | Ready | [home-cave-defense](active/20260515-home-cave-defense-techdesign.md) | techdesign | `requirements/home-cave-defense.md` | — | TD state machine, blueprint persistence, contested map runtime, disconnect handling |
