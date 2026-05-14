@@ -26,7 +26,7 @@ Hệ luyện chế nhiều tầng không hard-code theo loại item mà để **
 ## Scope
 
 ### In Scope
-- Tầng 0–3 của chuỗi sản xuất (Base → Processed → Advanced → Final)
+- Tầng 0–3 của chuỗi sản xuất (Base → Processed → Advanced → Final) như mô hình tham chiếu, nhưng **không hard-cap số tầng**.
 - Item có thể đa vai trò (dùng được + làm nguyên liệu)
 - Recipe graph thay vì recipe phẳng
 - Áp dụng cho các hệ: Pháp Khí, Phù Lục, Trận Pháp, Khôi Lỗi, Đan Dược
@@ -62,6 +62,9 @@ Hệ luyện chế nhiều tầng không hard-code theo loại item mà để **
 - Đây là default, không phải cấm tuyệt đối. Game data vẫn có thể cho phép ngoại lệ.
 
 ### Cấu trúc 4 tầng tham chiếu
+- Đây là **mô hình tham chiếu**, không phải taxonomy tên cứng hiển thị cho player.
+- Chuỗi recipe **có thể dài hơn 4 tầng** nếu game data cần; tư tưởng chung vẫn là A → B → C → D, trong đó tất cả đều là item.
+- Tất cả nguyên liệu mặc định lấy từ **balo người chơi**, không có kho nguyên liệu riêng ở layer shared design hiện tại.
 
 **Tầng 0 — Base Material:**
 - Khai thác / loot / thu thập trực tiếp từ thế giới.
@@ -166,20 +169,20 @@ Hệ luyện chế nhiều tầng không hard-code theo loại item mà để **
 8. Mỗi feature doc chỉ khai báo **input trực tiếp**; chain upstream thuộc về hệ craft nguồn.
 
 ## Open Questions
-- [ ] Tên gọi cụ thể trong game của từng tier.
-- [ ] Mức độ nhiều tầng tối đa cho từng ngành craft.
-- [ ] Có cần kho nguyên liệu riêng / UI riêng không.
+- [x] Không cần tên tầng cứng trong game; 4 tầng hiện tại chỉ là mô hình tham chiếu.
+- [x] Có thể nhiều hơn 4 tầng nếu game data cần; không hard-cap ở layer design.
+- [x] Nguyên liệu lấy trực tiếp từ balo; chưa cần kho riêng.
 - [ ] Cách migrate từ hệ recipe hiện tại sang hệ mới trong data.
-- [ ] Cần xác định hệ craft nguồn nào chịu trách nhiệm refine các material trung gian chính.
+- [x] Data design quyết định; không hard-code hệ craft nguồn miễn giữ được tư tưởng A=>B=>C=>D và tất cả đều là item.
 - [ ] UI recipe / hiển thị dependency chain cụ thể như thế nào.
 
 ## Known Conflicts / Drift
 - Chưa có conflict nào ghi nhận.
 
 ## Requirement Readiness Checklist
-- [ ] Behavior is specific enough for `dev` to estimate.
-- [ ] Acceptance criteria can be written without guessing.
-- [ ] Major edge cases are covered.
-- [ ] Config/data needs are listed.
-- [ ] Out-of-scope items are explicit.
-- [ ] Ready to promote to `requirements/`.
+- [x] Behavior is specific enough for `dev` to estimate.
+- [x] Acceptance criteria can be written without guessing.
+- [x] Major edge cases are covered.
+- [x] Config/data needs are listed.
+- [x] Out-of-scope items are explicit.
+- [x] Ready to promote to `requirements/`.

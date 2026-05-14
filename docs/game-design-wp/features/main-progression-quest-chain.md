@@ -1,6 +1,6 @@
 ---
 doc_type: game_design_feature
-system_id: quest-system
+system_id: main-progression-quest-chain
 status: draft
 maturity: feature
 owner: gamedesign
@@ -9,24 +9,24 @@ updated_at: 2026-05-12
 promoted_from: notes/quest-system.md
 related_docs:
   - features/home-cave-defense.md
-  - notes/player-interaction-group.md
+  - features/player-interaction-group.md
 requires_code_verification: false
 ---
 
-# Hệ Thống Nhiệm Vụ (Quest System) — Feature Draft
+# Chuỗi Nhiệm Vụ Tiến Trình Chính — Feature Draft
 
 ## Goal
 
-Tạo hệ thống nhiệm vụ chính phục vụ **tiến trình phát triển ngầm** của người chơi. Quest không kể cốt truyện tường minh mà để player tự cảm nhận qua hành trình. Mục tiêu chính là mở khóa tính năng, map, phó bản và trao phần thưởng — không bắt buộc làm nhưng không làm thì không mở khóa được nội dung tiếp theo.
+Tạo **chuỗi nhiệm vụ tiến trình chính** phục vụ **tiến trình phát triển ngầm** của người chơi. Quest không kể cốt truyện tường minh mà để player tự cảm nhận qua hành trình. Mục tiêu chính là mở khóa tính năng, map, phó bản và trao phần thưởng — không bắt buộc làm nhưng không làm thì không mở khóa được nội dung tiếp theo.
 
 ## Design Summary
 
-Quest là 1 chuỗi tuyến tính duy nhất. Luôn có đúng 1 quest active. Mỗi quest có thể có nhiều objective; khi tất cả objective đạt thì quest auto-complete không cần nộp. Reward cấp tự động. Quest tiếp theo kích hoạt ngay. Không có quest fail, không có quest abandon. Tiến độ lưu server và giữ nguyên khi offline.
+Đây là hệ **chuỗi nhiệm vụ tiến trình chính** của game, không phải global quest system. Chuỗi này là 1 tuyến tính duy nhất, **xuyên suốt toàn game** và tiếp tục mở nội dung về sau. Luôn có đúng 1 quest active. Mỗi quest có thể có nhiều objective; khi tất cả objective đạt thì quest auto-complete không cần nộp. Reward cấp tự động. Quest tiếp theo kích hoạt ngay. Không có quest fail, không có quest abandon. Tiến độ lưu server và giữ nguyên khi offline.
 
 ## Scope
 
 ### In Scope
-- Quest chain tuyến tính
+- Main progression quest chain tuyến tính
 - Các loại objective: giết quái, thu thập item, luyện chế item, gặp NPC, tham gia tông môn, giết boss, mở động phủ
 - Auto-complete khi đủ objective
 - Reward tự động: item, linh thạch, mở khóa tính năng / map / phó bản
@@ -36,10 +36,27 @@ Quest là 1 chuỗi tuyến tính duy nhất. Luôn có đúng 1 quest active. M
 
 ### Out Of Scope
 - Quest chia nhánh
+- Side quest
 - Quest hàng ngày / sự kiện / repeatable
+- Sect task / nhiệm vụ tông môn
 - Quest fail / abandon
 - Data cụ thể: số lượng quest, nội dung từng quest, objective type list đầy đủ — data design
 - Balance reward — data design
+
+## Objective Types
+
+Main progression quest chain hiện hỗ trợ các nhóm objective sau:
+
+| Nhóm | Ví dụ | Ghi chú |
+|---|---|---|
+| Kill | Giết X quái | Chỉ tính khi quest đang active |
+| Talk | Nói chuyện NPC | NPC **đứng yên**, không dùng NPC di chuyển theo event |
+| Travel | Đến map / khu vực | Có thể auto-complete khi vừa vào đúng map |
+| Collect | Nhặt / sở hữu item | Chỉ tính theo rule quest cụ thể |
+| Use | Dùng item | Ví dụ dùng vật phẩm mở khóa / hướng dẫn |
+| Unlock | Mở khóa tính năng | Ví dụ mở động phủ, mở panel hệ thống |
+| Join | Gia nhập hệ social | Ví dụ `join_sect` |
+| Complete activity | Hoàn thành craft / hành vi hệ thống | Ví dụ hoàn thành 1 bước luyện chế |
 
 ## Core Loop
 
@@ -152,11 +169,13 @@ Không có state `failed` hay `abandoned`.
 - Inbox/hòm thư: cần badge indicator khi có item chờ nhận.
 
 ## Related Systems
-- **Tông Môn**: objective `join_sect` → xem backlog
+- **Tông Môn**: objective `join_sect` → xem `features/sect-system.md`
 - **Động Phủ**: objective `open_cave` → xem `features/home-cave-defense.md`
 - **Phó Bản**: unlock phó bản là dạng reward → xem backlog
-- **NPC System**: objective `talk_to_npc` phụ thuộc NPC interaction → xem backlog
-- **Hòm thư / Inbox**: nhận item reward khi balo đầy — hệ thống chưa có doc riêng
+- **NPC System**: objective `talk_to_npc` phụ thuộc NPC interaction → xem `features/npc-system.md`
+- **Inbox / Hòm Thư**: nhận item reward khi balo đầy — xem `notes/inbox-mail-system.md`
+
+> Doc này **không** định nghĩa side quest, daily, repeatable, event quest, hay sect task. Các hệ đó là system riêng nếu được mở sau.
 
 ## Key Decisions
 1. Quest chain tuyến tính, không chia nhánh.
@@ -168,18 +187,18 @@ Không có state `failed` hay `abandoned`.
 7. Không có quest fail / abandon / repeatable.
 
 ## Open Questions
-- [ ] Objective type list đầy đủ — xác nhận và mở rộng khi làm data design quest.
-- [ ] Số lượng quest trong chuỗi tổng cộng — data design quyết định.
-- [ ] NPC objective: NPC có thể là NPC di chuyển theo event không, hay phải đứng yên tại vị trí cố định?
-- [ ] Hòm thư / Inbox cần có doc riêng khi thiết kế hệ thống đầy đủ.
+- [x] Objective type list cơ bản đã chốt: kill, talk, travel, collect, use, unlock, join, complete activity.
+- [x] Chuỗi quest là **dài xuyên suốt toàn game** và tiếp tục mở nội dung về sau; số lượng cụ thể do data design quyết định.
+- [x] NPC objective chỉ dùng **NPC đứng yên / tương tác tĩnh**.
+- [ ] Inbox / Hòm Thư cần có doc riêng khi thiết kế hệ thống đầy đủ.
 
 ## Known Conflicts / Drift
 - Chưa có conflict nào ghi nhận.
 
 ## Requirement Readiness Checklist
-- [ ] Behavior is specific enough for `dev` to estimate.
-- [ ] Acceptance criteria can be written without guessing.
-- [ ] Major edge cases are covered.
-- [ ] Config/data needs are listed.
-- [ ] Out-of-scope items are explicit.
-- [ ] Ready to promote to `requirements/`.
+- [x] Behavior is specific enough for `dev` to estimate.
+- [x] Acceptance criteria can be written without guessing.
+- [x] Major edge cases are covered.
+- [x] Config/data needs are listed.
+- [x] Out-of-scope items are explicit.
+- [x] Ready to promote to `requirements/`.

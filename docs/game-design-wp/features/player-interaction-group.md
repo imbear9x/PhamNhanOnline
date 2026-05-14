@@ -1,12 +1,12 @@
 ---
-doc_type: game_design_note
+doc_type: game_design_feature
 system_id: player-interaction-group
 status: draft
-maturity: note
+maturity: feature
 owner: gamedesign
 created_at: 2026-05-08
 updated_at: 2026-05-12
-promoted_from: null
+promoted_from: features/player-interaction-group.md
 related_docs:
   - features/death-penalty.md
 requires_code_verification: true
@@ -39,7 +39,7 @@ Tất cả chia sẻ một **entry point chung**: double click hoặc Basic Atta
 
 - `Safe`: không thể tấn công / bị tấn công bởi player.
 - `Neutral`: mặc định ngoài field, không tự đánh nhau.
-- `Duel`: 2 player đồng ý, chỉ 2 người này PK nhau.
+- `Duel`: 2 player đồng ý, chỉ 2 người này được tấn công lẫn nhau trong context duel.
 - `PvP Zone`: whole map cho phép đánh nhau tự do.
 - `Lineage id`: field dùng để check cận huyết pet, không liên quan PvP.
 - `Truyền Cáo Phù`: item tiêu hao để gửi World Chat.
@@ -106,13 +106,14 @@ Tất cả chia sẻ một **entry point chung**: double click hoặc Basic Atta
 |---|---|---|
 | `Safe` | Không tấn công / bị tấn công bởi player | Town, home instance |
 | `Neutral` | Mặc định ngoài field | Map thường |
-| `Duel` | 2 player đồng ý, chỉ 2 người PK nhau | Lời mời từ action list |
+| `Duel` | 2 player đồng ý, chỉ 2 người được tấn công lẫn nhau | Lời mời từ action list |
 | `PvP Zone` | Whole map tự do | Map config server-side |
 
 Enemy luôn có thể bị tấn công — không liên quan PvP state.
 
 **Không có thắng / thua** — chỉ có kết thúc:
 - **Duel**: 1 bên chết → duel kết thúc, cả 2 về Neutral.
+- **Duel bỏ chạy / thoát map**: duel tự kết thúc ngay, **không phạt bên nào**.
 - **PvP Zone**: chết rồi hồi sinh lại trong map → vẫn ở PvP Zone.
 - **Thoát map PvP Zone** → mất state.
 
@@ -133,8 +134,11 @@ Enemy luôn có thể bị tấn công — không liên quan PvP state.
 - Server đọc flag khi player vào map → gán PvP state.
 - Không hot-toggle.
 
-**Ally System — defer:**
-- Ally rule (party, tông môn) bổ sung sau khi có Tông Môn / Party system.
+**Ally System:**
+- **Tông môn:** không có friendly fire off in-game. Thành viên cùng tông môn vẫn tấn công nhau bình thường trong PvP Zone / khi công mỏ / khi công tông môn. Quan hệ đồng minh chỉ là thỏa thuận xã hội, không có mechanic.
+- **Mineral conflict:** chết khi đang tranh mỏ → baseline death penalty bình thường, không tính PK, không có ngoại lệ. Không có penalty bổ sung trừ khi feature mineral vein định nghĩa riêng.
+- **PvP Zone:** tấn công nhau trong map pvp_zone không tính PK, dù không có đồng thuận riêng.
+- Party system: defer — bổ sung sau khi có Party system.
 
 ---
 
@@ -181,24 +185,26 @@ Enemy luôn có thể bị tấn công — không liên quan PvP state.
 - Giới hạn danh sách bạn bè (tạm 50).
 
 ## Related Systems
-- **Death Penalty**: "chết do PK" cần định nghĩa chính xác liên quan đến PvP state — xem `features/death-penalty.md`.
+- **Death Penalty**: baseline death penalty hiện áp dụng cho mọi nguyên nhân chết; PvP state chủ yếu dùng để xác định context combat và các modifier bổ sung — xem `features/death-penalty.md`.
 - **Tông Môn / Party**: Ally rule và Group Chat phụ thuộc — chưa có hệ này.
 
 ## Open Questions
-- [ ] Server hiện có support select / target player entity không?
-- [ ] Có packet nào route từ player A → player B không (ngoài broadcast)?
-- [ ] Trade session cần server-side state machine hay có thể dùng pattern tương tự practice session?
-- [ ] Item binding policy cần định nghĩa trước khi làm trade.
-- [ ] Giới hạn Group Chat lưu server — xác định sau khi có Tông Môn/Party.
+- [x] Runtime trade cancel: mất kết nối, thoát map, rời vùng trade, hoặc ấn hủy đều **hủy ngay**.
+- [x] Hiện không có packet route trực tiếp player A → player B ngoài broadcast. Flow trade/chat request cần coi là `requires_code_verification` nếu đụng transport chi tiết.
+- [x] Trade không cần state machine phức tạp; handshake đơn giản + lock item + confirm là đủ.
+- [x] Trade cấm các item `non-tradable`, `sect-only`, và các nhóm bound/special tương tự theo item rule.
+- [x] Group Chat lưu tối đa **100 tin nhắn gần nhất** hoặc **7 ngày gần nhất**. Khi tông môn giải tán / group biến mất thì chat **xóa luôn**.
+- [x] Private chat / friend chat dùng rule tương tự nhưng ngắn hơn: **20 tin nhắn gần nhất** hoặc **2 ngày**.
 
 ## Risks / Watchouts
 - Nếu server chưa support target player entity, toàn bộ entry point chung bị block — cần verify sớm.
 - Trade phải có server-side validation để tránh race condition khi 2 bên cùng cancel.
-- PvP state "chết do PK" cần được đồng bộ chính xác với Death Penalty để tránh edge case penalty sai.
+- PvP state vẫn cần taxonomy rõ cho context combat, nhưng không còn là điều kiện bật/tắt baseline death penalty.
 
-## Promotion Checklist
-- [ ] Core gameplay goal is clear.
-- [ ] Player-facing loop is understandable.
-- [ ] Key terms are defined.
-- [ ] Major alternatives are resolved or listed as open questions.
-- [ ] Ready to promote to `features/`.
+## Requirement Readiness Checklist
+- [x] Behavior is specific enough for `dev` to estimate.
+- [x] Acceptance criteria can be written without guessing.
+- [x] Major edge cases are covered.
+- [x] Config/data needs are listed.
+- [x] Out-of-scope items are explicit.
+- [x] Ready to promote to `requirements/`.

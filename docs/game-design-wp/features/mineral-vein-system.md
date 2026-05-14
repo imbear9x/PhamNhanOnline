@@ -1,12 +1,12 @@
 ---
-doc_type: game_design_note
+doc_type: game_design_feature
 system_id: mineral-vein-system
 status: draft
-maturity: note
+maturity: feature
 owner: gamedesign
 created_at: 2026-05-12
-updated_at: 2026-05-12
-promoted_from: null
+updated_at: 2026-05-13
+promoted_from: notes/mineral-vein-system.md
 related_docs:
   - features/home-cave-defense.md
   - features/spirit-beast.md
@@ -14,7 +14,7 @@ related_docs:
 requires_code_verification: false
 ---
 
-# Hệ Thống Mỏ Linh Thạch — Design Note
+# Hệ Thống Mỏ Linh Thạch — Feature Draft
 
 ## Purpose
 
@@ -34,9 +34,11 @@ Thiết kế hệ thống mỏ linh thạch tranh đoạt — nguồn tài nguy�
 - `mineral vein` / `mỏ`: nguồn tài nguyên linh thạch xuất hiện trong zone.
 - `vein gate` / `cổng mỏ`: instance riêng liên kết với mỏ, là lớp bảo vệ giữa thế giới ngoài và khu vực khai thác bên trong.
 - `vein interior` / `bên trong mỏ`: khu vực safe, chỉ chủ mỏ và danh sách được phép mới vào được, là nơi khai thác thực sự.
-- `bản vẽ khai thác`: item tiêu hao 1 lần, dùng để chiếm mỏ vô chủ.
-- `bùa phá mỏ`: item tiêu hao, dùng để phát động tấn công mỏ — có thể chọn danh nghĩa cá nhân hoặc tông môn.
+- `bản vẽ khai thác`: item tiêu hao 1 lần, dùng để chiếm mỏ vô chủ. Mỏ **không có cơ chế thu dọn** — mở ra là mất bản vẽ, cổng mỏ tồn tại cho đến khi bị phá hoặc mỏ cạn.
+- `bùa phá mỏ`: item tiêu hao, dùng để phát động tấn công mỏ — có thể chọn danh nghĩa cá nhân hoặc tông môn. Bùa có **giới hạn thời gian công phá**; hết thời gian mà cổng chưa vỡ thì combat kết thúc và cổng **hồi đầy HP** về ban đầu.
 - `mining alliance` / `liên minh khai thác`: chủ mỏ + danh sách người được mời khai thác.
+- `whitelist thoải mái`: danh sách thành viên tông môn được khai thác tự do (không cần nhận nhiệm vụ, không giới hạn lượng, linh thạch về túi cá nhân).
+- `khai thác nhiệm vụ`: đệ tử có nhiệm vụ khai thác đang active → được vào mỏ tông môn, khai thác đến hết quota → linh thạch về bảo khố tự động, NV tự done.
 
 ## Draft Rules
 
@@ -47,7 +49,7 @@ Thiết kế hệ thống mỏ linh thạch tranh đoạt — nguồn tài nguy�
 - Trong zone đó, **vị trí xuất hiện cũng random**.
 - Số lượng mỏ trên 1 map: **random, tối đa 3 mỏ** cùng lúc.
 - Player phải **tự đi tìm** mỏ — không có thông báo toàn server khi mỏ spawn.
-- Mỏ có **trữ lượng giới hạn** — khai thác hết thì biến mất.
+- Mỏ có **trữ lượng giới hạn** — khai thác hết thì biến mất. Không có TTL thời gian: mỏ tồn tại vĩnh viễn cho đến khi cạn trữ lượng.
 - Mỏ cạn → admin dùng server tool để sinh mỏ mới dựa theo tốc độ khai thác thực tế.
 
 ### Chiếm mỏ
@@ -57,8 +59,11 @@ Thiết kế hệ thống mỏ linh thạch tranh đoạt — nguồn tài nguy�
 - Sau khi dùng bản vẽ: mỏ có chủ, **cổng mỏ** được tạo ra.
 
 **Xác định chủ mỏ:**
-- Nếu người dùng bản vẽ **không thuộc tông môn** hoặc **chọn danh nghĩa cá nhân**: chủ mỏ là cá nhân đó.
-- Nếu người dùng bản vẽ **thuộc tông môn** và **chọn danh nghĩa tông môn**: chủ mỏ là tông môn, tông môn chủ là người quản lý.
+- Khi dùng bản vẽ khai thác, người dùng chọn **danh nghĩa: cá nhân hoặc tông môn**.
+- Dùng **danh nghĩa tông môn**: chỉ người được phân quyền **Quản lý khai thác mỏ** mới được phép.
+- Chọn **cá nhân**: chủ mỏ là cá nhân đó, dù đang trong tông môn.
+- Chọn **tông môn**: chủ mỏ là tông môn, người có quyền Quản lý khai thác mỏ quản lý.
+- Người không thuộc tông môn: chỉ có thể chiếm danh nghĩa cá nhân.
 
 ### Bảo vệ mỏ
 
@@ -84,14 +89,15 @@ Thiết kế hệ thống mỏ linh thạch tranh đoạt — nguồn tài nguy�
 - Người muốn công phá cần dùng **bùa phá mỏ** (item tiêu hao) để phát động tấn công.
 - Khi dùng bùa, chọn danh nghĩa:
   - **Cá nhân**: chỉ mình người đó tấn công.
-  - **Tông môn** (nếu đã thuộc tông môn): toàn bộ tông môn có quyền tham gia chiến dịch công mỏ.
-- Cơ chế công phá cổng mỏ **tương tự công phá động phủ** — tấn công cổng mỏ đến khi vỡ.
+  - **Tông môn**: chỉ người có quyền **Quản lý khai thác mỏ** mới được chọn danh nghĩa tông môn. Toàn bộ thành viên tông môn có quyền **tham gia** chiến dịch công, nhưng không phải tất cả được **khởi động**.
+- Cơ chế công phá cổng mỏ **tương tự công phá động phủ** — tấn công cổng mỏ đến khi vỡ trong giới hạn thời gian. Bùa phá mỏ, bùa phá phủ, bùa phá tông môn đều theo rule này: hết giờ mà chưa phá xong thì cổng hồi đầy HP.
 - Cổng mỏ có **HP**, khi HP về 0 → mỏ trở thành vô chủ.
 
 **Khi cổng mỏ vỡ:**
 - Người / tông môn thực hiện **last hit cổng mỏ** được **ưu tiên 1 phút** dùng bản vẽ khai thác để chiếm.
-- Sau 1 phút → mỏ free, ai tới trước dùng bản vẽ trước thì chiếm được.
-- Tất cả người đang bên trong mỏ (chủ mỏ + liên minh) bị **tele ra map ngẫu nhiên xung quanh** — tương tự cơ chế mất động phủ.
+- Trong 1 phút ưu tiên: **phải dùng bản vẽ danh nghĩa tông môn** để được hưởng ưu tiên. Dùng danh nghĩa cá nhân trong 1 phút đó **không được ưu tiên**.
+- Sau 1 phút → mỏ trở về trạng thái `unclaimed`. Cổng mỏ không còn, mỏ xuất hiện bình thường trong zone — bất kỳ ai đến và dùng bản vẽ khai thác đều chiếm được.
+- Tất cả người đang bên trong mỏ (chủ mỏ + liên minh) bị **tele ra map ngẫu nhiên xung quanh**. Đây là **rule tele khi cấu trúc bị phá** — không tính là chết, không áp dụng penalty chết. Chỉ chết thực sự (HP về 0 trong combat) mới áp dụng death penalty.
 - **Trận pháp trong cổng mỏ bị phá hủy** hoàn toàn, dù còn duration hay không.
 - **Linh thú thủ mỏ**: nếu còn sống → tự về túi nghỉ; nếu đã chết → về túi nghỉ và bị phạt (theo rule linh thú).
 
@@ -101,18 +107,38 @@ Thiết kế hệ thống mỏ linh thạch tranh đoạt — nguồn tài nguy�
 - Phải ở **bên trong mỏ** (vein interior) để khai thác.
 - Khi khai thác: **bị khóa toàn bộ thao tác khác**, không thể di chuyển.
 - Thoát khỏi mỏ → dừng khai thác ngay.
-- Linh thạch vào **thẳng balo**.
-- Không giới hạn lượng khai thác per phiên — cứ đứng đó là ra, miễn mỏ còn trữ lượng.
+- Linh thạch vào **thẳng balo** (khai thác tự do / whitelist).
+- Linh thạch về **thẳng bảo khố** và NV tự done nếu đang khai thác theo nhiệm vụ tông môn — người chơi nhận thông báo hoàn thành, không cần về báo cáo.
+- Không giới hạn lượng khai thác per phiên (khai thác tự do) — cứ đứng đó là ra, miễn mỏ còn trữ lượng.
 - Tốc độ khai thác **khác nhau** giữa player — dựa theo chỉ số **MP** của player.
 - Bên trong mỏ là **safe zone** — không thể bị tấn công khi đang khai thác.
 - Chỉ chủ mỏ / danh sách liên minh mới vào được bên trong mỏ.
+
+### Khai Thác Mỏ Tông Môn
+
+Khi mỏ thuộc tông môn, quyền truy cập mỏ hoạt động theo 2 tier độc lập:
+
+| Tier | Điều kiện vào mỏ | Giới hạn khai thác | Linh thạch về đâu |
+|---|---|---|---|
+| **Khai thác nhiệm vụ** | Đang giữ NV khai thác (bắt buộc hoặc tự nguyện) | Đến hết số lượng trong NV | Bảo khố tự động, NV tự done |
+| **Whitelist thoải mái** | Được môn chủ / người có quyền add vào whitelist | Không giới hạn | Túi cá nhân |
+
+**Quy tắc kết hợp:**
+- Hai tier độc lập — không cần NV để vào whitelist, không cần trong whitelist để vào bằng NV.
+- Đệ tử vừa có NV vừa trong whitelist: khi hoàn thành NV (output về bảo khố, NV done) → **tiếp tục khai thác vào túi cá nhân** mà không bị out.
+- Đệ tử chỉ có NV, không trong whitelist: khi hết quota NV → **bị out khỏi mỏ**.
+
+**Quản lý:**
+- Môn chủ / người có quyền **Quản lý khai thác mỏ** quản lý whitelist thoải mái.
+- Đệ tử không cần về tông môn báo cáo — nhận NV ở đầu tuần, vào mỏ khai thác, output tự về bảo khố, done.
+- Nhận thêm NV hoặc NV mới → cần về map tông môn để nhận.
 
 ### Kết nối với Tông Môn
 
 - Tông môn có thể chiếm mỏ dưới danh nghĩa tông môn.
 - Tông môn có thể phát động chiến dịch công mỏ tập thể.
 - Chủ tông môn là người quản lý mỏ khi mỏ thuộc tông môn.
-- Chi tiết tông môn system → xem backlog tông môn.
+- Chi tiết tông môn system → xem `features/sect-system.md`.
 
 ## System States
 
@@ -127,7 +153,7 @@ Thiết kế hệ thống mỏ linh thạch tranh đoạt — nguồn tài nguy�
 
 ### Flow 1 — Chiếm mỏ vô chủ
 1. Player phát hiện mỏ vô chủ trong zone.
-2. Dùng **bản vẽ khai thác** (tiêu hao).
+2. Dùng **bản vẽ khai thác** (tiêu hao) → cast time 1 phút. Trong lúc cast không thể bị tấn công và chưa ai vào được mỏ — xem `shared-rules.md` Structure Deployment Cast Time / Setup Lock.
 3. Chọn danh nghĩa: cá nhân hoặc tông môn.
 4. Mỏ có chủ, cổng mỏ được tạo.
 5. Chủ mỏ mời thành viên liên minh, đặt trận pháp, linh thú bảo vệ.
@@ -155,6 +181,7 @@ Thiết kế hệ thống mỏ linh thạch tranh đoạt — nguồn tài nguy�
 
 - Player đang khai thác khi mỏ cạn: bị tele ra, linh thạch đã khai thác giữ nguyên trong balo.
 - Chủ mỏ offline khi bị công phá: mỏ vẫn bị công phá bình thường, không cần chủ online để bảo vệ.
+- Chủ mỏ cá nhân chết trong combat: chủ hồi sinh về động phủ. **Mỏ vẫn thuộc về họ** miễn cổng mỏ còn nguyên.
 - Race condition khi nhiều người cùng dùng bản vẽ sau priority window: server xử lý theo thứ tự request.
 - Liên minh đầy (10 người) khi chủ muốn mời thêm: phải kick người cũ trước.
 - Tông môn công mỏ nhưng không ai dùng bản vẽ trong 1 phút ưu tiên: mỏ về trạng thái free bình thường.
@@ -193,19 +220,33 @@ Thiết kế hệ thống mỏ linh thạch tranh đoạt — nguồn tài nguy�
 - Linh thạch vào thẳng balo, không giới hạn per phiên.
 - Last hit cổng mỏ được ưu tiên 1 phút để chiếm.
 - Cổng mỏ vỡ: người bên trong bị tele ra, trận pháp mất, linh thú về túi.
+- Mỏ tông môn: truy cập 2 tier — khai thác nhiệm vụ (quota → bảo khố, NV tự done) và whitelist thoải mái (không giới hạn → túi cá nhân).
+- Đệ tử vừa có NV vừa trong whitelist: xong NV tiếp tục khai thác vào túi, không bị out.
+- Output nhiệm vụ (linh thạch khai thác, vật phẩm luyện chế) tự về bảo khố khi done — người chơi nhận thông báo, không cần về báo cáo.
+- Bùa phá mỏ / Bản vẽ khai thác mua tại NPC chuyên bán.
+- Dùng danh nghĩa tông môn (bản vẽ hoặc bùa phá mỏ): chỉ người có quyền Quản lý khai thác mỏ. Danh nghĩa cá nhân thì bất kỳ ai.
+- Ưu tiên 1 phút sau phá mỏ chỉ áp dụng khi dùng bản vẽ **danh nghĩa tông môn** (phù hợp với danh nghĩa chiến dịch công mỏ).
+- Không giới hạn số mỏ chiếm cùng lúc — phụ thuộc tiềm lực bảo vệ.
+- Không có cơ chế thu dọn mỏ — mở ra là mất bản vẽ, cổng mỏ tồn tại đến khi bị phá hoặc cạn trữ lượng.
+- Tele khi cổng mỏ vỡ không phải chết — không áp dụng death penalty.
+- Chủ mỏ cá nhân chết trong combat không mất quyền sở hữu mỏ — mỏ vẫn thuộc về họ.
+- Sau priority window: mỏ về unclaimed, cổng biến mất, bất kỳ ai có bản vẽ đều chiếm được.
+- Mỏ tồn tại vĩnh viễn — không có TTL; chỉ cạn trữ lượng mới biến mất.
+- Cổng mỏ mới sau khi chiếm lại: reset hoàn toàn về trống.
+- Bùa công phá có giới hạn thời gian; hết giờ cổng hồi đầy HP (áp dụng cho bùa mỏ / phủ / tông môn).
 
 ### Tentative
 - Tốc độ khai thác theo MP — cần confirm công thức cụ thể khi làm balance.
 - Số thành viên liên minh tối đa (tạm 10) — balance.
 - HP cổng mỏ — balance.
+- Số mỏ tối đa 1 cá nhân / tông môn có thể chiếm — không giới hạn cứng, phụ thuộc tiềm lực bảo vệ. Có thể thêm soft cap sau khi có data thực tế.
 
 ## Open Questions
 
-- [ ] Chủ mỏ tông môn offline — tông môn chủ quản lý danh sách, hay có role phụ trong tông môn? → chờ tông môn system
-- [ ] Mỏ thuộc tông môn: chủ tông môn quản lý danh sách khai thác, số lượng khai thác hàng ngày, thống kê hôm nay / hôm qua / 7 ngày gần đây → chờ tông môn system
-- [ ] Linh thạch khai thác được có chia tự động cho tông môn không, hay 100% vào balo cá nhân? → chờ tông môn system
-- [ ] Bùa phá mỏ drop / mua ở đâu?
-- [ ] Bản vẽ khai thác mỏ mua ở NPC nào, giá bao nhiêu — data design.
+- [x] Chủ mỏ tông môn offline — người có quyền **Quản lý khai thác mỏ** trong tông môn tự quản lý được danh sách liên minh và whitelist.
+- [x] Mỏ thuộc tông môn: cơ chế truy cập 2 tier (NV khai thác + whitelist thoải mái) đã define. Thống kê khai thác (hôm nay / 7 ngày) → defer data design.
+- [x] Linh thạch khai thác: NV khai thác → về bảo khố tự động. Whitelist thoải mái → về túi cá nhân. Kết hợp cả hai → xong NV thì tiếp tục về túi.
+- [x] Bùa phá mỏ / Bản vẽ khai thác: mua tại NPC chuyên bán (tương tự bùa phá phủ / bản vẽ động phủ). Chi tiết NPC nào, giá bao nhiêu → data design.
 
 ## Risks / Watchouts
 
@@ -216,8 +257,9 @@ Thiết kế hệ thống mỏ linh thạch tranh đoạt — nguồn tài nguy�
 
 ## Promotion Checklist
 
-- [ ] Core gameplay goal is clear.
-- [ ] Player-facing loop is understandable.
-- [ ] Key terms are defined.
-- [ ] Major alternatives are resolved or listed as open questions.
-- [ ] Ready to promote to `features/`.
+- [x] Core gameplay goal is clear.
+- [x] Player-facing loop is understandable.
+- [x] Key terms are defined.
+- [x] Major alternatives are resolved or listed as open questions.
+- [ ] Balance values confirmed (tốc độ khai thác, HP cổng mỏ, trữ lượng mỏ).
+- [x] Ready to promote to `requirements/`.

@@ -10,7 +10,7 @@ promoted_from: notes/death-penalty.md
 related_docs:
   - features/home-cave-defense.md
   - features/spirit-beast.md
-  - notes/player-interaction-group.md
+  - features/player-interaction-group.md
 requires_code_verification: false
 ---
 
@@ -18,11 +18,11 @@ requires_code_verification: false
 
 ## Goal
 
-Tạo hệ thống trừng phạt khi chết có ý nghĩa nhưng không phá hủy tiến trình của người chơi. Chết vì bất kỳ lý do gì đều rớt đồ; chết do PK thêm penalty vào thọ nguyên/lôi kiếp. Hết thọ nguyên = chết vĩnh viễn.
+Tạo hệ thống trừng phạt khi chết có ý nghĩa nhưng không phá hủy tiến trình của người chơi. Chết vì bất kỳ lý do gì đều chịu penalty nền giống nhau: rớt đồ và bị trừ thọ nguyên / thời gian đến Lôi Kiếp tiếp theo. Hết thọ nguyên = chết vĩnh viễn.
 
 ## Design Summary
 
-Penalty áp dụng đồng nhất bất kể nguyên nhân chết (PvE, Duel, PvP Zone). Không mất tu vi, không mất tiềm năng. Penalty chính gồm: có tỉ lệ rớt linh thạch và item. Nếu chết do PK (tấn công ngoài Duel — xác nhận rule PK cụ thể với hệ PvP state), penalty bổ sung là rút ngắn thọ nguyên hoặc đếm ngược Lôi Kiếp. Hết thọ nguyên = nhân vật chết vĩnh viễn, phải tạo nhân vật mới.
+Penalty áp dụng đồng nhất bất kể nguyên nhân chết (PvE, Duel, PvP Zone, lawful PvP, PK). Không mất tu vi, không mất tiềm năng. Penalty nền gồm: có tỉ lệ rớt linh thạch và item, đồng thời bị trừ thọ nguyên hoặc rút ngắn thời gian đến Lôi Kiếp tiếp theo. Một số nguyên nhân chết đặc biệt có thể áp dụng penalty bổ sung do game design data cấu hình. Hết thọ nguyên = nhân vật chết vĩnh viễn, phải tạo nhân vật mới.
 
 ## Scope
 
@@ -31,8 +31,8 @@ Penalty áp dụng đồng nhất bất kể nguyên nhân chết (PvE, Duel, Pv
 - Quyền nhặt đồ rơi
 - Mất buff khi chết
 - Lựa chọn hồi sinh
-- Penalty thọ nguyên khi chết do PK (cảnh giới dưới Hoá Thần)
-- Penalty Lôi Kiếp khi chết do PK (cảnh giới trên Hoá Thần)
+- Penalty thọ nguyên khi chết (cảnh giới dưới Hoá Thần)
+- Penalty Lôi Kiếp khi chết (cảnh giới trên Hoá Thần)
 - Hết thọ nguyên — chết vĩnh viễn
 - Tăng thọ nguyên bằng đan dược
 
@@ -45,7 +45,7 @@ Penalty áp dụng đồng nhất bất kể nguyên nhân chết (PvE, Duel, Pv
 
 1. Player chết.
 2. Server tính penalty: có tỉ lệ rớt linh thạch + có tỉ lệ rớt item.
-3. Nếu chết do PK: trừ thêm vào thọ nguyên / đếm ngược Lôi Kiếp.
+3. Trừ vào thọ nguyên / đếm ngược đến Lôi Kiếp tiếp theo theo rule cảnh giới.
 4. Đồ rơi xuống map — chủ có thời gian ưu tiên nhặt lại, sau đó mới mở cho người khác.
 5. Player chọn hồi sinh (về Động Phủ hoặc Checkpoint nếu có).
 6. Nếu thọ nguyên về 0: nhân vật bị xóa, phải tạo mới.
@@ -55,7 +55,7 @@ Penalty áp dụng đồng nhất bất kể nguyên nhân chết (PvE, Duel, Pv
 ### Nguyên tắc chung
 - Penalty áp dụng **bất kể chết vì lý do gì** (PvE, Duel, PvP Zone).
 - **Không mất tu vi, không mất tiềm năng**.
-- Chỉ rớt đồ trên người + ảnh hưởng thọ nguyên/lôi kiếp nếu chết do PK.
+- Chỉ rớt đồ trên người và luôn ảnh hưởng thọ nguyên/lôi kiếp theo rule chung khi chết.
 
 ### Drop khi chết
 
@@ -72,9 +72,11 @@ Penalty áp dụng đồng nhất bất kể nguyên nhân chết (PvE, Duel, Pv
 - Tỉ lệ trong `game_configs`.
 
 ### Quyền nhặt đồ rơi
-- Đồ rơi thuộc quyền **player chết** trong một khoảng thời gian.
-- Sau thời gian đó mới mở cho người khác nhặt — giống cơ chế ground reward hiện có.
-- Thời gian bảo lưu trong `game_configs`.
+- Đồ rơi thuộc quyền **player chết** trong một khoảng thời gian (cấu hình `game_configs`).
+- Trong thời gian đó: người khác **nhìn thấy đồ nhưng không nhặt được** — nhấn nhặt nhận thông báo "chưa thể nhặt, cần đợi X giây".
+- Sau thời gian ưu tiên: đồ trở thành **public**, ai cũng nhặt được.
+- Pet auto-loot của chủ nhân vẫn nhặt được đồ của chủ trong priority window.
+- Trong looting window sau cấu trúc vỡ: rule này **vẫn áp dụng** cho death drop; structure drops là public ngay (xem `shared-rules.md` Ownership / Drop Rights).
 
 ### Buff khi chết
 - **Mất buff từ skill** (buff chiến đấu, thiết giáp...).
@@ -85,15 +87,15 @@ Khi chết, player chọn:
 - **Về Động Phủ (home)** — luôn luôn có.
 - **Về Checkpoint** — chỉ nếu map hiện tại có checkpoint và cho phép (thường chỉ trong dungeon/phó bản).
 
-### Thọ Nguyên (cảnh giới dưới Hoá Thần)
+### Thọ Nguyên (realm 1–18: Luyện Khí → Nguyên Anh Hậu Kỳ)
 
 **Cơ chế đột phá:**
 - Mỗi cảnh giới có pool thọ nguyên riêng (config theo cảnh giới).
 - Khi đột phá → cộng thêm **phần chênh lệch** giữa pool mới và pool cũ.
 - Ví dụ: pool hiện tại 1 tháng, còn 1 ngày. Pool mới 2 tháng. Chênh lệch 1 tháng. Kết quả: còn 1 tháng 1 ngày.
 
-**Penalty khi chết do PK:**
-- Rút ngắn thọ nguyên trực tiếp (ví dụ -2 phút mỗi lần chết do PK).
+**Penalty thọ nguyên khi chết:**
+- Rút ngắn thọ nguyên trực tiếp (ví dụ -2 phút mỗi lần chết).
 - Lượng rút ngắn trong `game_configs`.
 
 **Tăng thọ nguyên:**
@@ -105,11 +107,11 @@ Khi chết, player chọn:
 **Hết thọ nguyên:**
 - Nhân vật **chết vĩnh viễn**, phải tạo nhân vật mới (tên mới).
 
-### Lôi Kiếp (cảnh giới trên Hoá Thần)
+### Lôi Kiếp (realm 19–31: Hóa Thần Kỳ trở lên)
 - Không có thọ nguyên, thay vào đó có **đếm ngược đến Lôi Kiếp**.
-- Khi chết do PK: rút ngắn đếm ngược đến Lôi Kiếp (ví dụ -2 phút).
+- Khi chết: rút ngắn đếm ngược đến Lôi Kiếp (ví dụ -2 phút).
 - Lượng rút ngắn trong `game_configs`.
-- **Chết do không vượt qua Lôi Kiếp**: penalty riêng — **chưa thiết kế, defer**.
+- **Chết do không vượt qua Lôi Kiếp (thất bại Lôi Kiếp)**: tụt 1 cảnh giới → áp dụng **Cultivation Penalty Rule** (xem `shared-rules.md`). Đây không phải death penalty thông thường — là penalty riêng của Lôi Kiếp.
 
 ## System States
 
@@ -125,7 +127,8 @@ Khi chết, player chọn:
 ## Edge Cases
 - Chết tại dungeon có checkpoint: có thể chọn về checkpoint thay vì về nhà.
 - Chết do bị công động phủ khi thủ nhà: penalty nặng hơn, không hồi sinh ngay — xem `features/home-cave-defense.md`.
-- Chết do PK nhưng đang ở Duel: vẫn áp dụng penalty thọ nguyên/lôi kiếp như PK thường (rule đồng nhất).
+- Chết trong looting window (sau khi cổng động phủ / tông môn vỡ): respawn về Động Phủ cá nhân nếu có; nếu không có Động Phủ → tele map random. Rule penalty bình thường vẫn áp dụng.
+- Duel, PvP Zone, cave raid, sect war, mineral conflict, và PK đều chịu penalty nền giống nhau; khác biệt chỉ đến từ penalty bổ sung nếu feature đó định nghĩa.
 - Thọ nguyên về 0 trong lúc đang trong dungeon: nhân vật xóa ngay, không chờ thoát dungeon.
 
 ## Data / Config Needs
@@ -146,7 +149,7 @@ Khi chết, player chọn:
 ## Related Systems
 - **Động Phủ**: penalty chết khi công/thủ phủ nặng hơn — xem `features/home-cave-defense.md`
 - **Linh Thú**: pet chết giảm tu vi, không áp dụng thọ nguyên giống player — xem `features/spirit-beast.md`
-- **PvP State**: định nghĩa thế nào là "chết do PK" — xem `notes/player-interaction-group.md`
+- **PvP State**: định nghĩa thế nào là "chết do PK" — xem `features/player-interaction-group.md`
 
 ## Key Decisions
 1. Penalty giống nhau bất kể nguyên nhân chết.
@@ -160,18 +163,18 @@ Khi chết, player chọn:
 9. Hết thọ nguyên = chết vĩnh viễn, tạo nhân vật mới.
 
 ## Open Questions
-- [ ] Penalty Lôi Kiếp thất bại — defer, bàn sau (cảnh giới giữa/cuối game).
+- [x] Penalty Lôi Kiếp thất bại — tụt 1 cảnh giới. Xem `features/tribulation-system.md`.
 - [ ] Chi tiết đan dược tăng thọ nguyên — defer đến phase economy/item.
-- [ ] "Chết do PK" định nghĩa chính xác thế nào khi liên quan đến các PvP state? — cần đồng bộ với `notes/player-interaction-group.md`.
+- [ ] "Chết do PK" định nghĩa chính xác thế nào khi liên quan đến các PvP state? — cần đồng bộ với `features/player-interaction-group.md`.
 - [ ] Threshold cảnh báo thọ nguyên thấp là bao nhiêu?
 
 ## Known Conflicts / Drift
 - Chưa có conflict nào ghi nhận.
 
 ## Requirement Readiness Checklist
-- [ ] Behavior is specific enough for `dev` to estimate.
-- [ ] Acceptance criteria can be written without guessing.
-- [ ] Major edge cases are covered.
-- [ ] Config/data needs are listed.
-- [ ] Out-of-scope items are explicit.
-- [ ] Ready to promote to `requirements/`.
+- [x] Behavior is specific enough for `dev` to estimate.
+- [x] Acceptance criteria can be written without guessing.
+- [x] Major edge cases are covered.
+- [x] Config/data needs are listed.
+- [x] Out-of-scope items are explicit.
+- [x] Ready to promote to `requirements/`.

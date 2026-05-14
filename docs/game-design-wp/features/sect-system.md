@@ -13,12 +13,12 @@ promoted_from:
   - notes/sect-pvp-system.md
   - notes/sect-headquarters-system.md
 related_docs:
-  - notes/mineral-vein-system.md
+  - features/mineral-vein-system.md
   - features/home-cave-defense.md
   - features/spirit-beast.md
   - features/crafting-talisman-formation.md
   - features/death-penalty.md
-  - notes/player-interaction-group.md
+  - features/player-interaction-group.md
 requires_code_verification: true
 ---
 
@@ -117,7 +117,7 @@ Tông môn có thể chiếm mỏ linh thạch và cổng tông môn trên map p
 
 ### A. Thành lập & Giải tán
 
-- **Thành lập:** mua bản vẽ tông môn tại NPC → chọn vị trí trên map public → nộp ≥ 10 linh thạch vào bảo khố → tông môn tồn tại.
+- **Thành lập:** mua bản vẽ tông môn tại NPC → chọn vị trí trên map public → **cast time 1 phút** → nộp ≥ 10 linh thạch vào bảo khố → tông môn tồn tại. Trong lúc cast không thể bị tấn công và không ai vào được — xem `shared-rules.md` Structure Deployment Cast Time / Setup Lock.
 - **Ngưỡng tồn tại:** bảo khố < 10 linh thạch → thông báo toàn tông môn + đếm ngược 24h. Nếu không bổ sung → tự động giải tán, tài sản trả về môn chủ.
 - **Giải tán chủ động:** chỉ môn chủ. Tài sản bảo khố trả về môn chủ.
 - **Giải tán do không còn ai kế thừa** (offline > 100 ngày): tài sản mất hết.
@@ -144,10 +144,11 @@ Quyền không gắn với danh hiệu — môn chủ phân thủ công cho từ
 **Chuyển giao tự nguyện:** môn chủ chọn người → chuyển ngay lập tức, không cần accept. Môn chủ cũ thành đệ tử thường. Nếu người được chuyển không muốn → ấn giải tán.
 
 **Kế thừa tự động (offline > 100 ngày):**
-1. Phó tông chủ (nếu có)
-2. Người có quyền quản lý bảo khố gia nhập sớm nhất
-3. Thành viên gia nhập sớm nhất
-4. Không còn ai → tự động giải tán, tài sản mất hết
+- Hệ thống lần lượt kiểm tra theo thứ tự ưu tiên dưới đây, chọn người **đầu tiên chưa offline quá 100 ngày**:
+  1. Phó tông chủ (nếu có)
+  2. Người có quyền quản lý bảo khố gia nhập sớm nhất
+  3. Thành viên gia nhập sớm nhất
+- Nếu **tất cả ứng viên đều offline > 100 ngày** → tự động giải tán, tài sản xử lý theo flow giải tán bình thường.
 
 ### D. Gia Nhập & Rời
 
@@ -229,14 +230,16 @@ Quyền không gắn với danh hiệu — môn chủ phân thủ công cho từ
 - Mở 24/7. Tất cả mọi người (thành viên + người ngoài) đều mua và bán được.
 - Tiền tệ duy nhất: **linh thạch**.
 - **Giao diện bán ra:** 30 slot cố định. Mỗi loại item = 1 slot. Stackable follow item system. Tiền bán vào thẳng bảo khố. Vật phẩm trừ bảo khố ngay khi đưa ra.
-- **Giao diện thu mua:** 30 slot cố định, độc lập với bán ra. Escrow linh thạch ngay khi tạo đơn. Vật phẩm thu mua vào thẳng bảo khố. Điều chỉnh realtime.
+- **Giao diện thu mua:** 30 slot cố định, độc lập với bán ra. Escrow linh thạch ngay khi tạo đơn. Vật phẩm thu mua vào thẳng bảo khố.
+- **Chỉnh giá / số lượng buy order:** không hỗ trợ chỉnh trực tiếp — phải **hủy đơn cũ rồi tạo lại**. Lý do: tránh desync với giao dịch đang xử lý.
+- **Khi tông môn bị tấn công (bùa phá tông môn đã kích hoạt):** shop tạm đóng. Người ngoài vào shop nhận thông báo "Tông môn đang bị tấn công, vui lòng quay lại sau".
 - **Realtime notify:** người đang mở giao diện nhận thông báo khi có thay đổi, load lại.
 - **Lịch sử giao dịch:** lưu 1 ngày gần nhất, tự xóa sau đó.
 - **Khi giải tán:** shop đóng ngay, hàng + escrow về bảo khố.
 
 ### K. Khai Thác Mỏ Linh Thạch
 
-> Chi tiết cơ chế chiếm mỏ, công phá, bảo vệ → xem `notes/mineral-vein-system.md`.
+> Chi tiết cơ chế chiếm mỏ, công phá, bảo vệ → xem `features/mineral-vein-system.md`.
 
 **Quyền dùng danh nghĩa tông môn:** chỉ người có quyền Quản lý khai thác mỏ.
 
@@ -254,16 +257,17 @@ Quyền không gắn với danh hiệu — môn chủ phân thủ công cho từ
 
 **Chỉ 2 hình thức:**
 
-1. **Tranh mỏ linh thạch** — xem `notes/mineral-vein-system.md`.
+1. **Tranh mỏ linh thạch** — xem `features/mineral-vein-system.md`.
 2. **Tấn công cổng tông môn** — dùng bùa phá tông môn (item tiêu hao).
 
 **Cổng tông môn vỡ = tông môn giải tán ngay lập tức:**
-- Bảo khố: % rơi vào người dùng bùa phá (người khởi động). Phần còn lại về môn chủ.
+- Bảo khố (gồm cả hàng shop tông môn): rơi ngẫu nhiên theo **Structure Loot Drop Rate** (xem `shared-rules.md`). Phần không rơi đính vào bản vẽ → về tay môn chủ.
 - Phe thủ tele ra map random ngay lập tức.
 - Bản vẽ tông môn: item rơi ngẫu nhiên trong map theo tỉ lệ → phần còn lại đính vào bản vẽ → về tay môn chủ.
 - Bản vẽ động phủ đệ tử: trả về tay từng đệ tử nguyên vẹn.
 - Looting window 1 phút bắt đầu.
-- Lập lại: mua bản vẽ tông môn mới tại NPC → chọn vị trí → lập từ đầu.
+- Lập lại: dùng **bản vẽ tông môn đã nhận về** → chọn vị trí mới → mở lại. Tông môn khôi phục nguyên trạng (trừ phần tài sản đã rơi theo drop rate). Đệ tử có thể quay về, mọi hoạt động tiếp tục như cũ.
+- Nếu bản vẽ bị mất: mua bản vẽ mới tại NPC → lập tông môn từ đầu (không phục hồi được dữ liệu cũ).
 
 **Không có cơ chế liên minh in-game.** Ngoài map combat: tương tác như người lạ bình thường.
 
@@ -338,7 +342,7 @@ Quyền không gắn với danh hiệu — môn chủ phân thủ công cho từ
 ### Flow 5 — Giải tán / Tái lập
 1. Môn chủ giải tán chủ động hoặc hệ thống tự động giải tán (bảo khố cạn / không còn ai kế thừa).
 2. Tài sản xử lý theo rule tương ứng.
-3. Muốn lập lại: mua bản vẽ tông môn mới → chọn vị trí mới → lập từ đầu.
+3. Muốn lập lại sau khi bị phá: dùng **bản vẽ đã nhận về** → chọn vị trí mới → mở lại (khôi phục nguyên trạng trừ phần tài sản đã rơi). Muốn lập lại sau khi giải tán: mua bản vẽ mới tại NPC → chọn vị trí mới → lập từ đầu.
 
 ---
 
@@ -389,12 +393,12 @@ Quyền không gắn với danh hiệu — môn chủ phân thủ công cho từ
 
 ## Related Systems
 
-- `notes/mineral-vein-system.md` — chiếm mỏ, khai thác, tranh giành
+- `features/mineral-vein-system.md` — chiếm mỏ, khai thác, tranh giành
 - `features/home-cave-defense.md` — cơ chế cổng, trận pháp, bản vẽ động phủ, looting window
 - `features/spirit-beast.md` — linh thú thủ cổng tông môn
 - `features/crafting-talisman-formation.md` — trận pháp bảo vệ cổng
 - `features/death-penalty.md` — rule chết trong looting window
-- `notes/player-interaction-group.md` — PvP state, không có friendly fire off tông môn
+- `features/player-interaction-group.md` — PvP state, không có friendly fire off tông môn
 
 ---
 
@@ -405,7 +409,7 @@ Quyền không gắn với danh hiệu — môn chủ phân thủ công cho từ
 3. Quyền phân thủ công, không gắn với danh hiệu.
 4. Phó tông chủ / Trưởng lão chỉ là danh hiệu, không có quyền mặc định.
 5. Chuyển giao môn chủ: ngay lập tức, không cần accept, môn chủ cũ thành đệ tử thường.
-6. Kế thừa tự động: phó tông chủ → người có quyền bảo khố (gia nhập sớm nhất) → thành viên gia nhập sớm nhất → giải tán (tài sản mất).
+6. Kế thừa tự động: chọn người đầu tiên trong thứ tự ưu tiên chưa offline > 100 ngày. Nếu tất cả đều offline > 100 ngày → giải tán.
 7. Gia nhập cần phê duyệt. Không có phí gia nhập. Rời tự do, cooldown 1 ngày.
 8. Gia nhập giữa tuần: không tham gia bắt buộc, không nhận phúc lợi tuần đó.
 9. Pool bắt buộc: flat list instance, ai nhận trước lấy trước, reset cuối tuần.
@@ -450,9 +454,9 @@ Quyền không gắn với danh hiệu — môn chủ phân thủ công cho từ
 
 ## Requirement Readiness Checklist
 
-- [ ] Behavior is specific enough for `dev` to estimate.
-- [ ] Acceptance criteria can be written without guessing.
-- [ ] Major edge cases are covered.
-- [ ] Config/data needs are listed.
-- [ ] Out-of-scope items are explicit.
-- [ ] Ready to promote to `requirements/`.
+- [x] Behavior is specific enough for `dev` to estimate.
+- [x] Acceptance criteria can be written without guessing.
+- [x] Major edge cases are covered.
+- [x] Config/data needs are listed.
+- [x] Out-of-scope items are explicit.
+- [x] Ready to promote to `requirements/`.

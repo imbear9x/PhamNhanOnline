@@ -5,7 +5,7 @@ status: draft
 maturity: feature
 owner: gamedesign
 created_at: 2026-05-09
-updated_at: 2026-05-12
+updated_at: 2026-05-13
 promoted_from: notes/home-cave-defense.md
 related_docs:
   - features/spirit-beast.md
@@ -60,12 +60,12 @@ Nếu phá được cổng và vào trong, kẻ tấn công có thể **cướp 
 ## Core Loop
 
 ### Loop của chủ động phủ
-1. Nhận hoặc mua **Bản Vẽ Động Phủ**.
+1. Nhận hoặc mua **Bản Vẽ Động Phủ** (tối đa 1 bản vẽ / người, không giao dịch được). Nếu mất bản vẽ có thể mua lại tại NPC miễn chưa có bản vẽ cùng loại.
 2. Chọn vị trí hợp lệ để mở động phủ trên map thế giới.
 3. Dùng động phủ làm nơi tu luyện, luyện chế, cất tài sản, nuôi linh thú.
 4. Thiết lập phòng thủ bằng cổng, trận pháp, linh thú.
 5. Khi bị tấn công: online phòng thủ, chấp nhận rủi ro, hoặc thu dọn kịp thời.
-6. Nếu bị phá: nhận lại bản vẽ, chọn vị trí mới dựng lại.
+6. Nếu bị phá: **item trong động phủ rơi ngẫu nhiên** theo Structure Loot Drop Rate trong looting window; phần còn lại đính vào bản vẽ → bản vẽ về tay chủ nhân. Dùng bản vẽ đó mở lại ở vị trí mới.
 
 ### Loop của người đi công
 1. Phát hiện động phủ nếu vượt qua **Thần Thức Quan**.
@@ -85,27 +85,35 @@ Nếu phá được cổng và vào trong, kẻ tấn công có thể **cướp 
 **Mở động phủ ra thế giới:**
 - Dùng Bản Vẽ Động Phủ tại vị trí hợp lệ → cần trải qua **cast time** → động phủ xuất hiện trên map.
 - Bản vẽ biến mất khỏi kho. Động phủ private ban đầu **biến mất vĩnh viễn**.
+- Bản vẽ lưu toàn bộ nội dung + bố cục sau khi **thu dọn** — đặt lại ở vị trí mới sẽ hiện ra đúng như cũ.
 
 **Giới hạn:**
 - Mỗi người chỉ có **1 động phủ active** tại mọi thời điểm.
 
 **Thu dọn:**
 - Chủ nhà có thể thu dọn khi động phủ **không đang bị tấn công**.
-- Khi thu dọn thành công: động phủ biến mất, **Bản Vẽ Động Phủ** quay về kho đồ.
+- Khi thu dọn thành công: toàn bộ nội dung đính vào bản vẽ (**không mất gì**), **Bản Vẽ Động Phủ** quay về kho đồ.
 
 **Khi bị phá hoàn toàn:**
-- Chủ nhà trong động phủ bị teleport ra ngoài ngay lập tức.
-- Động phủ vào **phase sụp đổ 1 phút** — ai cũng vào được, nhặt đồ, đánh nhau.
-- Sau 1 phút: tất cả bị đẩy ra, động phủ biến mất, ô cell trống, Bản Vẽ trả về kho đồ chủ nhà.
+- Chủ nhà và toàn bộ phe thủ trong động phủ bị **teleport ra ngoài ngay lập tức**.
+- **Item trong động phủ rơi ngẫu nhiên** trong map theo **Structure Loot Drop Rate** (xem `shared-rules.md`). Phần không rơi đính vào bản vẽ.
+- Cổng biến mất từ bên ngoài — không ai vào thêm được.
+- Bắt đầu **looting window 1 phút**: chỉ người đang trong map (phe công) được loot.
+  - PvP tự do — ai cũng đánh được nhau.
+  - Người nhặt đồ **không được rời map** trong 1 phút.
+  - **Offline trong map**: toàn bộ đồ đã nhặt rơi ra ngay lập tức.
+  - **Chết trong map**: theo rule chết bình thường, tỉ lệ rớt đồ đang mang.
+  - Chết → tele về động phủ cá nhân (nếu có), nếu không → tele map random.
+- Sau 1 phút: tất cả bị tele ra map random, người sống giữ đồ đã nhặt. Bản Vẽ trả về kho đồ chủ nhà (kèm nội dung còn lại).
 
 ### Đặt động phủ trên map
 - Chỉ đặt tại **ô cell hợp lệ** trong map được config cho phép.
 - Ô không có động phủ khác.
 - Chiếm 1 ô cell, hiển thị tên động phủ.
-- Người đi ngang chỉ nhìn thấy nếu vượt **Thần Thức Quan**.
+- Người đi ngang nếu **đủ Thần Thức Quan** thì thấy động phủ bình thường. Nếu **không đủ**: chỉ thấy **một vùng mờ vô danh**, không thấy tên chủ/động phủ, và không tương tác hay tấn công được.
 
 ### Thần Thức Quan
-- Cấp bản vẽ = cấp động phủ → quyết định ngưỡng Thần Thức Quan.
+- Cấp bản vẽ = cấp động phủ → quyết định ngưỡng Thần Thức Quan, sức chứa bên trong, và HP cổng động phủ.
 - Không vượt ngưỡng: không nhìn thấy, không tương tác, không tấn công được.
 
 ### Phòng chức năng bên trong
@@ -132,7 +140,7 @@ Nếu phá được cổng và vào trong, kẻ tấn công có thể **cướp 
 
 **Penalty người đi công:**
 - Tỷ lệ rớt đồ khi chết: ~2–3 lần PvP thường.
-- Penalty thọ nguyên khi chết: ~2–3 lần PK thường.
+- Penalty chết khi công động phủ: dùng penalty nền khi chết + multiplier nặng hơn (data design).
 - Cooldown: sau mỗi lần công, phải chờ 1–2 ngày mới được công bất kỳ động phủ nào tiếp.
 - Cooldown tính **theo người đi công**, không theo động phủ bị công.
 
@@ -187,9 +195,10 @@ Nếu phá được cổng và vào trong, kẻ tấn công có thể **cướp 
 
 ### Flow 2 — Công thành công
 1. Phá cổng / phòng thủ đến ngưỡng sụp.
-2. Chủ nhà trong động phủ bị đẩy ra.
-3. Phase sụp đổ 1 phút — nhặt đồ, đánh nhau tự do.
-4. Hết 1 phút: tất cả ra ngoài, động phủ biến mất, bản vẽ trả về chủ.
+2. Phe thủ bị tele ra ngoài ngay lập tức. Cổng biến mất từ bên ngoài.
+3. Item rơi ngẫu nhiên trong map theo tỉ lệ. Looting window 1 phút bắt đầu.
+4. PvP tự do trong map — không rời được, offline thì rơi đồ.
+5. Hết 1 phút: tất cả tele ra map random. Người sống giữ đồ. Bản vẽ (kèm nội dung còn lại) trả về chủ.
 
 ### Flow 3 — Công thất bại / hết thời gian bùa
 1. Bùa Phá Phủ hết hiệu lực mà chưa phá được.
@@ -233,7 +242,7 @@ Nếu phá được cổng và vào trong, kẻ tấn công có thể **cướp 
 2. Khi mở động phủ thế giới, động phủ private ban đầu biến mất vĩnh viễn.
 3. Mỗi người chỉ có 1 động phủ active tại một thời điểm.
 4. Không được thu dọn khi đã có người tới tấn công.
-5. Nếu bị phá: bản vẽ quay lại kho đồ chủ nhà.
+5. Nếu bị phá: item rơi ngẫu nhiên trong map theo tỉ lệ trong looting window; bản vẽ (kèm nội dung còn lại) quay về chủ.
 6. Dựng động phủ có cast time.
 7. Chỉ người vượt Thần Thức Quan mới thấy và công được.
 8. Khách được mời: đi lại tự do, không đụng tài sản.
@@ -245,28 +254,31 @@ Nếu phá được cổng và vào trong, kẻ tấn công có thể **cướp 
 14. Chủ nhà luôn nhận linh thạch đền bù dù thắng hay thua.
 15. Linh thạch đền bù trích từ giá bùa, phần còn lại là sink tiền.
 16. Logout không làm dừng hay hủy cuộc công.
-17. Trong 1 phút phase sụp đổ: tự do vào, nhặt, đánh nhau.
+17. Looting window 1 phút: chỉ phe công đang trong map được loot, PvP tự do, không rời được.
+18b. Offline trong looting window: toàn bộ đồ đã nhặt rơi ra ngay.
+18c. Thu dọn bình thường: toàn bộ nội dung đính vào bản vẽ, không mất gì.
+18d. Bản vẽ động phủ tối đa 1 / người, không giao dịch được.
 18. Chủ nhà chết khi thủ: không hồi sinh ngay khi đối phương còn trong khu.
 
 ## Open Questions
-- [ ] Cast time dựng động phủ cụ thể là bao lâu?
-- [ ] Công thức số lượng rương / slot tăng theo từng phẩm cấp bản vẽ?
-- [ ] Có phân tầng map đặt động phủ theo cấp map không?
-- [ ] Người không đủ Thần Thức Quan: hoàn toàn không thấy gì, hay có hiệu ứng mơ hồ?
-- [ ] Giá cụ thể của từng phẩm cấp Bùa Phá Phủ?
-- [ ] Tỷ lệ linh thạch đền bù theo từng phẩm cấp?
-- [ ] Thời gian hiệu lực bùa: giữ 15 phút cho mọi cấp hay tách theo phẩm cấp?
-- [ ] Xử lý trạng thái thế nào nếu Bùa Phá Phủ hết hiệu lực đúng lúc đang giao tranh tại cổng?
-- [ ] Giới hạn số người tham gia tối đa trong map Cửa Động Phủ?
-- [ ] Điều kiện kỹ thuật chính xác để xác định một cuộc công "đã kết thúc" nếu không phá được?
+- [x] Cast time dựng động phủ: 1 phút. Trong lúc cast không thể bị tấn công, không ai vào được động phủ.
+- [x] Số rương / slot tăng theo **bậc thang**, mỗi cấp có bước nhảy khác nhau. Chỉ **tăng sức chứa và HP cổng**, loại phòng giữ nguyên.
+- [x] Không phân tầng theo cấp map: bản vẽ nào cũng đặt được ở mọi map cho phép.
+- [x] Người không đủ Thần Thức Quan: thấy **hiệu ứng mờ** nhưng không tương tác được.
+- [x] Giá Bùa Phá Phủ là **cố định theo cấp bùa**; mỗi cấp bùa có giá riêng.
+- [x] Linh thạch đền bù là **linh thạch hệ thống trả cho chủ nhà** khi động phủ bị phá; tỷ lệ theo từng phẩm cấp → data design.
+- [x] Bùa Phá Phủ có **phẩm cấp**; mỗi phẩm cấp có **thời gian riêng**.
+- [x] Hết thời gian công phá: cổng **hồi đầy HP ngay lập tức** và attacker bị **tele ra ngoài**.
+- [x] Giới hạn tối đa **10 người** trong map Cửa Động Phủ; đủ người thì người đến sau bị chặn.
+- [x] Cuộc công kết thúc khi **hết thời gian hiệu lực của Bùa Phá Phủ**; cổng hồi đầy HP và toàn bộ attacker bị tele ra ngoài.
 
 ## Known Conflicts / Drift
 - Chưa có conflict nào ghi nhận.
 
 ## Requirement Readiness Checklist
-- [ ] Behavior is specific enough for `dev` to estimate.
-- [ ] Acceptance criteria can be written without guessing.
-- [ ] Major edge cases are covered.
-- [ ] Config/data needs are listed.
-- [ ] Out-of-scope items are explicit.
-- [ ] Ready to promote to `requirements/`.
+- [x] Behavior is specific enough for `dev` to estimate.
+- [x] Acceptance criteria can be written without guessing.
+- [x] Major edge cases are covered.
+- [x] Config/data needs are listed.
+- [x] Out-of-scope items are explicit.
+- [x] Ready to promote to `requirements/`.

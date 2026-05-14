@@ -8,6 +8,8 @@ Danh sách tính năng cần bàn riêng, chưa vào scope hiện tại.
 | Tính năng | Note |
 |---|---|
 | Trade | `player-interaction-group.md` |
+| Tu Luyện & Đột Phá | `features/cultivation-and-breakthrough.md` |
+| Lôi Kiếp | `features/tribulation-system.md` |
 | Friend + Block | `player-interaction-group.md` |
 | PvP State System | `player-interaction-group.md` |
 | Chat | `player-interaction-group.md` |
@@ -23,20 +25,20 @@ Danh sách tính năng cần bàn riêng, chưa vào scope hiện tại.
 | Tính năng | Ghi chú | Ưu tiên |
 |---|---|---|
 | **Nhiệm vụ (Quest)** | Chưa có gameplay thật, chỉ có tab placeholder | V1 |
-| **Phó Bản (Dungeon)** | Map đặc biệt, liên quan PvP Zone, checkpoint, party | V1 |
+| **Phó Bản (Dungeon)** | ✅ `features/dungeon-system.md` | V1 |
 | **Tông Môn** | Lớn — cần bàn riêng nhiều phần | V1 |
-| **Hoạt động Tông Môn** | Phụ thuộc Tông Môn | V1 |
-| **Event** | Chưa rõ scope | V1 |
-| **Trả Thù** | Cơ chế trả thù sau khi bị PK | V1 |
-| **Bảng Xếp Hạng Cá Nhân** | Chiến lực, cảnh giới, thành tích... | V1 |
+| **Hoạt động Tông Môn** | ✅ `features/sect-activities.md` (phase V1: công/thủ mỏ) | V1 |
+| **Event** | ✅ `features/event-system.md` | V1 |
+| **Trả Thù** | ✅ `features/revenge-system.md` | V1 |
+| **Bảng Xếp Hạng Cá Nhân** | ✅ `features/leaderboard-system.md` | V1 |
 | **Linh Thú** | Companion có stat/utility/combat — đang bàn | V1 |
 | **Động Phủ** | Mở động phủ, phòng thủ, bị tấn công/cướp bóc | V1 |
 | **Khai Thác Linh Thạch** | Nguồn linh thạch ngoài đánh quái | V1 |
-| **Ally System (Party/Tông Môn trong PvP)** | Defer từ PvP State System | V1 |
-| **Death Penalty Lôi Kiếp thất bại** | Defer từ Death Penalty | V1 |
-| **Pháp Khí (Smithing)** | Placeholder hiện tại, công thức cố định | V1 |
-| **Farming / Herb loop** | DB foundation có, player-facing flow chưa có | V1 |
-| **Boss Thế Giới** | Đã có — cần confirm implementation thực tế | Confirm |
+| **Ally System (Party/Tông Môn trong PvP)** | ✅ `features/party-system.md` | V1 |
+| **Death Penalty Lôi Kiếp thất bại** | ✅ Note created: `features/tribulation-system.md` | V1 |
+| **Pháp Khí (Smithing)** | ✅ `features/magic-weapon-system.md` | V1 |
+| **Farming / Herb loop** | ✅ `features/herb-farming-system.md` | V1 |
+| **Boss Thế Giới** | ✅ `features/world-boss-system.md` — requires_code_verification | Confirm |
 
 ---
 

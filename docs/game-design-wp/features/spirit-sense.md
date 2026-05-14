@@ -30,21 +30,20 @@ Thần Thức hoạt động theo mô hình **bandwidth / slot** — không ph�
 - Rule nhìn thấy dựa trên ngưỡng X%
 - Tàng hình chủ động — tốn mana để duy trì
 - Lộ diện khi bị tấn công
-- Hồi Thần Thức theo thời gian và qua item/skill
 - Áp dụng cho trận pháp, phù lục ẩn
 
 ### Out Of Scope
 - Mastery hay kỹ năng đặc thù theo nghề
-- Balance cụ thể (tốc độ hồi, mức tiêu hao tàng hình)
+- Balance cụ thể (slot reserved, ngưỡng nhìn thấy, mức tiêu hao mana khi tàng hình)
 - Chi tiết UI/UX hiển thị Thần Thức
 
 ## Core Loop
 
 1. Player tăng Thần Thức qua tu luyện / trang bị / skill.
-2. Khi muốn tàng hình: bật thủ công → tiêu hao Thần Thức hiện tại liên tục.
+2. Khi muốn tàng hình: bật thủ công → tiêu hao mana liên tục.
 3. Đối thủ có Thần Thức < X% Thần Thức của mình → không nhìn thấy khi đang ẩn.
 4. Bị tấn công → lộ diện X giây → tất cả nhìn thấy.
-5. Hết X giây + còn đủ Thần Thức → tự tàng hình lại.
+5. Hết X giây + còn đủ mana / vẫn duy trì skill hợp lệ → tự tàng hình lại.
 
 ## Player-Facing Rules
 
@@ -54,16 +53,12 @@ Thần Thức hoạt động theo mô hình **bandwidth / slot** — không ph�
 - Một phần cố định được **reserved bắt buộc** cho hoạt động cơ bản của player (di chuyển, dùng skill, chiến đấu). Phần reserved này **cố định mọi cảnh giới**, không scale.
 - Phần còn dư là **slot tự do** — player dùng để triệu hồi Linh Thú hoặc Khôi Lỗi.
 - Mỗi Linh Thú / Khôi Lỗi chiếm một lượng slot cố định (tạm coi bằng nhau, xác định khi balance).
+- Không có giới hạn density map riêng cho companion; slot Thần Thức là giới hạn summon chính ở layer shared rule.
 - Quái/boss có Thần Thức fixed theo template trong DB, không scale theo map.
-
-### Hồi Thần Thức
-- **Tự hồi theo thời gian** — chậm, luôn xảy ra.
-- **Item/skill hồi nhanh** — tốc độ cao hơn, cần tài nguyên.
-- Chi tiết tốc độ hồi xác định khi làm balance.
 
 ### Rule nhìn thấy (ngưỡng X%)
 - Config toàn server: ngưỡng X% (ví dụ 40%).
-- Nếu Thần Thức hiện tại của A **< X% Thần Thức của B** → A không nhìn thấy B khi B đang ẩn.
+- Nếu Thần Thức của A **< X% Thần Thức của B** → A không nhìn thấy B khi B đang ẩn.
 - B luôn có Thần Thức > X% của A → B luôn nhìn thấy A.
 - Rule **một chiều**: kẻ yếu hơn mù trước kẻ mạnh hơn.
 
@@ -84,7 +79,7 @@ Thần Thức hoạt động theo mô hình **bandwidth / slot** — không ph�
 ### Lộ diện khi bị tấn công
 - Đang tàng hình bị tấn công → **lộ diện X giây** (config).
 - Trong thời gian lộ diện: tất cả thực thể đều nhìn thấy, tương tác, tấn công được.
-- Hết X giây: nếu còn đủ Thần Thức → tự tàng hình lại.
+- Hết X giây: nếu còn đủ mana / vẫn duy trì được skill → tự tàng hình lại.
 - Bị tấn công tiếp khi đang lộ diện → **reset timer**.
 
 **Ví dụ:**
@@ -115,7 +110,6 @@ Thần Thức hoạt động theo mô hình **bandwidth / slot** — không ph�
 - **Tự động lộ diện**: hết mana khi đang tàng hình.
 
 ## Edge Cases
-- Thần Thức tụt về 0 trong lúc đang tàng hình: tự tắt, lộ diện.
 - Bị tấn công liên tục khi đang lộ diện: timer lộ diện reset liên tục, không thể ẩn lại.
 - Kẻ thứ 3 reveal mục tiêu bằng cách tấn công vào: tạo gameplay phối hợp hoặc phá bẫy.
 - Thần Thức quái fixed theo template: map cao → quái Thần Thức cao → player ẩn không hiệu quả nếu chênh lệch lớn.
@@ -124,7 +118,6 @@ Thần Thức hoạt động theo mô hình **bandwidth / slot** — không ph�
 - Ngưỡng X% toàn server (`game_configs`)
 - Tốc độ tiêu hao mana khi tàng hình (`game_configs`)
 - Thời gian lộ diện cưỡng bức X giây (`game_configs`)
-- Tốc độ hồi Thần Thức tự nhiên (`game_configs`)
 - Thần Thức template của quái/boss theo từng map (DB)
 
 ## UI / UX Notes
@@ -150,15 +143,15 @@ Thần Thức hoạt động theo mô hình **bandwidth / slot** — không ph�
 - [ ] Ngưỡng X% cụ thể sẽ xác định khi làm balance.
 - [ ] Tốc độ tiêu hao và hồi Thần Thức cụ thể — phase balance.
 - [ ] Thời gian lộ diện cưỡng bức X giây — phase balance.
-- [ ] Người không đủ Thần Thức Quan nhìn động phủ: hoàn toàn không thấy gì hay có hiệu ứng mờ?
+- [x] Người không đủ Thần Thức Quan nhìn động phủ: thấy **hiệu ứng mờ** như có thứ gì ở đó, nhưng không tương tác được.
 
 ## Known Conflicts / Drift
 - Chưa có conflict nào ghi nhận.
 
 ## Requirement Readiness Checklist
-- [ ] Behavior is specific enough for `dev` to estimate.
-- [ ] Acceptance criteria can be written without guessing.
-- [ ] Major edge cases are covered.
-- [ ] Config/data needs are listed.
-- [ ] Out-of-scope items are explicit.
-- [ ] Ready to promote to `requirements/`.
+- [x] Behavior is specific enough for `dev` to estimate.
+- [x] Acceptance criteria can be written without guessing.
+- [x] Major edge cases are covered.
+- [x] Config/data needs are listed.
+- [x] Out-of-scope items are explicit.
+- [x] Ready to promote to `requirements/`.

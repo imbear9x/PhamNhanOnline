@@ -39,8 +39,10 @@ Prompt gợi ý khi đã có handoff:
 
 ```text
 đọc AGENTS.md và docs/agent-handoffs/README.md trước.
-làm theo handoff ở docs/agent-handoffs/active/<ten-file>.md.
-nếu có nhiều handoff ready mà chưa rõ ưu tiên thì hỏi lại mình trước khi bắt đầu.
+check docs/agent-handoffs/QUEUE.md xem có handoff Ready nào owner là dev không.
+nếu có đúng 1 cái thì đọc handoff đó, đọc TechDesign spec và source GameDesign docs được dẫn trong handoff, rồi implement theo rule.
+nếu có nhiều cái thì hỏi mình chọn cái nào trước.
+nếu không có thì báo không có handoff Ready cho dev.
 ```
 
 Ý nghĩa:
@@ -48,13 +50,25 @@ nếu có nhiều handoff ready mà chưa rõ ưu tiên thì hỏi lại mình t
 - `dev` nhận việc từ artifact thay vì từ chat cũ
 - nếu queue có nhiều việc thì không tự đoán
 
-## Cho Trường Hợp Chốt Từ GameDesign Sang Dev
+## Cho TechDesign
+
+Prompt gợi ý khi GameDesign đã tạo handoff:
+
+```text
+đọc AGENTS.md, docs/agent-workflows/techdesign-workflow.md và docs/agent-handoffs/README.md trước.
+check docs/agent-handoffs/QUEUE.md xem có handoff Ready nào owner là techdesign không.
+nếu có đúng 1 cái thì đọc handoff đó, đọc source GameDesign docs, inspect code liên quan, tạo TechDesign spec trong docs/tech-design/, rồi tạo handoff Ready cho dev.
+nếu có nhiều cái thì hỏi mình chọn cái nào trước.
+nếu không có thì báo không có handoff Ready cho techdesign.
+```
+
+## Cho Trường Hợp Chốt Từ GameDesign Sang TechDesign
 
 Prompt gợi ý:
 
 ```text
 tính năng này ổn rồi.
-hãy cập nhật requirement nếu cần, tạo handoff trong docs/agent-handoffs/active/, cập nhật docs/agent-handoffs/QUEUE.md, rồi nói cho mình path handoff để giao dev.
+hãy cập nhật requirement nếu cần, tạo handoff cho techdesign trong docs/agent-handoffs/active/, cập nhật docs/agent-handoffs/QUEUE.md, rồi nói cho mình path handoff để giao techdesign.
 ```
 
 ## Quy tắc thực dụng

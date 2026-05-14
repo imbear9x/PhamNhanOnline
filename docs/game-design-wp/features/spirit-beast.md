@@ -90,11 +90,6 @@ Linh Thú là thực thể thật trong game, gần với enemy đồng minh v�
 - Không giới hạn cứng số lượng — giới hạn thực tế là **tổng slot thần thức còn dư** sau khi trừ phần reserved cho hoạt động cơ bản.
 - Không có mục tiêu địch → follow player.
 
-### Giới hạn density map
-- Pet hiện với **mọi player** trong map.
-- Mỗi pet tính như **1 player entity** cho giới hạn density.
-- Map vượt density tối đa → **không cho triệu hồi thêm pet**.
-
 ### AI ưu tiên mục tiêu
 Khi có kẻ địch, ưu tiên theo thứ tự:
 1. Kẻ địch gần nhất đang tấn công người chơi.
@@ -132,11 +127,13 @@ Không có target phù hợp → follow player.
 
 ### Auto loot
 - **Nhặt tất cả** (tạm thời).
+- Pet **không spam nhặt liên tục** — mỗi chu kỳ ~1 giây (cấu hình `game_configs`) pet tìm item có thể nhặt trong bán kính và gửi yêu cầu nhặt 1 lần.
+- Tuân theo **Ownership / Drop Rights** (xem `shared-rules.md`): chỉ nhặt đồ mà chủ nhân có quyền nhặt — đồ của chính chủ, hoặc đồ public đã hết priority window. Không nhặt đồ vẫn trong priority window của người khác.
 - Balo player đầy → dừng nhặt.
-- Tuân theo **quyền sở hữu drop**.
-- 2 pet cùng gần 1 drop: chỉ cần 1 pet nhặt được, item về tay chủ.
+- 2 pet cùng nhắm 1 drop: chỉ 1 pet nhặt được, item về tay chủ.
 - Player đang trade / PK: pet vẫn nhặt bình thường.
 - Player chết → pet **không nhặt**, đứng yên. Hồi sinh xong mới nhặt tiếp.
+- Có thể bật / tắt trong cấu hình linh thú.
 
 ### Bảo vệ động phủ
 - Đặt pet ở vị trí bảo vệ → pet ở lại động phủ.
@@ -211,7 +208,6 @@ Không có target phù hợp → follow player.
 ## Edge Cases
 - 2 pet cùng gần 1 drop: chỉ 1 pet nhặt, item về tay chủ bình thường.
 - Pet đang thủ nhà bị chết, chủ offline, kẻ công bỏ đi: pet hồi sinh để tiếp tục thủ.
-- Map đã đủ density: không triệu hồi thêm dù còn slot thần thức.
 - Player thần thức không đủ sau khi pet lên cảnh giới: không triệu hồi được cho đến khi nâng thần thức.
 - Pet hết thọ nguyên khi đang triệu hồi: biến mất ngay, player nhận thông báo.
 - Cận huyết check: chỉ cần cùng lineage id → không cho sinh sản, bất kể cảnh giới.
@@ -243,6 +239,7 @@ Không có target phù hợp → follow player.
 1. Pet là thực thể thật, không drop ra đất khi bị hạ.
 2. Chỉ pet cấp thấp mới tradable.
 3. Tối đa 2 linh thú triệu hồi đồng thời.
+4. Không có giới hạn density map riêng cho linh thú; giới hạn nằm ở slot thần thức và resource của pet.
 4. Triệu hồi chiếm **slot thần thức cố định** — không hao theo thời gian.
 5. Pet tự hành theo AI, không do player chủ động điều khiển từng lệnh.
 6. Che chắn là behavior, không phải skill riêng.
@@ -263,9 +260,9 @@ Không có target phù hợp → follow player.
 - Chưa có conflict nào ghi nhận.
 
 ## Requirement Readiness Checklist
-- [ ] Behavior is specific enough for `dev` to estimate.
-- [ ] Acceptance criteria can be written without guessing.
-- [ ] Major edge cases are covered.
-- [ ] Config/data needs are listed.
-- [ ] Out-of-scope items are explicit.
-- [ ] Ready to promote to `requirements/`.
+- [x] Behavior is specific enough for `dev` to estimate.
+- [x] Acceptance criteria can be written without guessing.
+- [x] Major edge cases are covered.
+- [x] Config/data needs are listed.
+- [x] Out-of-scope items are explicit.
+- [x] Ready to promote to `requirements/`.

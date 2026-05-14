@@ -52,7 +52,7 @@ Các mục này đã được bàn, nhưng vẫn còn mở nhiều quyết đị
     - thọ nguyên / tử vong / hồi phục của pet
 
 - **Player Interaction Group**
-  - Note: `notes/player-interaction-group.md`
+  - Note: `features/player-interaction-group.md`
   - Đang gộp nhiều hệ trong một file:
     - trade
     - friend / block
@@ -83,8 +83,9 @@ Các mục này đang tồn tại dưới dạng backlog/pending, nhưng chưa c
 - **NPC System**
 
 ### Có note liên quan nhưng chưa thành chủ đề bàn riêng
-- **Death Penalty Lôi Kiếp thất bại**
-  - Hiện mới là phần defer trong `features/death-penalty.md`
+- **Lôi Kiếp & Tu Luyện / Đột Phá**
+  - Note đã tạo: `features/tribulation-system.md` và `features/cultivation-and-breakthrough.md`
+  - Cần bàn tiếp để promote lên feature
 
 - **Pháp Khí (Smithing)**
   - Có nhắc trong note crafting, nhưng chưa thành một note player-facing riêng nếu muốn đào sâu loop

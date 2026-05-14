@@ -4,10 +4,14 @@
 
 - Status: Draft | Ready | In Progress | Blocked | Done
 - Priority: P1 | P2 | P3 | Unset
-- Suggested owner: dev | gamedesign | manager
+- Source agent: gamedesign | techdesign | dev | manager | user
+- Target agent: techdesign | dev | gamedesign | manager
+- Suggested owner: techdesign | dev | gamedesign | manager
 - Last updated: YYYY-MM-DD
 - Source discussion: <optional short note>
 - Source design doc: <optional path under docs/game-design-wp/>
+- Source tech design doc: <optional path under docs/tech-design/>
+- Expected output: <requirement update | tech-design spec | implementation | review | other>
 
 ## Goal
 
@@ -50,3 +54,7 @@ Những bối cảnh quan trọng mà agent tiếp theo phải giữ đúng.
 ## Recommended Next Step
 
 Bước tiếp theo cụ thể cho agent nhận việc.
+
+## Completion Output
+
+Agent nhận việc phải tạo/cập nhật artifact nào, báo cáo gì, và handoff tiếp theo đi đâu nếu có.

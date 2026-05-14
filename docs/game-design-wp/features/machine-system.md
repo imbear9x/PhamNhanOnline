@@ -91,6 +91,10 @@ Khôi Lỗi là thực thể đồng minh chiếm **slot thần thức** của p
 - Không giới hạn cứng.
 - Giới hạn thực tế là **slot thần thức còn dư** và **linh thạch để nạp**.
 
+### Density map
+- Không có giới hạn density map riêng cho Khôi Lỗi.
+- Quyết định có triệu hồi thêm được hay không phụ thuộc vào **slot thần thức còn dư** và **năng lượng / linh thạch để nạp**.
+
 ### Mode Tấn công
 - Bấm → Khôi Lỗi dùng **skill duy nhất** nhắm vào target player đang ngắm.
 - Mỗi Khôi Lỗi chỉ có **1 skill tấn công**, do bản vẽ quyết định.
@@ -100,6 +104,10 @@ Khôi Lỗi là thực thể đồng minh chiếm **slot thần thức** của p
 
 ### Mode Phòng thủ
 - Bấm → Khôi Lỗi **xuất hiện trước mặt player**, gánh toàn bộ sát thương nhắm vào player.
+- Nếu nhiều Khôi Lỗi cùng ở mode Phòng thủ: **Khôi Lỗi được bật mode trước sẽ gánh đòn trước**.
+- Nếu Khôi Lỗi đang gánh chết / bị thu hồi:
+  - Khôi Lỗi khác **đã sẵn ở mode Phòng thủ** → tiếp tục gánh, không cần bấm lại.
+  - Khôi Lỗi khác **chưa ở mode Phòng thủ** → player phải bấm thủ công.
 - Không giới hạn thời gian — giữ cho đến khi player tắt hoặc Khôi Lỗi chết.
 - Gánh **toàn bộ** sát thương.
 - Nếu HP Khôi Lỗi không đủ → **phần sát thương thừa vẫn tác động lên player**.
@@ -132,6 +140,12 @@ Khôi Lỗi là thực thể đồng minh chiếm **slot thần thức** của p
 - Dùng lại **nguyên liệu đầu vào trực tiếp** của công thức Khôi Lỗi đó để sửa chữa.
 - Khôi Lỗi chỉ quan tâm tới component đầu vào trực tiếp trong recipe của nó; chuỗi tạo ra component đó thuộc hệ craft nguồn.
 - Lượng hồi theo từng loại nguyên liệu → phase data design.
+
+### Luyện chế và bản vẽ
+- Mỗi **template Khôi Lỗi** cố định: **tên, loại, cấp bậc, skill, chỉ số** — do data quyết định.
+- Bản vẽ Khôi Lỗi có **cấp theo đại cảnh giới của player** (ví dụ Luyện Khí, Trúc Cơ, Kết Đan...), không chia nhỏ theo từng tầng Luyện Khí 1–9.
+- Cấp bản vẽ cao hơn → skill khác, chỉ số mạnh hơn, yêu cầu thần thức cao hơn.
+- Khi chết trong combat: cooldown triệu hồi lại mặc định **30 phút**, thay đổi theo cấp bậc Khôi Lỗi; xu hướng là **cấp cao hồi lâu hơn**.
 
 ### Luyện chế và bản vẽ
 
@@ -224,20 +238,20 @@ Khôi Lỗi là thực thể đồng minh chiếm **slot thần thức** của p
 10. Ai cũng có thể craft nếu có bản vẽ và nguyên liệu.
 
 ## Open Questions
-- [ ] Taxonomy bản vẽ: có bao nhiêu cấp, mỗi cấp khác nhau thế nào?
-- [ ] Danh sách skill mẫu cho từng loại bản vẽ.
-- [ ] Khi nhiều Khôi Lỗi cùng phòng thủ: rule gánh đòn như thế nào?
-- [ ] Slot thần thức chiếm per Khôi Lỗi, mana per lệnh, cooldown cụ thể — phase balance.
-- [ ] Lượng độ bền giảm per lần chết — phase data design.
+- [x] Bản vẽ có cấp theo **đại cảnh giới**; cấp cao hơn = skill khác, chỉ số mạnh hơn, yêu cầu thần thức cao hơn.
+- [x] Mỗi template Khôi Lỗi cố định tên, loại, cấp bậc, skill, chỉ số — theo data design.
+- [x] Nhiều Khôi Lỗi cùng phòng thủ: Khôi Lỗi bật mode trước gánh đòn trước.
+- [ ] Slot thần thức chiếm per Khôi Lỗi, năng lượng per lệnh, cooldown cụ thể — phase balance.
+- [x] Lượng độ bền giảm per lần chết phụ thuộc **cấp bản vẽ Khôi Lỗi**.
 - [x] Khôi Lỗi **không thủ nhà** — chỉ triệu hồi khi player online và chủ động.
 
 ## Known Conflicts / Drift
 - Chưa có conflict nào ghi nhận.
 
 ## Requirement Readiness Checklist
-- [ ] Behavior is specific enough for `dev` to estimate.
-- [ ] Acceptance criteria can be written without guessing.
-- [ ] Major edge cases are covered.
-- [ ] Config/data needs are listed.
-- [ ] Out-of-scope items are explicit.
-- [ ] Ready to promote to `requirements/`.
+- [x] Behavior is specific enough for `dev` to estimate.
+- [x] Acceptance criteria can be written without guessing.
+- [x] Major edge cases are covered.
+- [x] Config/data needs are listed.
+- [x] Out-of-scope items are explicit.
+- [x] Ready to promote to `requirements/`.
