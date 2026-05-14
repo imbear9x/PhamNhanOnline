@@ -46,6 +46,26 @@ Boss thế giới là enemy entity đặc biệt với HP cao, behavior phức t
 - Ai vào được map boss xuất hiện đều có thể tấn công — **không có điều kiện tham gia riêng**.
 - PvP trong map boss: theo PvP mode của map đó (normal hoặc chaos — xem PvP State Taxonomy).
 
+### Targeting / Aggro runtime contract
+- Boss dùng cùng proactive attack framework với enemy thường.
+- Ưu tiên target hiện tại:
+  1. player **vừa đánh boss** (qua `pendingAggroOverride` trong runtime hiện tại)
+  2. nếu target đó không còn hợp lệ / không còn trong tầm → chọn **player gần nhất trong range**
+- Không dùng aggro table tích lũy, không dùng first-seen target, không random combat target.
+- Khi **không có ai đánh** và **không có ai trong aggro range**:
+  - boss aggressive: patrol / đi tuần theo route hoặc ngẫu nhiên trong vùng patrol
+  - nếu lệch khỏi patrol area: tự quay về vùng patrol
+- Thiết kế world boss bổ sung một behavior riêng được user chốt ở layer feature: nếu map/boss config cho phép và không có target hợp lệ gần đó, boss **có thể chủ động đuổi đánh ngẫu nhiên mục tiêu trong map**. Rule này là config per boss, per map; TechDesign/Dev sẽ cần chỉ rõ cách graft vào framework hiện tại ở requirement stage.
+
+### Combat reset / out-of-combat
+- Boss thoát combat khi không resolve được target hợp lệ trong combat radius, ví dụ:
+  - target chết
+  - target offline / disconnect
+  - target rời instance / map
+  - target ra khỏi range
+- Boss không despawn chỉ vì mất combat.
+- Nếu có out-of-combat restore timer theo runtime hiện tại: boss **ReturnToPatrol** nhưng **giữ nguyên HP**; enemy thường mới restore full HP.
+- Boss despawn/reset hoàn toàn theo config/event rule riêng của boss hoặc map.
 ### Loot
 - **Người last hit**: nhận loot chính của boss (theo Ownership/Drop Rights shared rule — priority window cho người last hit).
 - **Tất cả người tham chiến** (đã hit boss ít nhất 1 lần): nhận reward tham gia nếu config — cấp tự động hoặc claim tùy config per boss.
@@ -55,7 +75,7 @@ Boss thế giới là enemy entity đặc biệt với HP cao, behavior phức t
 - Boss có thể respawn hoặc không — **config per boss**.
 - Nếu có respawn: cooldown config per boss.
 - Boss theo event: respawn theo rule của event đó.
-
+- Boss phase trigger được phép dùng cả 3 loại: **HP / time / event** — config per boss, per map.
 ### Xuất hiện
 - Map thường: boss spawn tại vị trí config, ai đi qua đều gặp.
 - Map riêng: boss là nội dung chính của map — vào map là có boss.
@@ -92,7 +112,8 @@ Boss thế giới là enemy entity đặc biệt với HP cao, behavior phức t
 - Player offline trong lúc boss chết: nếu đã hit boss trước đó — reward tham gia gửi inbox khi đăng nhập lại (nếu reward là claim tự động).
 - Boss chết trong map chaos PvP: loot vẫn theo Ownership/Drop Rights rule — last hit có priority window.
 - Nhiều player cùng hit đòn cuối (cùng tick): server xử lý deterministic — 1 player được tính last hit.
-
+- Boss mất target vì target rời map / disconnect / chết: runtime resolve target mới theo cùng proactive attack framework; nếu không có target hợp lệ thì boss về patrol.
+- Participation reward rule không cố định toàn hệ: có boss chỉ cần hit 1 lần, có boss cần threshold khác, có boss không có participation reward — config per boss/reward set.
 ## Data / Config Needs
 - Boss template: ID, tên, HP, behavior ref, loot pool, reward tham gia config → DB (enemy template đã có)
 - Boss spawn config: map ID, vị trí, respawn flag, respawn cooldown → DB
@@ -123,14 +144,14 @@ Boss thế giới là enemy entity đặc biệt với HP cao, behavior phức t
 - [x] Thông báo boss spawn: broadcast toàn server đang online — config per boss.
 - [x] TechDesign clarified minimum requirement-stage behavior spec must explicitly define: aggro/leash/reset, despawn/reset conditions, and skill cadence/targeting contract.
 - [x] Boss phase pattern được phép dùng cả 3 loại trigger: HP / time / event — config per boss, per map.
-
+- [x] Dev confirmed current runtime contract: pendingAggroOverride -> nearest valid target in range; timer-based round-robin skill cadence; boss out-of-combat return-to-patrol keeps HP.
 ## Known Conflicts / Drift
-- `requires_code_verification: true` — backend đã có enemy template nhưng behavior boss chưa được cấu hình đầy đủ. Theo TechDesign, requirement stage ít nhất phải khóa rõ aggro/leash/reset, despawn/reset conditions, và skill cadence/targeting contract trước. Phase pattern hiện đã được canonical hóa là data-driven với trigger HP / time / event, config per boss, per map.
-
+- Runtime enemy/boss framework hiện không có random combat target hay full aggro-table semantics. Nếu muốn world boss có behavior "đuổi ngẫu nhiên mục tiêu trong map khi không có target gần/hit", TechDesign/Dev cần chỉ rõ đây là extension per-boss/per-map so với framework hiện tại.
+- `requires_code_verification: true` — backend đã có enemy template và Dev đã mô tả runtime contract mức cao, nhưng requirement stage vẫn cần TechDesign/Dev khóa rõ integration boundary cho boss-specific behavior extensions.
 ## Requirement Readiness Checklist
 - [x] Behavior is specific enough for `dev` to estimate.
 - [x] Acceptance criteria can be written without guessing.
 - [x] Major edge cases are covered.
 - [x] Config/data needs are listed.
 - [x] Out-of-scope items are explicit.
-- [ ] Ready to promote to `requirements/` — behavior boss (skill/pattern/AI) chưa grounding, cần TechDesign xác nhận trước.
+- [x] Ready to promote to `requirements/`.

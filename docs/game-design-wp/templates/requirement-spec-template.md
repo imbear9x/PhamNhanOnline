@@ -44,6 +44,18 @@ Summarize the final design intent and reference source docs or discussions.
 
 - `AC-001`: Given ..., when ..., then ...
 
+## Target Design Summary
+
+Summarize the intended gameplay/runtime behavior that implementation should reach.
+
+## Current Runtime / Evidence Snapshot
+
+State what is currently confirmed in code/build, if anything.
+
+- Confirmed:
+- Not yet confirmed:
+- Requires code verification:
+
 ## Runtime Flow
 
 1.
@@ -86,7 +98,16 @@ Summarize the final design intent and reference source docs or discussions.
 
 ## Known Conflicts / Drift
 
+Document target-vs-current mismatches, legacy behavior, and migration caveats.
+
 -
+
+## Readiness Level
+
+- Ready for TechDesign refinement: yes / no
+- Ready for Dev handoff: yes / no
+- Ready for QA verification against implementation: yes / no
+- Notes:
 
 ## Handoff Checklist
 
@@ -95,4 +116,6 @@ Summarize the final design intent and reference source docs or discussions.
 - [ ] Config/data impacts are listed.
 - [ ] Edge cases are listed.
 - [ ] Related docs are linked.
+- [ ] Target design and current runtime/evidence are clearly separated.
+- [ ] Readiness Level is filled consistently with `handoff_ready`.
 - [ ] `handoff_ready` is set correctly.

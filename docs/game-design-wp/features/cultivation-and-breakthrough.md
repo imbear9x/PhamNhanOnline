@@ -145,7 +145,8 @@ Tổng cộng **31 cảnh giới**, chia 9 đại giai đoạn. Nguồn: `docs/g
 
 ## Requirement Readiness Note
 
-- [x] Core cultivation / breakthrough runtime đã implement; doc này đóng vai trò grounding feature, không phải ứng viên promote requirement riêng cho core loop.
+- [x] Core cultivation / breakthrough runtime đã implement; doc này tiếp tục giữ vai trò grounding feature cho canonical design.
+- [x] User chose downstream path: **vẫn viết requirement nhưng chỉ cho phần penalty refactor**, không viết lại requirement full cho toàn bộ core loop cultivation/breakthrough.
 - [x] TechDesign review: penalty refactor có thể là thay thế cục bộ (isolated) nếu `potential_reward_locked` hiện không bị state persistence / reconnect / retry / anti-abuse flows phụ thuộc.
-- [x] Nếu code hiện tại có các flow persistence/state machine phụ thuộc locked-potential flags, thì refactor này cần scope rộng hơn và phải được TechDesign tách rõ riêng.
-- [x] Vì vậy doc này được xem là đủ chín ở layer feature/grounding, nhưng không đi theo workflow promote requirements bình thường.
+- [x] Nếu code hiện tại có các flow persistence/state machine phụ thuộc locked-potential flags, thì requirement cho refactor phải nêu rõ scope rộng hơn ở layer TechDesign.
+- [x] Vì vậy doc này được xem là đủ chín ở layer feature/grounding; bước tiếp theo phù hợp là tạo requirement riêng cho **Cultivation Penalty Refactor**.

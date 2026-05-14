@@ -124,6 +124,34 @@ File naming:
 - one spec should cover one implementable prototype slice
 - if the GameDesign handoff is too broad, split into multiple specs and ask the user which slice should go to `dev` first
 
+## Requirement Review Gate
+
+When `techdesign` reads a GameDesign requirement doc, it must review it using the following lens before producing any output:
+
+**Questions to ask on every requirement:**
+1. How will dev implement this?
+2. What happens if two actions occur at the same time or in conflicting order?
+3. What happens when a resource or space is insufficient?
+4. How does the current code differ from the target design?
+5. How will QA verify this behavior?
+
+**Categories of conflict to actively look for:**
+- Edge cases: full inventory, expired items, offline state, partial failure
+- Boundary behavior: which rule wins when two systems interact
+- Object model ambiguity: unclear what an entity is at the persistence/runtime level
+- Target vs current runtime drift: design says one thing, code does another
+- Overflow/atomicity: partial output grants, rollback rules
+- Lifecycle gaps: missing transitions, undefined terminal states
+
+**If a conflict or gap is found:**
+- Do not silently skip it or assume dev will figure it out.
+- Report it to the user clearly and concisely.
+- Wait for user validation before proceeding.
+- Once validated, update the requirement doc and any relevant TechDesign output docs to reflect the resolution.
+- This keeps Dev and QA working from a single clean source of truth.
+
+**Goal:** every gap caught at review time is a bug or misalignment prevented in implementation and QA.
+
 ## Boundaries
 
 `techdesign` should not:
