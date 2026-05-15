@@ -99,9 +99,20 @@ Status: canonical.
 
 Canonical rule:
 
-- Khi người chơi nhận reward nhưng inventory không đủ chỗ, reward **được chuyển vào inbox / hòm thư chờ nhận**.
-- Rule này áp dụng thống nhất cho progression reward, sect welfare, quest reward, và các reward tương tự trừ khi một feature cực kỳ đặc biệt được user chốt khác rõ ràng sau này.
-- Feature docs không nên tự định nghĩa timeout 5 phút hoặc mất reward khi inventory đầy trừ khi có quyết định canonical mới.
+**Case A — Item rơi ra đất (loot thường từ quái/boss, structure drop):**
+- Nếu túi đầy: player **không nhặt được**, server báo túi đầy về client.
+- Item **vẫn nằm trên đất** trong looting window bình thường.
+- Không redirect vào inbox. Không mất item ngay.
+- Player phải dọn túi rồi nhặt lại trong window còn lại.
+
+**Case B — Reward hệ thống không rơi ra đất (quest, event, sect welfare, dungeon completion, crafting output, admin grant):**
+- Nếu túi đầy: reward **vào inbox / hòm thư chờ nhận**.
+- Rule này áp dụng thống nhất cho tất cả reward loại này trừ khi một feature đặc biệt được user chốt khác rõ ràng.
+
+**Ngoại lệ đã chốt:**
+- Harvest linh thảo từ ô trồng, extract linh thảo trong túi, drop linh thảo từ quái: **reject hoàn toàn** khi túi đầy — không inbox, không rơi đất. Báo túi đầy. Xem `requirements/herb-farming-system.md`.
+- Mua hàng NPC khi túi đầy: **reject toàn bộ giao dịch** — không inbox. Xem `requirements/npc-system.md`.
+- Các ngoại lệ mới phải được user chốt rõ ràng trước khi ghi vào feature/requirement doc.
 
 ### Spirit Sense Model
 

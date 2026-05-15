@@ -10,7 +10,6 @@ promoted_from: features/herb-farming-system.md
 related_docs:
   - features/herb-farming-system.md
   - features/home-cave-defense.md
-  - features/inbox-mail-system.md
   - features/multi-stage-crafting.md
   - shared-rules.md
 requires_code_verification: true
@@ -66,7 +65,7 @@ Behavior cần đạt:
 - Extract flow from herb item -> one or more linh dược item outputs.
 - Replant path using returned mầm non item.
 - Quái drop linh thảo item by map/quái config.
-- Inbox fallback when herb drop cannot enter inventory.
+- Reject herb drop from quái when inventory is full — no inbox fallback; notify client with inventory-full error.
 
 ### Must Not Implement
 - Wild herb nodes on map.
@@ -107,7 +106,7 @@ Behavior cần đạt:
 - `REQ-019`: Extract may additionally return a mầm non item by fixed configured chance; this chance shall not vary by herb state unless future config explicitly extends it.
 - `REQ-020`: Returned mầm non items shall be plantable directly through the replant flow without consuming a new seed item.
 - `REQ-021`: Herb item drops from quái shall be config-driven per quái per map.
-- `REQ-022`: If a herb drop reward from quái cannot fit into inventory, it shall follow shared inbox overflow behavior. Harvest and extract actions shall be **rejected entirely** if inventory is full — no inbox fallback for these two actions.
+- `REQ-022`: If a herb drop reward from quái cannot fit into inventory, the drop shall be **rejected entirely** — the item is not granted and is not redirected to inbox. The server shall notify the client with an inventory-full error. Harvest and extract actions shall equally be **rejected entirely** if inventory is full — no inbox fallback for any herb-related action.
 - `REQ-023`: Recipe/alchemy validation for this system shall use linh dược item templates/quantities as inputs; active requirement logic shall not depend on herb maturity fields.
 - `REQ-024`: The system shall expose enough state for UI to show plot herb stage, next-stage remaining time, linh thổ remaining lifetime, and inventory herb remaining lifetime.
 - `REQ-025`: Living herb items that reach their expiry timestamp shall be **deleted immediately**; no spoiled-item state exists.
@@ -126,7 +125,7 @@ Behavior cần đạt:
 - `AC-008`: Given a valid living-herb inventory item, when the player extracts it, then the living herb is consumed and configured linh dược outputs are granted.
 - `AC-009`: Given a `mature` herb item and a `thousand_year` herb item of the same herb family, when each is extracted, then their linh dược outputs may differ by item template according to config.
 - `AC-010`: Given extract config includes mầm non return chance, when extract resolves, then the chance used is fixed by config and not derived from current herb state.
-- `AC-011`: Given a quái drops herb while inventory is full, when loot resolves, then the herb reward is redirected to inbox per shared overflow rule.
+- `AC-011`: Given a quái drops herb while inventory is full, when loot resolves, then the herb drop is rejected — the item is not granted and not redirected to inbox; the client receives an inventory-full notification.
 - `AC-012`: Given an alchemy recipe requiring linh dược phẩm cấp cao, when a player provides only lower-tier linh dược template items, then recipe validation rejects the craft.
 - `AC-013`: Given inventory is full, when the player attempts to harvest a mature herb from a plot, then the action is rejected and the herb remains planted.
 - `AC-014`: Given inventory is full, when the player attempts to extract a living herb item, then the action is rejected and the herb item remains in inventory unchanged.
@@ -178,8 +177,9 @@ Behavior cần đạt:
 - Extract is one-way; extracted herbs cannot be replanted.
 - Replant uses returned mầm non item, not the extracted herb itself.
 - Linh dược quality is represented by template identity, not by per-instance runtime quality state.
-- Shared inbox overflow rule applies only to herb drops/rewards from quái; it does NOT apply to harvest or extract actions.
+- Herb drops from quái are rejected entirely if inventory is full — no inbox fallback; client receives inventory-full notification.
 - Harvest and extract are rejected in full if inventory is full — player must free space first.
+- No herb-related action (drop, harvest, extract) has inbox fallback.
 - Living herb items that expire are deleted immediately; no spoiled state exists.
 - Mầm non source is irrelevant to the replant flow; all mầm non items of the same template are interchangeable.
 - Plot count is resolved from fixed config table per blueprint grade; runtime logic must not compute it dynamically.
@@ -191,7 +191,7 @@ Behavior cần đạt:
 - Player inventory herb is near expiry and extract begins: expiry must be validated at action resolution, not only at UI open.
 - Plot has expired soil and player does nothing for a long time: planted herb can spoil via survival countdown.
 - Replacing soil on an empty plot should not create or restore a herb.
-- If inventory is full when harvest or extract is attempted: reject entirely, no partial grant, no inbox fallback.
+- If inventory is full when herb drop resolves, harvest is attempted, or extract is attempted: reject entirely, no partial grant, no inbox fallback, notify client.
 - If extract would produce multiple linh dược outputs and inventory is full: reject the entire extract action.
 - Mầm non from any source (extract, quái drop, NPC) uses the same item template and replant flow — source traceability not required at runtime.
 
@@ -246,9 +246,8 @@ Behavior cần đạt:
 
 - `features/herb-farming-system.md` — canonical feature design source.
 - `features/home-cave-defense.md` — home cave blueprint and garden context.
-- `features/inbox-mail-system.md` — overflow behavior.
 - `features/multi-stage-crafting.md` — downstream crafting input usage.
-- `shared-rules.md` — offline time-based activity rule and overflow rule.
+- `shared-rules.md` — offline time-based activity rule.
 
 ## Non-Blocking Follow-Ups
 
@@ -266,6 +265,7 @@ Behavior cần đạt:
 - Legacy alchemy path still references `required_herb_maturity`; active implementation must migrate to linh dược template-based gating. Required migration, not optional.
 - Garden server-side support exists (HerbService, AlchemyService) but client packet/UI wiring is not yet confirmed — non-blocking for TD/design work but must be resolved before Dev handoff is complete.
 - Old behavior (if any) treating herb item expiry as spoiled-item is not canonical; expiry = immediate deletion.
+- **Changed from prior spec**: herb drops from quái when inventory is full were previously spec'd to redirect to inbox per shared overflow rule. This is now **rejected** — no redirect, no inbox fallback. Client must receive inventory-full notification. Any existing implementation of herb-drop-to-inbox must be removed.
 
 ## Readiness Level
 

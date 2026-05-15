@@ -129,7 +129,7 @@ Linh thảo không mọc ngoài tự nhiên — chỉ thu được qua farm quá
 - Cây trong túi hết hạn khi offline: hỏng khi server settle — player mất item.
 - Ô trồng thiếu linh thổ: không thể trồng, hiển thị "cần linh thổ".
 - Extract cây trưởng thành trong túi đã gần hết hạn: vẫn extract được — linh dược không có thời hạn.
-- Drop linh thảo từ quái khi túi đầy: vào inbox theo shared overflow rule.
+- Drop linh thảo từ quái khi túi đầy: **reject hoàn toàn** — item không rơi, không vào inbox. Client nhận thông báo túi đầy.
 
 ## Data / Config Needs
 - Linh thảo template: ID, tên, thời gian per giai đoạn, linh dược output (loại + số lượng per trạng thái), tỉ lệ mầm tái trồng → DB
@@ -150,7 +150,7 @@ Linh thảo không mọc ngoài tự nhiên — chỉ thu được qua farm quá
 - **Multi-Stage Crafting / Alchemy** (`features/multi-stage-crafting.md`): linh dược là nguyên liệu đầu vào.
 - **Cultivation & Breakthrough** (`features/cultivation-and-breakthrough.md`): mật độ linh khí ảnh hưởng tu luyện.
 - **Offline Time-Based Activities** (`shared-rules.md`): cây phát triển offline.
-- **Inbox** (`features/inbox-mail-system.md`): drop linh thảo overflow khi túi đầy.
+- **Inventory Bag System** (`features/inventory-bag-system.md`): drop linh thảo từ quái bị reject nếu túi đầy — không fallback inbox.
 
 ## Key Decisions
 1. Linh thảo không mọc ngoài tự nhiên — chỉ drop từ quái hoặc trồng trong vườn.

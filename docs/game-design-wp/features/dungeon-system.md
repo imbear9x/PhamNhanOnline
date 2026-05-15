@@ -38,7 +38,8 @@ Có 3 loại phó bản: **cá nhân**, **sự kiện**, và **world**. Mỗi lo
 - Mục tiêu hoàn thành config per dungeon — có thể không có mục tiêu
 - Thoát và vào lại — giữ nguyên trạng thái
 - Companion (Linh Thú, Khôi Lỗi) có thể vào
-- Reward claim thủ công, overflow vào inbox
+- Reward hoàn thành phó bản: claim thủ công, bạo đầy thì overflow vào inbox
+- Loot quái/boss trong phó bản: rơi đất bình thường, túi đầy thì không nhặt được
 - Giới hạn lần vào, thời gian giới hạn, checkpoint — tất cả config per dungeon
 
 ### Out Of Scope
@@ -115,7 +116,8 @@ Mỗi phó bản có 1 trong 2 PvP mode — thuộc tính config per dungeon, kh
 ### Loot và reward
 - Loot từ quái/boss trong phó bản: mặc định giống ngoài map; có thể config loot pool riêng per dungeon.
 - Reward hoàn thành phó bản (nếu có): **player phải tự claim** — không cấp tự động.
-- Reward overflow khi balo đầy: vào **inbox** theo shared overflow rule.
+- Loot từ quái/boss trong phó bản: rơi đất bình thường — túi đầy thì **không nhặt được**, báo túi đầy, không vào inbox.
+- Reward hoàn thành phó bản (claim thủ công): túi đầy thì vào **inbox** theo shared overflow rule.
 
 ### Giới hạn lần vào
 - Config per dungeon — có thể không giới hạn, hoặc giới hạn X lần/ngày.
@@ -157,11 +159,11 @@ Mỗi phó bản có 1 trong 2 PvP mode — thuộc tính config per dungeon, kh
 ### Flow 5 — Claim reward hoàn thành
 1. Phó bản hoàn thành (nếu có điều kiện hoàn thành).
 2. Reward panel hiện ra — player nhấn claim.
-3. Server check balo: đủ chỗ → vào balo; đầy → vào inbox.
+3. Server check balo: đủ chỗ → vào balo; đầy → vào inbox (reward hệ thống, không phải loot đất).
 
 ## Edge Cases
 - Player thoát ra trong lúc đang combat: combat hủy, player teleport ra, death penalty không áp dụng (không phải chết).
-- Phó bản đóng đúng lúc player đang claim reward: reward vào inbox nếu chưa kịp nhận.
+- Phó bản đóng đúng lúc player đang claim reward: reward (loại hệ thống) vào inbox nếu chưa kịp nhận.
 - Hết lượt vào trong ngày nhưng player đang ở trong: player vẫn ở trong bình thường, chỉ bị block khi cố vào lại sau khi đã thoát.
 - Companion chết trong phó bản: áp dụng companion death rule bình thường của từng loại (Linh Thú / Khôi Lỗi).
 - Phó bản world: nhiều player cùng tele vào cùng 1 map con — bình thường, không giới hạn density (theo shared companion slot rule).
@@ -203,7 +205,7 @@ Mỗi phó bản có 1 trong 2 PvP mode — thuộc tính config per dungeon, kh
 4. Thoát và vào lại: trạng thái giữ nguyên miễn là đủ điều kiện và phó bản còn mở.
 5. Phó bản world: tele random map con khi vào; các map con liên thông.
 6. Mục tiêu hoàn thành, giới hạn lần vào, countdown, checkpoint: tất cả config per dungeon — có thể không có.
-7. Reward claim thủ công; overflow vào inbox.
+7. Reward hoàn thành phó bản claim thủ công; túi đầy thì overflow vào inbox. Loot quái/boss rơi đất — túi đầy thì không nhặt được, không inbox.
 8. Không có rating / xếp hạng ảnh hưởng reward.
 9. Companion (Linh Thú, Khôi Lỗi) có thể vào — config per dungeon nếu cần cấm.
 

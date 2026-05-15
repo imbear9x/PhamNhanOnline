@@ -34,7 +34,9 @@ Requirement-level clarifications locked for implementation:
 - Nâng cấp chỉ từ NPC bằng linh thạch, chỉ được lên cấp cao hơn.
 - Không thể hạ cấp — block cả UI lẫn server.
 - Nâng cấp không làm mất item — chuyển nguyên vẹn sang túi mới.
-- Túi đầy + passive reward → inbox overflow. Túi đầy + action chủ động (harvest, extract…) → reject.
+- Túi đầy + loot rơi đất từ quái/boss → không nhặt được, item vẫn ở đất trong looting window, báo túi đầy — không inbox.
+- Túi đầy + reward hệ thống (quest, event, sect, dungeon, crafting output) → inbox overflow.
+- Túi đầy + action chủ động (harvest, extract, mua NPC, drop linh thảo…) → reject hoàn toàn.
 
 ## Target Design Summary
 
@@ -44,7 +46,8 @@ Behavior cần đạt:
 - Nhân vật mới → túi cấp 1 tự động, không cần player thao tác.
 - Nâng cấp túi chỉ được lên cấp cao hơn — UI ẩn/disable option thấp hơn hoặc cùng cấp; server reject nếu request vi phạm.
 - Khi nâng cấp: tất cả item trong túi cũ chuyển sang túi mới nguyên vẹn, không mất item nào.
-- Túi đầy + nhận item passive (drop, quest, mail, event) → inbox overflow.
+- Túi đầy + reward hệ thống (quest, mail, event, sect, dungeon, crafting output) → inbox overflow.
+- Túi đầy + loot rơi đất (quái/boss drop) → không nhặt được, item vẫn ở đất, báo túi đầy.
 - Túi đầy + action chủ động (harvest, extract) → reject toàn bộ action.
 
 ## Current Runtime / Evidence Snapshot
@@ -63,7 +66,10 @@ Behavior cần đạt:
 - NPC bag upgrade transaction: validate higher grade only, deduct linh thạch, replace bag, transfer items.
 - Server-side downgrade prevention: reject any request to equip bag grade ≤ current grade.
 - UI: show current bag grade and slot count; hide/disable lower-or-equal grade options in NPC shop.
-- Inventory full handling: passive reward → inbox overflow; active action → reject.
+- Inventory full handling:
+  - Loot rơi đất (quái/boss): không nhặt được, item vẫn đất, báo túi đầy — không inbox.
+  - Reward hệ thống (quest/event/sect/dungeon/crafting): inbox overflow.
+  - Action chủ động (harvest, extract, mua NPC, drop linh thảo): reject hoàn toàn.
 
 ### Must Not Implement
 - Bag as tradeable/droppable item.
@@ -77,7 +83,8 @@ Behavior cần đạt:
 - `bag grade`: integer 1–4; determines slot count.
 - `slot`: one inventory position that can hold one item stack.
 - `upgrade`: replace current bag with a higher-grade bag; items transfer automatically.
-- `inbox overflow`: items that cannot enter inventory are redirected to inbox mail system.
+- `inbox overflow`: reward hệ thống không vào được inventory thì redirect sang inbox mail system. Chỉ áp dụng cho reward không rơi ra đất.
+- `loot reject`: loot rơi đất từ quái/boss khi túi đầy — không nhặt được, item vẫn nằm đất, báo túi đầy. Không redirect inbox.
 
 ## Functional Requirements
 
@@ -91,7 +98,8 @@ Behavior cần đạt:
 - `REQ-008`: NPC shop UI shall only display bag grades higher than the player's current bag grade.
 - `REQ-009`: Bag upgrade transaction shall: (a) validate grade and cost, (b) deduct linh thạch, (c) replace bag grade, (d) transfer all items from old bag to new bag without loss.
 - `REQ-010`: Item transfer on upgrade shall never result in item loss; all items from old bag must appear in new bag after upgrade.
-- `REQ-011`: When inventory is full and a passive reward item (drop, quest, event, mail attachment) cannot enter inventory, it shall follow shared inbox overflow rule.
+- `REQ-011a`: When inventory is full and a system reward (quest, event, sect welfare, dungeon completion, crafting output, admin grant) cannot enter inventory, it shall follow shared inbox overflow rule — redirect to inbox.
+- `REQ-011b`: When inventory is full and a player attempts to pick up loot that has dropped on the ground (quái/boss drop), the pick-up shall be rejected; the item shall remain on the ground within its looting window; the client shall receive an inventory-full notification. No inbox redirect.
 - `REQ-012`: When inventory is full and a player initiates an active action that produces items (harvest, extract), the action shall be rejected entirely; no partial grant, no inbox fallback.
 - `REQ-013`: UI shall display current bag grade and current used/total slot count to the player.
 
@@ -102,7 +110,8 @@ Behavior cần đạt:
 - `AC-003`: Given a character has bag grade 2, when a server request is made to upgrade to grade 1 or 2, then the server rejects the request and no change occurs.
 - `AC-004`: Given a character has bag grade 1 with 30 items and sufficient linh thạch, when the player upgrades to grade 2, then after upgrade the character has bag grade 2 and all 30 items are present in the new bag.
 - `AC-005`: Given a character has bag grade 4, when the player opens NPC bag shop, then no bag upgrade options are shown (already at max grade).
-- `AC-006`: Given inventory is full, when a quái drop reward is granted, then the item is redirected to inbox and does not cause an error.
+- `AC-006a`: Given inventory is full, when a system reward (quest, event, sect, dungeon, crafting) is granted, then the item is redirected to inbox and the player can claim it later.
+- `AC-006b`: Given inventory is full, when a player attempts to pick up loot dropped on the ground by a quái or boss, then the pick-up is rejected, the item remains on the ground, and the client receives an inventory-full notification.
 - `AC-007`: Given inventory is full, when the player attempts to harvest a herb from a plot, then the harvest action is rejected and no item is granted.
 - `AC-008`: Given a character's bag, when the player inspects the inventory UI, then bag grade and slot count (used/total) are visible.
 
@@ -124,10 +133,17 @@ Behavior cần đạt:
 8. Server responds with new bag state.
 9. Client updates inventory UI with new grade and slot count.
 
-### Inventory full — passive reward
+### Inventory full — system reward (quest/event/sect/dungeon/crafting)
 1. System attempts to grant item to inventory.
 2. Inventory has no free slot.
 3. Item is redirected to inbox per shared overflow rule.
+
+### Inventory full — ground loot pick-up (quái/boss drop)
+1. Player attempts to pick up item lying on the ground.
+2. Inventory has no free slot.
+3. Pick-up is rejected — item remains on the ground within looting window.
+4. Client receives inventory-full notification.
+5. Player frees up a slot and retries within the looting window.
 
 ### Inventory full — active action
 1. Player initiates action that would produce item (harvest, extract, etc.).
@@ -152,7 +168,7 @@ Behavior cần đạt:
 - Bag upgrade never causes item loss.
 - Bag is not an item; it cannot appear in any inventory, trade, drop, or mail flow.
 - Slot count is always determined by bag grade config; it cannot be set independently.
-- Inbox overflow applies to passive item grants only, not active player actions.
+- Inbox overflow applies to system reward grants only (quest/event/sect/dungeon/crafting output/admin). Ground loot pick-up is rejected, not redirected.
 
 ## Edge Cases
 

@@ -69,7 +69,8 @@ Boss thế giới là enemy entity đặc biệt với HP cao, behavior phức t
 ### Loot
 - **Người last hit**: nhận loot chính của boss (theo Ownership/Drop Rights shared rule — priority window cho người last hit).
 - **Tất cả người tham chiến** (đã hit boss ít nhất 1 lần): nhận reward tham gia nếu config — cấp tự động hoặc claim tùy config per boss.
-- Reward overflow: vào inbox theo shared overflow rule.
+- Loot rơi đất (last hit loot): nếu túi đầy — không nhặt được, item vẫn đất trong looting window, báo túi đầy. Không vào inbox.
+- Reward tham gia (cấp tự động): nếu túi đầy — vào inbox theo shared overflow rule.
 
 ### Respawn
 - Boss có thể respawn hoặc không — **config per boss**.
@@ -109,7 +110,7 @@ Boss thế giới là enemy entity đặc biệt với HP cao, behavior phức t
 
 ## Edge Cases
 - Player vào map sau khi boss đã chết: không tính tham gia, không nhận reward.
-- Player offline trong lúc boss chết: nếu đã hit boss trước đó — reward tham gia gửi inbox khi đăng nhập lại (nếu reward là claim tự động).
+- Player offline trong lúc boss chết: nếu đã hit boss trước đó — reward tham gia (loại hệ thống cấp tự động) gửi inbox khi đăng nhập lại. Last hit loot rơi đất theo looting window bình thường — nếu hết window thì mất.
 - Boss chết trong map chaos PvP: loot vẫn theo Ownership/Drop Rights rule — last hit có priority window.
 - Nhiều player cùng hit đòn cuối (cùng tick): server xử lý deterministic — 1 player được tính last hit.
 - Boss mất target vì target rời map / disconnect / chết: runtime resolve target mới theo cùng proactive attack framework; nếu không có target hợp lệ thì boss về patrol.
@@ -130,7 +131,7 @@ Boss thế giới là enemy entity đặc biệt với HP cao, behavior phức t
 - **Ownership / Drop Rights** (`shared-rules.md`): last hit nhận priority window cho loot.
 - **Death Penalty** (`features/death-penalty.md`): chết khi đánh boss = death penalty bình thường.
 - **PvP State Taxonomy** (`shared-rules.md`): PvP trong map boss theo mode của map.
-- **Inbox** (`features/inbox-mail-system.md`): reward overflow.
+- **Inbox** (`features/inbox-mail-system.md`): reward tham gia cấp tự động khi túi đầy.
 
 ## Key Decisions
 1. Không có điều kiện tham gia riêng — vào được map là đánh được.

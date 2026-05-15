@@ -81,15 +81,14 @@ Khi tạo nhân vật, player được trang bị túi cấp 1 (cấp thấp nh�
 ## Inventory Full và Overflow
 
 - Túi đầy = không còn slot trống.
-- Các action nhận item khi túi đầy đều theo **shared inbox overflow rule** (xem `shared-rules.md`):
-  - drop từ quái
-  - quest reward
-  - mail attachment claim
-  - event reward
-- Các action **bị reject** khi túi đầy (không inbox fallback):
+- **Item rơi đất (loot từ quái/boss):** Nếu túi đầy — không nhặt được, báo túi đầy, item vẫn nằm đất trong looting window. Không vào inbox.
+- **Reward hệ thống (quest, event, sect, dungeon, crafting output, admin grant):** Nếu túi đầy — vào **inbox** chờ nhận. Xem `shared-rules.md`.
+- **Action bị reject hoàn toàn** khi túi đầy (không inbox, không fallback):
   - harvest linh thảo từ ô trồng
   - extract linh thảo trong túi
-  - (các action khác theo rule riêng của từng hệ)
+  - drop linh thảo từ quái
+  - mua hàng NPC
+  - (các ngoại lệ khác theo rule riêng của từng hệ khi được user chốt)
 
 ## Edge Cases
 

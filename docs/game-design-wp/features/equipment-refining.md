@@ -123,7 +123,7 @@ Không có state machine riêng — Luyện Khí dùng chung state machine của
 
 ## Edge Cases
 - Player refine rồi cancel giữa chừng: xử lý theo rule luyện chế chung.
-- Balo đầy khi refine xong: xử lý theo rule luyện chế chung (inbox / kho tạm nếu có).
+- Balo đầy khi refine/forge xong: output là reward hệ thống, vào **inbox** theo shared overflow rule. Không có kho tạm riêng.
 - Phụ liệu không làm đổi output, chỉ tăng tỉ lệ: server validate để tránh exploit.
 
 ## Data / Config Needs
