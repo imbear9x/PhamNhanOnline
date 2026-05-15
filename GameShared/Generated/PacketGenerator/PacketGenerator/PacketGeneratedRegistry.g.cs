@@ -314,6 +314,18 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.EnemyMovementDecisionPacket:
                 id = 102;
                 return true;
+            case global::GameShared.Packets.GetBagStatePacket:
+                id = 220;
+                return true;
+            case global::GameShared.Packets.GetBagStateResultPacket:
+                id = 221;
+                return true;
+            case global::GameShared.Packets.UpgradeBagPacket:
+                id = 222;
+                return true;
+            case global::GameShared.Packets.UpgradeBagResultPacket:
+                id = 223;
+                return true;
             default:
                 id = default;
                 return false;
@@ -426,6 +438,10 @@ internal static class PacketGeneratedRegistry
             100 => new global::GameShared.Packets.SwapSkillLoadoutSlotsPacket(),
             101 => new global::GameShared.Packets.SwapSkillLoadoutSlotsResultPacket(),
             102 => new global::GameShared.Packets.EnemyMovementDecisionPacket(),
+            220 => new global::GameShared.Packets.GetBagStatePacket(),
+            221 => new global::GameShared.Packets.GetBagStateResultPacket(),
+            222 => new global::GameShared.Packets.UpgradeBagPacket(),
+            223 => new global::GameShared.Packets.UpgradeBagResultPacket(),
             _ => null
         };
     }

@@ -91,6 +91,82 @@ Implement the two-step herb lifecycle (harvest → living herb entity → extrac
 
 ## DB / Schema Plan
 
+### Canonical Data Model
+
+#### Tables And Field Semantics
+
+| Table | Field | Type | Meaning | Required | Source of truth | Notes |
+|---|---|---|---|---|---|---|
+| `herb_templates` | `item_template_id` | int PK/FK | Base item template identity for the herb family | yes | DB/init data | One herb family per template |
+| `herb_templates` | `seed_item_template_id` | int FK | Inventory item used to plant this herb from seed | yes | DB/init data | Must be `ItemType.HerbSeed` |
+| `herb_templates` | `survival_seconds_without_soil` | long | Time herb can survive after soil expires before terminal loss | yes | DB/init data | Used while planted only |
+| `herb_templates` | `inventory_expiry_seconds` | long | Time harvested living herb can survive in inventory before deletion | yes | DB/init data | Used to compute `player_herbs.expire_at` |
+| `herb_templates` | `replant_item_template_id` | int? FK | Mầm non / replant item returned on successful extract chance | no | DB/init data | Can be null if no replant output |
+| `herb_growth_stage_configs` | `herb_template_id` | int FK | Herb family this stage config belongs to | yes | DB/init data | Composite identity with stage |
+| `herb_growth_stage_configs` | `stage` | int | Growth stage code for this threshold row | yes | DB/init data | See enum contract below |
+| `herb_growth_stage_configs` | `required_growth_seconds` | long | Total accumulated growth seconds needed to reach this stage | yes | DB/init data | Progression order comes from threshold values |
+| `player_garden_plots` | `id` | long PK | Unique plot row | yes | DB/runtime | One row per player-owned plot |
+| `player_garden_plots` | `player_cave_id` | long FK | Cave that owns the plot | yes | DB/runtime | Plot ownership comes from cave ownership |
+| `player_garden_plots` | `plot_index` | int | Stable slot index inside the cave garden | yes | DB/runtime | Used for UI ordering |
+| `player_garden_plots` | `current_soil_player_item_id` | long? FK | Soil item currently inserted into this plot | no | DB/runtime | Null = no active soil |
+| `player_garden_plots` | `current_player_herb_id` | long? FK | Herb entity currently planted in this plot | no | DB/runtime | Null = empty plot |
+| `player_soils` | `player_item_id` | long PK/FK | Soil inventory item instance backing soil state | yes | DB/runtime | Soil remains an item with extra state row |
+| `player_soils` | `total_used_seconds` | long | Total active soil usage consumed so far | yes | DB/runtime | Determines remaining soil lifetime |
+| `player_soils` | `inserted_plot_id` | long? FK | Plot currently using this soil item | no | DB/runtime | Null = soil still in inventory |
+| `player_herbs` | `id` | long PK | Unique living herb entity | yes | DB/runtime | Herb in world or inventory, not regular item |
+| `player_herbs` | `player_id` | uuid FK | Owning character | yes | DB/runtime | Character authority |
+| `player_herbs` | `herb_template_id` | int FK | Herb family/type | yes | DB/runtime | Links to growth/output config |
+| `player_herbs` | `state` | int | Herb lifecycle state | yes | DB/runtime | See state enum contract below |
+| `player_herbs` | `current_stage` | int | Current growth maturity of this herb | yes | DB/runtime | See growth stage enum |
+| `player_herbs` | `accumulated_growth_seconds` | long | Total effective growth accumulated while planted | yes | DB/runtime | Used with stage thresholds |
+| `player_herbs` | `current_plot_id` | long? FK | Plot currently holding the herb | no | DB/runtime | Null once harvested to inventory |
+| `player_herbs` | `planted_at` | timestamp? | Last planted timestamp used for offline growth settlement | no | DB/runtime | Null in inventory state |
+| `player_herbs` | `expire_at` | timestamp? | Inventory expiry cutoff for harvested living herb | no | DB/runtime | New field in this slice |
+| `herb_harvest_outputs` | `herb_template_id` | int FK | Herb family that can yield this output | yes | DB/init data | |
+| `herb_harvest_outputs` | `required_stage` | int | Minimum/exact maturity stage used to select output set | yes | DB/init data | Mature vs ThousandYear split |
+| `herb_harvest_outputs` | `output_type` | int | Output semantic type | yes | DB/init data | Usually material/replant |
+| `herb_harvest_outputs` | `result_item_template_id` | int FK | Item template granted on extract roll success | yes | DB/init data | Distinct phẩm cấp = distinct item template |
+| `herb_harvest_outputs` | `quantity` | int | Quantity granted | yes | DB/init data | |
+| `herb_harvest_outputs` | `chance_rate` | double | Roll chance for this output | yes | DB/init data | |
+
+#### Enums / Codes / State Values
+
+| Name | Value | Meaning | Used by | Notes |
+|---|---|---|---|---|
+| `HerbGrowthStage.Seedling` | `1` | Newly planted herb | `player_herbs.current_stage`, growth config | Earliest planted state |
+| `HerbGrowthStage.Mature` | `2` | Harvestable normal maturity | `player_herbs.current_stage`, outputs, harvest validation | Produces base linh dược outputs |
+| `HerbGrowthStage.ThousandYear` | `3` | Terminal high maturity | `player_herbs.current_stage`, outputs, harvest validation | Rename of old `Perfect` code; DB value unchanged |
+| `HerbGrowthStage.Young` | `4` | Intermediate growth stage between Seedling and Mature | `player_herbs.current_stage`, growth config | New in this slice |
+| `PlayerHerbState.Planting` | `0` | Herb is planted on a plot | `player_herbs.state` | `current_plot_id` and `planted_at` expected non-null |
+| `PlayerHerbState.InInventory` | `1` | Herb is harvested and stored as living herb in inventory | `player_herbs.state` | `expire_at` may be non-null |
+| `HerbHarvestOutputType.Material` | runtime enum | Extract grants material item | output resolution | Existing enum in code |
+| `HerbHarvestOutputType.Replant` | runtime enum | Extract grants mầm non / replant item | output resolution | Existing enum in code |
+
+#### Relations And Ownership
+
+| From | To | Relation | Ownership / authority | Notes |
+|---|---|---|---|---|
+| `player_caves.id` | `player_garden_plots.player_cave_id` | 1 → many | Cave owns plots | Garden size currently derived from config |
+| `player_garden_plots.current_soil_player_item_id` | `player_items.id` | 0/1 → 1 | Plot references inserted soil item | Soil item remains regular inventory item instance |
+| `player_soils.player_item_id` | `player_items.id` | 1 → 1 extension row | Soil runtime metadata owned by Item/Herb services | Extra state for soil depletion |
+| `player_garden_plots.current_player_herb_id` | `player_herbs.id` | 0/1 → 1 | Plot references planted herb | Null when plot empty |
+| `player_herbs.player_id` | `characters.id` | many → 1 | Character owns living herb entity | Applies in both planted and inventory states |
+| `player_herbs.herb_template_id` | `herb_templates.item_template_id` | many → 1 | Herb instance type | Drives config lookup |
+| `herb_growth_stage_configs.herb_template_id` | `herb_templates.item_template_id` | many → 1 | Stage thresholds per herb family | |
+| `herb_harvest_outputs.herb_template_id` | `herb_templates.item_template_id` | many → 1 | Extract output config per herb family | |
+
+#### State Transitions By Field
+
+| Entity / table | Field(s) | Transition | Trigger | Owner service |
+|---|---|---|---|---|
+| `player_garden_plots` + `player_soils` | `current_soil_player_item_id`, `inserted_plot_id` | `null → soil item id` | Insert soil into plot | `HerbService.InsertSoilAsync` |
+| `player_herbs` + `player_garden_plots` | `state`, `current_stage`, `current_plot_id`, `planted_at`, `current_player_herb_id` | inventory/seed intent → planted herb | Plant seed / plant existing herb | `HerbService.PlantSeedAsync`, `HerbService.PlantExistingHerbAsync` |
+| `player_herbs` | `accumulated_growth_seconds`, `current_stage` | growth progress settlement | Read or mutate herb while planted | `HerbService.MaterializeHerbProgressAsync` |
+| `player_herbs` + `player_garden_plots` | `state: Planting → InInventory`, `current_plot_id: plot id → null`, `planted_at: ts → null`, `expire_at: null → timestamp`, `current_player_herb_id: herb id → null` | Harvest to inventory | `HarvestHerbPacket` accepted | `HerbService.HarvestAsync` |
+| `player_herbs` + `player_items` | delete herb row + add output items | Extract harvested herb | `ExtractHerbPacket` accepted | `HerbService.ExtractHerbAsync` |
+| `player_herbs` | delete herb row | Silent expiry cleanup | Background sweep or expired extract access | `HerbExpiryBackgroundService`, `HerbService.ExtractHerbAsync` |
+| `player_soils` | `total_used_seconds` | increase while active | Growth settlement on planted herb | `HerbService.MaterializeHerbProgressAsync` |
+
 ### Changed Tables
 
 | Table | Change | Reason |

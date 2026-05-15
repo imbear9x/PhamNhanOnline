@@ -68,6 +68,16 @@ public sealed class PlayerItemRepository
             .ThenBy(x => x.Id)
             .ToListAsync(cancellationToken);
 
+    public Task<int> CountInventoryActiveAsync(Guid playerId, CancellationToken cancellationToken = default)
+    {
+        var utcNow = DateTime.UtcNow;
+        return _db.GetTable<PlayerItemEntity>()
+            .Where(x => x.PlayerId == playerId &&
+                        x.LocationType == (int)ItemLocationType.Inventory &&
+                        (!x.ExpireAt.HasValue || x.ExpireAt.Value > utcNow))
+            .CountAsync(cancellationToken);
+    }
+
     public Task<long> CreateAsync(PlayerItemEntity entity, CancellationToken cancellationToken = default) =>
         _db.InsertEntityWithInt64IdentityAsync(entity, cancellationToken);
 

@@ -92,6 +92,9 @@ public enum MessageCode : int
     PracticeInvalid = 3056,
     NotificationInvalid = 3057,
     SkillLoadoutBlocked = 3058,
+    InventoryFull = 3059,
+    BagUpgradeTargetInvalid = 3060,
+    BagUpgradeCurrencyInsufficient = 3061,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001,

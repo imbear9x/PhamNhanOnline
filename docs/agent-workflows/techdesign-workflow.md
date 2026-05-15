@@ -91,6 +91,11 @@ The spec must include:
 - gameplay assumptions being implemented
 - code grounding summary
 - current code patterns observed
+- canonical data model / schema contract
+  - tables and field semantics
+  - enums/codes/state values
+  - relations and ownership
+  - state transitions by field where relevant
 - DB/schema plan (tables, columns, types, indexes, FK, constraints)
 - SQL script file paths and execution order
 - init data plan (master/reference rows, always present)
@@ -171,6 +176,62 @@ When `techdesign` reads a GameDesign requirement doc, it must review it using th
 - edit local/dev DB data when the user asks for test setup
 - create handoff docs for `dev`
 
+## Canonical Data Model Rule
+
+For any feature that introduces or changes persistence state, runtime state, packets, or validation based on stored fields, `techdesign` must explicitly document a **Canonical Data Model** section in the spec.
+
+Minimum content:
+- every important table involved
+- important fields and their meaning
+- enum/code/state values and what they represent
+- ownership/relations between entities
+- state transitions driven by specific fields
+- which service/runtime path is authoritative for mutating those fields
+
+Do not rely on prose-only descriptions when field-level schema understanding is important for Dev, QA, or Client Dev.
+
+## Receiving A QA Fail Handoff
+
+Khi `techdesign` nhận handoff có `Source agent: qa` và kết quả là fail, `techdesign` **phải đánh giá trước** — không bắt đầu implement code.
+
+### Bước đánh giá
+
+1. Đọc toàn bộ defect report từ QA: expected vs actual, evidence, file liên quan
+2. Đọc lại spec hiện tại trong `docs/tech-design/` cho feature đó
+3. Xác định defect thuộc loại nào:
+
+**Loại A — Spec đã đủ, fix direction rõ:**
+- Spec đã nói rõ expected behavior cho case này
+- Không cần update thêm gì
+- → Tạo handoff `dev` ngay, kèm pointer rõ vào đoạn spec và contract cần implement
+- → TechDesign không viết code
+
+**Loại B — Spec còn gap hoặc cần design decision:**
+- Spec chưa cover case này, hoặc policy chưa rõ
+- → Update spec trong `docs/tech-design/` trước
+- → Sau đó tạo handoff `dev` với spec mới
+- → TechDesign không viết code
+
+### Output bắt buộc
+
+- TechDesign luôn kết thúc bằng handoff `dev` — không bắt đầu và kết thúc bằng implementation
+- Handoff `dev` phải ghi rõ:
+  - defect QA đã report
+  - contract / policy TechDesign xác nhận hoặc bổ sung
+  - pointer đến đoạn spec liên quan
+  - expected behavior sau khi sửa
+  - retest scope để QA biết kiểm tra lại gì
+- Đóng handoff QA nguồn sang `Done` trong QUEUE.md
+- Thêm hàng mới cho handoff `dev` với `Owner = dev`, `Status = Ready`
+
+### Không được làm
+
+- Không tự implement code fix dù fix có vẻ đơn giản
+- Không tạo handoff `dev` mà không đọc và đối chiếu spec trước
+- Không để handoff QA nguồn vẫn `Ready` sau khi đã xử lý xong lượt của mình
+
+---
+
 ## Handoff To Dev
 
 A `techdesign` handoff is ready for `dev` only when it answers:
@@ -188,7 +249,7 @@ If any of these are unknown, mark them as blockers or open questions instead of 
 When ready:
 
 1. Create or update `docs/tech-design/<feature-or-slice>.md`.
-2. Create a handoff in `docs/agent-handoffs/active/YYYYMMDD-<feature-or-slice>-dev.md`.
+2. Create a handoff in `docs/agent-handoffs/active/YYYYMMDD-<queue-id>-<feature-or-slice>-dev.md`.
 3. Set the handoff metadata:
    - `Source agent: techdesign`
    - `Target agent: dev`

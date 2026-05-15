@@ -12,6 +12,7 @@ using GameShared.Messages;
 using GameShared.Models;
 using GameShared.Packets;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
 
 namespace GameServer.Services;
 
@@ -126,6 +127,7 @@ public sealed class AlchemyPracticeService
         var pillRecipeService = scope.ServiceProvider.GetRequiredService<PillRecipeService>();
         var alchemyService = scope.ServiceProvider.GetRequiredService<AlchemyService>();
         var itemService = scope.ServiceProvider.GetRequiredService<ItemService>();
+        var bagService = scope.ServiceProvider.GetRequiredService<BagService>();
         var playerRecipes = scope.ServiceProvider.GetRequiredService<PlayerPillRecipeRepository>();
         var notificationRepository = scope.ServiceProvider.GetRequiredService<PlayerNotificationRepository>();
         var notificationBuilder = scope.ServiceProvider.GetRequiredService<PlayerNotificationModelBuilder>();
@@ -174,15 +176,26 @@ public sealed class AlchemyPracticeService
                     var failedCount = Math.Max(0, requestedCraftCount - successCount);
                     var success = successCount > 0;
                     var rewards = new List<PracticeRewardEntry>();
+                    var overflowedRewards = new List<PracticeRewardEntry>();
                     if (successCount > 0)
                     {
-                        await itemService.AddItemAsync(
-                            activeSession.PlayerId,
-                            detail.Definition.ResultPillItemTemplateId,
-                            successCount,
-                            false,
-                            null,
-                            ct);
+                        var rewardGrant = new ItemGrantRequest(detail.Definition.ResultPillItemTemplateId, successCount, false, null);
+                        var capacityCheck = await bagService.CheckCapacityForAsync(activeSession.PlayerId, new[] { rewardGrant }, ct);
+                        if (capacityCheck.CanFit)
+                        {
+                            await itemService.AddItemAsync(
+                                activeSession.PlayerId,
+                                detail.Definition.ResultPillItemTemplateId,
+                                successCount,
+                                false,
+                                null,
+                                ct);
+                            rewards.Add(new PracticeRewardEntry(detail.Definition.ResultPillItemTemplateId, successCount));
+                        }
+                        else
+                        {
+                            overflowedRewards.Add(new PracticeRewardEntry(detail.Definition.ResultPillItemTemplateId, successCount));
+                        }
 
                         var learned = await playerRecipes.GetByPlayerAndRecipeAsync(activeSession.PlayerId, activeSession.DefinitionId, ct);
                         if (learned is not null)
@@ -195,9 +208,14 @@ public sealed class AlchemyPracticeService
                             learned.UpdatedAt = lockedUtcNow;
                             await playerRecipes.UpdateAsync(learned, ct);
                         }
-
-                        rewards.Add(new PracticeRewardEntry(detail.Definition.ResultPillItemTemplateId, successCount));
                     }
+
+                    var completionRewards = rewards.Concat(overflowedRewards).ToList();
+                    var completionMessage = successCount <= 0
+                        ? $"Khong nhan duoc {detail.Definition.Name}."
+                        : overflowedRewards.Count == 0
+                            ? $"Nhan duoc {successCount} {detail.Definition.Name}."
+                            : $"Túi đầy, {successCount} {detail.Definition.Name} đã được chuyển vào thông báo nhận thưởng.";
 
                     var completionPayload = new PracticeCompletionPayload(
                         success,
@@ -205,11 +223,9 @@ public sealed class AlchemyPracticeService
                         successCount,
                         failedCount,
                         success ? "Luyen che thanh cong" : "Luyen che that bai",
-                        successCount > 0
-                            ? $"Nhan duoc {successCount} {detail.Definition.Name}."
-                            : $"Khong nhan duoc {detail.Definition.Name}.",
+                        completionMessage,
                         detail.Definition.ResultPillItemTemplateId,
-                        rewards);
+                        completionRewards);
 
                     activeSession.AccumulatedActiveSeconds = Math.Max(activeSession.TotalDurationSeconds, _practiceService.CalculateAccumulatedActiveSeconds(activeSession, lockedUtcNow));
                     activeSession.PracticeState = (int)PracticeSessionState.Completed;

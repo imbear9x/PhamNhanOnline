@@ -25,6 +25,7 @@ public sealed class GameConfigValues
     public int CharacterEquipmentSlotCount { get; init; } = 4;
     public int CharacterStarterSkillId { get; init; } = 0;
     public int SkillMaxLoadoutSlotCount { get; init; } = 5;
+    public string InventoryBagUpgradeCurrencyCode { get; init; } = "currency.spirit_stone_small";
 
     public TimeSpan ResumeWindow => TimeSpan.FromSeconds(Math.Max(0, NetworkReconnectResumeWindowSeconds));
     public TimeSpan CultivationSettlementInterval => TimeSpan.FromSeconds(Math.Max(1, CultivationSettlementIntervalSeconds));

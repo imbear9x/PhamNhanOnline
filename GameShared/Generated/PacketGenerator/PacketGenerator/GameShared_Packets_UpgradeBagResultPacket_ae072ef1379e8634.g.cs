@@ -4,7 +4,7 @@ using System.IO;
 
 namespace GameShared.Packets;
 
-public partial class GetInventoryResultPacket
+public partial class UpgradeBagResultPacket
 {
     private ulong _mask;
 
@@ -24,15 +24,7 @@ public partial class GetInventoryResultPacket
         return HasCode;
     }
 
-    public bool HasEquipmentSlotCount => (_mask & (1UL << 2)) != 0;
-
-    public bool TryGetEquipmentSlotCount(out int? value)
-    {
-        value = EquipmentSlotCount;
-        return HasEquipmentSlotCount;
-    }
-
-    public bool HasBagState => (_mask & (1UL << 3)) != 0;
+    public bool HasBagState => (_mask & (1UL << 2)) != 0;
 
     public bool TryGetBagState(out global::GameShared.Models.BagStateModel? value)
     {
@@ -40,12 +32,20 @@ public partial class GetInventoryResultPacket
         return HasBagState;
     }
 
-    public bool HasItems => (_mask & (1UL << 4)) != 0;
+    public bool HasRemainingLinhThach => (_mask & (1UL << 3)) != 0;
 
-    public bool TryGetItems(out global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>? value)
+    public bool TryGetRemainingLinhThach(out int? value)
     {
-        value = Items;
-        return HasItems;
+        value = RemainingLinhThach;
+        return HasRemainingLinhThach;
+    }
+
+    public bool HasFailureReason => (_mask & (1UL << 4)) != 0;
+
+    public bool TryGetFailureReason(out string? value)
+    {
+        value = FailureReason;
+        return HasFailureReason;
     }
 
     public void Serialize(BinaryWriter writer)
@@ -54,9 +54,9 @@ public partial class GetInventoryResultPacket
 
         if (!global::System.Collections.Generic.EqualityComparer<bool?>.Default.Equals(Success, default!)) mask |= 1UL << 0;
         if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Messages.MessageCode?>.Default.Equals(Code, default!)) mask |= 1UL << 1;
-        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(EquipmentSlotCount, default!)) mask |= 1UL << 2;
-        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.BagStateModel?>.Default.Equals(BagState, default!)) mask |= 1UL << 3;
-        if (!global::System.Collections.Generic.EqualityComparer<global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>?>.Default.Equals(Items, default!)) mask |= 1UL << 4;
+        if (!global::System.Collections.Generic.EqualityComparer<global::GameShared.Models.BagStateModel?>.Default.Equals(BagState, default!)) mask |= 1UL << 2;
+        if (!global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(RemainingLinhThach, default!)) mask |= 1UL << 3;
+        if (!global::System.Collections.Generic.EqualityComparer<string?>.Default.Equals(FailureReason, default!)) mask |= 1UL << 4;
 
         writer.Write(mask);
 
@@ -65,11 +65,11 @@ public partial class GetInventoryResultPacket
         if ((mask & (1UL << 1)) != 0)
             global::GameShared.Packets.PacketWriter.Write(writer, (int)Code.Value);
         if ((mask & (1UL << 2)) != 0)
-            global::GameShared.Packets.PacketWriter.Write(writer, EquipmentSlotCount.Value);
-        if ((mask & (1UL << 3)) != 0)
             global::GameShared.Packets.PacketModelSerializer.Write(writer, BagState.Value);
+        if ((mask & (1UL << 3)) != 0)
+            global::GameShared.Packets.PacketWriter.Write(writer, RemainingLinhThach.Value);
         if ((mask & (1UL << 4)) != 0)
-            global::GameShared.Packets.PacketModelSerializer.WriteList(writer, Items);
+            global::GameShared.Packets.PacketWriter.Write(writer, FailureReason ?? string.Empty);
     }
 
     public void Deserialize(BinaryReader reader)
@@ -81,10 +81,10 @@ public partial class GetInventoryResultPacket
         if ((_mask & (1UL << 1)) != 0)
             Code = (global::GameShared.Messages.MessageCode?)((global::GameShared.Messages.MessageCode)(global::GameShared.Packets.PacketReader.ReadInt(reader)));
         if ((_mask & (1UL << 2)) != 0)
-            EquipmentSlotCount = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
-        if ((_mask & (1UL << 3)) != 0)
             BagState = (global::GameShared.Models.BagStateModel?)(global::GameShared.Packets.PacketModelSerializer.Read<global::GameShared.Models.BagStateModel>(reader));
+        if ((_mask & (1UL << 3)) != 0)
+            RemainingLinhThach = (int?)(global::GameShared.Packets.PacketReader.ReadInt(reader));
         if ((_mask & (1UL << 4)) != 0)
-            Items = (global::System.Collections.Generic.List<global::GameShared.Models.InventoryItemModel>?)global::GameShared.Packets.PacketModelSerializer.ReadList<global::GameShared.Models.InventoryItemModel>(reader)!;
+            FailureReason = global::GameShared.Packets.PacketReader.ReadString(reader);
     }
 }

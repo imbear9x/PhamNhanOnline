@@ -10,7 +10,7 @@ If the user says `đọc rule làm việc của chúng ta`, `đọc workflow r�
 
 Trigger map:
 
-- handoff or cross-agent execution: `docs/agent-handoffs/README.md`
+- handoff, cross-agent execution, or `dev -> reviewer -> qa` gate flow: `docs/agent-handoffs/README.md`
 - shared Telegram group collaboration: `docs/agent-workflows/group-collaboration-workflow.md`
 - technical implementation design before dev: `docs/agent-workflows/techdesign-workflow.md`
 - significant durable change: `docs/agent-workflows/significant-change-threshold.md`

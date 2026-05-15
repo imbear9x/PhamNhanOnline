@@ -27,6 +27,7 @@ public sealed class CharacterService
     private readonly PlayerCaveRepository _playerCaves;
     private readonly PlayerGardenPlotRepository _playerGardenPlots;
     private readonly RealmTemplateRepository _realmTemplates;
+    private readonly BagService _bagService;
     private readonly GameTimeService _gameTimeService;
     private readonly MapCatalog _mapCatalog;
     private readonly PotentialStatCatalog _potentialStatCatalog;
@@ -41,6 +42,7 @@ public sealed class CharacterService
         PlayerCaveRepository playerCaves,
         PlayerGardenPlotRepository playerGardenPlots,
         RealmTemplateRepository realmTemplates,
+        BagService bagService,
         GameTimeService gameTimeService,
         MapCatalog mapCatalog,
         PotentialStatCatalog potentialStatCatalog)
@@ -54,6 +56,7 @@ public sealed class CharacterService
         _playerCaves = playerCaves;
         _playerGardenPlots = playerGardenPlots;
         _realmTemplates = realmTemplates;
+        _bagService = bagService;
         _gameTimeService = gameTimeService;
         _mapCatalog = mapCatalog;
         _potentialStatCatalog = potentialStatCatalog;
@@ -110,6 +113,7 @@ public sealed class CharacterService
         await _characters.CreateAsync(character, cancellationToken);
         await _baseStats.CreateAsync(baseStat, cancellationToken);
         await _currentStates.CreateAsync(currentState, cancellationToken);
+        await _bagService.EnsureDefaultBagAsync(character.Id, cancellationToken);
         await EnsureHomeCaveAsync(character.Id, cancellationToken);
         await InitializeCharacterStarterResourcesAsync(character.Id, cancellationToken);
         await tx.CommitAsync(cancellationToken);

@@ -35,6 +35,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<CharacterCreationActionService>();
         services.AddScoped<PlayerInventoryTransactionService>();
         services.AddScoped<ItemService>();
+        services.AddScoped<BagService>();
         services.AddScoped<MartialArtService>();
         services.AddScoped<SkillService>();
         services.AddScoped<EquipmentService>();
@@ -95,6 +96,8 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<PlayerSkillLoadoutRepository>();
         services.AddScoped<ItemTemplateRepository>();
         services.AddScoped<PlayerItemRepository>();
+        services.AddScoped<BagGradeConfigRepository>();
+        services.AddScoped<PlayerBagRepository>();
         services.AddScoped<EquipmentTemplateRepository>();
         services.AddScoped<EquipmentTemplateSkillGrantRepository>();
         services.AddScoped<EquipmentTemplateStatRepository>();
@@ -203,6 +206,8 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<GetCharacterDataPacket>, GetCharacterDataHandler>();
         services.AddScoped<IPacketHandler<EnterWorldPacket>, EnterWorldHandler>();
         services.AddScoped<IPacketHandler<GetInventoryPacket>, GetInventoryHandler>();
+        services.AddScoped<IPacketHandler<GetBagStatePacket>, GetBagStateHandler>();
+        services.AddScoped<IPacketHandler<UpgradeBagPacket>, UpgradeBagHandler>();
         services.AddScoped<IPacketHandler<EquipInventoryItemPacket>, EquipInventoryItemHandler>();
         services.AddScoped<IPacketHandler<UnequipInventoryItemPacket>, UnequipInventoryItemHandler>();
         services.AddScoped<IPacketHandler<DropInventoryItemPacket>, DropInventoryItemHandler>();

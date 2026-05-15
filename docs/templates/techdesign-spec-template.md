@@ -55,6 +55,34 @@ Avoid inventing new layers when existing layers fit.
 
 ## DB / Schema Plan
 
+### Canonical Data Model
+
+Document the domain model clearly enough that Dev, QA, and Client Dev can understand the persistence/runtime contract without reverse-engineering prose.
+
+#### Tables And Field Semantics
+
+| Table | Field | Type | Meaning | Required | Source of truth | Notes |
+|---|---|---|---|---|---|---|
+| | | | | | | |
+
+#### Enums / Codes / State Values
+
+| Name | Value | Meaning | Used by | Notes |
+|---|---|---|---|---|
+| | | | | |
+
+#### Relations And Ownership
+
+| From | To | Relation | Ownership / authority | Notes |
+|---|---|---|---|---|
+| | | | | |
+
+#### State Transitions By Field
+
+| Entity / table | Field(s) | Transition | Trigger | Owner service |
+|---|---|---|---|---|
+| | | | | |
+
 ### New Tables
 
 | Table | Purpose | Key columns | Notes |

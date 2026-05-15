@@ -5,6 +5,8 @@ status: draft
 owner: techdesign
 created_at: 2026-05-15
 updated_at: 2026-05-15
+spec_iteration: 2
+spec_change_note: Bổ sung contract random output handling cho active actions (herb harvest fix per QA fail #13)
 source_design_docs:
   - docs/game-design-wp/requirements/inventory-bag-system.md
   - docs/game-design-wp/features/inventory-bag-system.md
@@ -92,6 +94,56 @@ This preserves required gameplay behavior while minimizing architecture churn.
 ---
 
 ## DB / Schema Plan
+
+### Canonical Data Model
+
+#### Tables And Field Semantics
+
+| Table | Field | Type | Meaning | Required | Source of truth | Notes |
+|---|---|---|---|---|---|---|
+| `bag_grade_configs` | `grade` | int PK | Bag grade identifier | yes | DB/init data | Canonical tier key, expected range 1–4 |
+| `bag_grade_configs` | `slot_count` | int | Total inventory slots granted by this grade | yes | DB/init data | Must be derived from config, not duplicated on player row |
+| `bag_grade_configs` | `upgrade_cost_linh_thach` | bigint | Currency cost to upgrade into this grade | yes | DB/init data | Interpreted as linh thạch quantity |
+| `bag_grade_configs` | `display_name` | varchar | Human-readable bag grade label | yes | DB/init data | Used by UI/model mapping |
+| `player_bags` | `player_id` | uuid PK/FK | Character who owns this bag state | yes | DB/runtime | Exactly one row per character |
+| `player_bags` | `grade` | int FK | Current bag grade | yes | DB/runtime | Resolves capacity via `bag_grade_configs` |
+| `player_bags` | `updated_at` | timestamp | Last bag state update time | yes | DB/runtime | Changes on create/upgrade |
+| `player_items` | `id` | bigint PK | Inventory row / item instance / stack row | yes | Existing DB/runtime | Each occupied inventory row counts as 1 used slot |
+| `player_items` | `player_id` | uuid FK | Character owner of inventory row | no | Existing DB/runtime | Null for ground items |
+| `player_items` | `item_template_id` | int FK | Template identity of stored item | yes | Existing DB/runtime | Used for stack merge/capacity simulation |
+| `player_items` | `location_type` | int | Item location bucket | yes | Existing DB/runtime | Only `Inventory` rows count for bag usage |
+| `player_items` | `quantity` | int | Stack quantity for stackable rows | yes | Existing DB/runtime | Quantity alone does not equal slot usage |
+| `player_items` | `is_bound` | bool | Bind state of the row | yes | Existing DB/runtime | Affects compatible stack merging |
+| `player_items` | `expire_at` | timestamp? | Optional expiry cutoff | no | Existing DB/runtime | Expired rows do not count toward used slots |
+| `characters` | `id` | uuid PK | Character identity | yes | Existing DB/runtime | Parent for `player_bags` |
+
+#### Enums / Codes / State Values
+
+| Name | Value | Meaning | Used by | Notes |
+|---|---|---|---|---|
+| `BagGrade` | `1..4` | Config-defined bag progression tier | `player_bags.grade`, bag config lookup | No downgrade path |
+| `ItemLocationType.Inventory` | `1` | Row is in character inventory | `player_items.location_type`, bag capacity count | Only this location counts toward used slots |
+| `InventoryOverflowPolicy.Reject` | `1` | Active grant must fail if full | active actions such as harvest/extract | No inbox fallback |
+| `InventoryOverflowPolicy.InboxOverflow` | `2` | Passive grant routes to inbox sink if batch does not fit | passive rewards | Whole-batch overflow policy for this slice |
+
+#### Relations And Ownership
+
+| From | To | Relation | Ownership / authority | Notes |
+|---|---|---|---|---|
+| `characters.id` | `player_bags.player_id` | 1 → 1 | Character owns exactly one bag row | Must exist for all characters |
+| `bag_grade_configs.grade` | `player_bags.grade` | 1 → many | Config defines capacity/cost for all player bag rows | Runtime lookup only; no duplicated slot_count on player row |
+| `characters.id` | `player_items.player_id` | 1 → many | Character owns inventory item rows | Inventory storage model remains unchanged |
+| `player_bags` | `player_items` | logical 1 → many | Bag capacity envelopes character inventory | No physical `bag_id` FK on item rows |
+
+#### State Transitions By Field
+
+| Entity / table | Field(s) | Transition | Trigger | Owner service |
+|---|---|---|---|---|
+| `player_bags` | `player_id`, `grade`, `updated_at` | no row → default grade 1 row | Character creation / backfill | `BagService.EnsureDefaultBagAsync`, `CharacterService.CreateCharacterAsync` |
+| `player_bags` | `grade`, `updated_at` | `grade_n → grade_n+1` | Successful upgrade request | `BagService.UpgradeBagAsync` |
+| `player_items` + bag capacity runtime | logical used slot count | recalculate from active inventory rows | Bag state query / capacity pre-check | `BagService`, capacity helper |
+| passive grant path | overflow policy outcome | inventory add → inbox overflow sink | Capacity insufficient on passive reward | shared grant helper + inbox sink |
+| active grant path | action result | allowed → reject with `InventoryFull` | Capacity insufficient on active action | action owner service + capacity helper |
 
 ### New Tables
 
@@ -362,6 +414,23 @@ Examples: herb harvest, herb extract, future manual crafting outputs where desig
 Desired behavior:
 - pre-check capacity before mutation
 - if cannot fit → reject action entirely, do not mutate state, do not partial grant, do not inbox fallback
+
+### Random output handling in active actions
+
+Khi active action có output ngẫu nhiên (OutputChance < 1.0), capacity check **phải dựa trên tập output đã được roll (materialize) trước**, không dựa trên guaranteed-only subset.
+
+Contract bắt buộc cho `HarvestHerbAsync` (và mọi active action có random output):
+
+1. **Roll all outputs first** — trong cùng inventory lock/transaction, thực hiện random roll cho toàn bộ `lockedOutputs`. Kết quả là `procOutputs`: tập output thực tế sẽ được grant nếu inventory cho phép.
+2. **Check capacity on full proc set** — gọi `CheckCapacityForAsync(playerId, procOutputs)` trên toàn bộ `procOutputs`, không chỉ guaranteed subset.
+3. **If not fit → reject entirely** — throw `GameException(MessageCode.InventoryFull)`. Không grant bất kỳ item nào, không xóa herb, không xóa plot link. Transaction rollback toàn bộ.
+4. **If fit → grant all proc outputs** — gọi `AddItemAsync` cho từng item trong `procOutputs`, sau đó mới clear plot link và delete herb.
+
+**Không được:**
+- Pre-check guaranteed-only rồi roll-and-grant random outputs riêng: tạo rào cản TOCTOU logic giữa check và grant.
+- Bỏ qua capacity check nếu `procOutputs` rỗng (0 proc): grant vãn an toàn nhưng cần được xử lý explicit (không phải bỏ qua hoàn toàn — vẫn xóa herb/plot được vì không có item nào cần grant).
+
+Lý do thiết kế: active action là hành động chủ động của player, kết quả phải rõ ràng và predictable. Overflow sau khi đã commit herb destroy là data loss không thể phục hồi — phải ngăn trước, không xử lý sau.
 
 ### New reusable API
 

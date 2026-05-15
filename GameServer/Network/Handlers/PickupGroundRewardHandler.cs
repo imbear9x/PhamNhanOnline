@@ -1,5 +1,6 @@
 using GameServer.Config;
 using GameServer.DTO;
+using GameServer.Exceptions;
 using GameServer.Network.Interface;
 using GameServer.Runtime;
 using GameServer.Services;
@@ -7,12 +8,14 @@ using GameServer.World;
 using GameShared.Logging;
 using GameShared.Messages;
 using GameShared.Packets;
+using System.Linq;
 
 namespace GameServer.Network.Handlers;
 
 public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewardPacket>
 {
     private readonly ItemService _itemService;
+    private readonly BagService _bagService;
     private readonly GameConfigValues _gameConfig;
     private readonly INetworkSender _network;
     private readonly WorldManager _worldManager;
@@ -21,6 +24,7 @@ public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewar
 
     public PickupGroundRewardHandler(
         ItemService itemService,
+        BagService bagService,
         GameConfigValues gameConfig,
         INetworkSender network,
         WorldManager worldManager,
@@ -28,6 +32,7 @@ public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewar
         PlayerInventoryTransactionService inventoryTransactions)
     {
         _itemService = itemService;
+        _bagService = bagService;
         _gameConfig = gameConfig;
         _network = network;
         _worldManager = worldManager;
@@ -139,8 +144,15 @@ public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewar
                 player.CharacterData.CharacterId,
                 async ct =>
                 {
+                    var grants = reward.Items
+                        .Select(item => new ItemGrantRequest(item.ItemTemplateId, item.Quantity, item.IsBound, null))
+                        .ToArray();
+                    var capacityCheck = await _bagService.CheckCapacityForAsync(player.CharacterData.CharacterId, grants, ct);
+                    if (!capacityCheck.CanFit)
+                        throw new GameException(MessageCode.InventoryFull);
+
                     foreach (var item in reward.Items)
-                        await _itemService.MoveGroundItemToInventoryAsync(player.CharacterData.CharacterId, item.PlayerItemId, ct);
+                        await _itemService.MoveGroundItemToInventoryCoreUnlockedAsync(player.CharacterData.CharacterId, item.PlayerItemId, ct);
                 },
                 CancellationToken.None);
         }
@@ -151,9 +163,12 @@ public sealed class PickupGroundRewardHandler : IPacketHandler<PickupGroundRewar
             _network.Send(session.ConnectionId, new PickupGroundRewardResultPacket
             {
                 Success = false,
-                Code = ex is InvalidOperationException or ArgumentOutOfRangeException
-                    ? MessageCode.InventoryItemInvalid
-                    : MessageCode.UnknownError,
+                Code = ex switch
+                {
+                    GameException gameEx => gameEx.Code,
+                    InvalidOperationException or ArgumentOutOfRangeException => MessageCode.InventoryItemInvalid,
+                    _ => MessageCode.UnknownError
+                },
                 RewardId = packet.RewardId
             });
             return;

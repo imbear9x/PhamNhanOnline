@@ -250,6 +250,12 @@ public sealed class ItemService
             cancellationToken);
     }
 
+    internal Task MoveGroundItemToInventoryCoreUnlockedAsync(
+        Guid playerId,
+        long playerItemId,
+        CancellationToken cancellationToken = default) =>
+        MoveGroundItemToInventoryCoreAsync(playerId, playerItemId, cancellationToken);
+
     private async Task MoveGroundItemToInventoryCoreAsync(
         Guid playerId,
         long playerItemId,

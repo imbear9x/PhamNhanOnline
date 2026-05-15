@@ -133,7 +133,8 @@ public static partial class ServiceCollectionExtensions
             CharacterHomeGardenPlotCount = GetInt(configsByKey, GameConfigKeys.CharacterHomeGardenPlotCount, 8),
             CharacterEquipmentSlotCount = GetInt(configsByKey, GameConfigKeys.CharacterEquipmentSlotCount, 4),
             CharacterStarterSkillId = GetInt(configsByKey, GameConfigKeys.CharacterStarterSkillId, 0),
-            SkillMaxLoadoutSlotCount = GetInt(configsByKey, GameConfigKeys.SkillMaxLoadoutSlotCount, 5)
+            SkillMaxLoadoutSlotCount = GetInt(configsByKey, GameConfigKeys.SkillMaxLoadoutSlotCount, 5),
+            InventoryBagUpgradeCurrencyCode = GetString(configsByKey, GameConfigKeys.InventoryBagUpgradeCurrencyCode, "currency.spirit_stone_small")
         };
     }
 
@@ -179,6 +180,14 @@ public static partial class ServiceCollectionExtensions
             return value;
 
         throw new InvalidOperationException($"Game config '{key}' is not a valid double: '{rawValue}'.");
+    }
+
+    private static string GetString(IReadOnlyDictionary<string, string> configs, string key, string fallback)
+    {
+        if (!configs.TryGetValue(key, out var rawValue) || string.IsNullOrWhiteSpace(rawValue))
+            return fallback;
+
+        return rawValue.Trim();
     }
 
     private static JsonSerializerOptions BuildConfigJsonOptions()

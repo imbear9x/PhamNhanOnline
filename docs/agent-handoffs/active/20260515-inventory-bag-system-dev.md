@@ -1,7 +1,7 @@
 ---
 title: Inventory Bag System — Dev Implementation
 doc_type: handoff
-status: Ready
+status: In Progress
 owner: dev
 source_agent: techdesign
 last_updated: 2026-05-15
@@ -48,6 +48,26 @@ Implement per-character bag capacity, bag grade config, default bag creation, sl
 # Acceptance Criteria
 
 See `docs/tech-design/inventory-bag-system.md`.
+
+# Implementation Status Snapshot
+
+Current implementation is **partially complete**.
+
+Implemented slice:
+- bag schema/config seed + player bag backfill
+- default bag creation on character creation
+- `BagService` scaffold with bag-state read and upgrade flow
+- `GetBagState` + `UpgradeBag` packets/handlers
+- `GetInventory` extended to include `BagState`
+- focused server build passes
+
+Still pending to satisfy full TechDesign acceptance:
+- enforce inventory capacity rejection across active reward/action flows
+- route passive overflow to inbox/notification path
+- finish tighter error-code/result mapping and runtime verification
+
+Related QA handoff:
+- `docs/agent-handoffs/active/20260515-inventory-bag-system-qa.md`
 
 # Out Of Scope
 

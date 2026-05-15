@@ -1,3 +1,4 @@
+using GameServer.DTO;
 using GameServer.Entities;
 using GameServer.Randomness;
 using GameServer.Repositories;
@@ -12,6 +13,7 @@ public sealed class CraftService
     private readonly PlayerEquipmentRepository _playerEquipments;
     private readonly PlayerEquipmentStatBonusRepository _playerEquipmentBonuses;
     private readonly ItemService _itemService;
+    private readonly BagService _bagService;
     private readonly IGameRandomService _randomService;
     private readonly PlayerInventoryTransactionService _inventoryTransactions;
 
@@ -21,6 +23,7 @@ public sealed class CraftService
         PlayerEquipmentRepository playerEquipments,
         PlayerEquipmentStatBonusRepository playerEquipmentBonuses,
         ItemService itemService,
+        BagService bagService,
         IGameRandomService randomService,
         PlayerInventoryTransactionService inventoryTransactions)
     {
@@ -29,6 +32,7 @@ public sealed class CraftService
         _playerEquipments = playerEquipments;
         _playerEquipmentBonuses = playerEquipmentBonuses;
         _itemService = itemService;
+        _bagService = bagService;
         _randomService = randomService;
         _inventoryTransactions = inventoryTransactions;
     }
@@ -156,6 +160,23 @@ public sealed class CraftService
         }
 
         var recipe = validation.Recipe ?? throw new InvalidOperationException("Validated craft recipe is missing.");
+        var capacityCheck = await _bagService.CheckCapacityForAsync(
+            playerId,
+            new[] { new ItemGrantRequest(recipe.ResultItemTemplateId, recipe.ResultQuantity, false, null) },
+            cancellationToken);
+        if (!capacityCheck.CanFit)
+        {
+            return new CraftExecutionResult(
+                false,
+                "Túi đồ đã đầy.",
+                recipe,
+                false,
+                Array.Empty<InventoryItemView>(),
+                validation.ConsumedPlayerItemIds,
+                validation.ConsumedStackQuantities,
+                validation.EffectiveMutationRate);
+        }
+
         foreach (var playerItemId in validation.ConsumedPlayerItemIds)
         {
             await _itemService.RemovePlayerItemAsync(playerId, playerItemId, cancellationToken);

@@ -1414,6 +1414,38 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_player_notifications_player_source_unique
     ON public.player_notifications(player_id, source_type, source_id)
     WHERE source_id IS NOT NULL;
 
+CREATE TABLE IF NOT EXISTS public.bag_grade_configs (
+    grade integer PRIMARY KEY,
+    slot_count integer NOT NULL,
+    upgrade_cost_linh_thach bigint NOT NULL DEFAULT 0,
+    display_name character varying(100) NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS public.player_bags (
+    player_id uuid PRIMARY KEY,
+    grade integer NOT NULL,
+    updated_at timestamp without time zone NOT NULL DEFAULT now(),
+    CONSTRAINT fk_player_bags_player FOREIGN KEY (player_id) REFERENCES public.characters(id) ON DELETE CASCADE,
+    CONSTRAINT fk_player_bags_grade FOREIGN KEY (grade) REFERENCES public.bag_grade_configs(grade)
+);
+
+INSERT INTO public.bag_grade_configs (grade, slot_count, upgrade_cost_linh_thach, display_name)
+VALUES
+    (1, 24, 0, 'Túi Sơ Cấp'),
+    (2, 36, 100, 'Túi Trung Cấp'),
+    (3, 48, 300, 'Túi Cao Cấp'),
+    (4, 60, 700, 'Túi Linh Phẩm')
+ON CONFLICT (grade) DO UPDATE
+SET slot_count = EXCLUDED.slot_count,
+    upgrade_cost_linh_thach = EXCLUDED.upgrade_cost_linh_thach,
+    display_name = EXCLUDED.display_name;
+
+INSERT INTO public.player_bags (player_id, grade, updated_at)
+SELECT c.id, 1, now()
+FROM public.characters c
+LEFT JOIN public.player_bags pb ON pb.player_id = c.id
+WHERE pb.player_id IS NULL;
+
 INSERT INTO public.game_configs (config_key, config_value, description)
 VALUES
     ('network.reconnect_resume_window_seconds', '3', 'So giay server giu resume token/session sau khi mat ket noi de reconnect.'),
@@ -1436,7 +1468,8 @@ VALUES
     ('character.home_garden_plot_count', '8', 'So o vuon mac dinh khi tao home cave moi.'),
     ('character.equipment_slot_count', '4', 'So o trang bi co dinh hien tai cua nhan vat.'),
     ('character.starter_skill_id', '0', 'Skill id mac dinh duoc grant cho nhan vat moi.'),
-    ('skill.max_loadout_slot_count', '5', 'So slot loadout skill toi da cua nhan vat.')
+    ('skill.max_loadout_slot_count', '5', 'So slot loadout skill toi da cua nhan vat.'),
+    ('inventory.bag_upgrade_currency_code', 'currency.spirit_stone_small', 'Currency item code used for bag upgrade cost.')
 ON CONFLICT (config_key) DO UPDATE
 SET
     config_value = EXCLUDED.config_value,

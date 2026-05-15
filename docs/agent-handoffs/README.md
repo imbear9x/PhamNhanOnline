@@ -25,13 +25,21 @@ Flow khuyến nghị cho feature gameplay:
 4. `techdesign` đọc handoff, đọc design docs, inspect code, rồi tạo spec trong `docs/tech-design/`
 5. Khi spec đủ để implement, `techdesign` tạo handoff cho `dev` trong `docs/agent-handoffs/active/`
 6. `dev` đọc handoff + TechDesign spec + source GameDesign docs, implement và verify server/shared scope
-7. Xong việc thì chuyển handoff sang `archive/` hoặc đánh dấu `Done`
+7. Khi code xong, `dev` tạo handoff cho `reviewer`, không giao thẳng cho `qa`
+8. `reviewer` review chất lượng code/struct/DB/performance/maintainability/testability
+9. Nếu review fail hoặc có Required Fix, `reviewer` tạo handoff ngược lại cho `dev`
+10. Nếu review đạt, `reviewer` tạo handoff cho `qa`
+11. `qa` verify expected vs actual bằng evidence rồi báo Passed/Failed/Blocked/Needs clarification
+12. Nếu QA fail, `qa` luôn tạo handoff cho `techdesign` — không tạo thẳng cho `dev`
+13. `techdesign` nhận handoff QA fail, đánh giá spec, rồi quyết định: update spec nếu cần, sau đó tạo handoff `dev`
+14. Xong việc thì chuyển handoff sang `archive/` hoặc đánh dấu `Done`
 
 Nói ngắn:
 
 - `game-design-wp` là nơi suy nghĩ và hoàn thiện dần
 - `agent-handoffs` là nơi giao việc đã chốt giữa agent
 - `docs/tech-design/` là nơi TechDesign xuất tài liệu kỹ thuật cho Dev
+- flow implementation chuẩn là `dev -> reviewer -> qa -> techdesign (nếu fail) -> dev`
 
 ## Cách dùng
 
@@ -45,6 +53,28 @@ Khi đang bàn bạc với một agent và đã chốt được việc cần là
    - hoặc `làm theo docs/agent-handoffs/active/<ten-file>.md`
 5. Agent tiếp theo đọc file đó trước, rồi mới đọc thêm code/doc liên quan
 
+## Handoff Lifecycle Rule
+
+Đây là rule chung cho mọi agent, không phân biệt `gamedesign`, `techdesign`, `dev`, `reviewer`, `qa`, hay `manager`.
+
+Khi một agent nhận một handoff đang ở trạng thái `Ready` và hoàn tất lượt xử lý của chính handoff đó, agent **phải đóng vòng handoff nguồn trong queue**:
+
+- đổi `Ready -> In Progress` ngay khi bắt đầu làm handoff
+- đổi `In Progress -> Done` nếu đã xử lý xong lượt của handoff đó
+- đổi `In Progress -> Blocked` nếu đã xử lý nhưng đang chờ dependency hoặc handoff khác
+
+Không được bắt đầu xử lý mà bỏ nguyên handoff nguồn ở trạng thái `Ready`.
+Không được chỉ tạo handoff tiếp theo mà bỏ nguyên handoff nguồn ở trạng thái `Ready` hoặc `In Progress`.
+Nếu agent lỗi hoặc bị reset giữa chừng, queue còn `In Progress` để user biết đây là việc đang làm dở và có thể audit/rollback.
+
+Nếu kết quả công việc sinh ra bước tiếp theo:
+
+1. tạo handoff mới cho bước tiếp theo
+2. thêm dòng mới vào `QUEUE.md`
+3. ghi rõ quan hệ lifecycle giữa handoff mới và handoff cũ
+
+Mục tiêu là để `QUEUE.md` luôn phản ánh **task hiện hành** thay vì danh sách task từng tồn tại.
+
 ## Manual Dispatch Rule
 
 Agents must not auto-claim handoffs on a timer.
@@ -53,9 +83,58 @@ The user manually dispatches work by telling an agent to check its handoff. When
 
 - `techdesign` checks `QUEUE.md` for `Owner = techdesign`
 - `dev` checks `QUEUE.md` for `Owner = dev`
+- `reviewer` checks `QUEUE.md` for `Owner = reviewer`
+- `qa` checks `QUEUE.md` for `Owner = qa`
 - if exactly one matching `Ready` handoff exists, the agent may start after restating the target
 - if multiple matching `Ready` handoffs exist, the agent asks the user which one to do first
 - if none exists, the agent reports that there is no ready handoff for its role
+
+When an agent starts a selected `Ready` handoff, it must update that queue row to `In Progress` before doing implementation/review/QA/spec work.
+
+## Implementation Review Gate
+
+Dev does not normally hand work directly to QA.
+
+After implementation, Dev must prepare a Reviewer handoff with:
+
+- implementation summary
+- files/modules touched
+- build/test commands run and results
+- DB/schema/seed changes, if any
+- packet/broadcast/runtime changes, if any
+- QA notes, test scope, and known gaps for later QA verification
+- risks, blockers, or skipped checks
+
+The handoff owner must be `reviewer`.
+
+Reviewer then decides the next route:
+
+- `Fail` or Required Fix -> create/update a handoff for `dev`
+- `Pass` or `Pass with risks` -> create a QA handoff for `qa`
+- Improvement Proposal -> ask user first; create Dev handoff only after approval
+
+QA normally starts only from a Ready handoff with `Owner = qa` that was created after Reviewer passed the implementation, unless the user explicitly says to skip Reviewer.
+
+## QA Fail Route
+
+Khi QA fail, **QA luôn tạo handoff cho `techdesign`**, không tạo thẳng cho `dev`.
+
+QA không cần phán xét defect thuộc loại nào. QA chỉ cần:
+
+1. báo cáo rõ expected vs actual và evidence
+2. tạo handoff với `Owner = techdesign`
+3. đóng handoff nguồn của mình sang `Done`
+
+`techdesign` nhận handoff từ QA fail và **phải đánh giá trước khi làm bất cứ việc gì**:
+
+- đọc defect report từ QA
+- đối chiếu với spec hiện tại trong `docs/tech-design/`
+- nếu spec đã đủ cover case này: tạo handoff `dev` ngay, kèm pointer rõ vào spec và contract cần implement — TechDesign không implement code
+- nếu spec còn gap hoặc cần design decision: update spec trước, rồi mới tạo handoff `dev` — TechDesign không implement code
+
+`techdesign` **không tự implement code** trong flow này. Output của TechDesign luôn là spec (update nếu cần) + handoff `dev`.
+
+`dev` nhận handoff từ TechDesign, implement theo spec đã được TechDesign confirm, rồi tiếp tục vòng `dev -> reviewer -> qa` như bình thường.
 
 Khi đang bàn nhưng chưa muốn làm ngay:
 
@@ -100,14 +179,68 @@ Những phần còn đang khám phá, tranh luận, hoặc chưa khóa quyết �
 
 ## Quy ước đặt tên
 
-Format gợi ý:
+Format chuẩn mới:
 
-- `YYYYMMDD-short-task-name.md`
+- `YYYYMMDD-<queue-id>-<short-task-name>.md`
+
+Trong đó:
+
+- `YYYYMMDD` giúp đọc lịch sử dễ hơn bằng mắt người
+- `queue-id` là số tự nhiên tăng dần theo `QUEUE.md`
+- handoff tạo sau phải có `queue-id = queue-id trước + 1`
+- `queue-id` là định danh canonical để tránh trùng tên và tránh mơ hồ giữa các vòng follow-up
+- nếu ngày và queue-id mâu thuẫn nhau thì **queue-id là khóa lifecycle canonical**, còn ngày chỉ là metadata hỗ trợ đọc
 
 Ví dụ:
 
-- `20260507-world-target-selection-cleanup.md`
-- `20260507-openclaw-startup-ready-notify.md`
+- `20260515-11-reviewer-bag-capacity-precheck-race-response.md`
+- `20260515-12-inventory-bag-system-qa-rerun.md`
+
+Không tái dùng file cũ cho một vòng follow-up mới. Mỗi vòng lifecycle phải có file handoff riêng.
+
+## Legacy filename migration rule
+
+Repo hiện có nhiều handoff cũ theo format legacy kiểu:
+
+- `YYYYMMDD-short-task-name.md`
+
+Khi làm việc với handoff legacy:
+
+1. **không bắt buộc rename hồi tố toàn bộ file cũ** chỉ để khớp format mới
+2. nếu handoff legacy vẫn còn active, có thể giữ nguyên tên file cũ nhưng từ vòng follow-up kế tiếp nên chuyển sang format mới `YYYYMMDD-<queue-id>-<short-task-name>.md`
+3. trong `QUEUE.md`, queue row mới phải dùng `queue-id` tăng dần đúng chuẩn kể cả khi handoff cha đang dùng tên legacy
+4. nếu cần ghi rõ liên hệ giữa handoff legacy và handoff mới, dùng metadata `Source Handoff`, `Response To`, `Supersedes`
+5. không tạo thêm file mới theo format legacy nữa
+
+Mục tiêu là chuyển đổi dần, không đòi hỏi một lần migrate toàn bộ lịch sử cũ.
+
+## Metadata tối thiểu khuyến nghị
+
+Ngoài metadata cũ, handoff mới nên có thêm các field lifecycle sau khi phù hợp:
+
+- `Queue ID`: số định danh canonical của handoff
+- `Feature Key`: ví dụ `inventory-bag-system`
+- `Handoff Type`: ví dụ `review`, `required-fix`, `response`, `qa`, `re-review`
+- `Source Handoff`: handoff cha hoặc handoff khởi nguồn gần nhất
+- `Response To`: handoff đang được phản hồi trực tiếp
+- `Supersedes`: handoff cũ bị thay thế về mặt lifecycle, nếu có
+- `Iteration`: vòng xử lý thứ mấy cho cùng feature/slice
+
+Không phải field nào cũng bắt buộc cho mọi case, nhưng agent nên điền khi có để queue và lịch sử không mơ hồ.
+
+## Queue row contract
+
+Mỗi dòng trong `QUEUE.md` nên được hiểu là một lifecycle node riêng.
+
+Khuyến nghị thêm hoặc duy trì được các thông tin sau trong queue row hoặc notes:
+
+- `Queue ID`
+- `Status`
+- `Owner`
+- `Response To` hoặc `Supersedes`
+- `Blocked By` khi có dependency rõ ràng
+
+Khi user nói `check handoff`, agent phải ưu tiên nhìn các dòng `Ready` còn hiệu lực thật, không nhặt lại các dòng cũ đã bị supersede hoặc đáng lẽ phải `Done`/`Blocked`.
 
 ## Nguyên tắc source of truth
 

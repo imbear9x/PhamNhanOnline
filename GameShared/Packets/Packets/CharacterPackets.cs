@@ -362,7 +362,46 @@ public partial class GetInventoryResultPacket : IPacket
     public bool? Success { get; set; }
     public MessageCode? Code { get; set; }
     public int? EquipmentSlotCount { get; set; }
+    public BagStateModel? BagState { get; set; }
     public List<InventoryItemModel>? Items { get; set; }
+}
+
+[Packet(220)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 200)]
+public partial class GetBagStatePacket : IPacket
+{
+}
+
+[Packet(221)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class GetBagStateResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public BagStateModel? BagState { get; set; }
+}
+
+[Packet(222)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 300)]
+public partial class UpgradeBagPacket : IPacket
+{
+    [ValidationCode(MessageCode.BagUpgradeTargetInvalid)]
+    [Required]
+    [Range(1, int.MaxValue)]
+    public int? TargetGrade { get; set; }
+}
+
+[Packet(223)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class UpgradeBagResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public BagStateModel? BagState { get; set; }
+    public int? RemainingLinhThach { get; set; }
+    public string? FailureReason { get; set; }
 }
 
 [Packet(60)]
