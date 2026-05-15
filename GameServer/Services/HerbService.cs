@@ -102,6 +102,32 @@ public sealed class HerbService
         return await _playerGardenPlots.ListByCaveIdAsync(cave.Id, cancellationToken);
     }
 
+    public async Task<HerbRuntimeState?> GetGardenPlotHerbStateAsync(Guid playerId, long caveId, int plotIndex, CancellationToken cancellationToken = default)
+    {
+        var plot = await RequireOwnedPlotAsync(playerId, caveId, plotIndex, cancellationToken);
+        return plot.CurrentPlayerHerbId.HasValue
+            ? await GetHerbRuntimeStateAsync(plot.CurrentPlayerHerbId.Value, cancellationToken)
+            : null;
+    }
+
+    public async Task<long> GetNextStageRemainingSecondsAsync(long playerHerbId, CancellationToken cancellationToken = default)
+    {
+        var herb = await _playerHerbs.GetByIdAsync(playerHerbId, cancellationToken)
+                   ?? throw new GameException(MessageCode.GardenPlotNoHerb);
+        herb = await MaterializeHerbProgressAsync(herb, cancellationToken);
+        if (!_definitions.TryGetHerb(herb.HerbTemplateId, out var herbDefinition))
+            throw new InvalidOperationException($"Herb template {herb.HerbTemplateId} was not found.");
+
+        var nextStage = herbDefinition.GrowthStages
+            .Where(x => x.RequiredGrowthSeconds > herb.AccumulatedGrowthSeconds)
+            .OrderBy(x => x.RequiredGrowthSeconds)
+            .FirstOrDefault();
+
+        return nextStage is null
+            ? 0
+            : Math.Max(0L, nextStage.RequiredGrowthSeconds - herb.AccumulatedGrowthSeconds);
+    }
+
     public async Task InsertSoilAsync(
         Guid playerId,
         long soilPlayerItemId,
@@ -111,21 +137,21 @@ public sealed class HerbService
     {
         var plot = await RequireOwnedPlotAsync(playerId, caveId, plotIndex, cancellationToken);
         var soilItem = await _playerItems.GetByIdAsync(soilPlayerItemId, cancellationToken)
-                       ?? throw new InvalidOperationException($"Soil player item {soilPlayerItemId} was not found.");
+                       ?? throw new GameException(MessageCode.InventoryItemInvalid);
         if (soilItem.PlayerId != playerId)
-            throw new InvalidOperationException($"Soil player item {soilPlayerItemId} does not belong to player {playerId}.");
+            throw new GameException(MessageCode.InventoryItemInvalid);
 
         if (!_itemDefinitions.TryGetItem(soilItem.ItemTemplateId, out var itemDefinition) || itemDefinition.ItemType != ItemType.Soil)
-            throw new InvalidOperationException($"Player item {soilPlayerItemId} is not a soil item.");
+            throw new GameException(MessageCode.InventoryItemInvalid);
 
         if (!_definitions.TryGetSoil(soilItem.ItemTemplateId, out _))
             throw new InvalidOperationException($"Soil template for item template {soilItem.ItemTemplateId} was not found.");
 
         var playerSoil = await _playerSoils.GetByPlayerItemIdAsync(soilPlayerItemId, cancellationToken)
-                         ?? throw new InvalidOperationException($"Player soil record for item {soilPlayerItemId} was not found.");
+                         ?? throw new GameException(MessageCode.InventoryItemInvalid);
 
         if (playerSoil.State == (int)PlayerSoilState.Inserted)
-            throw new InvalidOperationException($"Soil player item {soilPlayerItemId} is already inserted into another plot.");
+            throw new GameException(MessageCode.GardenPlotAlreadyHasSoil);
 
         if (plot.CurrentSoilPlayerItemId.HasValue)
         {
@@ -141,7 +167,7 @@ public sealed class HerbService
         }
 
         if (plot.CurrentSoilPlayerItemId.HasValue)
-            throw new InvalidOperationException($"Plot {plotIndex} in cave {caveId} already has a soil inserted.");
+            throw new GameException(MessageCode.GardenPlotAlreadyHasSoil);
 
         playerSoil.State = (int)PlayerSoilState.Inserted;
         playerSoil.InsertedPlotId = plot.Id;
@@ -162,17 +188,17 @@ public sealed class HerbService
     {
         var plot = await RequireOwnedPlotAsync(playerId, caveId, plotIndex, cancellationToken);
         if (!plot.CurrentSoilPlayerItemId.HasValue)
-            throw new InvalidOperationException("Plot chua co linh tho, khong the trong cay.");
+            throw new GameException(MessageCode.GardenPlotNoSoil);
         if (plot.CurrentPlayerHerbId.HasValue)
-            throw new InvalidOperationException("Plot da co linh duoc dang trong.");
+            throw new GameException(MessageCode.GardenPlotAlreadyHasHerb);
 
         var seedItem = await _playerItems.GetByIdAsync(seedPlayerItemId, cancellationToken)
-                      ?? throw new InvalidOperationException($"Seed player item {seedPlayerItemId} was not found.");
+                      ?? throw new GameException(MessageCode.InventoryItemInvalid);
         if (seedItem.PlayerId != playerId)
-            throw new InvalidOperationException($"Seed player item {seedPlayerItemId} does not belong to player {playerId}.");
+            throw new GameException(MessageCode.InventoryItemInvalid);
 
         if (!_itemDefinitions.TryGetItem(seedItem.ItemTemplateId, out var seedDefinition) || seedDefinition.ItemType != ItemType.HerbSeed)
-            throw new InvalidOperationException($"Player item {seedPlayerItemId} is not a herb seed.");
+            throw new GameException(MessageCode.InventoryItemInvalid);
 
         if (!_definitions.TryGetHerbBySeedItemTemplate(seedItem.ItemTemplateId, out var herbDefinition))
             throw new InvalidOperationException($"No herb template is bound to seed item template {seedItem.ItemTemplateId}.");
@@ -211,16 +237,16 @@ public sealed class HerbService
     {
         var plot = await RequireOwnedPlotAsync(playerId, caveId, plotIndex, cancellationToken);
         if (!plot.CurrentSoilPlayerItemId.HasValue)
-            throw new InvalidOperationException("Plot chua co linh tho, khong the trong cay.");
+            throw new GameException(MessageCode.GardenPlotNoSoil);
         if (plot.CurrentPlayerHerbId.HasValue)
-            throw new InvalidOperationException("Plot da co linh duoc dang trong.");
+            throw new GameException(MessageCode.GardenPlotAlreadyHasHerb);
 
         var herb = await _playerHerbs.GetByIdAsync(playerHerbId, cancellationToken)
-                   ?? throw new InvalidOperationException($"Player herb {playerHerbId} was not found.");
+                   ?? throw new GameException(MessageCode.GardenHerbNotOwned);
         if (herb.PlayerId != playerId)
-            throw new InvalidOperationException($"Player herb {playerHerbId} does not belong to player {playerId}.");
+            throw new GameException(MessageCode.GardenHerbNotOwned);
         if (herb.State != (int)PlayerHerbState.InInventory)
-            throw new InvalidOperationException("Chi co the trong lai linh duoc dang o trong tui.");
+            throw new GameException(MessageCode.GardenHerbNotInInventory);
 
         herb.State = (int)PlayerHerbState.Planting;
         herb.CurrentPlotId = plot.Id;
@@ -234,10 +260,18 @@ public sealed class HerbService
         await _playerGardenPlots.UpdateAsync(plot, cancellationToken);
     }
 
-    public async Task MoveHerbToInventoryAsync(Guid playerId, long playerHerbId, CancellationToken cancellationToken = default)
+    public async Task<DateTime> HarvestAsync(Guid playerId, long playerHerbId, CancellationToken cancellationToken = default)
     {
         var herb = await RequireOwnedHerbAsync(playerId, playerHerbId, cancellationToken);
+        if (herb.State != (int)PlayerHerbState.Planting)
+            throw new GameException(MessageCode.GardenPlotNoHerb);
+
         herb = await MaterializeHerbProgressAsync(herb, cancellationToken);
+        var currentStage = (HerbGrowthStage)herb.CurrentStage;
+        if (currentStage is not HerbGrowthStage.Mature and not HerbGrowthStage.ThousandYear)
+            throw new GameException(MessageCode.GardenHerbNotHarvestable);
+
+        var expireAt = DateTime.UtcNow.Add(_gameConfig.HerbInventoryExpiry);
 
         await using var tx = await _db.BeginTransactionAsync(cancellationToken);
         var plot = herb.CurrentPlotId.HasValue
@@ -246,21 +280,6 @@ public sealed class HerbService
 
         if (plot is not null)
         {
-            if (plot.CurrentSoilPlayerItemId.HasValue)
-            {
-                var soil = await _playerSoils.GetByPlayerItemIdAsync(plot.CurrentSoilPlayerItemId.Value, cancellationToken);
-                if (soil is not null)
-                {
-                    soil.State = soil.State == (int)PlayerSoilState.Depleted
-                        ? (int)PlayerSoilState.Depleted
-                        : (int)PlayerSoilState.InInventory;
-                    soil.InsertedPlotId = null;
-                    soil.UpdatedAt = DateTime.UtcNow;
-                    await _playerSoils.UpdateAsync(soil, cancellationToken);
-                }
-            }
-
-            plot.CurrentSoilPlayerItemId = null;
             plot.CurrentPlayerHerbId = null;
             plot.UpdatedAt = DateTime.UtcNow;
             await _playerGardenPlots.UpdateAsync(plot, cancellationToken);
@@ -269,9 +288,11 @@ public sealed class HerbService
         herb.State = (int)PlayerHerbState.InInventory;
         herb.CurrentPlotId = null;
         herb.PlantedAt = null;
+        herb.ExpireAt = expireAt;
         herb.UpdatedAt = DateTime.UtcNow;
         await _playerHerbs.UpdateAsync(herb, cancellationToken);
         await tx.CommitAsync(cancellationToken);
+        return expireAt;
     }
 
     public async Task<HerbRuntimeState> GetHerbRuntimeStateAsync(long playerHerbId, CancellationToken cancellationToken = default)
@@ -282,13 +303,20 @@ public sealed class HerbService
         return await BuildRuntimeStateAsync(herb, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<InventoryItemView>> HarvestHerbAsync(
+    public async Task<HerbExtractionResult> ExtractHerbAsync(
         Guid playerId,
         long playerHerbId,
         CancellationToken cancellationToken = default)
     {
         var herb = await RequireOwnedHerbAsync(playerId, playerHerbId, cancellationToken);
-        herb = await MaterializeHerbProgressAsync(herb, cancellationToken);
+        if (herb.State != (int)PlayerHerbState.InInventory)
+            throw new GameException(MessageCode.GardenHerbNotInInventory);
+
+        if (IsHerbExpired(herb, DateTime.UtcNow))
+        {
+            await _playerHerbs.DeleteAsync(herb.Id, cancellationToken);
+            throw new GameException(MessageCode.GardenHerbExpired);
+        }
 
         if (!_definitions.TryGetHerb(herb.HerbTemplateId, out var herbDefinition))
             throw new InvalidOperationException($"Herb template {herb.HerbTemplateId} was not found.");
@@ -297,35 +325,42 @@ public sealed class HerbService
         if (outputs.Count == 0)
             throw new InvalidOperationException($"Herb template {herb.HerbTemplateId} does not have harvest output for stage {(HerbGrowthStage)herb.CurrentStage}.");
 
-        var created = new List<PlayerItemEntity>();
+        var grants = outputs
+            .Where(output => _randomService.CheckChance(ToPartsPerMillion(output.OutputChance)).Success)
+            .Select(output => new ItemGrantRequest(output.ResultItemTemplateId, output.ResultQuantity, false, null))
+            .ToList();
 
+        var mamNonReturned = false;
+        if (herbDefinition.ReplantItemTemplateId.HasValue)
+        {
+            mamNonReturned = _randomService.CheckChance(ToPartsPerMillion(herbDefinition.ReplantReturnChance)).Success;
+            if (mamNonReturned)
+                grants.Add(new ItemGrantRequest(herbDefinition.ReplantItemTemplateId.Value, 1, false, null));
+        }
+
+        var created = new List<PlayerItemEntity>();
         await _inventoryTransactions.ExecuteAsync(
             playerId,
             async ct =>
             {
                 var lockedHerb = await RequireOwnedHerbAsync(playerId, playerHerbId, ct);
-                lockedHerb = await MaterializeHerbProgressAsync(lockedHerb, ct);
+                if (lockedHerb.State != (int)PlayerHerbState.InInventory)
+                    throw new GameException(MessageCode.GardenHerbNotInInventory);
 
-                if (!_definitions.TryGetHerb(lockedHerb.HerbTemplateId, out var lockedHerbDefinition))
-                    throw new InvalidOperationException($"Herb template {lockedHerb.HerbTemplateId} was not found.");
-
-                var lockedOutputs = ResolveHarvestOutputs(lockedHerbDefinition, (HerbGrowthStage)lockedHerb.CurrentStage);
-                if (lockedOutputs.Count == 0)
-                    throw new InvalidOperationException($"Herb template {lockedHerb.HerbTemplateId} does not have harvest output for stage {(HerbGrowthStage)lockedHerb.CurrentStage}.");
-
-                var procOutputs = lockedOutputs
-                    .Where(output => _randomService.CheckChance(ToPartsPerMillion(output.OutputChance)).Success)
-                    .Select(output => new ItemGrantRequest(output.ResultItemTemplateId, output.ResultQuantity, false, null))
-                    .ToArray();
-
-                if (procOutputs.Length > 0)
+                if (IsHerbExpired(lockedHerb, DateTime.UtcNow))
                 {
-                    var capacityCheck = await _bagService.CheckCapacityForAsync(playerId, procOutputs, ct);
-                    if (!capacityCheck.CanFit)
-                        throw new GameException(MessageCode.InventoryFull);
+                    await _playerHerbs.DeleteAsync(lockedHerb.Id, ct);
+                    throw new GameException(MessageCode.GardenHerbExpired);
                 }
 
-                foreach (var grant in procOutputs)
+                if (grants.Count > 0)
+                {
+                    var capacityCheck = await _bagService.CheckCapacityForAsync(playerId, grants, ct);
+                    if (!capacityCheck.CanFit)
+                        throw new GameException(MessageCode.GardenInventoryFull);
+                }
+
+                foreach (var grant in grants)
                 {
                     var createdItems = await _itemService.AddItemAsync(
                         playerId,
@@ -337,31 +372,21 @@ public sealed class HerbService
                     created.AddRange(createdItems);
                 }
 
-                if (lockedHerb.CurrentPlotId.HasValue)
-                {
-                    var plot = await _playerGardenPlots.GetByIdAsync(lockedHerb.CurrentPlotId.Value, ct);
-                    if (plot is not null)
-                    {
-                        plot.CurrentPlayerHerbId = null;
-                        plot.UpdatedAt = DateTime.UtcNow;
-                        await _playerGardenPlots.UpdateAsync(plot, ct);
-                    }
-                }
-
                 await _playerHerbs.DeleteAsync(lockedHerb.Id, ct);
             },
             cancellationToken);
 
         var inventory = await _itemService.GetInventoryAsync(playerId, cancellationToken);
-        return inventory.Where(x => created.Any(createdItem => createdItem.Id == x.PlayerItemId)).ToArray();
+        var createdViews = inventory.Where(x => created.Any(createdItem => createdItem.Id == x.PlayerItemId)).ToArray();
+        return new HerbExtractionResult(createdViews, mamNonReturned);
     }
 
     private async Task<PlayerCaveEntity> RequireOwnedCaveAsync(Guid playerId, long caveId, CancellationToken cancellationToken)
     {
         var cave = await _playerCaves.GetByIdAsync(caveId, cancellationToken)
-                   ?? throw new InvalidOperationException($"Player cave {caveId} was not found.");
+                   ?? throw new GameException(MessageCode.GardenCaveNotFound);
         if (cave.OwnerCharacterId != playerId)
-            throw new InvalidOperationException($"Player cave {caveId} does not belong to player {playerId}.");
+            throw new GameException(MessageCode.GardenPlotNotOwned);
 
         return cave;
     }
@@ -370,15 +395,15 @@ public sealed class HerbService
     {
         await RequireOwnedCaveAsync(playerId, caveId, cancellationToken);
         return await _playerGardenPlots.GetByCaveAndPlotIndexAsync(caveId, plotIndex, cancellationToken)
-               ?? throw new InvalidOperationException($"Garden plot {plotIndex} in cave {caveId} was not found.");
+               ?? throw new GameException(MessageCode.GardenPlotNotFound);
     }
 
     private async Task<PlayerHerbEntity> RequireOwnedHerbAsync(Guid playerId, long playerHerbId, CancellationToken cancellationToken)
     {
         var herb = await _playerHerbs.GetByIdAsync(playerHerbId, cancellationToken)
-                   ?? throw new InvalidOperationException($"Player herb {playerHerbId} was not found.");
+                   ?? throw new GameException(MessageCode.GardenHerbNotOwned);
         if (herb.PlayerId != playerId)
-            throw new InvalidOperationException($"Player herb {playerHerbId} does not belong to player {playerId}.");
+            throw new GameException(MessageCode.GardenHerbNotOwned);
 
         return herb;
     }
@@ -458,7 +483,8 @@ public sealed class HerbService
             herb.State == (int)PlayerHerbState.Planting && herb.CurrentPlotId.HasValue && soilRemainingSeconds > 0,
             herb.CurrentPlotId,
             soilPlayerItemId,
-            soilRemainingSeconds);
+            soilRemainingSeconds,
+            herb.ExpireAt);
     }
 
     private async Task ConsumeSpecificPlayerItemUnitAsync(PlayerItemEntity playerItem, CancellationToken cancellationToken)
@@ -513,6 +539,11 @@ public sealed class HerbService
         herb.CurrentStage = (int)stage.Stage;
     }
 
+    private static bool IsHerbExpired(PlayerHerbEntity herb, DateTime utcNow)
+    {
+        return herb.ExpireAt.HasValue && herb.ExpireAt.Value <= utcNow;
+    }
+
     private static int ToPartsPerMillion(double rawRate)
     {
         var normalized = rawRate <= 1d ? rawRate : rawRate / 100d;
@@ -520,3 +551,7 @@ public sealed class HerbService
         return (int)Math.Round(normalized * 1_000_000d, MidpointRounding.AwayFromZero);
     }
 }
+
+public sealed record HerbExtractionResult(
+    IReadOnlyList<InventoryItemView> Items,
+    bool MamNonReturned);

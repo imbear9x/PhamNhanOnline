@@ -13,6 +13,7 @@ public sealed class PlayerHerbEntity
     [Column("accumulated_growth_seconds"), NotNull] public long AccumulatedGrowthSeconds { get; set; }
     [Column("state"), NotNull] public int State { get; set; }
     [Column("current_plot_id")] public long? CurrentPlotId { get; set; }
+    [Column("expire_at")] public DateTime? ExpireAt { get; set; }
     [Column("created_at"), NotNull] public DateTime CreatedAt { get; set; }
     [Column("updated_at"), NotNull] public DateTime UpdatedAt { get; set; }
 }

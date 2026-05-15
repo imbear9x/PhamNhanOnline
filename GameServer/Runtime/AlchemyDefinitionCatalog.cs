@@ -198,6 +198,7 @@ public sealed class AlchemyDefinitionCatalog
                 x.Name,
                 x.SeedItemTemplateId,
                 x.ReplantItemTemplateId,
+                x.ReplantReturnChance,
                 x.Description,
                 growthStagesByHerbId.GetValueOrDefault(x.Id, Array.Empty<HerbGrowthStageDefinition>()),
                 harvestOutputsByHerbId.GetValueOrDefault(x.Id, Array.Empty<HerbHarvestOutputDefinition>())));

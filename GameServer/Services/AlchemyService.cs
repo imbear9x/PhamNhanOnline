@@ -46,9 +46,6 @@ public sealed class AlchemyService
         if (learned is null)
             return Failed("Player chua hoc dan phuong nay.", recipe, normalizedRequestedCraftCount);
 
-        if (recipe.Inputs.Any(static x => x.RequiredHerbMaturity != HerbMaturityRequirement.None))
-            return Failed("Recipe co required_herb_maturity, tinh nang nay de phase sau.", recipe, normalizedRequestedCraftCount);
-
         var inventory = (await _playerItems.ListByPlayerIdAsync(playerId, cancellationToken))
             .Where(static x => !IsExpired(x.ExpireAt))
             .ToArray();

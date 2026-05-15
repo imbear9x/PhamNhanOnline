@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-05-14T17:18:11.329Z",
+  "updatedAt": "2026-05-15T14:10:43.252Z",
   "entries": {
     "memory:memory/2026-05-13.md:1:5": {
       "key": "memory:memory/2026-05-13.md:1:5",
@@ -9,15 +9,16 @@
       "endLine": 5,
       "source": "memory",
       "snippet": "- User explicitly reinforced cross-doc consistency rule: when a canonical rule is changed during feature discussion, check related notes/features/requirements and propagate updates across all affected docs; if canonical scope is unclear, ask before editing. - Sect system was promoted to feature: `features/sect-system.md` replacing prior sect notes. - Current active audit focus per user instruction: audit `consistency-audit.md` items in order AUDIT-001 Spirit Sense, AUDIT-002 Death taxonomy, AUDIT-004 Looting window, AUDIT-005 Inventory overflow. For each: read related docs, summarize conflict, propose canonical rule, ask user to confirm before mass edits; once user confirms, update `shared-r",
-      "recallCount": 1,
+      "recallCount": 2,
       "dailyCount": 0,
       "groundedCount": 0,
-      "totalScore": 0.6319244519211863,
+      "totalScore": 1.263848612107,
       "maxScore": 0.6319244519211863,
       "firstRecalledAt": "2026-05-14T17:18:11.329Z",
-      "lastRecalledAt": "2026-05-14T17:18:11.329Z",
+      "lastRecalledAt": "2026-05-15T14:10:43.252Z",
       "queryHashes": [
-        "47f6a57ceb1b"
+        "47f6a57ceb1b",
+        "7fd5d327d68e"
       ],
       "recallDays": [
         "2026-05-15"
@@ -31,6 +32,131 @@
         "audit-002",
         "audit-004",
         "audit-005"
+      ]
+    },
+    "memory:memory/2026-05-14.md:74:110": {
+      "key": "memory:memory/2026-05-14.md:74:110",
+      "path": "memory/2026-05-14.md",
+      "startLine": 74,
+      "endLine": 110,
+      "source": "memory",
+      "snippet": "`requirements/herb-farming-system.md` cần update theo template mới khi user trả lời 4 câu hỏi trên. --- ## CRITICAL WORKFLOW RULE — PROMOTE TO REQUIREMENT Khi GameDesign promote feature doc lên requirement, bắt buộc phải làm ĐỦ 3 bước: 1. Tạo `requirements/<system>.md` 2. Tạo handoff file `docs/agent-handoffs/active/<date>-<system>-<owner>.md` 3. Thêm dòng vào `docs/agent-handoffs/QUEUE.md` Nếu thiếu bước 2 hoặc 3, TechDesign agent sẽ không biết có việc và flow bị nghẽn. Không được kết thúc promote mà chưa làm đủ 3 bước. ## Workflow Rules (confirmed this session) - Khi cần hỏi Dev/TechDesign: dùng group-consult-send, chờ reply, mang về hỏi user trước khi chốt vào doc - Không tự bịa câu",
+      "recallCount": 2,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 2,
+      "maxScore": 1,
+      "firstRecalledAt": "2026-05-15T14:10:43.188Z",
+      "lastRecalledAt": "2026-05-15T14:10:43.252Z",
+      "queryHashes": [
+        "ce7cff7a44b7",
+        "7fd5d327d68e"
+      ],
+      "recallDays": [
+        "2026-05-15"
+      ],
+      "conceptTags": [
+        "docs/agent-handoffs/active",
+        "docs/agent-handoffs/queue.md",
+        "dev/techdesign",
+        "group-consult-send",
+        "requirements",
+        "herb",
+        "farming",
+        "system.md"
+      ]
+    },
+    "memory:memory/2026-05-14.md:48:82": {
+      "key": "memory:memory/2026-05-14.md:48:82",
+      "path": "memory/2026-05-14.md",
+      "startLine": 48,
+      "endLine": 82,
+      "source": "memory",
+      "snippet": "- Requirement doc: tạo mới trong `requirements/`, cụ thể hơn feature - Requirement thêm: REQ-*, AC-*, state/lifecycle, rules/invariants, runtime flow, data/config, telemetry, known drift --- ## Pending — Chờ User Input ### 4 rule herb-farming-system đã chốt 1. **Inventory full khi harvest/extract**: **reject toàn bộ action** — không inbox overflow cho harvest/extract. 2. **Herb/item hết hạn**: **xóa luôn** — không có spoiled item. 3. **Mầm non nguồn**: **nhiều nguồn** — extract return, drop quái, mua NPC — cùng item template, cùng replant flow. 4. **Plot count**: **fixed config per blueprint grade** — data-driven, không cần runtime logic. ### Template update cần apply User yêu cầu bổ sun",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 1,
+      "maxScore": 1,
+      "firstRecalledAt": "2026-05-15T14:10:43.252Z",
+      "lastRecalledAt": "2026-05-15T14:10:43.252Z",
+      "queryHashes": [
+        "7fd5d327d68e"
+      ],
+      "recallDays": [
+        "2026-05-15"
+      ],
+      "conceptTags": [
+        "state/lifecycle",
+        "rules/invariants",
+        "data/config",
+        "herb-farming-system",
+        "harvest/extract",
+        "herb/item",
+        "data-driven",
+        "requirement"
+      ]
+    },
+    "memory:memory/2026-05-14.md:28:56": {
+      "key": "memory:memory/2026-05-14.md:28:56",
+      "path": "memory/2026-05-14.md",
+      "startLine": 28,
+      "endLine": 56,
+      "source": "memory",
+      "snippet": "### World boss - Phase trigger: cho phép HP / time / event, config per boss per map - Target priority: pendingAggroOverride first, then nearest valid in range - Out-of-combat restore: boss giữ HP khi về patrol (không full heal khác enemy thường) - Skill cadence: timer-based, round-robin, target = current combat target - Random chase: boss-specific extension — đuổi ngẫu nhiên khi không có ai tấn công/đứng gần; khi có target thì dùng proactive attack framework như enemy thường - Participation reward: config per boss/reward, không cố định toàn hệ ### Herb farming / linh dược - Mỗi phẩm cấp linh dược = item template riêng (confirmed by TechDesign) - `required_herb_maturity` deprecated — recipe",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 1,
+      "maxScore": 1,
+      "firstRecalledAt": "2026-05-15T14:10:43.252Z",
+      "lastRecalledAt": "2026-05-15T14:10:43.252Z",
+      "queryHashes": [
+        "7fd5d327d68e"
+      ],
+      "recallDays": [
+        "2026-05-15"
+      ],
+      "conceptTags": [
+        "out-of-combat",
+        "timer-based",
+        "round-robin",
+        "boss-specific",
+        "công/đứng",
+        "boss/reward",
+        "required-herb-maturity",
+        "world"
+      ]
+    },
+    "memory:memory/2026-05-14.md:1:32": {
+      "key": "memory:memory/2026-05-14.md:1:32",
+      "path": "memory/2026-05-14.md",
+      "startLine": 1,
+      "endLine": 32,
+      "source": "memory",
+      "snippet": "# Session Memory — 2026-05-14 ## Context Workspace: `/home/khoivu/Project/PhamNhanOnline/docs/game-design-wp/` Key files: `shared-rules.md`, `features/*.md`, `requirements/*.md`, `notes/deferred-features.md` --- ## Session Summary ### Major milestones this session - Cleared **all 25 feature docs** to READY status (excluding cultivation-and-breakthrough special case) - `world-boss-system` cleared via Dev consult: grounded boss behavior per runtime code - `cultivation-and-breakthrough` cleared: confirmed not full-promote candidate; downstream is requirement for penalty refactor only - Group consult infrastructure confirmed working (was failing due to network/outbound block; DevOps fixed it",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.6316269931284503,
+      "maxScore": 0.6316269931284503,
+      "firstRecalledAt": "2026-05-15T14:10:43.252Z",
+      "lastRecalledAt": "2026-05-15T14:10:43.252Z",
+      "queryHashes": [
+        "7fd5d327d68e"
+      ],
+      "recallDays": [
+        "2026-05-15"
+      ],
+      "conceptTags": [
+        "network",
+        "shared-rules.md",
+        "notes/deferred-features.md",
+        "cultivation-and-breakthrough",
+        "world-boss-system",
+        "full-promote",
+        "network/outbound",
+        "context"
       ]
     }
   }

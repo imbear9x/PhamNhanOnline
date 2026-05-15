@@ -1,10 +1,10 @@
 ---
 title: Herb Farming System — Dev Implementation
 doc_type: handoff
-status: Ready
+status: Done
 owner: dev
 source_agent: techdesign
-last_updated: 2026-05-14
+last_updated: 2026-05-15
 source_design_doc: docs/game-design-wp/requirements/herb-farming-system.md
 source_tech_design_doc: docs/tech-design/herb-farming-system.md
 expected_output: implementation

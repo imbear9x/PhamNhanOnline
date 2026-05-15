@@ -314,6 +314,42 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.EnemyMovementDecisionPacket:
                 id = 102;
                 return true;
+            case global::GameShared.Packets.GetGardenPlotsPacket:
+                id = 200;
+                return true;
+            case global::GameShared.Packets.InsertSoilPacket:
+                id = 201;
+                return true;
+            case global::GameShared.Packets.PlantHerbSeedPacket:
+                id = 202;
+                return true;
+            case global::GameShared.Packets.PlantExistingHerbPacket:
+                id = 203;
+                return true;
+            case global::GameShared.Packets.HarvestHerbPacket:
+                id = 204;
+                return true;
+            case global::GameShared.Packets.ExtractHerbPacket:
+                id = 205;
+                return true;
+            case global::GameShared.Packets.GetGardenPlotsResultPacket:
+                id = 210;
+                return true;
+            case global::GameShared.Packets.InsertSoilResultPacket:
+                id = 211;
+                return true;
+            case global::GameShared.Packets.PlantHerbSeedResultPacket:
+                id = 212;
+                return true;
+            case global::GameShared.Packets.PlantExistingHerbResultPacket:
+                id = 213;
+                return true;
+            case global::GameShared.Packets.HarvestHerbResultPacket:
+                id = 214;
+                return true;
+            case global::GameShared.Packets.ExtractHerbResultPacket:
+                id = 215;
+                return true;
             case global::GameShared.Packets.GetBagStatePacket:
                 id = 220;
                 return true;
@@ -438,6 +474,18 @@ internal static class PacketGeneratedRegistry
             100 => new global::GameShared.Packets.SwapSkillLoadoutSlotsPacket(),
             101 => new global::GameShared.Packets.SwapSkillLoadoutSlotsResultPacket(),
             102 => new global::GameShared.Packets.EnemyMovementDecisionPacket(),
+            200 => new global::GameShared.Packets.GetGardenPlotsPacket(),
+            201 => new global::GameShared.Packets.InsertSoilPacket(),
+            202 => new global::GameShared.Packets.PlantHerbSeedPacket(),
+            203 => new global::GameShared.Packets.PlantExistingHerbPacket(),
+            204 => new global::GameShared.Packets.HarvestHerbPacket(),
+            205 => new global::GameShared.Packets.ExtractHerbPacket(),
+            210 => new global::GameShared.Packets.GetGardenPlotsResultPacket(),
+            211 => new global::GameShared.Packets.InsertSoilResultPacket(),
+            212 => new global::GameShared.Packets.PlantHerbSeedResultPacket(),
+            213 => new global::GameShared.Packets.PlantExistingHerbResultPacket(),
+            214 => new global::GameShared.Packets.HarvestHerbResultPacket(),
+            215 => new global::GameShared.Packets.ExtractHerbResultPacket(),
             220 => new global::GameShared.Packets.GetBagStatePacket(),
             221 => new global::GameShared.Packets.GetBagStateResultPacket(),
             222 => new global::GameShared.Packets.UpgradeBagPacket(),

@@ -48,7 +48,8 @@ public enum HerbGrowthStage
 {
     Seedling = 1,
     Mature = 2,
-    Perfect = 3
+    ThousandYear = 3,
+    Young = 4
 }
 
 public enum HerbHarvestOutputType
@@ -136,6 +137,7 @@ public sealed record HerbTemplateDefinition(
     string Name,
     int SeedItemTemplateId,
     int? ReplantItemTemplateId,
+    double ReplantReturnChance,
     string? Description,
     IReadOnlyList<HerbGrowthStageDefinition> GrowthStages,
     IReadOnlyList<HerbHarvestOutputDefinition> HarvestOutputs);
@@ -200,4 +202,5 @@ public sealed record HerbRuntimeState(
     bool IsGrowing,
     long? CurrentPlotId,
     long? CurrentSoilPlayerItemId,
-    long SoilRemainingSeconds);
+    long SoilRemainingSeconds,
+    DateTime? ExpireAtUtc);

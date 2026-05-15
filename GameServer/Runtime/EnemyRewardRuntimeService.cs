@@ -5,8 +5,11 @@ using GameServer.DTO;
 using GameServer.Randomness;
 using GameServer.Repositories;
 using GameServer.Services;
+using GameServer.Network.Interface;
 using GameServer.World;
 using GameShared.Logging;
+using GameShared.Messages;
+using GameShared.Packets;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GameServer.Runtime;
@@ -22,6 +25,7 @@ public sealed class EnemyRewardRuntimeService
     private readonly CharacterRuntimeSaveService _runtimeSaveService;
     private readonly CharacterCultivationService _cultivationService;
     private readonly PotentialStatCatalog _potentialStatCatalog;
+    private readonly INetworkSender _network;
     private readonly IReadOnlyDictionary<int, RealmTemplate> _realmsById;
 
     public EnemyRewardRuntimeService(
@@ -33,7 +37,8 @@ public sealed class EnemyRewardRuntimeService
         CharacterRuntimeService runtimeService,
         CharacterRuntimeSaveService runtimeSaveService,
         CharacterCultivationService cultivationService,
-        PotentialStatCatalog potentialStatCatalog)
+        PotentialStatCatalog potentialStatCatalog,
+        INetworkSender network)
     {
         _gameConfig = gameConfig;
         _scopeFactory = scopeFactory;
@@ -44,6 +49,7 @@ public sealed class EnemyRewardRuntimeService
         _runtimeSaveService = runtimeSaveService;
         _cultivationService = cultivationService;
         _potentialStatCatalog = potentialStatCatalog;
+        _network = network;
 
         using var scope = scopeFactory.CreateScope();
         var realmRepository = scope.ServiceProvider.GetRequiredService<RealmTemplateRepository>();
@@ -83,6 +89,7 @@ public sealed class EnemyRewardRuntimeService
 
         await using var scope = _scopeFactory.CreateAsyncScope();
         var itemService = scope.ServiceProvider.GetRequiredService<ItemService>();
+        var bagService = scope.ServiceProvider.GetRequiredService<BagService>();
         var inventoryTransactions = scope.ServiceProvider.GetRequiredService<PlayerInventoryTransactionService>();
 
         foreach (var death in deaths)
@@ -141,6 +148,7 @@ public sealed class EnemyRewardRuntimeService
                     {
                         await GrantDirectRewardItemsAsync(
                             inventoryTransactions,
+                            bagService,
                             itemService,
                             target.Player,
                             directGrantItems,
@@ -347,18 +355,49 @@ public sealed class EnemyRewardRuntimeService
         return false;
     }
 
-    private static async Task GrantDirectRewardItemsAsync(
+    private bool IsHerbRewardItem(RewardItemSeed rewardItem)
+    {
+        if (!_itemDefinitions.TryGetItem(rewardItem.ItemTemplateId, out var definition))
+            return false;
+
+        return definition.ItemType is ItemType.HerbSeed or ItemType.HerbPlant;
+    }
+
+    private async Task GrantDirectRewardItemsAsync(
         PlayerInventoryTransactionService inventoryTransactions,
+        BagService bagService,
         ItemService itemService,
         PlayerSession player,
         IReadOnlyList<RewardItemSeed> rolledItems,
         CancellationToken cancellationToken)
     {
+        var shouldNotifyInventoryFull = false;
+
         await inventoryTransactions.ExecuteAsync(
             player.CharacterData.CharacterId,
             async ct =>
             {
-                foreach (var group in rolledItems
+                var herbDirectGrantItems = rolledItems
+                    .Where(IsHerbRewardItem)
+                    .ToArray();
+                var itemsToGrant = rolledItems.ToList();
+
+                if (herbDirectGrantItems.Length > 0)
+                {
+                    var herbCapacityCheck = await bagService.CheckCapacityForAsync(
+                        player.CharacterData.CharacterId,
+                        herbDirectGrantItems
+                            .Select(x => new ItemGrantRequest(x.ItemTemplateId, x.Quantity, x.IsBound, null))
+                            .ToArray(),
+                        ct);
+                    if (!herbCapacityCheck.CanFit)
+                    {
+                        shouldNotifyInventoryFull = true;
+                        itemsToGrant.RemoveAll(IsHerbRewardItem);
+                    }
+                }
+
+                foreach (var group in itemsToGrant
                              .GroupBy(static x => new { x.ItemTemplateId, x.IsBound })
                              .OrderBy(static x => x.Key.ItemTemplateId))
                 {
@@ -371,6 +410,16 @@ public sealed class EnemyRewardRuntimeService
                 }
             },
             cancellationToken);
+
+        if (shouldNotifyInventoryFull)
+        {
+            _network.Send(player.ConnectionId, new PickupGroundRewardResultPacket
+            {
+                Success = false,
+                Code = MessageCode.InventoryFull,
+                RewardId = null
+            });
+        }
     }
 
     private async Task<IReadOnlyList<GroundRewardItem>> CreateGroundRewardItemsAsync(

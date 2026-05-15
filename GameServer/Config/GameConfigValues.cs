@@ -26,9 +26,13 @@ public sealed class GameConfigValues
     public int CharacterStarterSkillId { get; init; } = 0;
     public int SkillMaxLoadoutSlotCount { get; init; } = 5;
     public string InventoryBagUpgradeCurrencyCode { get; init; } = "currency.spirit_stone_small";
+    public int HerbInventoryExpirySeconds { get; init; } = 604800;
+    public int HerbExpirySweepIntervalSeconds { get; init; } = 60;
 
     public TimeSpan ResumeWindow => TimeSpan.FromSeconds(Math.Max(0, NetworkReconnectResumeWindowSeconds));
     public TimeSpan CultivationSettlementInterval => TimeSpan.FromSeconds(Math.Max(1, CultivationSettlementIntervalSeconds));
     public TimeSpan WorldEmptyPublicInstanceLifetime => TimeSpan.FromSeconds(Math.Max(1, WorldEmptyPublicInstanceLifetimeSeconds));
+    public TimeSpan HerbInventoryExpiry => TimeSpan.FromSeconds(Math.Max(1, HerbInventoryExpirySeconds));
+    public TimeSpan HerbExpirySweepInterval => TimeSpan.FromSeconds(Math.Max(1, HerbExpirySweepIntervalSeconds));
 }
 

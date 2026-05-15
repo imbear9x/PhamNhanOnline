@@ -57,6 +57,7 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<PracticeService>();
         services.AddSingleton<AlchemyPracticeService>();
         services.AddSingleton<PlayerNotificationService>();
+        services.AddSingleton<HerbExpiryBackgroundService>();
 
         return services;
     }
@@ -206,6 +207,12 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<GetCharacterDataPacket>, GetCharacterDataHandler>();
         services.AddScoped<IPacketHandler<EnterWorldPacket>, EnterWorldHandler>();
         services.AddScoped<IPacketHandler<GetInventoryPacket>, GetInventoryHandler>();
+        services.AddScoped<IPacketHandler<GetGardenPlotsPacket>, GetGardenPlotsHandler>();
+        services.AddScoped<IPacketHandler<InsertSoilPacket>, InsertSoilHandler>();
+        services.AddScoped<IPacketHandler<PlantHerbSeedPacket>, PlantHerbSeedHandler>();
+        services.AddScoped<IPacketHandler<PlantExistingHerbPacket>, PlantExistingHerbHandler>();
+        services.AddScoped<IPacketHandler<HarvestHerbPacket>, HarvestHerbHandler>();
+        services.AddScoped<IPacketHandler<ExtractHerbPacket>, ExtractHerbHandler>();
         services.AddScoped<IPacketHandler<GetBagStatePacket>, GetBagStateHandler>();
         services.AddScoped<IPacketHandler<UpgradeBagPacket>, UpgradeBagHandler>();
         services.AddScoped<IPacketHandler<EquipInventoryItemPacket>, EquipInventoryItemHandler>();

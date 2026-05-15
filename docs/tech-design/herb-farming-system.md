@@ -37,8 +37,8 @@ Implement the two-step herb lifecycle (harvest → living herb entity → extrac
 - `thousand_year` is terminal while planted; does not auto-expire.
 - Linh thổ has a finite active lifetime; expiry pauses herb growth and starts herb survival countdown.
 - Each phẩm cấp of linh dược is a distinct item template.
-- Harvest and extract are rejected entirely if inventory is full (no inbox fallback for these two actions).
-- Herb drop overflow from quái uses shared inbox rule.
+- Harvest and extract are rejected entirely if inventory is full (no inbox fallback).
+- Herb drop from quái is also rejected entirely if inventory is full; do not redirect any herb-related overflow to inbox.
 - Living herb expiry while offline: server deletes herb entity silently on next access or background sweep; no spoiled-item state; no notification.
 - `required_herb_maturity` guard in `AlchemyService` must be removed; recipe validation uses item template identity going forward.
 
@@ -61,7 +61,7 @@ Implement the two-step herb lifecycle (harvest → living herb entity → extrac
 - Wild herb nodes.
 - Balance values (timers, drop rates, yields).
 - Client UI layout.
-- Herb drop from quái (EnemyRewardRuntimeService wiring) — separate slice.
+- Herb drop from quái follows the same reject-on-full rule as other herb actions; any remaining server wiring gap is handled in this correction slice.
 
 ## Code Grounding Summary
 
@@ -72,6 +72,7 @@ Implement the two-step herb lifecycle (harvest → living herb entity → extrac
 | `HerbGrowthStage` enum | `Seedling=1, Mature=2, Perfect=3` — only 3 stages; `Young` and `ThousandYear` missing. |
 | `PlayerItemEntity` | Has `expire_at` field, used for consumables. |
 | `ItemService.AddItemAsync` | No inventory capacity check — adds freely. |
+| `EnemyRewardRuntimeService` | Supports `DirectGrant` and `GroundDrop` reward delivery only; no inbox fallback path exists in current runtime. Herb-specific full-bag rejection must be enforced explicitly on the herb reward path. |
 | `AlchemyService` | Hard guard: recipes with `required_herb_maturity != None` → fail immediately. No data currently uses this field with non-zero value — safe to remove guard. |
 | `PlayerNotificationService` | Push notification infrastructure exists. Used for practice results and lifespan expiry. Herb expiry does not send notification (silent delete per design). |
 | Packet pattern | `[Packet(N)]` attribute, `partial class XxxPacket : IPacket`, `IPacketHandler<TPacket>`. Highest existing ID is ~102. New herb packets will use IDs 200–220. |
@@ -137,7 +138,7 @@ Implement the two-step herb lifecycle (harvest → living herb entity → extrac
 | `HerbGrowthStage.Mature` | `2` | Harvestable normal maturity | `player_herbs.current_stage`, outputs, harvest validation | Produces base linh dược outputs |
 | `HerbGrowthStage.ThousandYear` | `3` | Terminal high maturity | `player_herbs.current_stage`, outputs, harvest validation | Rename of old `Perfect` code; DB value unchanged |
 | `HerbGrowthStage.Young` | `4` | Intermediate growth stage between Seedling and Mature | `player_herbs.current_stage`, growth config | New in this slice |
-| `PlayerHerbState.Planting` | `0` | Herb is planted on a plot | `player_herbs.state` | `current_plot_id` and `planted_at` expected non-null |
+| `PlayerHerbState.Planting` | `2` | Herb is planted on a plot | `player_herbs.state` | `current_plot_id` and `planted_at` expected non-null |
 | `PlayerHerbState.InInventory` | `1` | Herb is harvested and stored as living herb in inventory | `player_herbs.state` | `expire_at` may be non-null |
 | `HerbHarvestOutputType.Material` | runtime enum | Extract grants material item | output resolution | Existing enum in code |
 | `HerbHarvestOutputType.Replant` | runtime enum | Extract grants mầm non / replant item | output resolution | Existing enum in code |
@@ -164,6 +165,7 @@ Implement the two-step herb lifecycle (harvest → living herb entity → extrac
 | `player_herbs` | `accumulated_growth_seconds`, `current_stage` | growth progress settlement | Read or mutate herb while planted | `HerbService.MaterializeHerbProgressAsync` |
 | `player_herbs` + `player_garden_plots` | `state: Planting → InInventory`, `current_plot_id: plot id → null`, `planted_at: ts → null`, `expire_at: null → timestamp`, `current_player_herb_id: herb id → null` | Harvest to inventory | `HarvestHerbPacket` accepted | `HerbService.HarvestAsync` |
 | `player_herbs` + `player_items` | delete herb row + add output items | Extract harvested herb | `ExtractHerbPacket` accepted | `HerbService.ExtractHerbAsync` |
+| enemy herb reward resolution | reject grant / keep normal enemy reward flow unchanged | Herb reward cannot fit inventory | enemy reward runtime / herb reward resolver | Return inventory-full; no inbox fallback |
 | `player_herbs` | delete herb row | Silent expiry cleanup | Background sweep or expired extract access | `HerbExpiryBackgroundService`, `HerbService.ExtractHerbAsync` |
 | `player_soils` | `total_used_seconds` | increase while active | Growth settlement on planted herb | `HerbService.MaterializeHerbProgressAsync` |
 
@@ -474,7 +476,7 @@ The `required_herb_maturity` column in DB and `PillRecipeInputDefinition` field 
 ## Open Questions
 
 - [ ] **Inventory cap system**: `CheckInventoryHasSpace` is a stub returning `true`. GD needs to design inventory slot progression (starting size, upgrade path, per-character or per-account). TD will wire this when GD delivers requirement. _(Routed to GD/User)_
-- [ ] **Herb drop from quái**: EnemyRewardRuntimeService wiring for herb drops is deferred. Separate slice needed when GD finalizes drop config schema. _(Routed to GD/User)_
+- [ ] **Herb drop from quái**: reject entirely if herb reward cannot fit inventory; no inbox fallback. Confirm runtime wiring on herb-specific reward path in correction follow-up.
 
 ## Risks
 

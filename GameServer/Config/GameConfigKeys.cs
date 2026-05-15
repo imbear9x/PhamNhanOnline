@@ -26,5 +26,7 @@ public static class GameConfigKeys
     public const string CharacterStarterSkillId = "character.starter_skill_id";
     public const string SkillMaxLoadoutSlotCount = "skill.max_loadout_slot_count";
     public const string InventoryBagUpgradeCurrencyCode = "inventory.bag_upgrade_currency_code";
+    public const string HerbInventoryExpirySeconds = "herb.inventory_expiry_seconds";
+    public const string HerbExpirySweepIntervalSeconds = "herb.expiry_sweep_interval_seconds";
 }
 

@@ -134,7 +134,9 @@ public static partial class ServiceCollectionExtensions
             CharacterEquipmentSlotCount = GetInt(configsByKey, GameConfigKeys.CharacterEquipmentSlotCount, 4),
             CharacterStarterSkillId = GetInt(configsByKey, GameConfigKeys.CharacterStarterSkillId, 0),
             SkillMaxLoadoutSlotCount = GetInt(configsByKey, GameConfigKeys.SkillMaxLoadoutSlotCount, 5),
-            InventoryBagUpgradeCurrencyCode = GetString(configsByKey, GameConfigKeys.InventoryBagUpgradeCurrencyCode, "currency.spirit_stone_small")
+            InventoryBagUpgradeCurrencyCode = GetString(configsByKey, GameConfigKeys.InventoryBagUpgradeCurrencyCode, "currency.spirit_stone_small"),
+            HerbInventoryExpirySeconds = GetInt(configsByKey, GameConfigKeys.HerbInventoryExpirySeconds, 604800),
+            HerbExpirySweepIntervalSeconds = GetInt(configsByKey, GameConfigKeys.HerbExpirySweepIntervalSeconds, 60)
         };
     }
 

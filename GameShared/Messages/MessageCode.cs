@@ -114,5 +114,18 @@ public enum MessageCode : int
     MapInstanceClosed = 5008,
     SkillTargetOutOfRange = 5009,
     GroundRewardOutOfRange = 5010,
-    GroundRewardClaimInProgress = 5011
+    GroundRewardClaimInProgress = 5011,
+
+    GardenCaveNotFound = 6000,
+    GardenPlotNotFound = 6001,
+    GardenPlotNotOwned = 6002,
+    GardenPlotAlreadyHasSoil = 6003,
+    GardenPlotNoSoil = 6004,
+    GardenPlotAlreadyHasHerb = 6005,
+    GardenPlotNoHerb = 6006,
+    GardenHerbNotHarvestable = 6007,
+    GardenHerbNotInInventory = 6008,
+    GardenHerbExpired = 6009,
+    GardenHerbNotOwned = 6010,
+    GardenInventoryFull = 6011
 }

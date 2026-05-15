@@ -16,6 +16,7 @@ public sealed class RuntimeMaintenanceService
     private readonly CharacterRuntimeSaveService _runtimeSaveService;
     private readonly CharacterCultivationService _cultivationService;
     private readonly AlchemyPracticeService _alchemyPracticeService;
+    private readonly HerbExpiryBackgroundService _herbExpiryBackgroundService;
     private readonly GameTimeService _gameTimeService;
     private readonly ServerMetricsService _metrics;
     private readonly WorldManager _worldManager;
@@ -33,6 +34,7 @@ public sealed class RuntimeMaintenanceService
         CharacterRuntimeSaveService runtimeSaveService,
         CharacterCultivationService cultivationService,
         AlchemyPracticeService alchemyPracticeService,
+        HerbExpiryBackgroundService herbExpiryBackgroundService,
         GameTimeService gameTimeService,
         ServerMetricsService metrics,
         WorldManager worldManager)
@@ -41,6 +43,7 @@ public sealed class RuntimeMaintenanceService
         _runtimeSaveService = runtimeSaveService;
         _cultivationService = cultivationService;
         _alchemyPracticeService = alchemyPracticeService;
+        _herbExpiryBackgroundService = herbExpiryBackgroundService;
         _gameTimeService = gameTimeService;
         _metrics = metrics;
         _worldManager = worldManager;
@@ -180,6 +183,8 @@ public sealed class RuntimeMaintenanceService
 
             _nextPracticeSettlementUtc = DateTime.UtcNow.Add(PracticeSettlementInterval);
         }
+
+        _herbExpiryBackgroundService.ScheduleSweepIfDue(cancellationToken);
 
         if (utcNow >= _nextEmptyInstanceCleanupUtc)
         {

@@ -1,4 +1,5 @@
 using GameShared.Models;
+using GameServer.Entities;
 using GameServer.Runtime;
 using GameServer.Time;
 using GameServer.World;
@@ -366,6 +367,28 @@ public static class NetworkModelMapper
             EquippedSlot = view.EquippedSlot,
             EnhanceLevel = view.EnhanceLevel,
             Durability = view.Durability
+        };
+    }
+
+    public static GardenPlotStateModel ToGardenPlotStateModel(
+        this PlayerGardenPlotEntity plot,
+        PlayerSoilEntity? soil,
+        HerbRuntimeState? herb,
+        int? soilState,
+        long nextStageRemainingSeconds)
+    {
+        return new GardenPlotStateModel
+        {
+            PlotIndex = plot.PlotIndex,
+            SoilPlayerItemId = plot.CurrentSoilPlayerItemId,
+            SoilState = soilState,
+            SoilRemainingSeconds = herb?.SoilRemainingSeconds ?? 0,
+            PlayerHerbId = herb?.PlayerHerbId,
+            HerbTemplateId = herb?.HerbTemplateId,
+            HerbState = herb is null ? null : (herb.CurrentPlotId.HasValue ? (int)PlayerHerbState.Planting : (int)PlayerHerbState.InInventory),
+            HerbStage = herb is null ? null : (int)herb.CurrentStage,
+            NextStageRemainingSeconds = nextStageRemainingSeconds,
+            HerbExpireAtUnixMs = ToUnixMs(herb?.ExpireAtUtc)
         };
     }
 

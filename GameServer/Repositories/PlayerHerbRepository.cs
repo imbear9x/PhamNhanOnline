@@ -22,6 +22,12 @@ public sealed class PlayerHerbRepository
     public Task<PlayerHerbEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default) =>
         _db.GetTable<PlayerHerbEntity>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public Task<List<PlayerHerbEntity>> ListExpiredInventoryHerbsAsync(DateTime utcNow, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerHerbEntity>()
+            .Where(x => x.State == 1 && x.ExpireAt != null && x.ExpireAt <= utcNow)
+            .OrderBy(x => x.Id)
+            .ToListAsync(cancellationToken);
+
     public Task<long> CreateAsync(PlayerHerbEntity entity, CancellationToken cancellationToken = default) =>
         _db.InsertEntityWithInt64IdentityAsync(entity, cancellationToken);
 
@@ -30,4 +36,9 @@ public sealed class PlayerHerbRepository
 
     public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default) =>
         _db.GetTable<PlayerHerbEntity>().Where(x => x.Id == id).DeleteAsync(cancellationToken);
+
+    public Task<int> DeleteExpiredInventoryHerbsAsync(DateTime utcNow, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerHerbEntity>()
+            .Where(x => x.State == 1 && x.ExpireAt != null && x.ExpireAt <= utcNow)
+            .DeleteAsync(cancellationToken);
 }
