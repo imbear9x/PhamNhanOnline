@@ -1,9 +1,12 @@
 using GameServer.Config;
+using GameServer.DTO;
 using GameServer.Entities;
+using GameServer.Exceptions;
 using GameServer.Randomness;
 using GameServer.Repositories;
 using GameServer.Runtime;
 using GameServer.World;
+using GameShared.Messages;
 
 namespace GameServer.Services;
 
@@ -20,6 +23,8 @@ public sealed class HerbService
     private readonly PlayerHerbRepository _playerHerbs;
     private readonly PlayerItemRepository _playerItems;
     private readonly ItemService _itemService;
+    private readonly BagService _bagService;
+    private readonly PlayerInventoryTransactionService _inventoryTransactions;
     private readonly IGameRandomService _randomService;
 
     public HerbService(
@@ -34,6 +39,8 @@ public sealed class HerbService
         PlayerHerbRepository playerHerbs,
         PlayerItemRepository playerItems,
         ItemService itemService,
+        BagService bagService,
+        PlayerInventoryTransactionService inventoryTransactions,
         IGameRandomService randomService)
     {
         _db = db;
@@ -47,6 +54,8 @@ public sealed class HerbService
         _playerHerbs = playerHerbs;
         _playerItems = playerItems;
         _itemService = itemService;
+        _bagService = bagService;
+        _inventoryTransactions = inventoryTransactions;
         _randomService = randomService;
     }
 
@@ -288,36 +297,60 @@ public sealed class HerbService
         if (outputs.Count == 0)
             throw new InvalidOperationException($"Herb template {herb.HerbTemplateId} does not have harvest output for stage {(HerbGrowthStage)herb.CurrentStage}.");
 
-        await using var tx = await _db.BeginTransactionAsync(cancellationToken);
         var created = new List<PlayerItemEntity>();
-        foreach (var output in outputs)
-        {
-            if (!_randomService.CheckChance(ToPartsPerMillion(output.OutputChance)).Success)
-                continue;
 
-            var createdItems = await _itemService.AddItemAsync(
-                playerId,
-                output.ResultItemTemplateId,
-                output.ResultQuantity,
-                false,
-                null,
-                cancellationToken);
-            created.AddRange(createdItems);
-        }
-
-        if (herb.CurrentPlotId.HasValue)
-        {
-            var plot = await _playerGardenPlots.GetByIdAsync(herb.CurrentPlotId.Value, cancellationToken);
-            if (plot is not null)
+        await _inventoryTransactions.ExecuteAsync(
+            playerId,
+            async ct =>
             {
-                plot.CurrentPlayerHerbId = null;
-                plot.UpdatedAt = DateTime.UtcNow;
-                await _playerGardenPlots.UpdateAsync(plot, cancellationToken);
-            }
-        }
+                var lockedHerb = await RequireOwnedHerbAsync(playerId, playerHerbId, ct);
+                lockedHerb = await MaterializeHerbProgressAsync(lockedHerb, ct);
 
-        await _playerHerbs.DeleteAsync(herb.Id, cancellationToken);
-        await tx.CommitAsync(cancellationToken);
+                if (!_definitions.TryGetHerb(lockedHerb.HerbTemplateId, out var lockedHerbDefinition))
+                    throw new InvalidOperationException($"Herb template {lockedHerb.HerbTemplateId} was not found.");
+
+                var lockedOutputs = ResolveHarvestOutputs(lockedHerbDefinition, (HerbGrowthStage)lockedHerb.CurrentStage);
+                if (lockedOutputs.Count == 0)
+                    throw new InvalidOperationException($"Herb template {lockedHerb.HerbTemplateId} does not have harvest output for stage {(HerbGrowthStage)lockedHerb.CurrentStage}.");
+
+                var procOutputs = lockedOutputs
+                    .Where(output => _randomService.CheckChance(ToPartsPerMillion(output.OutputChance)).Success)
+                    .Select(output => new ItemGrantRequest(output.ResultItemTemplateId, output.ResultQuantity, false, null))
+                    .ToArray();
+
+                if (procOutputs.Length > 0)
+                {
+                    var capacityCheck = await _bagService.CheckCapacityForAsync(playerId, procOutputs, ct);
+                    if (!capacityCheck.CanFit)
+                        throw new GameException(MessageCode.InventoryFull);
+                }
+
+                foreach (var grant in procOutputs)
+                {
+                    var createdItems = await _itemService.AddItemAsync(
+                        playerId,
+                        grant.ItemTemplateId,
+                        grant.Quantity,
+                        grant.IsBound,
+                        grant.ExpireAtUtc,
+                        ct);
+                    created.AddRange(createdItems);
+                }
+
+                if (lockedHerb.CurrentPlotId.HasValue)
+                {
+                    var plot = await _playerGardenPlots.GetByIdAsync(lockedHerb.CurrentPlotId.Value, ct);
+                    if (plot is not null)
+                    {
+                        plot.CurrentPlayerHerbId = null;
+                        plot.UpdatedAt = DateTime.UtcNow;
+                        await _playerGardenPlots.UpdateAsync(plot, ct);
+                    }
+                }
+
+                await _playerHerbs.DeleteAsync(lockedHerb.Id, ct);
+            },
+            cancellationToken);
 
         var inventory = await _itemService.GetInventoryAsync(playerId, cancellationToken);
         return inventory.Where(x => created.Any(createdItem => createdItem.Id == x.PlayerItemId)).ToArray();
