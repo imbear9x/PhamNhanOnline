@@ -31,4 +31,7 @@ public sealed class PlayerSkillLoadoutRepository
 
     public Task<int> DeleteAsync(PlayerSkillLoadoutEntity entity, CancellationToken cancellationToken = default) =>
         _db.DeleteAsync(entity, token: cancellationToken);
+
+    public Task<int> DeleteByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerSkillLoadoutEntity>().Where(x => x.PlayerId == playerId).DeleteAsync(cancellationToken);
 }

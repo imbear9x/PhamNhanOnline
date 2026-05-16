@@ -1,6 +1,6 @@
 ---
 handoff_id: 20260515-29
-queue_id: 29
+queue_id: 53
 title: Mineral Vein Ownership and Siege — TechDesign Spec
 type: requirement-to-techdesign
 status: Ready

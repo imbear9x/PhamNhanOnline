@@ -1,6 +1,6 @@
 ---
 handoff_id: 20260515-27
-queue_id: 27
+queue_id: 51
 title: Sect Shop — TechDesign Spec
 type: requirement-to-techdesign
 status: Ready

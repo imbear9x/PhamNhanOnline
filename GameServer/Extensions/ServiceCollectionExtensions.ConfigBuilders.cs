@@ -120,6 +120,8 @@ public static partial class ServiceCollectionExtensions
             CharacterPositionSyncCatchupMaxSeconds = GetFloat(configsByKey, GameConfigKeys.CharacterPositionSyncCatchupMaxSeconds, 0.75f),
             CombatSkillRangeGraceBufferUnits = GetFloat(configsByKey, GameConfigKeys.CombatSkillRangeGraceBufferUnits, 12f),
             CombatDeathReturnHomeRecoveryRatio = GetDouble(configsByKey, GameConfigKeys.CombatDeathReturnHomeRecoveryRatio, 0.80d),
+            DeathLifespanPenaltySeconds = GetInt(configsByKey, GameConfigKeys.DeathLifespanPenaltySeconds, 86400),
+            DeathTribulationPenaltySeconds = GetInt(configsByKey, GameConfigKeys.DeathTribulationPenaltySeconds, 86400),
             ItemDropPlayerOwnershipSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropPlayerOwnershipSeconds, 10),
             ItemDropPlayerFreeForAllSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropPlayerFreeForAllSeconds, 50),
             ItemDropEnemyDefaultOwnershipSeconds = GetInt(configsByKey, GameConfigKeys.ItemDropEnemyDefaultOwnershipSeconds, 30),

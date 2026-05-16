@@ -43,4 +43,7 @@ public sealed class PlayerNotificationRepository
 
     public Task<int> UpdateAsync(PlayerNotificationEntity entity, CancellationToken cancellationToken = default) =>
         _db.UpdateAsync(entity, token: cancellationToken);
+
+    public Task<int> DeleteByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerNotificationEntity>().Where(x => x.PlayerId == playerId).DeleteAsync(cancellationToken);
 }

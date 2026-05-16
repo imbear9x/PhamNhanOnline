@@ -11,6 +11,8 @@ public static class GameConfigKeys
     public const string CharacterPositionSyncCatchupMaxSeconds = "character.position_sync_catchup_max_seconds";
     public const string CombatSkillRangeGraceBufferUnits = "combat.skill_range_grace_buffer_units";
     public const string CombatDeathReturnHomeRecoveryRatio = "combat_death.return_home_recovery_ratio";
+    public const string DeathLifespanPenaltySeconds = "death.lifespan_penalty_seconds";
+    public const string DeathTribulationPenaltySeconds = "death.tribulation_penalty_seconds";
     public const string ItemDropPlayerOwnershipSeconds = "item_drop.player_drop_ownership_seconds";
     public const string ItemDropPlayerFreeForAllSeconds = "item_drop.player_drop_free_for_all_seconds";
     public const string ItemDropEnemyDefaultOwnershipSeconds = "item_drop.enemy_drop_default_ownership_seconds";

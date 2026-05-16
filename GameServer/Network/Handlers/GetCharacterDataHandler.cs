@@ -51,6 +51,21 @@ public sealed class GetCharacterDataHandler : IPacketHandler<GetCharacterDataPac
                 return;
             }
 
+            if (_characterService.IsPendingPermanentDeletion(data))
+            {
+                _server.Send(session.ConnectionId, new GetCharacterDataResultPacket
+                {
+                    Success = false,
+                    Code = MessageCode.CharacterPendingPermanentDeletion,
+                    Character = data.Character.ToModel(),
+                    BaseStats = data.BaseStats?.ToModel(),
+                    CurrentState = data.CurrentState is null
+                        ? null
+                        : data.CurrentState.ToModel(data.Character, data.BaseStats, _gameTimeService.GetCurrentSnapshot())
+                });
+                return;
+            }
+
             var cultivationSettlement = await _cultivationService.SettleSnapshotAsync(data);
             data = cultivationSettlement.Snapshot;
             data = await _lifecycleService.PrepareSnapshotForWorldEntryAsync(data);

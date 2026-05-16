@@ -32,14 +32,20 @@ Flow khuyến nghị cho feature gameplay:
 11. `qa` verify expected vs actual bằng evidence rồi báo Passed/Failed/Blocked/Needs clarification
 12. Nếu QA fail, `qa` luôn tạo handoff cho `techdesign` — không tạo thẳng cho `dev`
 13. `techdesign` nhận handoff QA fail, đánh giá spec, rồi quyết định: update spec nếu cần, sau đó tạo handoff `dev`
-14. Xong việc thì chuyển handoff sang `archive/` hoặc đánh dấu `Done`
+14. Nếu QA pass và feature có khả năng ảnh hưởng client/release contract, QA report/handoff kế tiếp phải giao cho `techdesign`
+15. `techdesign` đọc QA report + spec + packet/code evidence, rồi tạo handoff `dev-client` nếu client cần implement hoặc cập nhật hành vi
+16. `dev-client` implement phần Unity/C# text-editable, viết User Unity Implementation Guide, rồi tạo handoff cho `client-reviewer`
+17. `client-reviewer` review code client + guide; nếu pass thì tạo handoff `Owner = user` để user/agent ngoài wire Unity Editor và test tay
+18. Xong việc thì chuyển handoff sang `archive/` hoặc đánh dấu `Done`
 
 Nói ngắn:
 
 - `game-design-wp` là nơi suy nghĩ và hoàn thiện dần
 - `agent-handoffs` là nơi giao việc đã chốt giữa agent
 - `docs/tech-design/` là nơi TechDesign xuất tài liệu kỹ thuật cho Dev
-- flow implementation chuẩn là `dev -> reviewer -> qa -> techdesign (nếu fail) -> dev`
+- flow implementation chuẩn là `dev -> reviewer -> qa -> techdesign`
+- nếu QA fail: `techdesign -> dev`
+- nếu QA pass và cần client: `techdesign -> dev-client -> client-reviewer -> user`
 
 ## Cách dùng
 
@@ -85,6 +91,10 @@ The user manually dispatches work by telling an agent to check its handoff. When
 - `dev` checks `QUEUE.md` for `Owner = dev`
 - `reviewer` checks `QUEUE.md` for `Owner = reviewer`
 - `qa` checks `QUEUE.md` for `Owner = qa`
+- `techdesign` also checks `QUEUE.md` for post-QA release/client handoffs with `Owner = techdesign`
+- `dev-client` checks `QUEUE.md` for `Owner = dev-client` when the user dispatches client work
+- `client-reviewer` checks `QUEUE.md` for `Owner = client-reviewer`
+- `user` rows are for the human user or an outside Unity agent, not for an OpenClaw agent to auto-claim
 - if exactly one matching `Ready` handoff exists, the agent may start after restating the target
 - if multiple matching `Ready` handoffs exist, the agent asks the user which one to do first
 - if none exists, the agent reports that there is no ready handoff for its role
@@ -136,6 +146,63 @@ QA không cần phán xét defect thuộc loại nào. QA chỉ cần:
 
 `dev` nhận handoff từ TechDesign, implement theo spec đã được TechDesign confirm, rồi tiếp tục vòng `dev -> reviewer -> qa` như bình thường.
 
+## QA Passed Client/Release Route
+
+Khi QA pass một server/shared feature, QA không nên giao thẳng cho `dev-client`.
+
+QA nên:
+
+1. viết QA report với evidence rõ ràng
+2. nếu feature có packet/UI/runtime behavior client cần biết, tạo hoặc cập nhật queue row `Owner = techdesign`, `Status = Ready`
+3. đóng QA handoff nguồn sang `Done`
+
+`techdesign` nhận QA-passed handoff và phải làm bước **client contract synthesis**:
+
+- đọc QA report, reviewer verdict, Dev handoff, TechDesign spec, packet/model files, và MessageCode liên quan
+- xác định server contract nào đã thật sự pass và contract nào đã bị supersede hoặc blocked
+- nếu không có client impact, đóng handoff nguồn sang `Done` và ghi rõ `No client handoff needed`
+- nếu có client impact, tạo handoff mới cho `dev-client`
+
+Handoff `dev-client` phải đủ để client implement mà không cần đoán:
+
+- source QA report(s), source TechDesign spec, source requirement/design docs
+- packet names, packet IDs, direction C→S/S→C/broadcast, important fields
+- UI state rules and refresh strategy
+- success/failure behavior, especially what state must not be optimistically removed on failure
+- error/message codes and user-facing handling
+- accepted backend risks that client must tolerate
+- out of scope
+- manual E2E test checklist for client
+- supersedes/response_to/source_handoff metadata when replacing older client handoffs
+
+Nếu tạo handoff mới thay thế handoff cũ, TechDesign phải update `QUEUE.md` và handoff cũ khỏi `Ready` để `dev-client` không nhặt nhầm.
+
+## Client Implementation Route
+
+`dev-client` nhận handoff từ TechDesign và chỉ làm phần client code có thể sửa bằng text:
+
+- packet DTO/handler
+- client service/controller/view-model/state cache
+- message/error mapping
+- helper/mock/debug code nếu cần
+
+`dev-client` không vận hành Unity Editor trên VPS và không claim đã setup prefab/scene/Inspector.
+
+Sau khi implement, `dev-client` phải tạo:
+
+- Dev Client report
+- User Unity Implementation Guide: prefab cần tạo/sửa, component cần gắn, Inspector field cần assign, scene/UI hierarchy, button/event wiring, manual Play Mode test checklist
+- handoff mới `Owner = client-reviewer`
+
+`client-reviewer` review code client và guide:
+
+- nếu fail: tạo handoff lại cho `dev-client`
+- nếu pass: tạo handoff `Owner = user`
+
+`Owner = user` nghĩa là việc chuyển sang user hoặc agent ngoài để mở Unity Editor, wire prefab/scene/Inspector và test tay.
+
+Nếu user test Unity phát hiện cần đổi server/spec, user trao đổi với `dev-client`; `dev-client` phân loại vấn đề và tạo handoff `Owner = techdesign` nếu đó là server/spec/contract issue.
+
 Khi đang bàn nhưng chưa muốn làm ngay:
 
 1. Không cần tạo handoff
@@ -146,6 +213,12 @@ Khi đang bàn nhưng chưa muốn làm ngay:
 
 - `TEMPLATE.md`
   - khung chuẩn để tạo handoff mới
+- `CLIENT_DEV_TEMPLATE.md`
+  - khung chuẩn cho TechDesign tạo handoff Unity/client sau khi QA pass server/shared scope
+- `CLIENT_REVIEW_TEMPLATE.md`
+  - khung chuẩn cho Dev Client tạo handoff review client code/guide
+- `USER_UNITY_HANDOFF_TEMPLATE.md`
+  - khung chuẩn cho Client Reviewer giao việc Unity Editor/manual test cho user hoặc agent ngoài
 - `QUEUE.md`
   - hàng đợi ngắn liệt kê handoff nào đang `Ready`, `In Progress`, `Blocked`
 - `SESSION_STARTERS.md`

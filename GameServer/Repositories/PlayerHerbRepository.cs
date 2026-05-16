@@ -41,4 +41,7 @@ public sealed class PlayerHerbRepository
         _db.GetTable<PlayerHerbEntity>()
             .Where(x => x.State == 1 && x.ExpireAt != null && x.ExpireAt <= utcNow)
             .DeleteAsync(cancellationToken);
+
+    public Task<int> DeleteByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerHerbEntity>().Where(x => x.PlayerId == playerId).DeleteAsync(cancellationToken);
 }

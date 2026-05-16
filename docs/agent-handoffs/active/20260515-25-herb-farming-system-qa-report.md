@@ -1,13 +1,13 @@
 ---
 title: QA Report — Herb Farming System
 doc_type: handoff
-status: Ready
-owner: release
+status: Blocked
+owner: techdesign
 source_agent: qa
 last_updated: 2026-05-15
 source_design_doc: docs/game-design-wp/requirements/herb-farming-system.md
 source_tech_design_doc: docs/tech-design/herb-farming-system.md
-expected_output: verification
+expected_output: client-handoff-evaluation
 queue_id: 25
 feature_key: herb-farming-system
 handoff_type: qa
@@ -315,11 +315,11 @@ Có một điểm authority cần ghi nhận nhưng **không block** kết quả
 
 # Next Owner
 
-**release**
+**techdesign**
 
 # Recommended Next Action
 
-Có thể đưa herb farming server scope này về release/user flow theo queue hiện tại.
+Không đưa thẳng về release. TechDesign phải xử lý post-QA authority/client synthesis trước. Lượt này đã bị supersede bởi correction round `#35`.
 
 Song song, TechDesign nên cleanup lại phần runtime-flow doc của herb spec để phản ánh implementation bag-capacity hiện tại ở extract path.
 

@@ -175,6 +175,7 @@ When `techdesign` reads a GameDesign requirement doc, it must review it using th
 - create seed-data plans
 - edit local/dev DB data when the user asks for test setup
 - create handoff docs for `dev`
+- create post-QA client implementation handoffs for `dev-client`
 
 ## Canonical Data Model Rule
 
@@ -229,6 +230,89 @@ Khi `techdesign` nhận handoff có `Source agent: qa` và kết quả là fail,
 - Không tự implement code fix dù fix có vẻ đơn giản
 - Không tạo handoff `dev` mà không đọc và đối chiếu spec trước
 - Không để handoff QA nguồn vẫn `Ready` sau khi đã xử lý xong lượt của mình
+
+---
+
+## Receiving A QA Passed Client/Release Handoff
+
+Khi `techdesign` nhận handoff có `Source agent: qa` và kết quả là `Passed`, TechDesign là owner của bước chuyển server truth thành client implementation contract.
+
+### Mục tiêu
+
+Tạo một handoff `dev-client` sạch, đủ context, bám code/spec thật, để Unity client có thể implement tính năng end-to-end mà không phải tự đọc toàn bộ lịch sử Dev/Reviewer/QA.
+
+### Bước đánh giá bắt buộc
+
+1. Đọc QA report Passed: tested scope, evidence, expected vs actual, known limits, accepted risks.
+2. Đọc Reviewer verdict gần nhất để biết risk nào đã được accept và risk nào đã bị fix.
+3. Đọc Dev handoff/report gần nhất để biết file/module/packet/runtime nào đã đổi.
+4. Đọc TechDesign spec hiện tại trong `docs/tech-design/`.
+5. Đọc packet/model/error-code source files liên quan trong code thật, không copy mù từ docs nếu code đã đổi.
+6. Xác định feature có client impact không:
+   - packet request/result/broadcast mới hoặc đổi field
+   - UI state mới
+   - error code mới hoặc đổi semantics
+   - state sync/reload/reconnect/retry rule mới
+   - accepted backend risk mà client phải handle
+
+### Nếu không có client impact
+
+- Cập nhật source QA-passed handoff/queue row sang `Done`.
+- Ghi note ngắn: `No dev-client handoff needed; server-only change`.
+- Không tạo handoff rác.
+
+### Nếu có client impact
+
+Tạo handoff mới trong:
+
+`docs/agent-handoffs/active/YYYYMMDD-<queue-id>-<feature-or-slice>-client-dev.md`
+
+Use `docs/agent-handoffs/CLIENT_DEV_TEMPLATE.md` as the starting structure.
+
+Metadata bắt buộc:
+
+- `doc_type: handoff`
+- `status: Ready`
+- `owner: dev-client`
+- `source_agent: techdesign`
+- `expected_output: unity-client-implementation`
+- `queue_id`
+- `feature_key`
+- `handoff_type: client-dev`
+- `source_handoff`: QA passed report gần nhất
+- `response_to`: QA passed report hoặc release/client handoff nguồn
+- `supersedes`: handoff dev-client cũ nếu thay thế
+- `iteration`
+
+Nội dung bắt buộc:
+
+- mục tiêu client cần đạt
+- source authority cần đọc
+- canonical server contract đã pass QA
+- packet names, IDs, direction, important fields
+- model fields client cần render/cache
+- success and failure behavior
+- error/message-code mapping
+- UI state/refresh/retry rules
+- state that must not be optimistically removed on failure
+- accepted risks/client tolerance notes
+- out of scope
+- client self-test checklist
+- manual E2E checklist for user
+
+Sau khi tạo handoff:
+
+1. Thêm row mới vào `docs/agent-handoffs/QUEUE.md` với `Owner = dev-client`, `Status = Ready`.
+2. Nếu handoff mới thay thế handoff cũ, chuyển handoff cũ khỏi `Ready` và ghi `Superseded by #<new queue-id>`.
+3. Đóng source QA-passed handoff/queue row sang `Done`.
+4. Báo user đường dẫn handoff mới và nêu ngắn phần client cần làm.
+
+### Không được làm
+
+- Không giao thẳng QA report cho `dev-client` nếu chưa tổng hợp client contract.
+- Không để nhiều handoff `dev-client` cùng feature cùng `Ready` khi cái mới đã supersede cái cũ.
+- Không tự đổi server contract để client dễ làm hơn; nếu packet/error semantics xấu nhưng đã accepted, ghi rõ accepted contract và risk.
+- Không copy packet ID từ docs nếu code thật có `[Packet(...)]` khác.
 
 ---
 

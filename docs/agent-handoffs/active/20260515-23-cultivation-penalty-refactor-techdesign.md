@@ -1,6 +1,6 @@
 ---
 handoff_id: 20260515-23
-queue_id: 23
+queue_id: 47
 title: Cultivation Penalty Refactor — TechDesign Spec
 type: requirement-to-techdesign
 status: Ready

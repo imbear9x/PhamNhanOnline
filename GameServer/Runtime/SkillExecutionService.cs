@@ -252,7 +252,7 @@ public sealed class SkillExecutionService
         if (amount <= 0)
             return SkillEffectApplicationSummary.Empty;
 
-        player.CombatStatuses.AddShield(amount, ResolveExpiresAtUtc(durationMs, utcNow));
+        player.CombatStatuses.AddShield(amount, ResolveExpiresAtUtc(durationMs, utcNow), CombatStatusSourceType.Skill);
         return SkillEffectApplicationSummary.Applied(MessageCode.None);
     }
 
@@ -261,7 +261,7 @@ public sealed class SkillExecutionService
         if (durationMs is not > 0)
             return SkillEffectApplicationSummary.Empty;
 
-        player.CombatStatuses.AddStun(utcNow.AddMilliseconds(durationMs.Value));
+        player.CombatStatuses.AddStun(utcNow.AddMilliseconds(durationMs.Value), CombatStatusSourceType.Skill);
         return SkillEffectApplicationSummary.Applied(MessageCode.None);
     }
 
@@ -281,7 +281,8 @@ public sealed class SkillExecutionService
             statType,
             isDebuff ? -amount : amount,
             valueType,
-            ResolveExpiresAtUtc(durationMs, utcNow));
+            ResolveExpiresAtUtc(durationMs, utcNow),
+            CombatStatusSourceType.Skill);
         return SkillEffectApplicationSummary.Applied(MessageCode.None);
     }
 

@@ -28,4 +28,7 @@ public sealed class PlayerSkillGrantSourceRepository
 
     public Task<int> DeleteAsync(PlayerSkillGrantSourceEntity entity, CancellationToken cancellationToken = default) =>
         _db.DeleteAsync(entity, token: cancellationToken);
+
+    public Task<int> DeleteByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerSkillGrantSourceEntity>().Where(x => x.PlayerId == playerId).DeleteAsync(cancellationToken);
 }

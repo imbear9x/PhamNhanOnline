@@ -68,6 +68,26 @@ public sealed class CharacterService
         return entities.Select(CharacterDto.FromEntity).ToList();
     }
 
+    public bool IsPendingPermanentDeletion(CharacterDto character)
+    {
+        ArgumentNullException.ThrowIfNull(character);
+        return character.PendingPermanentDeletion;
+    }
+
+    public bool IsPendingPermanentDeletion(CharacterSnapshotDto snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        return IsPendingPermanentDeletion(snapshot.Character);
+    }
+
+    public async Task MarkPendingPermanentDeletionAsync(Guid characterId, bool pending, CancellationToken cancellationToken = default)
+    {
+        var entity = await _characters.GetByIdAsync(characterId, cancellationToken)
+                     ?? throw new GameException(MessageCode.CharacterNotFound);
+        entity.PendingPermanentDeletion = pending;
+        await _characters.UpdateAsync(entity, cancellationToken);
+    }
+
     public Task<bool> IsCharacterNameUniqueAsync(string name, CancellationToken cancellationToken = default) =>
         IsCharacterNameUniqueInternalAsync(name, cancellationToken);
 
@@ -357,6 +377,7 @@ public sealed class CharacterService
         existing.CurrentState = state.CurrentState;
         existing.CultivationStartedAtUtc = NormalizeUtcNullable(state.CultivationStartedAtUtc);
         existing.LastCultivationRewardedAtUtc = NormalizeUtcNullable(state.LastCultivationRewardedAtUtc);
+        existing.NextTribulationAtUtc = NormalizeUtcNullable(state.NextTribulationAtUtc);
         existing.LastSavedAt = NormalizeUtc(state.LastSavedAt);
 
         await _currentStates.UpdateAsync(existing, cancellationToken);
@@ -446,6 +467,7 @@ public sealed class CharacterService
             CurrentState = DefaultCurrentStateCode,
             CultivationStartedAtUtc = null,
             LastCultivationRewardedAtUtc = null,
+            NextTribulationAtUtc = null,
             LastSavedAt = DateTime.UtcNow
         };
     }
@@ -660,3 +682,15 @@ public sealed record CharacterSnapshotDto(
     CharacterDto Character,
     CharacterBaseStatsDto? BaseStats,
     CharacterCurrentStateDto? CurrentState);
+
+public readonly record struct PermanentCharacterDeletionResult(
+    bool Success,
+    MessageCode Code,
+    Guid? CharacterId)
+{
+    public static PermanentCharacterDeletionResult Succeeded(Guid characterId) =>
+        new(true, MessageCode.None, characterId);
+
+    public static PermanentCharacterDeletionResult Failed(MessageCode code, Guid? characterId = null) =>
+        new(false, code, characterId);
+}

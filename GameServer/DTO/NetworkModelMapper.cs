@@ -24,6 +24,7 @@ public static class NetworkModelMapper
                 EyeColor = dto.Appearance.EyeColor ?? 0,
                 FaceId = dto.Appearance.FaceId ?? 0
             },
+            PendingPermanentDeletion = dto.PendingPermanentDeletion,
             CreatedUnixMs = ToUnixMs(dto.CreatedUtc)
         };
     }
@@ -188,6 +189,7 @@ public static class NetworkModelMapper
             CurrentState = dto.CurrentState,
             CultivationStartedUnixMs = ToUnixMs(dto.CultivationStartedAtUtc),
             LastCultivationRewardedUnixMs = ToUnixMs(dto.LastCultivationRewardedAtUtc),
+            NextTribulationAtUnixMs = ToUnixMs(dto.NextTribulationAtUtc),
             LastSavedUnixMs = ToUnixMs(dto.LastSavedAt) ?? 0
         };
     }

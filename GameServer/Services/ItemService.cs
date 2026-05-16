@@ -1,3 +1,4 @@
+using System.Linq;
 using GameServer.Descriptions;
 using GameServer.Entities;
 using GameServer.Repositories;
@@ -331,6 +332,21 @@ public sealed class ItemService
 
             await DeleteItemInstanceAsync(item.Id, cancellationToken);
         }
+    }
+
+    public async Task PurgeAllItemsForPlayerAsync(
+        Guid playerId,
+        CancellationToken cancellationToken = default)
+    {
+        await _inventoryTransactions.ExecuteAsync(
+            playerId,
+            async ct =>
+            {
+                var items = await _playerItems.ListAllByPlayerIdAsync(playerId, ct);
+                for (var i = 0; i < items.Count; i++)
+                    await DeleteItemInstanceAsync(items[i].Id, ct);
+            },
+            cancellationToken);
     }
 
     public async Task RemoveItemAsync(

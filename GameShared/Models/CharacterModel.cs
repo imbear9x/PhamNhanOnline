@@ -20,5 +20,6 @@ public struct CharacterModel
     public int WorldServerId;
     public string Name;
     public CharacterAppearanceModel Appearance;
+    public bool PendingPermanentDeletion;
     public long? CreatedUnixMs;
 }

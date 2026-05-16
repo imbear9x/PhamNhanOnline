@@ -1,6 +1,6 @@
 ---
 handoff_id: 20260515-26
-queue_id: 26
+queue_id: 50
 title: Sect Task Welfare — TechDesign Spec
 type: requirement-to-techdesign
 status: Ready

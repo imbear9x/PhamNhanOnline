@@ -32,6 +32,12 @@ public sealed class ReturnHomeAfterCombatDeathHandler : IPacketHandler<ReturnHom
         }
 
         var player = session.Player;
+        if (player.CharacterData.PendingPermanentDeletion)
+        {
+            SendFailure(session, MessageCode.CharacterPendingPermanentDeletion);
+            return;
+        }
+
         if (!_deathRecoveryService.IsCombatDead(player.RuntimeState.CaptureSnapshot().CurrentState))
         {
             SendFailure(session, MessageCode.CharacterNotCombatDead);

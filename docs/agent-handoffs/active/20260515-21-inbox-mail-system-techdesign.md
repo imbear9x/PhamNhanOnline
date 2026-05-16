@@ -1,6 +1,6 @@
 ---
 handoff_id: 20260515-21
-queue_id: 21
+queue_id: 45
 title: Inbox / Mail System — TechDesign Spec
 type: requirement-to-techdesign
 status: Ready

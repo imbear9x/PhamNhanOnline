@@ -759,3 +759,22 @@ public partial class AcknowledgePlayerNotificationResultPacket : IPacket
     public MessageCode? Code { get; set; }
     public long? NotificationId { get; set; }
 }
+
+[Packet(224)]
+[RequireAuth]
+[PacketTransport(PacketTransportMode.ReliableOrdered, MinIntervalMs = 500)]
+public partial class ConfirmPermanentCharacterDeletionPacket : IPacket
+{
+    [ValidationCode(MessageCode.CharacterIdInvalid)]
+    [Required]
+    public Guid? CharacterId { get; set; }
+}
+
+[Packet(225)]
+[PacketTransport(PacketTransportMode.ReliableOrdered)]
+public partial class ConfirmPermanentCharacterDeletionResultPacket : IPacket
+{
+    public bool? Success { get; set; }
+    public MessageCode? Code { get; set; }
+    public Guid? CharacterId { get; set; }
+}

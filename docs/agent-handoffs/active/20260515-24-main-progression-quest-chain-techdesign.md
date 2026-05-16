@@ -1,6 +1,6 @@
 ---
 handoff_id: 20260515-24
-queue_id: 24
+queue_id: 48
 title: Main Progression Quest Chain — TechDesign Spec
 type: requirement-to-techdesign
 status: Ready

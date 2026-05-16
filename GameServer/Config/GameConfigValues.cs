@@ -11,6 +11,8 @@ public sealed class GameConfigValues
     public float CharacterPositionSyncCatchupMaxSeconds { get; init; } = 0.75f;
     public float CombatSkillRangeGraceBufferUnits { get; init; } = 12f;
     public double CombatDeathReturnHomeRecoveryRatio { get; init; } = 0.80d;
+    public int DeathLifespanPenaltySeconds { get; init; } = 86400;
+    public int DeathTribulationPenaltySeconds { get; init; } = 86400;
     public int ItemDropPlayerOwnershipSeconds { get; init; } = 10;
     public int ItemDropPlayerFreeForAllSeconds { get; init; } = 50;
     public int ItemDropEnemyDefaultOwnershipSeconds { get; init; } = 30;

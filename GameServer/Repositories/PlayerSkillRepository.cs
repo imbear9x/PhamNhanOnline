@@ -30,4 +30,7 @@ public sealed class PlayerSkillRepository
 
     public Task<int> DeleteAsync(PlayerSkillEntity entity, CancellationToken cancellationToken = default) =>
         _db.DeleteAsync(entity, token: cancellationToken);
+
+    public Task<int> DeleteByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerSkillEntity>().Where(x => x.PlayerId == playerId).DeleteAsync(cancellationToken);
 }

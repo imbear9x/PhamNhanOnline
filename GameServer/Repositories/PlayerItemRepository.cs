@@ -24,6 +24,13 @@ public sealed class PlayerItemRepository
     public Task<PlayerItemEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default) =>
         _db.GetTable<PlayerItemEntity>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public Task<List<PlayerItemEntity>> ListAllByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerItemEntity>()
+            .Where(x => x.PlayerId == playerId)
+            .OrderBy(x => x.AcquiredAt)
+            .ThenBy(x => x.Id)
+            .ToListAsync(cancellationToken);
+
     public Task<List<PlayerItemEntity>> ListByIdsAsync(IReadOnlyCollection<long> itemIds, CancellationToken cancellationToken = default)
     {
         if (itemIds.Count == 0)

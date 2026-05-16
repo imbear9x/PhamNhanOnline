@@ -62,6 +62,9 @@ public sealed class WorldEntryService
         if (data is null)
             return WorldEntryActionResult.Failure(MessageCode.CharacterNotFound);
 
+        if (_characterService.IsPendingPermanentDeletion(data))
+            return WorldEntryActionResult.Failure(MessageCode.CharacterPendingPermanentDeletion);
+
         var cultivationSettlement = await _cultivationService.SettleSnapshotAsync(data);
         data = cultivationSettlement.Snapshot;
         await _alchemyPracticeService.EnsureDueSessionCompletedAsync(data.Character.CharacterId, cancellationToken);

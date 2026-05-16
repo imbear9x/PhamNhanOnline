@@ -38,5 +38,8 @@ public sealed class BreakthroughAttemptRepository
 
     public Task<int> DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
         _db.GetTable<BreakthroughAttempt>().Where(x => x.Id == id).DeleteAsync(cancellationToken);
+
+    public Task<int> DeleteByCharacterIdAsync(Guid characterId, CancellationToken cancellationToken = default) =>
+        _db.GetTable<BreakthroughAttempt>().Where(x => x.CharacterId == characterId).DeleteAsync(cancellationToken);
 }
 

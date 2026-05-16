@@ -1,7 +1,7 @@
 ---
 title: Client Dev — Herb Farming + Inventory Bag System (Unity)
 doc_type: handoff
-status: Ready
+status: Blocked
 owner: dev-client
 source_agent: techdesign
 last_updated: 2026-05-15
@@ -13,10 +13,13 @@ feature_key: inventory-bag-system, herb-farming-system
 handoff_type: client-dev
 source_handoff: docs/agent-handoffs/active/20260515-17-inventory-bag-herb-random-output-fix-qa-report.md
 response_to: docs/agent-handoffs/active/20260515-17-inventory-bag-herb-random-output-fix-qa-report.md
+superseded_by: docs/agent-handoffs/active/20260515-36-herb-farming-client-correction-dev.md
 iteration: 1
 ---
 
 # Tổng quan
+
+> Lifecycle note: handoff này đã bị supersede bởi `docs/agent-handoffs/active/20260515-36-herb-farming-client-correction-dev.md`. Không dispatch handoff này trực tiếp cho dev-client nữa; chỉ dùng làm baseline reference khi đọc #36.
 
 Server-side đã pass QA hoàn toàn cho 2 system:
 1. **Inventory Bag System** — bag grade 1–4, capacity enforcement, bag upgrade via NPC

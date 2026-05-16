@@ -1,6 +1,6 @@
 ---
 handoff_id: 20260515-28
-queue_id: 28
+queue_id: 52
 title: Sect PvP — TechDesign Spec
 type: requirement-to-techdesign
 status: Ready

@@ -28,6 +28,7 @@ namespace GameServer.Entities
         [Column("current_state")] public int CurrentState { get; set; }
         [Column("cultivation_started_at_utc")] public DateTime? CultivationStartedAtUtc { get; set; }
         [Column("last_cultivation_rewarded_at_utc")] public DateTime? LastCultivationRewardedAtUtc { get; set; }
+        [Column("next_tribulation_at_utc")] public DateTime? NextTribulationAtUtc { get; set; }
         [Column("last_saved_at")] public DateTime LastSavedAt { get; set; }
 
         #region Associations

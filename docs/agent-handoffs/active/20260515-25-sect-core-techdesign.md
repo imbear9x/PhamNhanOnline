@@ -1,6 +1,6 @@
 ---
 handoff_id: 20260515-25
-queue_id: 25
+queue_id: 49
 title: Sect Core — TechDesign Spec
 type: requirement-to-techdesign
 status: Ready

@@ -28,4 +28,7 @@ public sealed class PlayerMartialArtRepository
 
     public Task<int> UpdateAsync(PlayerMartialArtEntity entity, CancellationToken cancellationToken = default) =>
         _db.UpdateEntityAsync(entity, cancellationToken);
+
+    public Task<int> DeleteByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerMartialArtEntity>().Where(x => x.PlayerId == playerId).DeleteAsync(cancellationToken);
 }

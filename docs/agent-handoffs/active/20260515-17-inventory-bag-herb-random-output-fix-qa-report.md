@@ -1,13 +1,13 @@
 ---
 title: QA Report — Inventory Bag Herb Random Output Fix
 doc_type: handoff
-status: Ready
-owner: release
+status: Done
+owner: techdesign
 source_agent: qa
 last_updated: 2026-05-15
 source_design_doc: docs/game-design-wp/requirements/inventory-bag-system.md
 source_tech_design_doc: docs/tech-design/inventory-bag-system.md
-expected_output: verification
+expected_output: client-handoff-evaluation
 queue_id: 17
 feature_key: inventory-bag-system
 handoff_type: qa
@@ -185,11 +185,11 @@ Evidence:
 
 # Next Owner
 
-**release**
+**techdesign**
 
 # Recommended Next Action
 
-Có thể cho feature/fix này quay lại release flow hoặc user flow theo queue hiện tại.
+TechDesign đánh giá client impact và tạo/cập nhật handoff `dev-client` nếu client cần implement hoặc đổi behavior. Với lượt lịch sử này, TechDesign đã tạo handoff `#18`.
 
 Nếu muốn tăng độ chắc chắn sau release candidate, nên bổ sung automated integration test cho các tổ hợp:
 - random proc + full bag

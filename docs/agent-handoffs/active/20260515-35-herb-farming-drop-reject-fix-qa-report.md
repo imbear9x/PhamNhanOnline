@@ -1,13 +1,13 @@
 ---
 title: QA Report — Herb Farming Drop Reject Fix
 doc_type: handoff
-status: Ready
-owner: release
+status: Done
+owner: techdesign
 source_agent: qa
 last_updated: 2026-05-15
 source_design_doc: docs/game-design-wp/requirements/herb-farming-system.md
 source_tech_design_doc: docs/tech-design/herb-farming-system.md
-expected_output: verification
+expected_output: client-handoff-evaluation
 queue_id: 35
 feature_key: herb-farming-system
 handoff_type: qa
@@ -264,11 +264,11 @@ Evidence:
 
 # Next Owner
 
-**release**
+**techdesign**
 
 # Recommended Next Action
 
-Có thể dùng report này để mở lại release flow cho correction round herb drop reject fix, nếu không còn blocker authority nào khác ngoài queue hiện tại.
+TechDesign đánh giá client impact và tạo/cập nhật handoff `dev-client` nếu client cần implement hoặc đổi behavior. Với lượt này, TechDesign đã tạo handoff `#36`.
 
 # Retest Scope
 

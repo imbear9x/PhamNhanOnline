@@ -25,7 +25,11 @@ SET
 
 ALTER TABLE public.character_current_state
     ADD COLUMN IF NOT EXISTS cultivation_started_at_utc timestamp without time zone NULL,
-    ADD COLUMN IF NOT EXISTS last_cultivation_rewarded_at_utc timestamp without time zone NULL;
+    ADD COLUMN IF NOT EXISTS last_cultivation_rewarded_at_utc timestamp without time zone NULL,
+    ADD COLUMN IF NOT EXISTS next_tribulation_at_utc timestamp without time zone NULL;
+
+ALTER TABLE public.characters
+    ADD COLUMN IF NOT EXISTS pending_permanent_deletion boolean NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS public.spiritual_energy_templates (
     id integer NOT NULL,
@@ -1465,6 +1469,8 @@ VALUES
     ('character.position_sync_catchup_max_seconds', '0.75', 'So giay toi da duoc dung cho bu tru movement sync khi xu ly interaction.'),
     ('combat.skill_range_grace_buffer_units', '12', 'Buffer them vao tam cast skill khi server validate attack target.'),
     ('combat_death.return_home_recovery_ratio', '0.8', 'Ti le HP/MP hoi lai khi player combat dead va duoc dua ve home.'),
+    ('death.lifespan_penalty_seconds', '86400', 'So giay tho nguyen bi tru moi lan nhan vat realm 1-18 chet.'),
+    ('death.tribulation_penalty_seconds', '86400', 'So giay rut ngan countdown loi kiep moi lan nhan vat realm 19+ chet.'),
     ('item_drop.player_drop_ownership_seconds', '10', 'So giay item vut tu inventory con ownership rieng cho nguoi vut.'),
     ('item_drop.player_drop_free_for_all_seconds', '50', 'So giay sau giai doan ownership de item vut tu inventory ton tai o free-for-all.'),
     ('item_drop.enemy_drop_default_ownership_seconds', '30', 'So giay ownership mac dinh cho ground reward roi tu enemy khi reward rule khong chi dinh.'),

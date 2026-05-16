@@ -95,6 +95,7 @@ public enum MessageCode : int
     InventoryFull = 3059,
     BagUpgradeTargetInvalid = 3060,
     BagUpgradeCurrencyInsufficient = 3061,
+    CharacterPendingPermanentDeletion = 3062,
 
     MapIdInvalid = 4000,
     MapTravelNotAllowed = 4001,

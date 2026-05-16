@@ -1,6 +1,6 @@
 ---
 handoff_id: 20260515-30
-queue_id: 30
+queue_id: 54
 title: Mineral Vein Mining Access — TechDesign Spec
 type: requirement-to-techdesign
 status: Ready

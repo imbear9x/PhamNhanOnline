@@ -49,6 +49,8 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<CharacterFinalStatService>();
         services.AddScoped<MartialArtActionService>();
         services.AddScoped<WorldEntryService>();
+        services.AddScoped<DeathPenaltyService>();
+        services.AddScoped<PermanentCharacterDeletionService>();
         services.AddScoped<PillRecipeService>();
         services.AddScoped<AlchemyService>();
         services.AddScoped<HerbService>();
@@ -244,6 +246,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IPacketHandler<CancelPracticePacket>, CancelPracticeHandler>();
         services.AddScoped<IPacketHandler<AcknowledgePracticeResultPacket>, AcknowledgePracticeResultHandler>();
         services.AddScoped<IPacketHandler<AcknowledgePlayerNotificationPacket>, AcknowledgePlayerNotificationHandler>();
+        services.AddScoped<IPacketHandler<ConfirmPermanentCharacterDeletionPacket>, ConfirmPermanentCharacterDeletionHandler>();
         services.AddScoped<IPacketHandler<AttackEnemyPacket>, AttackEnemyHandler>();
         services.AddScoped<IPacketHandler<PickupGroundRewardPacket>, PickupGroundRewardHandler>();
 

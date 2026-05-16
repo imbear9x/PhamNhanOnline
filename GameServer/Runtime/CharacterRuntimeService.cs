@@ -5,6 +5,7 @@ using GameServer.Services;
 using GameServer.Time;
 using GameServer.World;
 using GameShared.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GameServer.Runtime;
 
@@ -15,19 +16,22 @@ public sealed class CharacterRuntimeService
     private readonly CharacterRuntimeNotifier _notifier;
     private readonly WorldInterestService _interestService;
     private readonly CharacterLifecycleService _lifecycleService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public CharacterRuntimeService(
         WorldManager worldManager,
         CharacterRuntimeCalculator calculator,
         CharacterRuntimeNotifier notifier,
         WorldInterestService interestService,
-        CharacterLifecycleService lifecycleService)
+        CharacterLifecycleService lifecycleService,
+        IServiceScopeFactory scopeFactory)
     {
         _worldManager = worldManager;
         _calculator = calculator;
         _notifier = notifier;
         _interestService = interestService;
         _lifecycleService = lifecycleService;
+        _scopeFactory = scopeFactory;
     }
 
     public PlayerSession AttachPlayerSession(ConnectionSession session, CharacterSnapshotDto snapshot)
@@ -212,6 +216,21 @@ public sealed class CharacterRuntimeService
         if (wasCombatDead || !isCombatDead || currentState.IsExpired)
             return;
 
-        _notifier.NotifyStateTransition(player, CharacterStateTransitionReasons.CombatDead);
+        _ = ApplyDeathPenaltyAndNotifyAsync(player);
+    }
+
+    private async Task ApplyDeathPenaltyAndNotifyAsync(PlayerSession player)
+    {
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var deathPenaltyService = scope.ServiceProvider.GetRequiredService<DeathPenaltyService>();
+            await deathPenaltyService.ApplyOnCombatDeathAsync(player);
+            _notifier.NotifyStateTransition(player, CharacterStateTransitionReasons.CombatDead);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, $"Failed to apply death penalty for character {player.CharacterData.CharacterId}.");
+        }
     }
 }

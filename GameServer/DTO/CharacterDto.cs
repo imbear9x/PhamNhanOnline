@@ -9,6 +9,7 @@ public sealed record CharacterDto(
     string Name,
     CharacterAppearanceDto Appearance,
     DateTime? FirstEnterWorldAtUtc,
+    bool PendingPermanentDeletion,
     DateTime? CreatedUtc)
 {
     public static CharacterDto FromEntity(Character entity) =>
@@ -19,6 +20,7 @@ public sealed record CharacterDto(
             entity.Name,
             new CharacterAppearanceDto(entity.ModelId, entity.Gender, entity.HairColor, entity.EyeColor, entity.FaceId),
             entity.FirstEnterWorldAtUtc,
+            entity.PendingPermanentDeletion,
             entity.CreatedAt);
 }
 

@@ -1,9 +1,9 @@
 ---
 handoff_id: 20260515-22
-queue_id: 22
+queue_id: 46
 title: Death Penalty — TechDesign Spec
 type: requirement-to-techdesign
-status: Ready
+status: Done
 owner: techdesign
 source_design_doc: requirements/death-penalty.md
 feature_doc: features/death-penalty.md
@@ -76,13 +76,40 @@ Confirm từng thành phần đã có hay chưa:
 
 ---
 
-## Acceptance Gate (TechDesign verify trước khi Dev handoff)
+## TechDesign Result
 
-- [ ] Runtime existence confirmed cho từng thành phần.
-- [ ] Drop pool + atomicity approach decided.
-- [ ] Ground item / looting window approach decided.
-- [ ] Buff scope (skill vs bùa chú) confirmed in code.
-- [ ] Permanent death approach decided.
-- [ ] Additional penalty config schema designed.
-- [ ] 3 blocking questions raised / answered.
-- [ ] `tech-design/death-penalty.md` created.
+### Đã hoàn thành
+- [x] Runtime existence confirmed cho từng thành phần ở mức repo grounding hiện có.
+- [x] Drop pool + atomicity approach proposed trong `docs/tech-design/death-penalty.md`.
+- [x] Ground item / looting window approach proposed bằng runtime ground reward dùng chung.
+- [x] Additional penalty config schema proposed.
+- [x] `docs/tech-design/death-penalty.md` created.
+
+### Authority decisions đã được user chốt
+- [x] **Lifespan elixir cap**: không cap theo pool cảnh giới hiện tại.
+- [x] **Warning threshold**: cố định 10 ngày.
+- [x] **Permanent death data policy**: character bị lock + hiện thông báo mỗi lần login; chỉ hard-delete toàn bộ data khi player bấm OK xác nhận; nếu thoát game không bấm thì lần sau vẫn bị chặn và hiện lại.
+
+## TechDesign Summary
+
+Repo hiện có sẵn các nền sau:
+- `CombatDead` runtime state
+- `ReturnHomeAfterCombatDeathPacket` / recovery service
+- ground reward runtime entity + owner window
+- item template `is_droppable` / `is_tradeable`
+- lifespan runtime nền (`realm_templates.lifespan`, `lifespan_bonus`, lifecycle service)
+
+Các phần **chưa có đầy đủ** và đã được TD spec hóa thành slice tiếp theo:
+- death penalty orchestrator
+- auto drop linh thạch / item khi chết
+- skill-only buff clear contract
+- lifespan / tribulation penalty hook
+- permanent death archive/delete flow
+- checkpoint respawn option
+- config-driven additional penalty
+
+## Output
+- `docs/tech-design/death-penalty.md`
+
+## Status
+- TechDesign hoàn tất; đủ điều kiện tạo Dev handoff.

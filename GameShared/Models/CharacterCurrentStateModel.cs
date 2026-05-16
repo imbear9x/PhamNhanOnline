@@ -18,5 +18,6 @@ public struct CharacterCurrentStateModel
     public int CurrentState;
     public long? CultivationStartedUnixMs;
     public long? LastCultivationRewardedUnixMs;
+    public long? NextTribulationAtUnixMs;
     public long LastSavedUnixMs;
 }

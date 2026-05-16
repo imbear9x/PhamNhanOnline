@@ -142,7 +142,7 @@ public sealed class MonsterEntity
             if (State == EnemyRuntimeState.Dead)
                 return;
 
-            _combatStatuses.AddShield(amount, ResolveExpiresAtUtc(durationMs, utcNow));
+            _combatStatuses.AddShield(amount, ResolveExpiresAtUtc(durationMs, utcNow), CombatStatusSourceType.Skill);
         }
     }
 
@@ -156,7 +156,7 @@ public sealed class MonsterEntity
             if (State == EnemyRuntimeState.Dead)
                 return;
 
-            _combatStatuses.AddStun(utcNow.AddMilliseconds(durationMs));
+            _combatStatuses.AddStun(utcNow.AddMilliseconds(durationMs), CombatStatusSourceType.Skill);
             NextAttackAtUtc = utcNow.AddMilliseconds(durationMs);
         }
     }
@@ -173,7 +173,7 @@ public sealed class MonsterEntity
             if (State == EnemyRuntimeState.Dead)
                 return;
 
-            _combatStatuses.AddStatModifier(statType, value, valueType, ResolveExpiresAtUtc(durationMs, utcNow));
+            _combatStatuses.AddStatModifier(statType, value, valueType, ResolveExpiresAtUtc(durationMs, utcNow), CombatStatusSourceType.Skill);
         }
     }
 

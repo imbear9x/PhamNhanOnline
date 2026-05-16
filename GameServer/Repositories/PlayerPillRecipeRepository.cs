@@ -28,4 +28,7 @@ public sealed class PlayerPillRecipeRepository
 
     public Task<int> UpdateAsync(PlayerPillRecipeEntity entity, CancellationToken cancellationToken = default) =>
         _db.UpdateEntityAsync(entity, cancellationToken);
+
+    public Task<int> DeleteByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerPillRecipeEntity>().Where(x => x.PlayerId == playerId).DeleteAsync(cancellationToken);
 }

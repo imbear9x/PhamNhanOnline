@@ -362,6 +362,12 @@ internal static class PacketGeneratedRegistry
             case global::GameShared.Packets.UpgradeBagResultPacket:
                 id = 223;
                 return true;
+            case global::GameShared.Packets.ConfirmPermanentCharacterDeletionPacket:
+                id = 224;
+                return true;
+            case global::GameShared.Packets.ConfirmPermanentCharacterDeletionResultPacket:
+                id = 225;
+                return true;
             default:
                 id = default;
                 return false;
@@ -490,6 +496,8 @@ internal static class PacketGeneratedRegistry
             221 => new global::GameShared.Packets.GetBagStateResultPacket(),
             222 => new global::GameShared.Packets.UpgradeBagPacket(),
             223 => new global::GameShared.Packets.UpgradeBagResultPacket(),
+            224 => new global::GameShared.Packets.ConfirmPermanentCharacterDeletionPacket(),
+            225 => new global::GameShared.Packets.ConfirmPermanentCharacterDeletionResultPacket(),
             _ => null
         };
     }

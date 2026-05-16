@@ -5,6 +5,22 @@ public readonly record struct CombatStatModifierAggregate(
     decimal Ratio,
     decimal Percent);
 
+public enum CombatStatusSourceType
+{
+    Skill = 1,
+    Talisman = 2,
+    Formation = 3,
+    External = 4
+}
+
+public readonly record struct CombatStatusClearSummary(
+    int ShieldCount,
+    int StatModifierCount,
+    bool StunCleared)
+{
+    public static CombatStatusClearSummary Empty { get; } = new(0, 0, false);
+}
+
 public readonly record struct CombatStatSnapshot(
     int MaxHp,
     int MaxMp,
@@ -19,14 +35,14 @@ public sealed class CombatStatusCollection
     private readonly object _sync = new();
     private readonly List<CombatShieldState> _shields = [];
     private readonly List<CombatStatModifierState> _statModifiers = [];
-    private DateTime? _stunnedUntilUtc;
+    private CombatStunState? _stun;
 
     public bool IsStunned(DateTime utcNow)
     {
         lock (_sync)
         {
             CleanupExpiredNoLock(utcNow);
-            return _stunnedUntilUtc.HasValue && utcNow < _stunnedUntilUtc.Value;
+            return _stun.HasValue && utcNow < _stun.Value.StunnedUntilUtc;
         }
     }
 
@@ -58,23 +74,23 @@ public sealed class CombatStatusCollection
         }
     }
 
-    public void AddShield(int amount, DateTime? expiresAtUtc)
+    public void AddShield(int amount, DateTime? expiresAtUtc, CombatStatusSourceType sourceType)
     {
         if (amount <= 0)
             return;
 
         lock (_sync)
         {
-            _shields.Add(new CombatShieldState(amount, expiresAtUtc));
+            _shields.Add(new CombatShieldState(amount, expiresAtUtc, sourceType));
         }
     }
 
-    public void AddStun(DateTime stunnedUntilUtc)
+    public void AddStun(DateTime stunnedUntilUtc, CombatStatusSourceType sourceType)
     {
         lock (_sync)
         {
-            if (!_stunnedUntilUtc.HasValue || stunnedUntilUtc > _stunnedUntilUtc.Value)
-                _stunnedUntilUtc = stunnedUntilUtc;
+            if (!_stun.HasValue || stunnedUntilUtc > _stun.Value.StunnedUntilUtc)
+                _stun = new CombatStunState(stunnedUntilUtc, sourceType);
         }
     }
 
@@ -82,14 +98,29 @@ public sealed class CombatStatusCollection
         CharacterStatType statType,
         decimal value,
         CombatValueType valueType,
-        DateTime? expiresAtUtc)
+        DateTime? expiresAtUtc,
+        CombatStatusSourceType sourceType)
     {
         if (statType == CharacterStatType.None || value == 0)
             return;
 
         lock (_sync)
         {
-            _statModifiers.Add(new CombatStatModifierState(statType, value, valueType, expiresAtUtc));
+            _statModifiers.Add(new CombatStatModifierState(statType, value, valueType, expiresAtUtc, sourceType));
+        }
+    }
+
+    public CombatStatusClearSummary ClearBySource(CombatStatusSourceType sourceType)
+    {
+        lock (_sync)
+        {
+            var removedShields = _shields.RemoveAll(shield => shield.SourceType == sourceType);
+            var removedStatModifiers = _statModifiers.RemoveAll(modifier => modifier.SourceType == sourceType);
+            var stunCleared = _stun.HasValue && _stun.Value.SourceType == sourceType;
+            if (stunCleared)
+                _stun = null;
+
+            return new CombatStatusClearSummary(removedShields, removedStatModifiers, stunCleared);
         }
     }
 
@@ -138,19 +169,25 @@ public sealed class CombatStatusCollection
         _shields.RemoveAll(shield => shield.ExpiresAtUtc.HasValue && utcNow >= shield.ExpiresAtUtc.Value);
         _statModifiers.RemoveAll(modifier => modifier.ExpiresAtUtc.HasValue && utcNow >= modifier.ExpiresAtUtc.Value);
 
-        if (_stunnedUntilUtc.HasValue && utcNow >= _stunnedUntilUtc.Value)
-            _stunnedUntilUtc = null;
+        if (_stun.HasValue && utcNow >= _stun.Value.StunnedUntilUtc)
+            _stun = null;
     }
 
     private readonly record struct CombatShieldState(
         int RemainingValue,
-        DateTime? ExpiresAtUtc);
+        DateTime? ExpiresAtUtc,
+        CombatStatusSourceType SourceType);
+
+    private readonly record struct CombatStunState(
+        DateTime StunnedUntilUtc,
+        CombatStatusSourceType SourceType);
 
     private readonly record struct CombatStatModifierState(
         CharacterStatType StatType,
         decimal Value,
         CombatValueType ValueType,
-        DateTime? ExpiresAtUtc);
+        DateTime? ExpiresAtUtc,
+        CombatStatusSourceType SourceType);
 }
 
 public static class CombatStatMath

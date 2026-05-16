@@ -32,4 +32,7 @@ public sealed class PlayerCaveRepository
 
     public Task<int> UpdateAsync(PlayerCaveEntity entity, CancellationToken cancellationToken = default) =>
         _db.UpdateEntityAsync(entity, cancellationToken);
+
+    public Task<int> DeleteByOwnerAsync(Guid ownerCharacterId, CancellationToken cancellationToken = default) =>
+        _db.GetTable<PlayerCaveEntity>().Where(x => x.OwnerCharacterId == ownerCharacterId).DeleteAsync(cancellationToken);
 }
